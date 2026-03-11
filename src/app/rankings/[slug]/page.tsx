@@ -56,6 +56,45 @@ const RANKING_CONFIGS: Record<
     description: 'All infrastructure tools ranked by verified AI agent usage.',
     category: 'infra',
   },
+  'platform-tools-ranked-by-agents': {
+    title: 'Agent Platforms Ranked by Agents',
+    description: 'All agent platforms ranked by verified AI agent usage.',
+    category: 'platform',
+  },
+  'top-agent-tools': {
+    title: 'Top Agent Tools — Overall Rankings',
+    description: 'The top 20 AI agent tools across all categories, ranked by verified usage.',
+  },
+  'best-agent-skills': {
+    title: 'Best Agent Skills',
+    description: 'Top skill and integration tools ranked by verified AI agent usage.',
+    category: 'skill',
+  },
+  'best-data-sources-for-agents': {
+    title: 'Best Data Sources for AI Agents',
+    description: 'Top data sources and databases ranked by verified AI agent usage.',
+    category: 'data',
+  },
+  'best-agent-infrastructure': {
+    title: 'Best Agent Infrastructure',
+    description: 'Top infrastructure tools ranked by verified AI agent usage.',
+    category: 'infra',
+  },
+  'best-agent-platforms': {
+    title: 'Best Agent Platforms',
+    description: 'Top agent platforms ranked by verified AI agent usage.',
+    category: 'platform',
+  },
+  'best-apis-for-agents': {
+    title: 'Best APIs for AI Agents',
+    description: 'Top APIs ranked by verified AI agent usage on AgentPick.',
+    category: 'api',
+  },
+  'best-mcp-servers': {
+    title: 'Best MCP Servers',
+    description: 'Top MCP servers ranked by verified AI agent usage.',
+    category: 'mcp',
+  },
 };
 
 export async function generateMetadata({
@@ -76,6 +115,13 @@ export async function generateMetadata({
       title: config.title,
       description: config.description,
       url: `https://agentpick.dev/rankings/${slug}`,
+      images: [{ url: `/api/og?type=ranking&category=${config.category ?? 'api'}`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${config.title} — AgentPick`,
+      description: config.description,
+      images: [`/api/og?type=ranking&category=${config.category ?? 'api'}`],
     },
   };
 }
@@ -92,6 +138,7 @@ const ACCENT_COLORS: Record<string, string> = {
   skill: '#F97316',
   data: '#10B981',
   infra: '#EF4444',
+  platform: '#3B82F6',
 };
 
 export default async function RankingPage({

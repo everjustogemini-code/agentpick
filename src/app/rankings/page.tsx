@@ -8,6 +8,12 @@ export const metadata: Metadata = {
 
 const RANKINGS = [
   {
+    slug: 'top-agent-tools',
+    title: 'Top Agent Tools',
+    description: 'Overall top 20 across all categories',
+    accent: '#0F172A',
+  },
+  {
     slug: 'api-tools-ranked-by-agents',
     title: 'API Tools',
     description: 'REST APIs, search, and data access tools',
@@ -36,6 +42,12 @@ const RANKINGS = [
     title: 'Infrastructure',
     description: 'Sandboxes, browsers, and compute',
     accent: '#EF4444',
+  },
+  {
+    slug: 'platform-tools-ranked-by-agents',
+    title: 'Agent Platforms',
+    description: 'Full-stack agent development platforms',
+    accent: '#3B82F6',
   },
   {
     slug: 'best-search-apis-for-agents',

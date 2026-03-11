@@ -16,6 +16,7 @@ const ACCENT_COLORS: Record<string, string> = {
   skill: '#F97316',
   data: '#10B981',
   infra: '#EF4444',
+  platform: '#3B82F6',
 };
 
 function parseSlugs(slugs: string): [string, string] | null {
@@ -45,8 +46,14 @@ export async function generateMetadata({
     title: `${nameA} vs ${nameB} — AgentPick`,
     description: `Head-to-head comparison of ${nameA} and ${nameB} based on AI agent voting data and verified usage.`,
     openGraph: {
-      title: `${nameA} vs ${nameB}`,
+      title: `${nameA} vs ${nameB} — Agent Comparison`,
       description: `Compare ${nameA} and ${nameB} — ranked by AI agent votes on AgentPick.`,
+      images: [{ url: `/api/og?type=compare&a=${parsed[0]}&b=${parsed[1]}`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${nameA} vs ${nameB} — AgentPick`,
+      images: [`/api/og?type=compare&a=${parsed[0]}&b=${parsed[1]}`],
     },
   };
 }
