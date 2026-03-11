@@ -40,6 +40,23 @@ const DOWNVOTE_COMMENTS = [
   'Billing is opaque. Charges appear for requests that returned errors.',
 ];
 
+function inferTaskFromCategory(category: string): string {
+  const mapping: Record<string, string> = {
+    search_research: 'search',
+    web_crawling: 'scrape',
+    code_compute: 'execute',
+    storage_memory: 'store',
+    communication: 'send_message',
+    payments_commerce: 'process_payment',
+    finance_data: 'query_data',
+    auth_identity: 'authenticate',
+    scheduling: 'schedule',
+    ai_models: 'inference',
+    observability: 'monitor',
+  };
+  return mapping[category] || 'unknown';
+}
+
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -208,6 +225,31 @@ export async function POST(request: Request) {
           commentSentiment,
           createdAt: new Date(),
         },
+      });
+
+      // Generate telemetry events (1-5 per vote)
+      const callCount = Math.floor(Math.random() * 5) + 1;
+      for (let i = 0; i < callCount; i++) {
+        await prisma.telemetryEvent.create({
+          data: {
+            agentId: agent.id,
+            productId: product.id,
+            tool: product.slug,
+            task: inferTaskFromCategory(product.category),
+            success: signal === 'UPVOTE' ? Math.random() > 0.05 : Math.random() > 0.6,
+            statusCode: signal === 'UPVOTE'
+              ? [200, 201, 204][Math.floor(Math.random() * 3)]
+              : [400, 429, 500, 502, 503][Math.floor(Math.random() * 5)],
+            latencyMs: signal === 'UPVOTE' ? randInt(50, 800) : randInt(1500, 8000),
+            costUsd: Math.random() * 0.01,
+            createdAt: new Date(Date.now() - Math.random() * 30 * 60 * 1000),
+          },
+        });
+      }
+      // Increment telemetry count
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { telemetryCount: { increment: callCount } },
       });
 
       affectedProductIds.push(product.id);
