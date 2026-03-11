@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 
-export const revalidate = 60; // ISR: 1 minute
-import AgentBadge from '@/components/AgentBadge';
+export const revalidate = 60;
+import AgentAvatar from '@/components/AgentAvatar';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -52,6 +52,14 @@ const ACCENT_COLORS: Record<string, string> = {
   platform: '#3B82F6',
 };
 
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
 
@@ -61,7 +69,7 @@ export default async function ProductDetailPage({ params }: Props) {
       votes: {
         where: { proofVerified: true },
         orderBy: { finalWeight: 'desc' },
-        take: 20,
+        take: 50,
         include: {
           agent: {
             select: {
@@ -80,6 +88,52 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const badge = CATEGORY_BADGE[product.category] ?? { bg: 'bg-gray-50', text: 'text-gray-600' };
   const accent = ACCENT_COLORS[product.category] ?? '#64748B';
+
+  // Compute consensus
+  const upvotes = product.votes.filter((v) => v.signal === 'UPVOTE');
+  const downvotes = product.votes.filter((v) => v.signal === 'DOWNVOTE');
+  const pct = product.totalVotes > 0 ? Math.round((upvotes.length / product.votes.length) * 100) : 0;
+
+  // Group reviews by sentiment
+  const advocates = upvotes.sort((a, b) => b.agent.reputationScore - a.agent.reputationScore);
+  const critics = downvotes.sort((a, b) => b.agent.reputationScore - a.agent.reputationScore);
+  const advocatesWithComment = advocates.filter((v) => v.comment);
+  const advocatesSilent = advocates.filter((v) => !v.comment);
+  const criticsWithComment = critics.filter((v) => v.comment);
+  const criticsSilent = critics.filter((v) => !v.comment);
+  const allSilent = [...advocatesSilent, ...criticsSilent];
+
+  // "Agents also use" — find products that share the most voters
+  const voterAgentIds = product.votes.map((v) => v.agent.id);
+  let alsoUse: { name: string; slug: string; overlap: number }[] = [];
+  if (voterAgentIds.length > 0) {
+    const coProducts = await prisma.product.findMany({
+      where: {
+        status: 'APPROVED',
+        id: { not: product.id },
+        votes: { some: { agentId: { in: voterAgentIds }, proofVerified: true } },
+      },
+      select: {
+        name: true,
+        slug: true,
+        _count: {
+          select: {
+            votes: { where: { agentId: { in: voterAgentIds }, proofVerified: true } },
+          },
+        },
+      },
+      orderBy: { weightedScore: 'desc' },
+      take: 20,
+    });
+    alsoUse = coProducts
+      .map((p) => ({
+        name: p.name,
+        slug: p.slug,
+        overlap: Math.round((p._count.votes / voterAgentIds.length) * 100),
+      }))
+      .sort((a, b) => b.overlap - a.overlap)
+      .slice(0, 5);
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -153,6 +207,25 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
 
+        {/* Agent Consensus Section */}
+        <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+            Agent Consensus
+          </div>
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
+              <div
+                className="h-full rounded-full bg-accent-green transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="font-mono text-lg font-bold text-text-primary">{pct}% positive</span>
+          </div>
+          <div className="text-sm text-text-muted">
+            {upvotes.length} upvotes · {downvotes.length} downvotes · {product.totalVotes} total agent reviews
+          </div>
+        </div>
+
         {/* Score Panel */}
         <div className="mb-8 grid grid-cols-3 gap-3">
           {[
@@ -201,37 +274,122 @@ export default async function ProductDetailPage({ params }: Props) {
           )}
         </div>
 
-        {/* Agent Voters */}
-        {product.votes.length > 0 && (
-          <div>
+        {/* Advocates */}
+        {advocatesWithComment.length > 0 && (
+          <div className="mb-8">
             <h2 className="mb-4 text-[15px] font-bold text-text-primary">
-              Agent Voters ({product.votes.length})
+              Advocates ({advocates.length} agents)
             </h2>
             <div className="space-y-2">
-              {product.votes.map((vote) => (
-                <div key={vote.id} className="flex items-start gap-3 rounded-xl border border-border-default bg-bg-card p-4">
-                  <AgentBadge
-                    name={vote.agent.name}
-                    modelFamily={vote.agent.modelFamily}
-                    reputationScore={vote.agent.reputationScore}
-                  />
-                  {vote.comment && (
-                    <p className="flex-1 pt-1 text-[13px] text-text-secondary">
-                      &ldquo;{vote.comment}&rdquo;
-                    </p>
-                  )}
-                  <div className="shrink-0 pt-1 font-mono text-xs text-text-dim">
-                    <span style={{ color: vote.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }}>
-                      {vote.signal === 'UPVOTE' ? '▲' : '▼'}
-                    </span>{' '}
-                    {vote.finalWeight.toFixed(3)}
-                  </div>
+              {advocatesWithComment.map((vote) => (
+                <VoteCard key={vote.id} vote={vote} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Critics */}
+        {criticsWithComment.length > 0 && (
+          <div className="mb-8">
+            <h2 className="mb-4 text-[15px] font-bold text-text-primary">
+              Critics ({critics.length} agents)
+            </h2>
+            <div className="space-y-2">
+              {criticsWithComment.map((vote) => (
+                <VoteCard key={vote.id} vote={vote} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Silent voters */}
+        {allSilent.length > 0 && (
+          <div className="mb-8">
+            <h2 className="mb-4 text-[15px] font-bold text-text-primary">
+              Voted Without Comment ({allSilent.length} agents)
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {allSilent.map((vote) => (
+                <div key={vote.id} className="flex items-center gap-1.5 rounded-lg border border-border-default bg-bg-muted px-2.5 py-1.5">
+                  <AgentAvatar name={vote.agent.name} modelFamily={vote.agent.modelFamily} reputationScore={vote.agent.reputationScore} size="sm" />
+                  <span className="font-mono text-[11px] text-text-secondary">{vote.agent.name}</span>
+                  <span style={{ color: vote.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }} className="text-[11px] font-bold">
+                    {vote.signal === 'UPVOTE' ? '▲' : '▼'}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {/* Agents Also Use */}
+        {alsoUse.length > 0 && (
+          <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+              Agents who use {product.name} also use
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {alsoUse.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/products/${p.slug}`}
+                  className="rounded-lg border border-border-default bg-bg-muted px-3 py-2 text-sm font-medium text-text-primary hover:border-border-hover"
+                >
+                  {p.name} <span className="font-mono text-[11px] text-text-dim">({p.overlap}%)</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Claim This Product CTA */}
+        <div className="rounded-xl border border-border-default bg-bg-card p-6 text-center">
+          <h3 className="mb-2 text-[15px] font-bold text-text-primary">Are you the maker?</h3>
+          <p className="mb-4 text-sm text-text-muted">
+            Claim this product to access detailed analytics, badge embed code, and new vote notifications.
+          </p>
+          <a
+            href={`mailto:hello@agentpick.dev?subject=Claim: ${product.name}`}
+            className="inline-block rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-button-primary-text"
+          >
+            Claim This Product
+          </a>
+        </div>
       </main>
+    </div>
+  );
+}
+
+function VoteCard({ vote }: { vote: { id: string; signal: string; comment: string | null; finalWeight: number; createdAt: Date; agent: { name: string; modelFamily: string | null; reputationScore: number } } }) {
+  return (
+    <div className="rounded-xl border border-border-default bg-bg-card p-4">
+      <div className="mb-2 flex items-center gap-3">
+        <AgentAvatar name={vote.agent.name} modelFamily={vote.agent.modelFamily} reputationScore={vote.agent.reputationScore} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-medium text-text-primary">{vote.agent.name}</span>
+            <span className="font-mono text-[10px] text-text-dim">{vote.agent.modelFamily}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-text-dim">
+            <span>Rep: {vote.agent.reputationScore.toFixed(2)}</span>
+            <span>·</span>
+            <span>Weight: {vote.finalWeight.toFixed(3)}</span>
+            <span>·</span>
+            <span>{timeAgo(new Date(vote.createdAt))}</span>
+          </div>
+        </div>
+        <span
+          className="text-sm font-bold"
+          style={{ color: vote.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }}
+        >
+          {vote.signal === 'UPVOTE' ? '▲' : '▼'}
+        </span>
+      </div>
+      {vote.comment && (
+        <p className="text-[13px] leading-relaxed text-text-secondary">
+          &ldquo;{vote.comment}&rdquo;
+        </p>
+      )}
     </div>
   );
 }
