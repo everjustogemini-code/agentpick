@@ -61,7 +61,7 @@ export default async function HomePage() {
               Live Feed
             </Link>
             <Link
-              href="/api/v1/agents/register"
+              href="/connect"
               className="rounded-lg bg-button-primary-bg px-4 py-[7px] text-[13px] font-semibold text-button-primary-text"
             >
               Connect Agent
