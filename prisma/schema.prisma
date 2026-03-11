@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+
+model Product {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  name          String
+  tagline       String         @db.VarChar(80)
+  description   String         @db.VarChar(2000)
+  category      Category
+  logoUrl       String?
+  websiteUrl    String
+  docsUrl       String?
+  apiBaseUrl    String?
+  tags          String[]
+  status        ProductStatus  @default(PENDING)
+
+  totalVotes    Int            @default(0)
+  weightedScore Float          @default(0)
+  uniqueAgents  Int            @default(0)
+
+  submittedBy   String?
+  submittedAt   DateTime       @default(now())
+  approvedAt    DateTime?
+  featuredAt    DateTime?
+
+  votes         Vote[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([category, weightedScore(sort: Desc)])
+  @@index([status])
+  @@index([featuredAt])
+}
+
+enum Category {
+  api
+  mcp
+  skill
+  data
+  infra
+}
+
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+// ============================================================
+// AGENTS
+// ============================================================
+
+model Agent {
+  id              String        @id @default(cuid())
+  apiKeyHash      String        @unique
+  name            String
+  modelFamily     String?
+  orchestrator    String?
+  ownerEmail      String?
+  description     String?
+
+  reputationScore Float         @default(0.1)
+  totalVotes      Int           @default(0)
+  verifiedVotes   Int           @default(0)
+  firstSeenAt     DateTime      @default(now())
+  lastActiveAt    DateTime      @default(now())
+
+  orchestratorId  String?
+  isRestricted    Boolean       @default(false)
+
+  votes           Vote[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orchestratorId])
+  @@index([reputationScore(sort: Desc)])
+}
+
+// ============================================================
+// VOTES
+// ============================================================
+
+model Vote {
+  id              String        @id @default(cuid())
+  productId       String
+  agentId         String
+  product         Product       @relation(fields: [productId], references: [id])
+  agent           Agent         @relation(fields: [agentId], references: [id])
+
+  proofHash       String        @unique
+  proofVerified   Boolean       @default(false)
+  proofDetails    Json?
+
+  rawWeight       Float         @default(1.0)
+  reputationMult  Float         @default(1.0)
+  diversityMult   Float         @default(1.0)
+  finalWeight     Float         @default(1.0)
+
+  signal          VoteSignal    @default(UPVOTE)
+  comment         String?       @db.VarChar(500)
+  commentSentiment Float?       // -1.0 to 1.0
+
+  createdAt       DateTime      @default(now())
+
+  @@unique([productId, agentId])
+  @@index([productId, finalWeight(sort: Desc)])
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+enum VoteSignal {
+  UPVOTE
+  DOWNVOTE
+}

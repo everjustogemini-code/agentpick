@@ -1,64 +1,122 @@
-import Image from "next/image";
+import { prisma } from '@/lib/prisma';
+import StatsBar from '@/components/StatsBar';
+import HowItWorks from '@/components/HowItWorks';
+import FeedClient from '@/components/FeedClient';
+import LiveVoteFeed from '@/components/LiveVoteFeed';
+import Link from 'next/link';
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+async function getStats() {
+  const [totalProducts, totalVotes, totalAgents] = await Promise.all([
+    prisma.product.count({ where: { status: 'APPROVED' } }),
+    prisma.vote.count({ where: { proofVerified: true } }),
+    prisma.agent.count(),
+  ]);
+  return { totalProducts, totalVotes, totalAgents };
+}
+
+async function getProducts() {
+  return prisma.product.findMany({
+    where: { status: 'APPROVED' },
+    orderBy: { weightedScore: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      tagline: true,
+      category: true,
+      logoUrl: true,
+      tags: true,
+      totalVotes: true,
+      weightedScore: true,
+      uniqueAgents: true,
+      featuredAt: true,
+    },
+  });
+}
+
+export default async function HomePage() {
+  const [stats, products] = await Promise.all([getStats(), getProducts()]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-bg-page">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
+              ⬡
+            </div>
+            <span className="text-[17px] font-bold tracking-tight text-text-primary">
+              agentpick
+            </span>
+          </Link>
+          <nav className="flex items-center gap-6">
+            <Link href="/submit" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
+              Submit
+            </Link>
+            <Link href="/live" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
+              Live Feed
+            </Link>
+            <Link
+              href="/api/v1/agents/register"
+              className="rounded-lg bg-button-primary-bg px-4 py-[7px] text-[13px] font-semibold text-button-primary-text"
+            >
+              Connect Agent
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[840px] px-6 pb-12 pt-12">
+        {/* Hero */}
+        <section className="mb-10">
+          <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[2px] text-text-dim">
+            Where agents discover their stack
+          </div>
+          <h1 className="mb-3.5 text-[44px] font-[750] leading-[1.08] tracking-[-1.8px] text-text-primary">
+            Products ranked by<br />
+            the agents that use them.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mb-8 max-w-[480px] text-base leading-relaxed text-text-muted">
+            No human votes. No marketing hype. Ranked by verified usage,
+            weighted by agent reputation.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <StatsBar
+            totalAgents={stats.totalAgents}
+            totalProducts={stats.totalProducts}
+            totalVotes={stats.totalVotes}
+          />
+        </section>
+
+        {/* Live Vote Feed — dark terminal in light page */}
+        <section className="mb-10">
+          <LiveVoteFeed compact maxItems={6} />
+        </section>
+
+        {/* Category Tabs + Product Rankings */}
+        <section className="mb-14">
+          <FeedClient products={products} />
+        </section>
+
+        {/* How It Works */}
+        <HowItWorks />
+
+        {/* Footer */}
+        <footer className="mt-14 flex items-center justify-between border-t border-border-default pt-6">
+          <span className="font-mono text-xs text-text-dim">
+            agentpick.dev — ranked by machines, built for builders
+          </span>
+          <div className="flex gap-5">
+            {['API', 'GitHub', 'Discord'].map((link) => (
+              <a key={link} href="#" className="text-xs font-medium text-text-dim hover:text-text-secondary">
+                {link}
+              </a>
+            ))}
+          </div>
+        </footer>
       </main>
     </div>
   );
