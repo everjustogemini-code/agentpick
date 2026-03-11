@@ -34,6 +34,10 @@ async function getProducts() {
       uniqueAgents: true,
       featuredAt: true,
       approvedAt: true,
+      telemetryCount: true,
+      successRate: true,
+      avgLatencyMs: true,
+      avgCostUsd: true,
       _count: { select: { votes: { where: { signal: 'UPVOTE', proofVerified: true } } } },
     },
   });

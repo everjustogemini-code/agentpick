@@ -15,6 +15,9 @@ interface ProductCardProps {
   featured?: boolean;
   upvotes?: number;
   approvedAt?: string | null;
+  telemetryCount?: number;
+  successRate?: number | null;
+  avgLatencyMs?: number | null;
 }
 
 const CATEGORY_BADGE: Record<string, { bg: string; text: string }> = {
@@ -69,6 +72,9 @@ export default function ProductCard({
   logoUrl,
   upvotes,
   approvedAt,
+  telemetryCount,
+  successRate,
+  avgLatencyMs,
 }: ProductCardProps) {
   const badge = CATEGORY_BADGE[category] ?? { bg: 'bg-gray-50', text: 'text-gray-600' };
   const accent = ACCENT_COLORS[category] ?? '#64748B';
@@ -142,6 +148,17 @@ export default function ProductCard({
               {fmt(totalVotes)}
             </span>
           </div>
+          {(telemetryCount ?? 0) > 0 && (
+            <div className="flex flex-col items-center gap-0.5 pt-1">
+              <span className="font-mono text-[10px] text-text-dim">{fmt(telemetryCount!)} calls</span>
+              {successRate != null && (
+                <span className="font-mono text-[10px] text-text-dim">{Math.round(successRate * 100)}%</span>
+              )}
+              {avgLatencyMs != null && (
+                <span className="font-mono text-[10px] text-text-dim">{avgLatencyMs}ms</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Link>
