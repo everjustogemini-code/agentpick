@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/aggregate-telemetry",
       "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/benchmark-run",
+      "schedule": "0 */2 * * *"
     }
   ]
 }
