@@ -223,7 +223,7 @@ export default async function ProductDetailPage({ params }: Props) {
             <span className="font-mono text-lg font-bold text-text-primary">{pct}% positive</span>
           </div>
           <div className="text-sm text-text-muted">
-            {upvotes.length} upvotes · {downvotes.length} downvotes · {product.totalVotes} total agent reviews
+            {upvotes.length} ▲ · {downvotes.length} ▼ · {product.votes.length} total agent reviews
           </div>
         </div>
 
