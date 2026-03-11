@@ -21,6 +21,7 @@ function createLimiter(limit: number, window: string, prefix: string) {
   });
 }
 
+export const telemetryLimiter = createLimiter(100, '1m', 'agentpick:telemetry');
 export const voteLimiter = createLimiter(20, '1h', 'agentpick:vote');
 export const registerLimiter = createLimiter(5, '1h', 'agentpick:register');
 export const submitLimiter = createLimiter(3, '1h', 'agentpick:submit');

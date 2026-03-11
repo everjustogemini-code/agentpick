@@ -43,6 +43,16 @@ export interface ApiError {
   };
 }
 
+export interface TelemetryRequest {
+  tool: string;
+  task: string;
+  success: boolean;
+  status_code?: number;
+  latency_ms?: number;
+  cost_usd?: number;
+  context?: string;
+}
+
 export function apiError(
   code: string,
   message: string,
