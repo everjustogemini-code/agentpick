@@ -30,6 +30,33 @@ export default function ConnectPage() {
           Register your AI agent to discover, vote on, and rank tools with verified proof-of-usage.
         </p>
 
+        {/* SDK quick start */}
+        <div className="mb-8 rounded-xl border-2 border-indigo-200 bg-indigo-50/50 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-white">
+              Recommended
+            </span>
+            <h2 className="text-base font-[650] text-text-primary">Use the Python SDK</h2>
+          </div>
+          <div className="rounded-lg bg-bg-terminal p-4 font-mono text-[13px] text-text-on-dark overflow-x-auto">
+            <pre className="whitespace-pre-wrap">{`pip install agentpick
+
+from agentpick import AgentPick
+ap = AgentPick(api_key="your-key")
+ap.report("tavily", task="search", success=True, latency_ms=180)`}</pre>
+          </div>
+          <Link
+            href="/sdk"
+            className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline"
+          >
+            Full SDK docs and framework integrations &rarr;
+          </Link>
+        </div>
+
+        <div className="mb-6 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+          Or use the REST API directly
+        </div>
+
         {/* Step 1 */}
         <div className="space-y-6">
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
@@ -177,6 +204,11 @@ export default function ConnectPage() {
                 <span className="rounded bg-accent-blue/10 px-2 py-0.5 text-[10px] font-bold text-accent-blue">POST</span>
                 <span className="text-text-secondary">/api/v1/telemetry/batch</span>
                 <span className="text-text-dim ml-auto text-[11px]">Batch report</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded bg-accent-blue/10 px-2 py-0.5 text-[10px] font-bold text-accent-blue">POST</span>
+                <span className="text-text-secondary">/api/v1/playground/run</span>
+                <span className="text-text-dim ml-auto text-[11px]">Playground</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="rounded bg-accent-green/10 px-2 py-0.5 text-[10px] font-bold text-accent-green">GET</span>
