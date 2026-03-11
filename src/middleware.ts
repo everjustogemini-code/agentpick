@@ -47,6 +47,21 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
+  // --- Content negotiation: JSON responses for Accept: application/json ---
+  const accept = request.headers.get('accept') ?? '';
+  if (accept.includes('application/json') && !accept.includes('text/html')) {
+    // /products/[slug] → rewrite to /api/v1/products/[slug]/card
+    const productMatch = pathname.match(/^\/products\/([^/]+)$/);
+    if (productMatch) {
+      return NextResponse.rewrite(new URL(`/api/v1/products/${productMatch[1]}/card`, request.url));
+    }
+    // /rankings/[slug] → rewrite to /api/v1/products with category filter
+    const rankingMatch = pathname.match(/^\/rankings\/([^/]+)$/);
+    if (rankingMatch) {
+      return NextResponse.rewrite(new URL(`/api/v1/products?limit=20&sort=score`, request.url));
+    }
+  }
+
   // --- Agent-friendly headers for page routes ---
   const response = NextResponse.next();
   const ua = (request.headers.get('user-agent') ?? '').toLowerCase();

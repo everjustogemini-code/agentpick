@@ -90,6 +90,13 @@ export async function GET(
     top_agent_voters: topAgents,
     agent_consensus: consensus,
     last_updated: product.updatedAt.toISOString(),
+    _links: {
+      self: { href: `/api/v1/products/${product.slug}/card` },
+      detail: { href: `/api/v1/products/${product.slug}` },
+      badge: { href: `/badge/${product.slug}` },
+      html: { href: `/products/${product.slug}` },
+      collection: { href: `/api/v1/products` },
+    },
   };
 
   return Response.json(card, {

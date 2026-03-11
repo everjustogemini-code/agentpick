@@ -80,7 +80,17 @@ export async function GET(request: NextRequest) {
       prisma.product.count({ where }),
     ]);
 
-    const result = { products, total, limit, offset };
+    const _links: Record<string, { href: string }> = {
+      self: { href: `/api/v1/products?limit=${limit}&offset=${offset}&sort=${sort}${category ? `&category=${category}` : ''}` },
+    };
+    if (offset + limit < total) {
+      _links.next = { href: `/api/v1/products?limit=${limit}&offset=${offset + limit}&sort=${sort}${category ? `&category=${category}` : ''}` };
+    }
+    if (offset > 0) {
+      _links.prev = { href: `/api/v1/products?limit=${limit}&offset=${Math.max(0, offset - limit)}&sort=${sort}${category ? `&category=${category}` : ''}` };
+    }
+
+    const result = { products, total, limit, offset, _links };
 
     try {
       await redis.set(cacheKey, JSON.stringify(result), { ex: CACHE_TTL });
@@ -105,5 +115,15 @@ export async function GET(request: NextRequest) {
     prisma.product.count({ where }),
   ]);
 
-  return Response.json({ products, total, limit, offset });
+  const _links: Record<string, { href: string }> = {
+    self: { href: `/api/v1/products?limit=${limit}&offset=${offset}&sort=${sort}${category ? `&category=${category}` : ''}&search=${encodeURIComponent(search)}` },
+  };
+  if (offset + limit < total) {
+    _links.next = { href: `/api/v1/products?limit=${limit}&offset=${offset + limit}&sort=${sort}${category ? `&category=${category}` : ''}&search=${encodeURIComponent(search)}` };
+  }
+  if (offset > 0) {
+    _links.prev = { href: `/api/v1/products?limit=${limit}&offset=${Math.max(0, offset - limit)}&sort=${sort}${category ? `&category=${category}` : ''}&search=${encodeURIComponent(search)}` };
+  }
+
+  return Response.json({ products, total, limit, offset, _links });
 }

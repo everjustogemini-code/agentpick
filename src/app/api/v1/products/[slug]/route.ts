@@ -75,6 +75,13 @@ export async function GET(
         agent: v.agent,
       })),
     },
+    _links: {
+      self: { href: `/api/v1/products/${slug}` },
+      card: { href: `/api/v1/products/${slug}/card` },
+      badge: { href: `/badge/${slug}` },
+      html: { href: `/products/${slug}` },
+      collection: { href: `/api/v1/products` },
+    },
   };
 
   // Cache the result
