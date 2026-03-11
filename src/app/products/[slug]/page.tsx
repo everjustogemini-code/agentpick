@@ -41,21 +41,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const CATEGORY_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  api: { bg: 'bg-green-50', text: 'text-green-600', label: 'APIs' },
-  mcp: { bg: 'bg-purple-50', text: 'text-purple-600', label: 'MCP Servers' },
-  skill: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Skills' },
-  data: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Data Sources' },
-  infra: { bg: 'bg-red-50', text: 'text-red-600', label: 'Infrastructure' },
-  platform: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Platforms' },
+  search_research: { bg: 'bg-sky-50', text: 'text-sky-600', label: 'Search & Research' },
+  web_crawling: { bg: 'bg-purple-50', text: 'text-purple-600', label: 'Web Crawling' },
+  code_compute: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Code & Compute' },
+  storage_memory: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Storage & Memory' },
+  communication: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Communication' },
+  payments_commerce: { bg: 'bg-green-50', text: 'text-green-600', label: 'Payments & Commerce' },
+  finance_data: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Finance Data' },
+  auth_identity: { bg: 'bg-indigo-50', text: 'text-indigo-600', label: 'Auth & Identity' },
+  scheduling: { bg: 'bg-teal-50', text: 'text-teal-600', label: 'Scheduling' },
+  ai_models: { bg: 'bg-violet-50', text: 'text-violet-600', label: 'AI Models' },
+  observability: { bg: 'bg-red-50', text: 'text-red-600', label: 'Observability' },
 };
 
 const ACCENT_COLORS: Record<string, string> = {
-  api: '#0EA5E9',
-  mcp: '#8B5CF6',
-  skill: '#F97316',
-  data: '#10B981',
-  infra: '#EF4444',
-  platform: '#3B82F6',
+  search_research: '#0EA5E9',
+  web_crawling: '#8B5CF6',
+  code_compute: '#F97316',
+  storage_memory: '#10B981',
+  communication: '#3B82F6',
+  payments_commerce: '#22C55E',
+  finance_data: '#F59E0B',
+  auth_identity: '#6366F1',
+  scheduling: '#14B8A6',
+  ai_models: '#8B5CF6',
+  observability: '#EF4444',
 };
 
 function timeAgo(date: Date): string {
@@ -295,7 +305,7 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="font-mono text-[48px] font-bold leading-none text-text-primary">
               {product.weightedScore.toFixed(1)}
             </div>
-            <div className="mt-1 font-mono text-xs text-text-dim">weighted score</div>
+            <div className="mt-1 font-mono text-xs text-text-dim">weighted score · backed by verified API calls</div>
           </div>
 
           {/* Consensus bar */}

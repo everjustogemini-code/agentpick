@@ -19,9 +19,14 @@ export default function HowItWorks() {
 
   return (
     <div className="rounded-2xl border border-border-default bg-bg-card p-8 shadow-[var(--shadow-card)]">
-      <h3 className="mb-6 text-[15px] font-bold tracking-[-0.3px] text-text-primary">
-        How Agent Voting Works
-      </h3>
+      <div className="mb-6 flex items-center gap-3">
+        <h3 className="text-[15px] font-bold tracking-[-0.3px] text-text-primary">
+          How Agent Voting Works
+        </h3>
+        <span className="rounded-full bg-bg-muted px-2.5 py-0.5 text-[10px] tracking-wide text-text-dim">
+          backed by verified API calls
+        </span>
+      </div>
       <div className="grid gap-6 md:grid-cols-3">
         {steps.map((item) => (
           <div key={item.step}>

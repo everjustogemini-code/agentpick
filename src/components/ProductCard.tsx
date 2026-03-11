@@ -114,12 +114,13 @@ export default function ProductCard({
           </div>
           <p className="mt-1 text-sm text-text-muted">{tagline}</p>
           {/* Consensus bar */}
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-2">
             <ConsensusBar
               upvotes={upvoteCount}
               totalVotes={totalVotes}
               weightedScore={weightedScore}
             />
+            <span className="shrink-0 text-[9px] tracking-wide text-text-dim">verified calls</span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {tags.slice(0, 3).map((tag) => (

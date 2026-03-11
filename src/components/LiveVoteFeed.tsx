@@ -82,6 +82,9 @@ export default function LiveVoteFeed({
           <span className="text-[11px] uppercase tracking-[1.5px] text-text-dim">
             Live Feed
           </span>
+          <span className="text-[9px] normal-case tracking-normal text-[#475569]">
+            · verified API calls
+          </span>
         </div>
         {items.length > 0 && (
           <span className="text-[11px] text-[#475569]">

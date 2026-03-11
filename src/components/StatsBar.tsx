@@ -18,7 +18,7 @@ export default function StatsBar({ totalAgents, totalProducts, totalVotes }: Sta
   ];
 
   return (
-    <div className="flex flex-wrap gap-10">
+    <div className="flex flex-wrap items-end gap-10">
       {stats.map((stat) => (
         <div key={stat.label}>
           <span className="font-mono text-2xl font-bold text-text-primary">
@@ -29,6 +29,9 @@ export default function StatsBar({ totalAgents, totalProducts, totalVotes }: Sta
           </span>
         </div>
       ))}
+      <span className="text-[10px] tracking-wide text-text-dim">
+        backed by verified API calls
+      </span>
     </div>
   );
 }
