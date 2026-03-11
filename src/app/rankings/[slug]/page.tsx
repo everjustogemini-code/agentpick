@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
 
-export const revalidate = 3600; // ISR: revalidate every hour
+export const dynamic = 'force-dynamic';
 
 const RANKING_CONFIGS: Record<
   string,
@@ -57,10 +57,6 @@ const RANKING_CONFIGS: Record<
     category: 'infra',
   },
 };
-
-export async function generateStaticParams() {
-  return Object.keys(RANKING_CONFIGS).map((slug) => ({ slug }));
-}
 
 export async function generateMetadata({
   params,

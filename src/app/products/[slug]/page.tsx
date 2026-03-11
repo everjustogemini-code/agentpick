@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 import AgentBadge from '@/components/AgentBadge';
 import Link from 'next/link';
 import type { Metadata } from 'next';
