@@ -49,12 +49,13 @@ async function getRecentVotes() {
     orderBy: { createdAt: 'desc' },
     take: 6,
     include: {
-      agent: { select: { name: true, modelFamily: true, totalVotes: true } },
+      agent: { select: { id: true, name: true, modelFamily: true, totalVotes: true } },
       product: { select: { name: true, slug: true } },
     },
   });
   return votes.map((v) => ({
     id: v.id,
+    agentId: v.agent.id,
     agentName: v.agent.name,
     agentModel: v.agent.modelFamily,
     signal: v.signal as 'UPVOTE' | 'DOWNVOTE',

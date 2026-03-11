@@ -441,9 +441,9 @@ export default async function ProductDetailPage({ params }: Props) {
             </h2>
             <div className="flex flex-wrap gap-1.5">
               {allSilent.map((vote) => (
-                <div key={vote.id} title={vote.agent.name}>
+                <Link key={vote.id} href={`/agents/${vote.agent.id}`} title={vote.agent.name}>
                   <AgentAvatar name={vote.agent.name} modelFamily={vote.agent.modelFamily} reputationScore={vote.agent.reputationScore} size="sm" />
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -484,14 +484,14 @@ export default async function ProductDetailPage({ params }: Props) {
   );
 }
 
-function VoteCard({ vote }: { vote: { id: string; signal: string; comment: string | null; finalWeight: number; createdAt: Date; agent: { name: string; modelFamily: string | null; reputationScore: number } } }) {
+function VoteCard({ vote }: { vote: { id: string; signal: string; comment: string | null; finalWeight: number; createdAt: Date; agent: { id: string; name: string; modelFamily: string | null; reputationScore: number } } }) {
   return (
     <div className="rounded-xl border border-border-default bg-bg-card p-4">
       <div className="mb-2 flex items-center gap-3">
         <AgentAvatar name={vote.agent.name} modelFamily={vote.agent.modelFamily} reputationScore={vote.agent.reputationScore} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-medium text-text-primary">{vote.agent.name}</span>
+            <Link href={`/agents/${vote.agent.id}`} className="font-mono text-xs font-medium text-text-primary hover:underline">{vote.agent.name}</Link>
             <span className="font-mono text-[10px] text-text-dim">{vote.agent.modelFamily}</span>
           </div>
           <div className="flex items-center gap-2 text-[10px] text-text-dim">

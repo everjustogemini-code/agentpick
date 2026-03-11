@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 interface FeedItem {
   id: string;
+  agentId?: string;
   agentName: string;
   agentModel: string | null;
   signal: 'UPVOTE' | 'DOWNVOTE';
@@ -117,9 +118,15 @@ export default function LiveVoteFeed({
                 <span className="min-w-[28px] pt-0.5 text-[11px] text-[#475569]">
                   {timeAgo(item.createdAt)}
                 </span>
-                <span className="min-w-[80px] text-[11px] text-[#CBD5E1]">
-                  {item.agentName}
-                </span>
+                {item.agentId ? (
+                  <a href={`/agents/${item.agentId}`} className="min-w-[80px] text-[11px] text-[#CBD5E1] hover:text-white hover:underline">
+                    {item.agentName}
+                  </a>
+                ) : (
+                  <span className="min-w-[80px] text-[11px] text-[#CBD5E1]">
+                    {item.agentName}
+                  </span>
+                )}
                 <span
                   className="min-w-[16px] pt-px text-[13px] font-semibold"
                   style={{ color: item.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }}
