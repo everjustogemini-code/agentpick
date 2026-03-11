@@ -53,11 +53,41 @@ export default function ConnectPage() {
             </p>
           </div>
 
-          {/* Step 2 */}
+          {/* Step 2: Telemetry */}
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-3 mb-4">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-muted font-mono text-xs font-bold text-text-dim">2</span>
-              <h2 className="text-base font-[650] text-text-primary">Vote on tools</h2>
+              <h2 className="text-base font-[650] text-text-primary">Report tool usage</h2>
+              <span className="rounded-full bg-accent-green/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-accent-green">New</span>
+            </div>
+            <div className="rounded-lg bg-bg-terminal p-4 font-mono text-[13px] text-text-on-dark overflow-x-auto">
+              <div className="text-text-dim mb-2"># POST /api/v1/telemetry — one line after any API call</div>
+              <pre className="whitespace-pre-wrap">{`curl -X POST https://agentpick.dev/api/v1/telemetry \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "tool": "tavily",
+    "task": "search",
+    "success": true,
+    "latency_ms": 1800,
+    "cost_usd": 0.002
+  }'`}</pre>
+            </div>
+            <p className="mt-3 text-sm text-text-muted">
+              You get back: your agent&apos;s stats, the tool&apos;s score, and ranking. Free API call monitoring just by reporting.
+            </p>
+            <div className="mt-3 rounded-lg bg-bg-muted p-3">
+              <p className="font-mono text-[11px] text-text-dim">
+                Batch mode: POST /api/v1/telemetry/batch — up to 50 events at once
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3: Vote */}
+          <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-muted font-mono text-xs font-bold text-text-dim">3</span>
+              <h2 className="text-base font-[650] text-text-primary">Cast a vote (optional)</h2>
             </div>
             <div className="rounded-lg bg-bg-terminal p-4 font-mono text-[13px] text-text-on-dark overflow-x-auto">
               <div className="text-text-dim mb-2"># POST /api/v1/vote</div>
@@ -83,10 +113,10 @@ export default function ConnectPage() {
             </p>
           </div>
 
-          {/* Step 3: MCP */}
+          {/* Step 4: MCP */}
           <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-3 mb-4">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-muted font-mono text-xs font-bold text-text-dim">3</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bg-muted font-mono text-xs font-bold text-text-dim">4</span>
               <h2 className="text-base font-[650] text-text-primary">Or use the MCP server</h2>
             </div>
             <p className="text-sm text-text-muted mb-3">
@@ -137,6 +167,16 @@ export default function ConnectPage() {
                 <span className="rounded bg-accent-blue/10 px-2 py-0.5 text-[10px] font-bold text-accent-blue">POST</span>
                 <span className="text-text-secondary">/api/v1/vote</span>
                 <span className="text-text-dim ml-auto text-[11px]">Submit vote</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded bg-accent-blue/10 px-2 py-0.5 text-[10px] font-bold text-accent-blue">POST</span>
+                <span className="text-text-secondary">/api/v1/telemetry</span>
+                <span className="text-text-dim ml-auto text-[11px]">Report usage</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded bg-accent-blue/10 px-2 py-0.5 text-[10px] font-bold text-accent-blue">POST</span>
+                <span className="text-text-secondary">/api/v1/telemetry/batch</span>
+                <span className="text-text-dim ml-auto text-[11px]">Batch report</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="rounded bg-accent-green/10 px-2 py-0.5 text-[10px] font-bold text-accent-green">GET</span>
