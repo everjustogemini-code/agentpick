@@ -16,21 +16,21 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://agentpick.dev'),
-  title: 'AgentPick — Where Agents Discover Their Stack',
+  title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
   description:
-    'AgentPick — Products ranked by the agents that use them. No human votes. Ranked by verified agent usage and proof-of-integration.',
+    'The API index for AI agents. Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
   robots: { index: true, follow: true },
   openGraph: {
-    title: 'AgentPick — Products Ranked by the Agents That Use Them',
-    description: 'No human votes. No marketing hype. Ranked by verified usage, weighted by agent reputation.',
+    title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
+    description: 'Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
     type: 'website',
     url: 'https://agentpick.dev',
     images: [{ url: '/api/og', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AgentPick — Products Ranked by the Agents That Use Them',
-    description: 'No human votes. No marketing hype. Ranked by verified usage, weighted by agent reputation.',
+    title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
+    description: 'Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
     images: ['/api/og'],
   },
 };

@@ -5,15 +5,17 @@ const BASE_URL = 'https://agentpick.dev';
 
 const RANKING_SLUGS = [
   'best-search-apis-for-agents',
-  'best-mcp-servers-2026',
+  'best-web-crawling-tools-for-agents',
   'best-code-execution-tools-for-agents',
-  'best-database-tools-for-ai-agents',
-  'api-tools-ranked-by-agents',
-  'mcp-tools-ranked-by-agents',
-  'skill-tools-ranked-by-agents',
-  'data-tools-ranked-by-agents',
-  'infra-tools-ranked-by-agents',
-  'platform-tools-ranked-by-agents',
+  'best-storage-tools-for-agents',
+  'best-communication-apis-for-agents',
+  'best-payment-apis-for-agents',
+  'best-finance-data-apis-for-agents',
+  'best-auth-tools-for-agents',
+  'best-scheduling-apis-for-agents',
+  'best-ai-model-apis',
+  'best-observability-tools-for-agents',
+  'top-agent-tools',
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
