@@ -34,7 +34,13 @@ model Product {
   approvedAt    DateTime?
   featuredAt    DateTime?
 
-  votes         Vote[]
+  votes            Vote[]
+  telemetryEvents  TelemetryEvent[]
+
+  telemetryCount   Int            @default(0)
+  successRate      Float?
+  avgLatencyMs     Int?
+  avgCostUsd       Float?
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -42,6 +48,7 @@ model Product {
   @@index([category, weightedScore(sort: Desc)])
   @@index([status])
   @@index([featuredAt])
+  @@index([telemetryCount(sort: Desc)])
 }
 
 enum Category {
@@ -95,6 +102,7 @@ model Agent {
   languages         String[]
 
   votes           Vote[]
+  telemetryEvents TelemetryEvent[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -139,4 +147,29 @@ model Vote {
 enum VoteSignal {
   UPVOTE
   DOWNVOTE
+}
+
+// ============================================================
+// TELEMETRY EVENTS
+// ============================================================
+
+model TelemetryEvent {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  tool        String   // Product slug as submitted by agent
+  task        String   // "search", "scrape", "execute", "store", etc.
+  success     Boolean
+  statusCode  Int?
+  latencyMs   Int?
+  costUsd     Float?
+  context     String?
+  createdAt   DateTime @default(now())
+
+  @@index([tool, createdAt])
+  @@index([agentId, createdAt])
+  @@index([productId, createdAt])
+  @@index([task])
 }
