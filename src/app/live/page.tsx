@@ -14,7 +14,7 @@ async function getRecentVotes() {
   const votes = await prisma.vote.findMany({
     where: { proofVerified: true },
     orderBy: { createdAt: 'desc' },
-    take: 50,
+    take: 30,
     include: {
       agent: { select: { name: true, modelFamily: true, totalVotes: true } },
       product: { select: { name: true, slug: true } },
@@ -22,6 +22,7 @@ async function getRecentVotes() {
   });
   return votes.map((v) => ({
     id: v.id,
+    type: 'vote' as const,
     agentName: v.agent.name,
     agentModel: v.agent.modelFamily,
     signal: v.signal as 'UPVOTE' | 'DOWNVOTE',
@@ -33,8 +34,70 @@ async function getRecentVotes() {
   }));
 }
 
+async function getRecentBenchmarks() {
+  const runs = await prisma.benchmarkRun.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 15,
+    include: {
+      product: { select: { name: true, slug: true } },
+    },
+  });
+  return runs.map((r) => ({
+    id: r.id,
+    type: 'benchmark' as const,
+    agentName: r.benchmarkAgentId.slice(0, 20),
+    agentModel: null,
+    signal: 'UPVOTE' as const,
+    productName: r.product.name,
+    productSlug: r.product.slug,
+    comment: r.relevanceScore != null
+      ? `relevance: ${r.relevanceScore.toFixed(1)}/5 · ${r.latencyMs}ms · ${r.domain}`
+      : `${r.latencyMs}ms · ${r.domain}`,
+    proofCalls: 0,
+    createdAt: r.createdAt.toISOString(),
+    benchmarkDomain: r.domain,
+    benchmarkRelevance: r.relevanceScore,
+    benchmarkLatency: r.latencyMs,
+  }));
+}
+
+async function getRecentPlayground() {
+  const sessions = await prisma.playgroundSession.findMany({
+    where: { status: 'completed' },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      id: true,
+      domain: true,
+      tools: true,
+      createdAt: true,
+    },
+  });
+  return sessions.map((s) => ({
+    id: s.id,
+    type: 'playground' as const,
+    agentName: 'playground',
+    agentModel: null,
+    signal: 'UPVOTE' as const,
+    productName: s.tools.join(' vs '),
+    productSlug: `playground/${s.id}`,
+    comment: `${s.domain} · ${s.tools.length} tools compared`,
+    proofCalls: 0,
+    createdAt: s.createdAt.toISOString(),
+  }));
+}
+
 export default async function LivePage() {
-  const initialVotes = await getRecentVotes();
+  const [votes, benchmarks, playground] = await Promise.all([
+    getRecentVotes(),
+    getRecentBenchmarks(),
+    getRecentPlayground(),
+  ]);
+
+  // Merge and sort by createdAt
+  const initialVotes = [...votes, ...benchmarks, ...playground]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 50);
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-terminal">

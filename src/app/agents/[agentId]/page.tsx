@@ -36,9 +36,13 @@ export default async function AgentProfilePage({
   const { agentId } = await params;
   const agent = await prisma.agent.findUnique({
     where: { id: agentId },
+    include: { benchmarkAgent: true },
   });
 
   if (!agent) notFound();
+
+  const isBenchmark = !!agent.benchmarkAgent;
+  const ba = agent.benchmarkAgent;
 
   // Parallel data fetching
   const [
@@ -89,6 +93,44 @@ export default async function AgentProfilePage({
 
   const totalTaskCount = taskBreakdown.reduce((sum, t) => sum + t._count, 0);
 
+  // Benchmark-specific data
+  let benchmarkTestStats: {
+    totalTests: number;
+    topTools: { name: string; slug: string; avgRelevance: number; tests: number }[];
+  } | null = null;
+
+  if (isBenchmark && ba) {
+    const runs = await prisma.benchmarkRun.findMany({
+      where: { benchmarkAgentId: ba.id },
+      include: { product: { select: { name: true, slug: true } } },
+    });
+
+    const toolMap = new Map<string, { name: string; slug: string; totalRelevance: number; count: number; tests: number }>();
+    for (const run of runs) {
+      const key = run.productId;
+      const e = toolMap.get(key) ?? { name: run.product.name, slug: run.product.slug, totalRelevance: 0, count: 0, tests: 0 };
+      if (run.relevanceScore != null) {
+        e.totalRelevance += run.relevanceScore;
+        e.count++;
+      }
+      e.tests++;
+      toolMap.set(key, e);
+    }
+
+    benchmarkTestStats = {
+      totalTests: runs.length,
+      topTools: [...toolMap.values()]
+        .map((t) => ({
+          name: t.name,
+          slug: t.slug,
+          avgRelevance: t.count > 0 ? t.totalRelevance / t.count : 0,
+          tests: t.tests,
+        }))
+        .sort((a, b) => b.avgRelevance - a.avgRelevance)
+        .slice(0, 5),
+    };
+  }
+
   return (
     <div className="min-h-screen bg-bg-page">
       {/* Header */}
@@ -120,14 +162,29 @@ export default async function AgentProfilePage({
             {agent.name.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-[28px] font-bold tracking-[-0.8px] text-text-primary">
-              {agent.name}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-[28px] font-bold tracking-[-0.8px] text-text-primary">
+                {agent.name}
+              </h1>
+              {isBenchmark && (
+                <span className="rounded-full bg-purple-50 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-purple-600">
+                  Benchmark Agent
+                </span>
+              )}
+            </div>
             <p className="text-sm text-text-muted">
               {agent.modelFamily ?? 'Unknown model'}{agent.orchestrator ? ` / ${agent.orchestrator}` : ''}
               {' · '}Reputation: {agent.reputationScore.toFixed(2)}
               {' · '}Active since {agent.firstSeenAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
             </p>
+            {isBenchmark && ba && (
+              <p className="mt-1 text-xs text-text-dim">
+                Domain: {ba.domain.charAt(0).toUpperCase() + ba.domain.slice(1)} · Model: {ba.modelName} · Complexity: {ba.complexity.join(', ')}
+              </p>
+            )}
+            {isBenchmark && agent.description && (
+              <p className="mt-2 text-sm text-text-secondary">{agent.description}</p>
+            )}
           </div>
         </div>
 
@@ -178,6 +235,39 @@ export default async function AgentProfilePage({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Benchmark activity */}
+        {isBenchmark && benchmarkTestStats && benchmarkTestStats.totalTests > 0 && (
+          <div className="mt-6 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <h2 className="mb-4 font-mono text-[10px] uppercase tracking-wider text-text-dim">Benchmark Activity</h2>
+            <p className="mb-4 text-sm text-text-secondary">
+              <strong className="text-text-primary">{fmt(benchmarkTestStats.totalTests)}</strong> tests completed
+            </p>
+            {benchmarkTestStats.topTools.length > 0 && (
+              <>
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                  Top Rated Tools (by this agent)
+                </div>
+                <div className="space-y-2">
+                  {benchmarkTestStats.topTools.map((tool, i) => (
+                    <div key={tool.slug} className="flex items-center gap-3 rounded-lg bg-bg-muted px-4 py-3">
+                      <span className="font-mono text-sm font-bold text-text-dim">{i + 1}.</span>
+                      <Link
+                        href={`/products/${tool.slug}`}
+                        className="flex-1 text-sm font-[650] text-text-primary hover:underline"
+                      >
+                        {tool.name}
+                      </Link>
+                      <span className="font-mono text-[11px] text-text-dim">
+                        {tool.avgRelevance.toFixed(1)}/5 relevance · {tool.tests} tests
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 

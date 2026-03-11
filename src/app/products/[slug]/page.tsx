@@ -251,6 +251,11 @@ export default async function ProductDetailPage({ params }: Props) {
     };
   }
 
+  // Playground session count for this product
+  const playgroundSessionCount = await prisma.playgroundRun.count({
+    where: { productId: product.id },
+  });
+
   // "Agents also use" — find products that share the most voters
   const voterAgentIds = product.votes.map((v) => v.agent.id);
   let alsoUse: { name: string; slug: string; overlap: number }[] = [];
@@ -547,6 +552,19 @@ export default async function ProductDetailPage({ params }: Props) {
           <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
             For Makers
           </div>
+
+          {/* Benchmark stats summary */}
+          {hasBenchmarkData && benchmarkStats && (
+            <div className="mb-4 rounded-lg bg-bg-muted p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
+                #{rank} in {badge.label} · Top {topPct}% overall
+              </div>
+              <div className="mt-1 font-mono text-[11px] text-text-dim">
+                Tested by {benchmarkStats.totalAgents} agents across {benchmarkStats.domains.length} domains · {playgroundSessionCount} playground sessions
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

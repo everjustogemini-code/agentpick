@@ -23,6 +23,11 @@ export async function GET(request: Request) {
     if (a && b) return compareOG(a, b);
   }
 
+  if (type === 'playground') {
+    const sessionId = searchParams.get('session') || '';
+    if (sessionId) return playgroundOG(sessionId);
+  }
+
   if (type === 'daily') {
     return dailyOG();
   }
@@ -350,6 +355,75 @@ async function compareOG(slugA: string, slugB: string) {
       </div>
     ),
     { width: 1200, height: 630 }
+  );
+}
+
+async function playgroundOG(sessionId: string) {
+  const session = await prisma.playgroundSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      runs: {
+        include: { product: { select: { name: true, slug: true } } },
+      },
+    },
+  });
+
+  if (!session) return homeOG();
+
+  const domainLabel = session.domain.charAt(0).toUpperCase() + session.domain.slice(1);
+
+  // Compute tool rankings
+  const toolMap = new Map<string, { name: string; totalRelevance: number; count: number; avgLatency: number; tests: number }>();
+  for (const run of session.runs) {
+    const key = run.product.slug;
+    const e = toolMap.get(key) ?? { name: run.product.name, totalRelevance: 0, count: 0, avgLatency: 0, tests: 0 };
+    if (run.relevanceScore != null) {
+      e.totalRelevance += run.relevanceScore;
+      e.count++;
+    }
+    e.avgLatency += run.latencyMs;
+    e.tests++;
+    toolMap.set(key, e);
+  }
+
+  const rankings = [...toolMap.values()]
+    .map((t) => ({
+      name: t.name,
+      relevance: t.count > 0 ? t.totalRelevance / t.count : 0,
+      latency: t.tests > 0 ? Math.round(t.avgLatency / t.tests) : 0,
+    }))
+    .sort((a, b) => b.relevance - a.relevance)
+    .slice(0, 3);
+
+  const medals = ['#1', '#2', '#3'];
+
+  return new ImageResponse(
+    (
+      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#060a12', padding: '60px', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#00D4AA' }} />
+          <span style={{ color: '#8892a8', fontSize: '18px', letterSpacing: '0.2em' }}>AGENTPICK PLAYGROUND</span>
+        </div>
+
+        <span style={{ fontSize: '44px', fontWeight: 'bold', color: '#f0f4fc', marginTop: '40px' }}>
+          {domainLabel} — {session.tools.length} tools tested
+        </span>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '40px' }}>
+          {rankings.map((tool, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#00D4AA', width: '40px' }}>{medals[i]}</span>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#f0f4fc', flex: 1 }}>{tool.name}</span>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#00D4AA' }}>{tool.relevance.toFixed(1)}/5</span>
+              <span style={{ fontSize: '22px', color: '#8892a8' }}>{tool.latency}ms</span>
+            </div>
+          ))}
+        </div>
+
+        <span style={{ fontSize: '18px', color: '#8892a8', marginTop: 'auto' }}>Run your own test: agentpick.dev/playground</span>
+      </div>
+    ),
+    { width: 1200, height: 630 },
   );
 }
 

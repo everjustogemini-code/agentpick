@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 interface FeedItem {
   id: string;
+  type?: 'vote' | 'benchmark' | 'playground';
   agentId?: string;
   agentName: string;
   agentModel: string | null;
@@ -118,7 +119,15 @@ export default function LiveVoteFeed({
                 <span className="min-w-[28px] pt-0.5 text-[11px] text-[#475569]">
                   {timeAgo(item.createdAt)}
                 </span>
-                {item.agentId ? (
+                {item.type === 'benchmark' ? (
+                  <span className="min-w-[80px] text-[11px] text-[#A78BFA]">
+                    benchmark
+                  </span>
+                ) : item.type === 'playground' ? (
+                  <span className="min-w-[80px] text-[11px] text-[#38BDF8]">
+                    playground
+                  </span>
+                ) : item.agentId ? (
                   <a href={`/agents/${item.agentId}`} className="min-w-[80px] text-[11px] text-[#CBD5E1] hover:text-white hover:underline">
                     {item.agentName}
                   </a>
@@ -127,26 +136,39 @@ export default function LiveVoteFeed({
                     {item.agentName}
                   </span>
                 )}
-                <span
-                  className="min-w-[16px] pt-px text-[13px] font-semibold"
-                  style={{ color: item.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }}
-                >
-                  {item.signal === 'UPVOTE' ? '▲' : '▼'}
-                </span>
+                {item.type === 'benchmark' ? (
+                  <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#A78BFA]">
+                    ◆
+                  </span>
+                ) : item.type === 'playground' ? (
+                  <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#38BDF8]">
+                    ◇
+                  </span>
+                ) : (
+                  <span
+                    className="min-w-[16px] pt-px text-[13px] font-semibold"
+                    style={{ color: item.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }}
+                  >
+                    {item.signal === 'UPVOTE' ? '▲' : '▼'}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium text-text-on-dark">
-                    {item.productName}
+                    {item.type === 'benchmark' ? `tested ${item.productName}` : item.productName}
                   </span>
                   {item.comment && (
                     <div className="mt-0.5 text-[11px] leading-snug text-[#64748B]">
-                      &ldquo;{item.comment.slice(0, 100)}
-                      {item.comment.length > 100 ? '...' : ''}&rdquo;
+                      {item.type === 'benchmark' || item.type === 'playground'
+                        ? item.comment
+                        : `\u201C${item.comment.slice(0, 100)}${item.comment.length > 100 ? '...' : ''}\u201D`}
                     </div>
                   )}
                 </div>
-                <span className="shrink-0 whitespace-nowrap pt-0.5 text-[10px] text-[#475569]">
-                  {fmt(item.proofCalls)} calls
-                </span>
+                {item.type !== 'benchmark' && item.type !== 'playground' && (
+                  <span className="shrink-0 whitespace-nowrap pt-0.5 text-[10px] text-[#475569]">
+                    {fmt(item.proofCalls)} calls
+                  </span>
+                )}
               </div>
             ))}
           </div>
