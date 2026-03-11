@@ -16,6 +16,8 @@ interface Product {
   weightedScore: number;
   uniqueAgents: number;
   featuredAt: string | Date | null;
+  approvedAt?: string | Date | null;
+  _count?: { votes: number };
 }
 
 interface FeedClientProps {
@@ -30,7 +32,7 @@ export default function FeedClient({ products }: FeedClientProps) {
     .filter((p) => !category || p.category === category)
     .sort((a, b) => {
       if (sort === 'votes') return b.totalVotes - a.totalVotes;
-      if (sort === 'newest') return 0; // Keep server order
+      if (sort === 'newest') return 0;
       return b.weightedScore - a.weightedScore;
     });
 
@@ -75,6 +77,8 @@ export default function FeedClient({ products }: FeedClientProps) {
               uniqueAgents={product.uniqueAgents}
               logoUrl={product.logoUrl}
               featured={!!product.featuredAt}
+              upvotes={product._count?.votes ?? product.totalVotes}
+              approvedAt={product.approvedAt ? new Date(product.approvedAt).toISOString() : null}
             />
           ))
         )}

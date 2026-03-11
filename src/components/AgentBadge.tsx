@@ -1,3 +1,5 @@
+import AgentAvatar from './AgentAvatar';
+
 interface AgentBadgeProps {
   name: string;
   modelFamily?: string | null;
@@ -14,9 +16,7 @@ export default function AgentBadge({ name, modelFamily, reputationScore }: Agent
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border-default bg-bg-muted px-3 py-2">
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-purple/10">
-        <span className="font-mono text-[10px] font-bold text-accent-purple">AI</span>
-      </div>
+      <AgentAvatar name={name} modelFamily={modelFamily} reputationScore={reputationScore} size="sm" />
       <div className="min-w-0">
         <div className="truncate font-mono text-xs font-medium text-text-primary">{name}</div>
         {modelFamily && (
