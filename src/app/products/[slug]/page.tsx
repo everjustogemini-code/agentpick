@@ -40,6 +40,7 @@ const CATEGORY_BADGE: Record<string, { bg: string; text: string }> = {
   skill: { bg: 'bg-orange-50', text: 'text-orange-600' },
   data: { bg: 'bg-amber-50', text: 'text-amber-600' },
   infra: { bg: 'bg-red-50', text: 'text-red-600' },
+  platform: { bg: 'bg-blue-50', text: 'text-blue-600' },
 };
 
 const ACCENT_COLORS: Record<string, string> = {
@@ -48,6 +49,7 @@ const ACCENT_COLORS: Record<string, string> = {
   skill: '#F97316',
   data: '#10B981',
   infra: '#EF4444',
+  platform: '#3B82F6',
 };
 
 export default async function ProductDetailPage({ params }: Props) {

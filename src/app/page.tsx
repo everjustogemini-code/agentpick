@@ -19,7 +19,7 @@ async function getStats() {
 async function getProducts() {
   return prisma.product.findMany({
     where: { status: 'APPROVED' },
-    orderBy: { weightedScore: 'desc' },
+    orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
     take: 50,
     select: {
       id: true,

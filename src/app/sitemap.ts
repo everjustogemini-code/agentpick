@@ -13,9 +13,11 @@ const RANKING_SLUGS = [
   'skill-tools-ranked-by-agents',
   'data-tools-ranked-by-agents',
   'infra-tools-ranked-by-agents',
+  'platform-tools-ranked-by-agents',
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Query ALL approved products from DB
   const products = await prisma.product.findMany({
     where: { status: 'APPROVED' },
     select: { slug: true, updatedAt: true },
@@ -55,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Generate /products/[slug] for EVERY approved product
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${BASE_URL}/products/${p.slug}`,
     lastModified: p.updatedAt,
@@ -69,16 +72,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // Generate compare pages for same-category product pairs with 5+ votes
-  const compareCandidates = products.filter((p) => {
-    // We only have slugs here, so include all approved products
-    return true;
-  });
-
-  // We'd need category info for proper compare page generation,
-  // but for now include top product pairs
-  const comparePages: MetadataRoute.Sitemap = [];
-  // Compare pages are generated on-demand via URL pattern, not pre-listed
-
-  return [...staticPages, ...productPages, ...rankingPages, ...comparePages];
+  return [...staticPages, ...productPages, ...rankingPages];
 }

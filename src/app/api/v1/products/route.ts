@@ -4,17 +4,58 @@ import { redis } from '@/lib/redis';
 import type { Category } from '@/generated/prisma/client';
 
 const CACHE_TTL = 120; // 2 minutes
+const VALID_CATEGORIES = ['api', 'mcp', 'skill', 'data', 'infra', 'platform'];
+
+const SELECT_FIELDS = {
+  id: true,
+  slug: true,
+  name: true,
+  tagline: true,
+  category: true,
+  logoUrl: true,
+  tags: true,
+  totalVotes: true,
+  weightedScore: true,
+  uniqueAgents: true,
+  featuredAt: true,
+  approvedAt: true,
+} as const;
+
+function getOrderBy(sort: string): Record<string, string>[] {
+  switch (sort) {
+    case 'votes':
+      return [{ totalVotes: 'desc' }, { weightedScore: 'desc' }];
+    case 'newest':
+      return [{ approvedAt: 'desc' }];
+    default:
+      return [{ weightedScore: 'desc' }, { totalVotes: 'desc' }];
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   const category = searchParams.get('category') as Category | null;
   const sort = searchParams.get('sort') ?? 'score';
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20')));
+  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '50')));
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0'));
   const search = searchParams.get('search');
 
-  // Skip cache for search queries
+  const where: Record<string, unknown> = { status: 'APPROVED' as const };
+  if (category && VALID_CATEGORIES.includes(category)) {
+    where.category = category;
+  }
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { tagline: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const orderBy = getOrderBy(sort);
+
+  // Try cache for non-search queries
   if (!search) {
     const cacheKey = `products:${category ?? 'all'}:${sort}:${offset}:${limit}`;
     try {
@@ -28,43 +69,13 @@ export async function GET(request: NextRequest) {
       // Redis down — fall through to DB
     }
 
-    const where: Record<string, unknown> = { status: 'APPROVED' as const };
-    if (category && ['api', 'mcp', 'skill', 'data', 'infra'].includes(category)) {
-      where.category = category;
-    }
-
-    let orderBy: Record<string, string>;
-    switch (sort) {
-      case 'votes':
-        orderBy = { totalVotes: 'desc' };
-        break;
-      case 'newest':
-        orderBy = { approvedAt: 'desc' };
-        break;
-      default:
-        orderBy = { weightedScore: 'desc' };
-    }
-
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         orderBy,
         take: limit,
         skip: offset,
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          tagline: true,
-          category: true,
-          logoUrl: true,
-          tags: true,
-          totalVotes: true,
-          weightedScore: true,
-          uniqueAgents: true,
-          featuredAt: true,
-          approvedAt: true,
-        },
+        select: SELECT_FIELDS,
       }),
       prisma.product.count({ where }),
     ]);
@@ -83,47 +94,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Search queries — no cache
-  const where: Record<string, unknown> = { status: 'APPROVED' as const };
-  if (category && ['api', 'mcp', 'skill', 'data', 'infra'].includes(category)) {
-    where.category = category;
-  }
-  where.OR = [
-    { name: { contains: search, mode: 'insensitive' } },
-    { tagline: { contains: search, mode: 'insensitive' } },
-  ];
-
-  let orderBy: Record<string, string>;
-  switch (sort) {
-    case 'votes':
-      orderBy = { totalVotes: 'desc' };
-      break;
-    case 'newest':
-      orderBy = { approvedAt: 'desc' };
-      break;
-    default:
-      orderBy = { weightedScore: 'desc' };
-  }
-
   const [products, total] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy,
       take: limit,
       skip: offset,
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        tagline: true,
-        category: true,
-        logoUrl: true,
-        tags: true,
-        totalVotes: true,
-        weightedScore: true,
-        uniqueAgents: true,
-        featuredAt: true,
-        approvedAt: true,
-      },
+      select: SELECT_FIELDS,
     }),
     prisma.product.count({ where }),
   ]);
