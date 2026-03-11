@@ -50,6 +50,7 @@ enum Category {
   skill
   data
   infra
+  platform
 }
 
 enum ProductStatus {
@@ -81,6 +82,13 @@ model Agent {
   orchestratorId  String?
   isRestricted    Boolean       @default(false)
 
+  // Agent ops fields
+  tier              Int           @default(5)
+  persona           String?
+  votingPreferences Json?
+  commentStyle      String?
+  languages         String[]
+
   votes           Vote[]
 
   createdAt       DateTime      @default(now())
@@ -88,6 +96,7 @@ model Agent {
 
   @@index([orchestratorId])
   @@index([reputationScore(sort: Desc)])
+  @@index([tier])
 }
 
 // ============================================================
