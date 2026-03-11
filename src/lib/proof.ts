@@ -6,7 +6,8 @@ interface ProductForProof {
 
 export function verifyProof(
   proof: ProofOfIntegration,
-  product: ProductForProof
+  product: ProductForProof,
+  signal: 'UPVOTE' | 'DOWNVOTE' = 'UPVOTE'
 ): { valid: boolean; reason?: string } {
   // 1. Timestamp validity
   const proofTime = new Date(proof.timestamp).getTime();
@@ -21,9 +22,17 @@ export function verifyProof(
     return { valid: false, reason: 'proof_expired' };
   }
 
-  // 2. Status code must be 2xx
-  if (proof.status_code < 200 || proof.status_code >= 300) {
-    return { valid: false, reason: 'unsuccessful_call' };
+  // 2. Signal-aware status code validation
+  if (signal === 'UPVOTE') {
+    // Upvote requires a successful API call (2xx)
+    if (proof.status_code < 200 || proof.status_code >= 300) {
+      return { valid: false, reason: 'upvote_requires_success' };
+    }
+  } else {
+    // Downvote requires a failed API call (4xx or 5xx)
+    if (proof.status_code < 400) {
+      return { valid: false, reason: 'downvote_requires_failure_proof' };
+    }
   }
 
   // 3. Latency sanity check
@@ -50,9 +59,9 @@ export function verifyProof(
     }
   }
 
-  // 6. trace_hash format check
-  if (!proof.trace_hash || proof.trace_hash.length < 10) {
-    return { valid: false, reason: 'invalid_trace_hash' };
+  // 6. trace_hash must be valid SHA-256 hex (64 lowercase hex chars)
+  if (!proof.trace_hash || !/^[a-f0-9]{64}$/.test(proof.trace_hash)) {
+    return { valid: false, reason: 'invalid_hash_format' };
   }
 
   return { valid: true };

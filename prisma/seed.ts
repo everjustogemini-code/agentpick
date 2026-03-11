@@ -111,7 +111,7 @@ async function main() {
         data: {
           productId: product.id,
           agentId: agent.id,
-          proofHash: `sha256:${randomBytes(16).toString('hex')}`,
+          proofHash: randomBytes(32).toString('hex'),
           proofVerified: true,
           proofDetails: {
             method: 'GET',

@@ -9,6 +9,7 @@ import { recalculateProductScore } from '@/lib/voting';
 import { checkRateLimit, voteLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import type { VoteRequest } from '@/types';
+import type { VoteSignal } from '@/generated/prisma/client';
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate
@@ -43,8 +44,10 @@ export async function POST(request: NextRequest) {
     return apiError('NOT_FOUND', `Product "${body.product_slug}" not found.`, 404);
   }
 
-  // 5. Verify proof
-  const proofResult = verifyProof(body.proof, product);
+  const signal: VoteSignal = body.signal.toUpperCase() === 'DOWNVOTE' ? 'DOWNVOTE' : 'UPVOTE';
+
+  // 5. Verify proof (signal-aware: upvote requires 2xx, downvote requires 4xx/5xx)
+  const proofResult = verifyProof(body.proof, product, signal as 'UPVOTE' | 'DOWNVOTE');
   if (!proofResult.valid) {
     return apiError('INVALID_PROOF', `Proof verification failed: ${proofResult.reason}`, 422, {
       details: { reason: proofResult.reason },
@@ -57,10 +60,39 @@ export async function POST(request: NextRequest) {
   const rawWeight = 1.0;
   const finalWeight = Math.round(rawWeight * reputationMult * diversityMult * 1000) / 1000;
 
-  const signal = body.signal.toUpperCase() === 'DOWNVOTE' ? 'DOWNVOTE' : 'UPVOTE';
-
-  // 7. Upsert vote
+  // 7. Check for existing vote (detect create vs update)
   try {
+    const existingVote = await prisma.vote.findUnique({
+      where: {
+        productId_agentId: {
+          productId: product.id,
+          agentId: agent.id,
+        },
+      },
+      select: { id: true, signal: true },
+    });
+
+    const isUpdate = !!existingVote;
+    const previousSignal = existingVote?.signal ?? null;
+
+    const proofData = {
+      proofHash: body.proof.trace_hash,
+      proofVerified: true,
+      proofDetails: {
+        method: body.proof.method,
+        endpoint: body.proof.endpoint,
+        statusCode: body.proof.status_code,
+        latencyMs: body.proof.latency_ms,
+        timestamp: body.proof.timestamp,
+      },
+      rawWeight,
+      reputationMult,
+      diversityMult,
+      finalWeight,
+      signal,
+      comment: body.comment ?? null,
+    };
+
     const vote = await prisma.vote.upsert({
       where: {
         productId_agentId: {
@@ -71,54 +103,26 @@ export async function POST(request: NextRequest) {
       create: {
         productId: product.id,
         agentId: agent.id,
-        proofHash: body.proof.trace_hash,
-        proofVerified: true,
-        proofDetails: {
-          method: body.proof.method,
-          endpoint: body.proof.endpoint,
-          statusCode: body.proof.status_code,
-          latencyMs: body.proof.latency_ms,
-          timestamp: body.proof.timestamp,
-        },
-        rawWeight,
-        reputationMult,
-        diversityMult,
-        finalWeight,
-        signal,
-        comment: body.comment ?? null,
+        ...proofData,
       },
-      update: {
-        proofHash: body.proof.trace_hash,
-        proofVerified: true,
-        proofDetails: {
-          method: body.proof.method,
-          endpoint: body.proof.endpoint,
-          statusCode: body.proof.status_code,
-          latencyMs: body.proof.latency_ms,
-          timestamp: body.proof.timestamp,
-        },
-        rawWeight,
-        reputationMult,
-        diversityMult,
-        finalWeight,
-        signal,
-        comment: body.comment ?? null,
-      },
+      update: proofData,
     });
 
-    // 8. Update agent stats & reputation
-    const updatedAgent = await prisma.agent.update({
-      where: { id: agent.id },
-      data: {
-        totalVotes: { increment: 1 },
-        verifiedVotes: { increment: 1 },
-      },
-    });
-    const newReputation = calculateReputation(updatedAgent);
-    await prisma.agent.update({
-      where: { id: agent.id },
-      data: { reputationScore: newReputation },
-    });
+    // 8. Update agent stats & reputation (only increment on NEW vote)
+    if (!isUpdate) {
+      const updatedAgent = await prisma.agent.update({
+        where: { id: agent.id },
+        data: {
+          totalVotes: { increment: 1 },
+          verifiedVotes: { increment: 1 },
+        },
+      });
+      const newReputation = calculateReputation(updatedAgent);
+      await prisma.agent.update({
+        where: { id: agent.id },
+        data: { reputationScore: newReputation },
+      });
+    }
 
     // 9. Recalculate product score
     const newScore = await recalculateProductScore(product.id);
@@ -127,7 +131,6 @@ export async function POST(request: NextRequest) {
     try {
       const pipeline = redis.pipeline();
       pipeline.del(`product:${body.product_slug}`);
-      // Flush all product list cache keys
       const listKeys = await redis.keys('products:*');
       for (const key of listKeys) {
         pipeline.del(key);
@@ -139,6 +142,8 @@ export async function POST(request: NextRequest) {
 
     return Response.json({
       vote_id: vote.id,
+      updated: isUpdate,
+      ...(isUpdate && previousSignal ? { previous_signal: previousSignal.toLowerCase() } : {}),
       weight: {
         raw: rawWeight,
         reputation_multiplier: reputationMult,
@@ -146,7 +151,6 @@ export async function POST(request: NextRequest) {
         final: finalWeight,
       },
       product_new_score: Math.round(newScore * 100) / 100,
-      agent_new_reputation: newReputation,
     });
   } catch (err: unknown) {
     // Handle duplicate proofHash
