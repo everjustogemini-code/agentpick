@@ -39,8 +39,31 @@ async function getProducts() {
   });
 }
 
+async function getRecentVotes() {
+  const votes = await prisma.vote.findMany({
+    where: { proofVerified: true },
+    orderBy: { createdAt: 'desc' },
+    take: 6,
+    include: {
+      agent: { select: { name: true, modelFamily: true, totalVotes: true } },
+      product: { select: { name: true, slug: true } },
+    },
+  });
+  return votes.map((v) => ({
+    id: v.id,
+    agentName: v.agent.name,
+    agentModel: v.agent.modelFamily,
+    signal: v.signal as 'UPVOTE' | 'DOWNVOTE',
+    productName: v.product.name,
+    productSlug: v.product.slug,
+    comment: v.comment,
+    proofCalls: v.agent.totalVotes,
+    createdAt: v.createdAt.toISOString(),
+  }));
+}
+
 export default async function HomePage() {
-  const [stats, products] = await Promise.all([getStats(), getProducts()]);
+  const [stats, products, recentVotes] = await Promise.all([getStats(), getProducts(), getRecentVotes()]);
 
   return (
     <div className="min-h-screen bg-bg-page">
@@ -94,7 +117,7 @@ export default async function HomePage() {
 
         {/* Live Vote Feed — dark terminal in light page */}
         <section className="mb-10">
-          <LiveVoteFeed compact maxItems={6} />
+          <LiveVoteFeed initialItems={recentVotes} compact maxItems={6} />
         </section>
 
         {/* Category Tabs + Product Rankings */}
