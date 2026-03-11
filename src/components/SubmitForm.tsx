@@ -3,11 +3,17 @@
 import { useState, type FormEvent } from 'react';
 
 const CATEGORIES = [
-  { value: 'api', label: 'API' },
-  { value: 'mcp', label: 'MCP Server' },
-  { value: 'skill', label: 'Skill / Plugin' },
-  { value: 'data', label: 'Data Source' },
-  { value: 'infra', label: 'Infrastructure' },
+  { value: 'search_research', label: 'Search & Research' },
+  { value: 'web_crawling', label: 'Web Crawling' },
+  { value: 'code_compute', label: 'Code & Compute' },
+  { value: 'storage_memory', label: 'Storage & Memory' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'payments_commerce', label: 'Payments & Commerce' },
+  { value: 'finance_data', label: 'Finance Data' },
+  { value: 'auth_identity', label: 'Auth & Identity' },
+  { value: 'scheduling', label: 'Scheduling' },
+  { value: 'ai_models', label: 'AI Models' },
+  { value: 'observability', label: 'Observability' },
 ];
 
 const inputClass =

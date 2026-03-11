@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { Category } from '@/generated/prisma/client';
 
-const VALID_CATEGORIES = ['api', 'mcp', 'skill', 'data', 'infra'];
+const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'];
 
 // MCP Server manifest
 const SERVER_INFO = {

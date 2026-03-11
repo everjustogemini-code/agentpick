@@ -2,11 +2,17 @@
 
 const CATEGORIES = [
   { slug: '', label: 'All Tools' },
-  { slug: 'api', label: 'APIs' },
-  { slug: 'mcp', label: 'MCP Servers' },
-  { slug: 'skill', label: 'Skills' },
-  { slug: 'data', label: 'Data Sources' },
-  { slug: 'infra', label: 'Infrastructure' },
+  { slug: 'search_research', label: 'Search & Research' },
+  { slug: 'web_crawling', label: 'Web Crawling' },
+  { slug: 'code_compute', label: 'Code & Compute' },
+  { slug: 'storage_memory', label: 'Storage & Memory' },
+  { slug: 'communication', label: 'Communication' },
+  { slug: 'payments_commerce', label: 'Payments' },
+  { slug: 'finance_data', label: 'Finance Data' },
+  { slug: 'auth_identity', label: 'Auth & Identity' },
+  { slug: 'scheduling', label: 'Scheduling' },
+  { slug: 'ai_models', label: 'AI Models' },
+  { slug: 'observability', label: 'Observability' },
 ];
 
 interface CategoryFilterProps {

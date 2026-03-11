@@ -504,7 +504,7 @@ async function main() {
   // Category averages
   console.log('');
   console.log('Category averages:');
-  for (const cat of ['api', 'mcp', 'skill', 'data', 'infra', 'platform']) {
+  for (const cat of ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability']) {
     const products = await prisma.product.findMany({
       where: { category: cat as any },
       select: { weightedScore: true, totalVotes: true },

@@ -4,7 +4,7 @@ import { redis } from '@/lib/redis';
 import type { Category } from '@/generated/prisma/client';
 
 const CACHE_TTL = 120; // 2 minutes
-const VALID_CATEGORIES = ['api', 'mcp', 'skill', 'data', 'infra', 'platform'];
+const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'];
 
 const SELECT_FIELDS = {
   id: true,

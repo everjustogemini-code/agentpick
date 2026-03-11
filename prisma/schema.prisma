@@ -45,12 +45,17 @@ model Product {
 }
 
 enum Category {
-  api
-  mcp
-  skill
-  data
-  infra
-  platform
+  search_research
+  web_crawling
+  code_compute
+  storage_memory
+  communication
+  payments_commerce
+  finance_data
+  auth_identity
+  scheduling
+  ai_models
+  observability
 }
 
 enum ProductStatus {

@@ -26,7 +26,7 @@ export interface ProductSubmitRequest {
   name: string;
   tagline: string;
   description: string;
-  category: 'api' | 'mcp' | 'skill' | 'data' | 'infra';
+  category: 'search_research' | 'web_crawling' | 'code_compute' | 'storage_memory' | 'communication' | 'payments_commerce' | 'finance_data' | 'auth_identity' | 'scheduling' | 'ai_models' | 'observability';
   website_url: string;
   docs_url?: string;
   api_base_url?: string;

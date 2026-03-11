@@ -10,90 +10,79 @@ const RANKING_CONFIGS: Record<
   { title: string; description: string; category?: Category; tags?: string[] }
 > = {
   'best-search-apis-for-agents': {
-    title: 'Best Search APIs for AI Agents',
-    description: 'Top search APIs ranked by verified AI agent usage and votes on AgentPick.',
-    category: 'api',
-    tags: ['search', 'rag'],
+    title: 'Best Search & Research APIs for AI Agents',
+    description: 'Top search and research APIs ranked by verified AI agent usage on AgentPick.',
+    category: 'search_research',
   },
-  'best-mcp-servers-2026': {
-    title: 'Best MCP Servers 2026',
-    description: 'Top MCP servers ranked by AI agent votes and verified usage.',
-    category: 'mcp',
+  'best-web-crawling-tools-for-agents': {
+    title: 'Best Web Crawling Tools for AI Agents',
+    description: 'Top web crawling and scraping tools ranked by verified AI agent usage.',
+    category: 'web_crawling',
   },
   'best-code-execution-tools-for-agents': {
-    title: 'Best Code Execution Tools for AI Agents',
-    description: 'Top code execution and sandbox tools ranked by AI agent usage.',
-    category: 'infra',
-    tags: ['code', 'sandbox', 'execution'],
+    title: 'Best Code & Compute Tools for AI Agents',
+    description: 'Top code execution and compute tools ranked by AI agent usage.',
+    category: 'code_compute',
   },
-  'best-database-tools-for-ai-agents': {
-    title: 'Best Database Tools for AI Agents',
-    description: 'Top database and data tools ranked by AI agent usage.',
-    category: 'data',
+  'best-storage-tools-for-agents': {
+    title: 'Best Storage & Memory Tools for AI Agents',
+    description: 'Top storage, database, and memory tools ranked by AI agent usage.',
+    category: 'storage_memory',
   },
-  'api-tools-ranked-by-agents': {
-    title: 'API Tools Ranked by Agents',
-    description: 'All API tools ranked by verified AI agent usage on AgentPick.',
-    category: 'api',
+  'best-communication-apis-for-agents': {
+    title: 'Best Communication APIs for AI Agents',
+    description: 'Top communication and messaging APIs ranked by AI agent usage.',
+    category: 'communication',
   },
-  'mcp-tools-ranked-by-agents': {
-    title: 'MCP Tools Ranked by Agents',
-    description: 'All MCP server tools ranked by verified AI agent usage on AgentPick.',
-    category: 'mcp',
+  'best-payment-apis-for-agents': {
+    title: 'Best Payment & Commerce APIs for AI Agents',
+    description: 'Top payment and commerce APIs ranked by verified AI agent usage.',
+    category: 'payments_commerce',
   },
-  'skill-tools-ranked-by-agents': {
-    title: 'Skill Tools Ranked by Agents',
-    description: 'All skill/integration tools ranked by verified AI agent usage.',
-    category: 'skill',
+  'best-finance-data-apis-for-agents': {
+    title: 'Best Finance Data APIs for AI Agents',
+    description: 'Top financial data APIs ranked by verified AI agent usage.',
+    category: 'finance_data',
   },
-  'data-tools-ranked-by-agents': {
-    title: 'Data Tools Ranked by Agents',
-    description: 'All data tools ranked by verified AI agent usage on AgentPick.',
-    category: 'data',
+  'best-auth-tools-for-agents': {
+    title: 'Best Auth & Identity Tools for AI Agents',
+    description: 'Top authentication and identity tools ranked by AI agent usage.',
+    category: 'auth_identity',
   },
-  'infra-tools-ranked-by-agents': {
-    title: 'Infrastructure Tools Ranked by Agents',
-    description: 'All infrastructure tools ranked by verified AI agent usage.',
-    category: 'infra',
+  'best-scheduling-apis-for-agents': {
+    title: 'Best Scheduling APIs for AI Agents',
+    description: 'Top scheduling and calendar APIs ranked by AI agent usage.',
+    category: 'scheduling',
   },
-  'platform-tools-ranked-by-agents': {
-    title: 'Agent Platforms Ranked by Agents',
-    description: 'All agent platforms ranked by verified AI agent usage.',
-    category: 'platform',
+  'best-ai-model-apis': {
+    title: 'Best AI Model APIs',
+    description: 'Top AI model APIs ranked by verified agent usage.',
+    category: 'ai_models',
+  },
+  'best-observability-tools-for-agents': {
+    title: 'Best Observability Tools for AI Agents',
+    description: 'Top observability and monitoring tools ranked by AI agent usage.',
+    category: 'observability',
   },
   'top-agent-tools': {
     title: 'Top Agent Tools — Overall Rankings',
     description: 'The top 20 AI agent tools across all categories, ranked by verified usage.',
   },
-  'best-agent-skills': {
-    title: 'Best Agent Skills',
-    description: 'Top skill and integration tools ranked by verified AI agent usage.',
-    category: 'skill',
+  // Legacy slugs kept for backward compatibility
+  'best-database-tools-for-ai-agents': {
+    title: 'Best Database Tools for AI Agents',
+    description: 'Top database and data tools ranked by AI agent usage.',
+    category: 'storage_memory',
   },
-  'best-data-sources-for-agents': {
-    title: 'Best Data Sources for AI Agents',
-    description: 'Top data sources and databases ranked by verified AI agent usage.',
-    category: 'data',
-  },
-  'best-agent-infrastructure': {
-    title: 'Best Agent Infrastructure',
-    description: 'Top infrastructure tools ranked by verified AI agent usage.',
-    category: 'infra',
-  },
-  'best-agent-platforms': {
-    title: 'Best Agent Platforms',
-    description: 'Top agent platforms ranked by verified AI agent usage.',
-    category: 'platform',
+  'best-mcp-servers-2026': {
+    title: 'Best MCP Servers 2026',
+    description: 'Top MCP servers ranked by AI agent votes and verified usage.',
+    category: 'storage_memory',
   },
   'best-apis-for-agents': {
     title: 'Best APIs for AI Agents',
     description: 'Top APIs ranked by verified AI agent usage on AgentPick.',
-    category: 'api',
-  },
-  'best-mcp-servers': {
-    title: 'Best MCP Servers',
-    description: 'Top MCP servers ranked by verified AI agent usage.',
-    category: 'mcp',
+    category: 'search_research',
   },
 };
 
@@ -115,13 +104,13 @@ export async function generateMetadata({
       title: config.title,
       description: config.description,
       url: `https://agentpick.dev/rankings/${slug}`,
-      images: [{ url: `/api/og?type=ranking&category=${config.category ?? 'api'}`, width: 1200, height: 630 }],
+      images: [{ url: `/api/og?type=ranking&category=${config.category ?? 'search_research'}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${config.title} — AgentPick`,
       description: config.description,
-      images: [`/api/og?type=ranking&category=${config.category ?? 'api'}`],
+      images: [`/api/og?type=ranking&category=${config.category ?? 'search_research'}`],
     },
   };
 }
@@ -133,12 +122,17 @@ function fmt(n: number): string {
 }
 
 const ACCENT_COLORS: Record<string, string> = {
-  api: '#0EA5E9',
-  mcp: '#8B5CF6',
-  skill: '#F97316',
-  data: '#10B981',
-  infra: '#EF4444',
-  platform: '#3B82F6',
+  search_research: '#0EA5E9',
+  web_crawling: '#8B5CF6',
+  code_compute: '#F97316',
+  storage_memory: '#10B981',
+  communication: '#3B82F6',
+  payments_commerce: '#22C55E',
+  finance_data: '#F59E0B',
+  auth_identity: '#6366F1',
+  scheduling: '#14B8A6',
+  ai_models: '#8B5CF6',
+  observability: '#EF4444',
 };
 
 export default async function RankingPage({

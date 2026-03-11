@@ -4,7 +4,7 @@ import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, voteLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 
-const VALID_CATEGORIES = ['api', 'mcp', 'skill', 'data', 'infra'] as const;
+const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'] as const;
 
 interface SuggestRequest {
   name: string;

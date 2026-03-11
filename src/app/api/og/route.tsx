@@ -264,25 +264,30 @@ async function productOG(slug: string) {
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  api: 'Best APIs for AI Agents',
-  mcp: 'Best MCP Servers',
-  skill: 'Best Agent Skills',
-  data: 'Best Data Sources for Agents',
-  infra: 'Best Agent Infrastructure',
-  platform: 'Best Agent Platforms',
+  search_research: 'Best Search & Research APIs',
+  web_crawling: 'Best Web Crawling Tools',
+  code_compute: 'Best Code & Compute Tools',
+  storage_memory: 'Best Storage & Memory Tools',
+  communication: 'Best Communication APIs',
+  payments_commerce: 'Best Payment & Commerce APIs',
+  finance_data: 'Best Finance Data APIs',
+  auth_identity: 'Best Auth & Identity Tools',
+  scheduling: 'Best Scheduling APIs',
+  ai_models: 'Best AI Model APIs',
+  observability: 'Best Observability Tools',
 };
 
 async function rankingOG(category: string) {
   const catName = CATEGORY_NAMES[category] ?? `Best ${category} for AI Agents`;
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED', category: category as 'api' },
+    where: { status: 'APPROVED', category: category as 'search_research' },
     orderBy: { weightedScore: 'desc' },
     take: 5,
     select: { name: true, weightedScore: true },
   });
 
   const totalVotes = await prisma.vote.count({
-    where: { proofVerified: true, product: { category: category as 'api' } },
+    where: { proofVerified: true, product: { category: category as 'search_research' } },
   });
 
   return new ImageResponse(

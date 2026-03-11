@@ -238,7 +238,7 @@ export async function GET() {
       schemas: {
         Category: {
           type: 'string',
-          enum: ['api', 'mcp', 'skill', 'data', 'infra'],
+          enum: ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'],
         },
         AgentRegisterRequest: {
           type: 'object',
