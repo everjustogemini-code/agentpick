@@ -36,6 +36,8 @@ model Product {
 
   votes            Vote[]
   telemetryEvents  TelemetryEvent[]
+  benchmarkRuns    BenchmarkRun[]
+  playgroundRuns   PlaygroundRun[]
 
   telemetryCount   Int            @default(0)
   successRate      Float?
@@ -103,6 +105,7 @@ model Agent {
 
   votes           Vote[]
   telemetryEvents TelemetryEvent[]
+  benchmarkAgent  BenchmarkAgent?
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -172,4 +175,123 @@ model TelemetryEvent {
   @@index([agentId, createdAt])
   @@index([productId, createdAt])
   @@index([task])
+}
+
+// ============================================================
+// BENCHMARK SYSTEM
+// ============================================================
+
+model BenchmarkAgent {
+  id            String   @id @default(cuid())
+  agentId       String   @unique
+  agent         Agent    @relation(fields: [agentId], references: [id])
+  domain        String   // "finance", "legal", "healthcare", etc.
+  modelProvider String   // "anthropic", "openai", "google", "deepseek", "meta"
+  modelName     String   // "claude-sonnet-4", "gpt-4o", etc.
+  complexity    String[] // ["simple", "medium", "complex"]
+  isActive      Boolean  @default(true)
+  lastRunAt     DateTime?
+  totalTests    Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@index([domain])
+  @@index([isActive])
+}
+
+model BenchmarkQuery {
+  id          String   @id @default(cuid())
+  domain      String   // "finance", "legal", etc.
+  complexity  String   // "simple", "medium", "complex"
+  query       String   // The actual query text
+  intent      String?  // What a good result should contain
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([domain, complexity])
+}
+
+model BenchmarkRun {
+  id               String   @id @default(cuid())
+  benchmarkAgentId String
+  queryId          String
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id])
+
+  // Request
+  query            String
+  toolConfig       Json?
+
+  // Response
+  statusCode       Int
+  latencyMs        Int
+  resultCount      Int?
+  rawResponse      Json?
+
+  // Evaluation (by LLM)
+  relevanceScore     Float?
+  freshnessScore     Float?
+  completenessScore  Float?
+  evaluatedBy        String?
+  evaluationReason   String?
+
+  // Meta
+  domain           String
+  complexity       String
+  success          Boolean
+  costUsd          Float?
+  createdAt        DateTime @default(now())
+
+  @@index([productId, domain])
+  @@index([productId, createdAt])
+  @@index([domain, complexity])
+}
+
+// ============================================================
+// PLAYGROUND
+// ============================================================
+
+model PlaygroundSession {
+  id           String   @id @default(cuid())
+  userId       String?
+  domain       String
+  config       Json     // { priorities: ["relevance", "freshness"], volume: 1000 }
+  queries      String[]
+  tools        String[] // Product slugs
+  status       String   @default("pending") // pending, running, completed, failed
+  results      Json?    // Aggregated results
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  runs         PlaygroundRun[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PlaygroundRun {
+  id            String              @id @default(cuid())
+  sessionId     String
+  session       PlaygroundSession   @relation(fields: [sessionId], references: [id])
+  productId     String
+  product       Product             @relation(fields: [productId], references: [id])
+  query         String
+  queryIndex    Int
+
+  // Result
+  statusCode    Int
+  latencyMs     Int
+  resultCount   Int?
+  rawResponse   Json?
+
+  // Evaluation
+  relevanceScore   Float?
+  evaluatedBy      String?
+  evaluationReason String?
+
+  success       Boolean
+  costUsd       Float?
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([productId])
 }
