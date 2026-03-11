@@ -21,6 +21,7 @@
     "@prisma/pg-worker": "^6.9.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.4",
+    "@vercel/og": "^0.11.1",
     "next": "16.1.6",
     "pg": "^8.20.0",
     "prisma": "^7.4.2",

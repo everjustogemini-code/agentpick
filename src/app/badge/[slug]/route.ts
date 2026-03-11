@@ -15,15 +15,21 @@ function escapeXml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  api: 'APIs',
+  mcp: 'MCP',
+  skill: 'Skills',
+  data: 'Data',
+  infra: 'Infra',
+  platform: 'Platforms',
+};
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  // Strip .svg extension if present
   let { slug } = await params;
-  if (slug.endsWith('.svg')) {
-    slug = slug.slice(0, -4);
-  }
+  if (slug.endsWith('.svg')) slug = slug.slice(0, -4);
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -31,64 +37,62 @@ export async function GET(
       name: true,
       weightedScore: true,
       totalVotes: true,
+      category: true,
       status: true,
     },
   });
 
   if (!product || product.status !== 'APPROVED') {
-    // Return a "not found" badge
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20" viewBox="0 0 200 20">
-  <rect width="200" height="20" rx="3" fill="#E2E8F0"/>
-  <text x="100" y="13" fill="#64748B" font-family="monospace" font-size="11" text-anchor="middle">agentpick | not found</text>
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
+  <rect width="200" height="28" rx="4" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="100" y="18" fill="#64748B" font-family="monospace" font-size="11" text-anchor="middle">agentpick | not found</text>
 </svg>`;
     return new Response(svg, {
-      headers: {
-        'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'public, s-maxage=60',
-      },
+      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, s-maxage=60' },
     });
   }
+
+  // Get rank within category
+  const rank = await prisma.product.count({
+    where: {
+      status: 'APPROVED',
+      category: product.category,
+      weightedScore: { gt: product.weightedScore },
+    },
+  }) + 1;
 
   const score = product.weightedScore.toFixed(1);
   const votes = fmt(product.totalVotes);
   const name = escapeXml(product.name);
+  const catLabel = CATEGORY_LABELS[product.category] ?? product.category;
+  const rankLabel = `#${rank} in ${catLabel}`;
 
-  // Calculate widths for each section
-  const logoSectionW = 90; // "⬡ agentpick"
-  const scoreSectionW = 70; // "score 9.4"
-  const votesSectionW = 80; // "12.8K votes"
-  const totalW = logoSectionW + scoreSectionW + votesSectionW;
-  const h = 20;
-  const r = 3;
+  // Dynamic widths
+  const logoW = 88;
+  const scoreW = 40;
+  const rankW = rankLabel.length * 6.6 + 16;
+  const votesW = (votes.length + 6) * 6.6 + 16;
+  const totalW = Math.ceil(logoW + scoreW + rankW + votesW);
+  const h = 28;
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}">
-  <title>AgentPick score for ${name}</title>
-  <!-- Background -->
-  <rect width="${totalW}" height="${h}" rx="${r}" fill="#0F172A"/>
-  <!-- Logo section -->
-  <rect width="${logoSectionW}" height="${h}" rx="${r}" fill="#0F172A"/>
-  <!-- Score section -->
-  <rect x="${logoSectionW}" width="${scoreSectionW}" height="${h}" fill="#1E293B"/>
-  <!-- Votes section -->
-  <rect x="${logoSectionW + scoreSectionW}" width="${votesSectionW}" height="${h}" rx="${r}" fill="#334155"/>
-  <!-- Fix corner overlap -->
-  <rect x="${logoSectionW + scoreSectionW}" width="${r}" height="${h}" fill="#334155"/>
-  <rect x="${logoSectionW}" width="${r}" height="${h}" fill="#1E293B"/>
-  <!-- Text -->
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}">
+  <title>AgentPick: ${name} — ${score} score, ${rankLabel}, ${votes} votes</title>
+  <rect width="${totalW}" height="${h}" rx="4" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <line x1="${logoW}" y1="4" x2="${logoW}" y2="${h - 4}" stroke="#E2E8F0" stroke-width="1"/>
+  <line x1="${logoW + scoreW}" y1="4" x2="${logoW + scoreW}" y2="${h - 4}" stroke="#E2E8F0" stroke-width="1"/>
+  <line x1="${logoW + scoreW + rankW}" y1="4" x2="${logoW + scoreW + rankW}" y2="${h - 4}" stroke="#E2E8F0" stroke-width="1"/>
   <g font-family="'IBM Plex Mono','Menlo','Monaco',monospace" font-size="11">
-    <text x="8" y="14" fill="#94A3B8">&#x2B21;</text>
-    <text x="22" y="14" fill="#E2E8F0" font-weight="600">agentpick</text>
-    <text x="${logoSectionW + 6}" y="14" fill="#94A3B8">score</text>
-    <text x="${logoSectionW + 40}" y="14" fill="#10B981" font-weight="700">${score}</text>
-    <text x="${logoSectionW + scoreSectionW + 6}" y="14" fill="#CBD5E1" font-weight="600">${votes}</text>
-    <text x="${logoSectionW + scoreSectionW + 6 + votes.length * 6.6 + 4}" y="14" fill="#94A3B8">votes</text>
+    <text x="10" y="18" fill="#0F172A" font-weight="700">&#x2B21; agentpick</text>
+    <text x="${logoW + 8}" y="18" fill="#10B981" font-weight="700">${score}</text>
+    <text x="${logoW + scoreW + 8}" y="18" fill="#475569" font-weight="500">${escapeXml(rankLabel)}</text>
+    <text x="${logoW + scoreW + rankW + 8}" y="18" fill="#94A3B8">${votes} votes</text>
   </g>
 </svg>`;
 
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
 }

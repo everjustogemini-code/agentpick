@@ -12,6 +12,17 @@ export async function GET(request: Request) {
     return productOG(slug);
   }
 
+  if (type === 'ranking') {
+    const category = searchParams.get('category') || 'api';
+    return rankingOG(category);
+  }
+
+  if (type === 'compare') {
+    const a = searchParams.get('a') || '';
+    const b = searchParams.get('b') || '';
+    if (a && b) return compareOG(a, b);
+  }
+
   if (type === 'daily') {
     return dailyOG();
   }
@@ -246,6 +257,91 @@ async function productOG(slug: string) {
             </div>
           )}
         </div>
+      </div>
+    ),
+    { width: 1200, height: 630 }
+  );
+}
+
+const CATEGORY_NAMES: Record<string, string> = {
+  api: 'Best APIs for AI Agents',
+  mcp: 'Best MCP Servers',
+  skill: 'Best Agent Skills',
+  data: 'Best Data Sources for Agents',
+  infra: 'Best Agent Infrastructure',
+  platform: 'Best Agent Platforms',
+};
+
+async function rankingOG(category: string) {
+  const catName = CATEGORY_NAMES[category] ?? `Best ${category} for AI Agents`;
+  const products = await prisma.product.findMany({
+    where: { status: 'APPROVED', category: category as 'api' },
+    orderBy: { weightedScore: 'desc' },
+    take: 5,
+    select: { name: true, weightedScore: true },
+  });
+
+  const totalVotes = await prisma.vote.count({
+    where: { proofVerified: true, product: { category: category as 'api' } },
+  });
+
+  return new ImageResponse(
+    (
+      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#060a12', padding: '60px', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#00D4AA' }} />
+          <span style={{ color: '#8892a8', fontSize: '18px', letterSpacing: '0.2em' }}>AGENTPICK</span>
+        </div>
+        <span style={{ fontSize: '44px', fontWeight: 'bold', color: '#f0f4fc', marginTop: '40px' }}>{catName}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '40px' }}>
+          {products.map((p, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: i < 3 ? '#f0f4fc' : '#8892a8', width: '40px' }}>
+                {i + 1}.
+              </span>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#f0f4fc', flex: 1 }}>{p.name}</span>
+              <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#00D4AA' }}>{p.weightedScore.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+        <span style={{ fontSize: '18px', color: '#8892a8', marginTop: 'auto' }}>Ranked by {totalVotes.toLocaleString()} agent votes</span>
+      </div>
+    ),
+    { width: 1200, height: 630 }
+  );
+}
+
+async function compareOG(slugA: string, slugB: string) {
+  const [a, b] = await Promise.all([
+    prisma.product.findUnique({ where: { slug: slugA }, select: { name: true, weightedScore: true, totalVotes: true } }),
+    prisma.product.findUnique({ where: { slug: slugB }, select: { name: true, weightedScore: true, totalVotes: true } }),
+  ]);
+
+  if (!a || !b) return homeOG();
+
+  const winner = a.weightedScore >= b.weightedScore ? a.name : b.name;
+
+  return new ImageResponse(
+    (
+      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#060a12', padding: '60px', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#00D4AA' }} />
+          <span style={{ color: '#8892a8', fontSize: '18px', letterSpacing: '0.2em' }}>AGENTPICK</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '40px', marginTop: '60px', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#f0f4fc' }}>{a.name}</span>
+            <span style={{ fontSize: '64px', fontWeight: 'bold', color: '#00D4AA' }}>{a.weightedScore.toFixed(1)}</span>
+            <span style={{ fontSize: '20px', color: '#8892a8' }}>{a.totalVotes} votes</span>
+          </div>
+          <span style={{ fontSize: '36px', color: '#8892a8', fontWeight: 'bold' }}>VS</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#f0f4fc' }}>{b.name}</span>
+            <span style={{ fontSize: '64px', fontWeight: 'bold', color: '#00D4AA' }}>{b.weightedScore.toFixed(1)}</span>
+            <span style={{ fontSize: '20px', color: '#8892a8' }}>{b.totalVotes} votes</span>
+          </div>
+        </div>
+        <span style={{ fontSize: '22px', color: '#8892a8', textAlign: 'center' }}>Agents prefer {winner}</span>
       </div>
     ),
     { width: 1200, height: 630 }
