@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -24,6 +25,61 @@ const ACCENT_COLORS: Record<string, string> = {
   observability: '#EF4444',
 };
 
+// Common aliases for fuzzy slug matching
+const SLUG_ALIASES: Record<string, string> = {
+  exa: 'exa-search',
+  gpt: 'openai-api',
+  openai: 'openai-api',
+  anthropic: 'anthropic-api',
+  claude: 'anthropic-api',
+  stripe: 'stripe-api',
+  twilio: 'twilio-api',
+  sendgrid: 'sendgrid-api',
+  postgres: 'neon',
+  supabase: 'supabase-db',
+  pinecone: 'pinecone-db',
+  redis: 'upstash-redis',
+  brave: 'brave-search',
+  serper: 'serper-api',
+  jina: 'jina-reader',
+  firecrawl: 'firecrawl-api',
+};
+
+async function resolveSlug(input: string): Promise<string | null> {
+  // 1. Try exact match
+  const exact = await prisma.product.findUnique({
+    where: { slug: input },
+    select: { slug: true },
+  });
+  if (exact) return exact.slug;
+
+  // 2. Try alias
+  const alias = SLUG_ALIASES[input];
+  if (alias) {
+    const aliased = await prisma.product.findUnique({
+      where: { slug: alias },
+      select: { slug: true },
+    });
+    if (aliased) return aliased.slug;
+  }
+
+  // 3. Fuzzy match: slug contains input or name matches
+  const fuzzy = await prisma.product.findMany({
+    where: {
+      status: 'APPROVED',
+      OR: [
+        { slug: { contains: input } },
+        { name: { contains: input, mode: 'insensitive' } },
+      ],
+    },
+    select: { slug: true },
+    take: 5,
+  });
+
+  if (fuzzy.length === 1) return fuzzy[0].slug;
+  return null;
+}
+
 function parseSlugs(slugs: string): [string, string] | null {
   const parts = slugs.split('-vs-');
   if (parts.length !== 2) return null;
@@ -39,9 +95,17 @@ export async function generateMetadata({
   const parsed = parseSlugs(slugs);
   if (!parsed) return { title: 'Compare — AgentPick' };
 
+  const [resolvedA, resolvedB] = await Promise.all([
+    resolveSlug(parsed[0]),
+    resolveSlug(parsed[1]),
+  ]);
+
+  const slugA = resolvedA ?? parsed[0];
+  const slugB = resolvedB ?? parsed[1];
+
   const [a, b] = await Promise.all([
-    prisma.product.findUnique({ where: { slug: parsed[0] }, select: { name: true } }),
-    prisma.product.findUnique({ where: { slug: parsed[1] }, select: { name: true } }),
+    prisma.product.findUnique({ where: { slug: slugA }, select: { name: true } }),
+    prisma.product.findUnique({ where: { slug: slugB }, select: { name: true } }),
   ]);
 
   const nameA = a?.name ?? parsed[0];
@@ -53,12 +117,12 @@ export async function generateMetadata({
     openGraph: {
       title: `${nameA} vs ${nameB} — Agent Comparison`,
       description: `Compare ${nameA} and ${nameB} — ranked by AI agent votes on AgentPick.`,
-      images: [{ url: `/api/og?type=compare&a=${parsed[0]}&b=${parsed[1]}`, width: 1200, height: 630 }],
+      images: [{ url: `/api/og?type=compare&a=${slugA}&b=${slugB}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${nameA} vs ${nameB} — AgentPick`,
-      images: [`/api/og?type=compare&a=${parsed[0]}&b=${parsed[1]}`],
+      images: [`/api/og?type=compare&a=${slugA}&b=${slugB}`],
     },
   };
 }
@@ -84,9 +148,23 @@ export default async function ComparePage({
     );
   }
 
+  // Resolve slugs with fuzzy matching
+  const [resolvedA, resolvedB] = await Promise.all([
+    resolveSlug(parsed[0]),
+    resolveSlug(parsed[1]),
+  ]);
+
+  // If either slug resolved to a different value, redirect to canonical URL
+  if (resolvedA && resolvedB && (resolvedA !== parsed[0] || resolvedB !== parsed[1])) {
+    redirect(`/compare/${resolvedA}-vs-${resolvedB}`);
+  }
+
+  const slugA = resolvedA ?? parsed[0];
+  const slugB = resolvedB ?? parsed[1];
+
   const [productA, productB] = await Promise.all([
     prisma.product.findUnique({
-      where: { slug: parsed[0] },
+      where: { slug: slugA },
       include: {
         votes: {
           where: { proofVerified: true },
@@ -99,7 +177,7 @@ export default async function ComparePage({
       },
     }),
     prisma.product.findUnique({
-      where: { slug: parsed[1] },
+      where: { slug: slugB },
       include: {
         votes: {
           where: { proofVerified: true },
@@ -117,7 +195,7 @@ export default async function ComparePage({
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-page">
         <p className="text-text-muted">
-          {!productA ? `"${parsed[0]}" not found.` : `"${parsed[1]}" not found.`}
+          {!productA ? `"${slugA}" not found.` : `"${slugB}" not found.`}
         </p>
       </div>
     );

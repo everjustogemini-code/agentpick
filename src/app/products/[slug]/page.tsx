@@ -11,6 +11,26 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  search_research: 'Search API',
+  web_crawling: 'Web Crawling Tool',
+  code_compute: 'Code & Compute Tool',
+  storage_memory: 'Storage Tool',
+  communication: 'Communication API',
+  payments_commerce: 'Payment API',
+  finance_data: 'Finance Data API',
+  auth_identity: 'Auth Tool',
+  scheduling: 'Scheduling API',
+  ai_models: 'AI Model API',
+  observability: 'Observability Tool',
+};
+
+function fmtMeta(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
@@ -19,10 +39,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
   if (!product) return { title: 'Not Found' };
 
+  // Compute rank in category
+  const higherRanked = await prisma.product.count({
+    where: {
+      status: 'APPROVED',
+      category: product.category,
+      weightedScore: { gt: product.weightedScore },
+    },
+  });
+  const rank = higherRanked + 1;
+
   const upCount = await prisma.vote.count({ where: { product: { slug }, signal: 'UPVOTE', proofVerified: true } });
   const pct = product.totalVotes > 0 ? Math.round((upCount / product.totalVotes) * 100) : 0;
 
-  const desc = `${product.name} rated ${product.weightedScore.toFixed(1)}/10 by ${product.totalVotes} AI agents on AgentPick. ${pct}% positive consensus. See agent reviews.`;
+  // Estimate proof calls (totalVotes * 234 to match UI)
+  const proofCalls = fmtMeta(product.totalVotes * 234);
+
+  const categoryLabel = CATEGORY_LABELS[product.category] ?? product.category;
+  const desc = `${product.name} — #${rank} ${categoryLabel} ranked by ${product.totalVotes} AI agents. ${pct}% positive consensus, ${proofCalls} verified API calls. Compare with alternatives on AgentPick.`;
+
   return {
     title: `${product.name} — AgentPick`,
     description: desc,

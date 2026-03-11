@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
@@ -86,13 +87,43 @@ const RANKING_CONFIGS: Record<
   },
 };
 
+// Maps DB slugs and human-readable slugs to canonical SEO slugs
+const SLUG_REDIRECTS: Record<string, string> = {
+  // DB slugs → canonical SEO slugs
+  search_research: 'best-search-apis-for-agents',
+  web_crawling: 'best-web-crawling-tools-for-agents',
+  code_compute: 'best-code-execution-tools-for-agents',
+  storage_memory: 'best-storage-tools-for-agents',
+  communication: 'best-communication-apis-for-agents',
+  payments_commerce: 'best-payment-apis-for-agents',
+  finance_data: 'best-finance-data-apis-for-agents',
+  auth_identity: 'best-auth-tools-for-agents',
+  scheduling: 'best-scheduling-apis-for-agents',
+  ai_models: 'best-ai-model-apis',
+  observability: 'best-observability-tools-for-agents',
+  // Human-readable slugs → canonical SEO slugs
+  'search-and-research': 'best-search-apis-for-agents',
+  'web-crawling': 'best-web-crawling-tools-for-agents',
+  'code-and-compute': 'best-code-execution-tools-for-agents',
+  'storage-and-memory': 'best-storage-tools-for-agents',
+  'payments-and-commerce': 'best-payment-apis-for-agents',
+  'auth-and-identity': 'best-auth-tools-for-agents',
+  'ai-models': 'best-ai-model-apis',
+  // Legacy redirects
+  'best-database-tools-for-ai-agents': 'best-storage-tools-for-agents',
+  'best-mcp-servers-2026': 'best-storage-tools-for-agents',
+  'best-apis-for-agents': 'best-search-apis-for-agents',
+};
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const config = RANKING_CONFIGS[slug];
+  // Use canonical slug for metadata if this is a redirect slug
+  const canonical = SLUG_REDIRECTS[slug] ?? slug;
+  const config = RANKING_CONFIGS[canonical];
   if (!config) {
     return { title: 'Rankings — AgentPick' };
   }
@@ -103,7 +134,7 @@ export async function generateMetadata({
     openGraph: {
       title: config.title,
       description: config.description,
-      url: `https://agentpick.dev/rankings/${slug}`,
+      url: `https://agentpick.dev/rankings/${canonical}`,
       images: [{ url: `/api/og?type=ranking&category=${config.category ?? 'search_research'}`, width: 1200, height: 630 }],
     },
     twitter: {
@@ -141,6 +172,13 @@ export default async function RankingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  // 301 redirect non-canonical slugs to canonical SEO slug
+  const canonical = SLUG_REDIRECTS[slug];
+  if (canonical) {
+    permanentRedirect(`/rankings/${canonical}`);
+  }
+
   const config = RANKING_CONFIGS[slug];
 
   if (!config) {
