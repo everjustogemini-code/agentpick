@@ -89,7 +89,7 @@ async function generateComment(
 function generateProof(
   productSlug: string,
   signal: 'UPVOTE' | 'DOWNVOTE',
-): { hash: string; details: Record<string, unknown> } {
+): { hash: string; details: { method: string; endpoint: string; status_code: number; latency_ms: number; timestamp: string; source: string } } {
   const methods = ['GET', 'POST', 'PUT'];
   const method = methods[Math.floor(Math.random() * methods.length)];
   const statusCodes =
