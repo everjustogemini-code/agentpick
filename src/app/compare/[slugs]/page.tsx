@@ -11,12 +11,17 @@ function fmt(n: number): string {
 }
 
 const ACCENT_COLORS: Record<string, string> = {
-  api: '#0EA5E9',
-  mcp: '#8B5CF6',
-  skill: '#F97316',
-  data: '#10B981',
-  infra: '#EF4444',
-  platform: '#3B82F6',
+  search_research: '#0EA5E9',
+  web_crawling: '#8B5CF6',
+  code_compute: '#F97316',
+  storage_memory: '#10B981',
+  communication: '#3B82F6',
+  payments_commerce: '#22C55E',
+  finance_data: '#F59E0B',
+  auth_identity: '#6366F1',
+  scheduling: '#14B8A6',
+  ai_models: '#8B5CF6',
+  observability: '#EF4444',
 };
 
 function parseSlugs(slugs: string): [string, string] | null {
