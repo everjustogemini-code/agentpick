@@ -364,6 +364,11 @@ export default async function ProductDetailPage({ params }: Props) {
               <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.8px] ${badge.bg} ${badge.text}`}>
                 {product.category}
               </span>
+              {product.isClaimed && (
+                <span className="rounded-full bg-green-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-green-600">
+                  Claimed ✓
+                </span>
+              )}
             </div>
             <p className="mt-1 text-text-muted">{product.tagline}</p>
             <div className="mt-2 flex items-center gap-3">
@@ -593,14 +598,16 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🔑</span>
-                <span className="text-sm text-text-secondary">Claim this product</span>
+                <span className="text-sm text-text-secondary">
+                  {product.isClaimed ? 'Maker dashboard' : 'Claim this product'}
+                </span>
               </div>
-              <a
-                href={`mailto:hello@agentpick.dev?subject=Claim: ${product.name}`}
+              <Link
+                href={product.isClaimed ? `/dashboard/${slug}` : `/claim/${slug}`}
                 className="rounded-lg bg-button-primary-bg px-3 py-1.5 text-xs font-semibold text-button-primary-text"
               >
-                Claim →
-              </a>
+                {product.isClaimed ? 'Dashboard →' : 'Claim →'}
+              </Link>
             </div>
           </div>
         </div>
