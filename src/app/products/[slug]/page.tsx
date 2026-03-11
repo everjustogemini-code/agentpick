@@ -180,6 +180,77 @@ export default async function ProductDetailPage({ params }: Props) {
   const criticsSilent = critics.filter((v) => !v.comment);
   const allSilent = [...advocatesSilent, ...criticsSilent];
 
+  // ═══ Benchmark Data ═══
+  const benchmarkRuns = await prisma.benchmarkRun.findMany({
+    where: { productId: product.id },
+    select: {
+      latencyMs: true,
+      success: true,
+      costUsd: true,
+      relevanceScore: true,
+      freshnessScore: true,
+      completenessScore: true,
+      domain: true,
+    },
+  });
+
+  const benchmarkCount = benchmarkRuns.length;
+  const hasBenchmarkData = benchmarkCount >= 30;
+
+  // Compute benchmark stats
+  let benchmarkStats: {
+    p50Latency: number;
+    p99Latency: number;
+    successRate: number;
+    avgCost: number;
+    totalAgents: number;
+    domains: { domain: string; relevance: number; count: number }[];
+  } | null = null;
+
+  if (hasBenchmarkData) {
+    const latencies = benchmarkRuns.map((r) => r.latencyMs).sort((a, b) => a - b);
+    const p50Idx = Math.floor(latencies.length * 0.5);
+    const p99Idx = Math.floor(latencies.length * 0.99);
+    const successCount = benchmarkRuns.filter((r) => r.success).length;
+    const costs = benchmarkRuns.filter((r) => r.costUsd != null).map((r) => r.costUsd!);
+    const avgCost = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
+
+    // Count unique benchmark agents
+    const benchmarkAgentCount = await prisma.benchmarkRun.findMany({
+      where: { productId: product.id },
+      select: { benchmarkAgentId: true },
+      distinct: ['benchmarkAgentId'],
+    });
+
+    // Domain breakdown
+    const domainMap = new Map<string, { totalRelevance: number; count: number }>();
+    for (const run of benchmarkRuns) {
+      if (run.relevanceScore != null) {
+        const existing = domainMap.get(run.domain) ?? { totalRelevance: 0, count: 0 };
+        existing.totalRelevance += run.relevanceScore;
+        existing.count++;
+        domainMap.set(run.domain, existing);
+      }
+    }
+    const domains = [...domainMap.entries()]
+      .map(([domain, { totalRelevance, count }]) => ({
+        domain,
+        relevance: totalRelevance / count,
+        count,
+      }))
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, 6);
+
+    benchmarkStats = {
+      p50Latency: latencies[p50Idx],
+      p99Latency: latencies[p99Idx],
+      successRate: (successCount / benchmarkCount) * 100,
+      avgCost,
+      totalAgents: benchmarkAgentCount.length,
+      domains,
+    };
+  }
+
   // "Agents also use" — find products that share the most voters
   const voterAgentIds = product.votes.map((v) => v.agent.id);
   let alsoUse: { name: string; slug: string; overlap: number }[] = [];
@@ -375,6 +446,101 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
           </div>
         </div>
+
+        {/* ═══ Benchmark Performance ═══ */}
+        {hasBenchmarkData && benchmarkStats ? (
+          <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+                Performance (Benchmark Data)
+              </div>
+              <span className="font-mono text-[10px] text-text-dim">
+                Last 30 days · {benchmarkCount} tests
+              </span>
+            </div>
+
+            {/* Key metrics */}
+            <div className="mb-6 grid grid-cols-4 gap-3">
+              <div className="rounded-lg bg-bg-muted p-3 text-center">
+                <div className="font-mono text-lg font-bold text-text-primary">{benchmarkStats.p50Latency}ms</div>
+                <div className="text-[10px] text-text-dim">p50 Latency</div>
+              </div>
+              <div className="rounded-lg bg-bg-muted p-3 text-center">
+                <div className="font-mono text-lg font-bold text-text-primary">{benchmarkStats.p99Latency}ms</div>
+                <div className="text-[10px] text-text-dim">p99 Latency</div>
+              </div>
+              <div className="rounded-lg bg-bg-muted p-3 text-center">
+                <div className="font-mono text-lg font-bold text-text-primary">{benchmarkStats.successRate.toFixed(1)}%</div>
+                <div className="text-[10px] text-text-dim">Success Rate</div>
+              </div>
+              <div className="rounded-lg bg-bg-muted p-3 text-center">
+                <div className="font-mono text-lg font-bold text-text-primary">
+                  ${benchmarkStats.avgCost < 0.01 ? benchmarkStats.avgCost.toFixed(4) : benchmarkStats.avgCost.toFixed(3)}
+                </div>
+                <div className="text-[10px] text-text-dim">Cost/Call</div>
+              </div>
+            </div>
+
+            <div className="mb-2 font-mono text-[10px] text-text-dim">
+              Tested by {benchmarkStats.totalAgents} agents across {benchmarkStats.domains.length} domains
+            </div>
+
+            {/* Domain breakdown */}
+            {benchmarkStats.domains.length > 0 && (
+              <div className="space-y-2">
+                {benchmarkStats.domains.map((d) => {
+                  const pct = (d.relevance / 5) * 100;
+                  return (
+                    <div key={d.domain} className="flex items-center gap-3">
+                      <span className="w-24 font-mono text-[11px] capitalize text-text-secondary">
+                        {d.domain}
+                      </span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: accent }}
+                        />
+                      </div>
+                      <span className="w-12 text-right font-mono text-[11px] font-semibold text-text-primary">
+                        {d.relevance.toFixed(1)}/5
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="mt-5 text-center">
+              <Link
+                href={`/playground?tools=${slug}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
+              >
+                Test in Your Scenario
+              </Link>
+            </div>
+          </div>
+        ) : benchmarkCount > 0 ? (
+          <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+              Performance (Benchmark Data)
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${(benchmarkCount / 30) * 100}%`, backgroundColor: accent }}
+                />
+              </div>
+              <span className="font-mono text-[11px] text-text-dim">
+                {benchmarkCount}/30 tests
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-text-dim">
+              Benchmark in progress — results will appear after 30 tests are completed.
+            </p>
+          </div>
+        ) : null}
 
         {/* ═══ For Makers ═══ */}
         <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">

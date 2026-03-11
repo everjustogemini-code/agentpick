@@ -111,9 +111,27 @@ export async function generateMetadata({
   const nameA = a?.name ?? parsed[0];
   const nameB = b?.name ?? parsed[1];
 
+  // Try to include benchmark data in meta description
+  let benchDesc = '';
+  if (a && b) {
+    const [metaA, metaB] = await Promise.all([
+      prisma.product.findUnique({ where: { slug: slugA }, select: { id: true } }),
+      prisma.product.findUnique({ where: { slug: slugB }, select: { id: true } }),
+    ]);
+    if (metaA && metaB) {
+      const [countA, countB] = await Promise.all([
+        prisma.benchmarkRun.count({ where: { productId: metaA.id } }),
+        prisma.benchmarkRun.count({ where: { productId: metaB.id } }),
+      ]);
+      if (countA + countB > 20) {
+        benchDesc = ` ${countA + countB} agent benchmarks.`;
+      }
+    }
+  }
+
   return {
     title: `${nameA} vs ${nameB} — AgentPick`,
-    description: `Head-to-head comparison of ${nameA} and ${nameB} based on AI agent voting data and verified usage.`,
+    description: `Head-to-head comparison of ${nameA} and ${nameB}.${benchDesc} Based on AI agent voting data and verified usage.`,
     openGraph: {
       title: `${nameA} vs ${nameB} — Agent Comparison`,
       description: `Compare ${nameA} and ${nameB} — ranked by AI agent votes on AgentPick.`,
@@ -228,6 +246,100 @@ export default async function ComparePage({
   const agentsA = new Set(productA.votes.map((v) => v.agent.name));
   const agentsB = new Set(productB.votes.map((v) => v.agent.name));
   const sharedAgents = [...agentsA].filter((a) => agentsB.has(a));
+
+  // Capture names for use in closures (TypeScript narrowing doesn't propagate into nested functions)
+  const nameA2 = productA.name;
+  const nameB2 = productB.name;
+
+  // Auto-generate benchmark verdict
+  function generateBenchVerdict() {
+    if (!benchA || !benchB) return null;
+    const parts: string[] = [];
+    if (benchA.avgRelevance > benchB.avgRelevance + 0.2) {
+      parts.push(`${nameA2} wins on relevance (${benchA.avgRelevance.toFixed(1)} vs ${benchB.avgRelevance.toFixed(1)})`);
+    } else if (benchB.avgRelevance > benchA.avgRelevance + 0.2) {
+      parts.push(`${nameB2} wins on relevance (${benchB.avgRelevance.toFixed(1)} vs ${benchA.avgRelevance.toFixed(1)})`);
+    }
+    if (benchA.avgLatency < benchB.avgLatency * 0.8) {
+      parts.push(`${nameA2} is faster (${benchA.avgLatency}ms vs ${benchB.avgLatency}ms)`);
+    } else if (benchB.avgLatency < benchA.avgLatency * 0.8) {
+      parts.push(`${nameB2} is faster (${benchB.avgLatency}ms vs ${benchA.avgLatency}ms)`);
+    }
+    if (benchA.avgCost < benchB.avgCost * 0.7) {
+      parts.push(`${nameA2} is cheaper`);
+    } else if (benchB.avgCost < benchA.avgCost * 0.7) {
+      parts.push(`${nameB2} is cheaper`);
+    }
+    if (parts.length === 0) return 'Both tools perform similarly across benchmarks.';
+    return parts.join('. ') + '.';
+  }
+
+  // ═══ Benchmark Head-to-Head ═══
+  const [benchRunsA, benchRunsB] = await Promise.all([
+    prisma.benchmarkRun.findMany({
+      where: { productId: productA.id },
+      select: { latencyMs: true, success: true, costUsd: true, relevanceScore: true, domain: true },
+    }),
+    prisma.benchmarkRun.findMany({
+      where: { productId: productB.id },
+      select: { latencyMs: true, success: true, costUsd: true, relevanceScore: true, domain: true },
+    }),
+  ]);
+
+  const totalBenchTests = benchRunsA.length + benchRunsB.length;
+  const hasBenchH2H = benchRunsA.length >= 10 && benchRunsB.length >= 10;
+
+  function computeBenchStats(runs: typeof benchRunsA) {
+    if (runs.length === 0) return null;
+    const latencies = runs.map((r) => r.latencyMs).sort((a, b) => a - b);
+    const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+    const p99Idx = Math.floor(latencies.length * 0.99);
+    const successCount = runs.filter((r) => r.success).length;
+    const relevanceScores = runs.filter((r) => r.relevanceScore != null).map((r) => r.relevanceScore!);
+    const avgRelevance = relevanceScores.length > 0 ? relevanceScores.reduce((a, b) => a + b, 0) / relevanceScores.length : 0;
+    const costs = runs.filter((r) => r.costUsd != null).map((r) => r.costUsd!);
+    const avgCost = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
+
+    // Domain breakdown
+    const domainMap = new Map<string, { totalRelevance: number; count: number }>();
+    for (const run of runs) {
+      if (run.relevanceScore != null) {
+        const e = domainMap.get(run.domain) ?? { totalRelevance: 0, count: 0 };
+        e.totalRelevance += run.relevanceScore;
+        e.count++;
+        domainMap.set(run.domain, e);
+      }
+    }
+
+    return {
+      avgLatency,
+      p99Latency: latencies[p99Idx],
+      successRate: (successCount / runs.length) * 100,
+      avgRelevance,
+      avgCost,
+      count: runs.length,
+      domains: domainMap,
+    };
+  }
+
+  const benchA = computeBenchStats(benchRunsA);
+  const benchB = computeBenchStats(benchRunsB);
+
+  // Get shared domains for comparison
+  let domainComparison: { domain: string; relevA: number; relevB: number }[] = [];
+  if (benchA && benchB) {
+    const allDomains = new Set([...benchA.domains.keys(), ...benchB.domains.keys()]);
+    domainComparison = [...allDomains]
+      .filter((d) => benchA.domains.has(d) && benchB.domains.has(d))
+      .map((d) => ({
+        domain: d,
+        relevA: benchA.domains.get(d)!.totalRelevance / benchA.domains.get(d)!.count,
+        relevB: benchB.domains.get(d)!.totalRelevance / benchB.domains.get(d)!.count,
+      }))
+      .sort((a, b) => Math.max(b.relevA, b.relevB) - Math.max(a.relevA, a.relevB))
+      .slice(0, 5);
+  }
+
 
   return (
     <div className="min-h-screen bg-bg-page">
@@ -383,6 +495,120 @@ export default async function ComparePage({
                   {agent}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Head-to-Head Benchmark */}
+        {hasBenchH2H && benchA && benchB && (
+          <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-sm font-[650] text-text-primary">
+                Head-to-Head Benchmark
+              </h2>
+              <span className="font-mono text-[10px] text-text-dim">
+                {totalBenchTests} tests
+              </span>
+            </div>
+
+            {/* Metrics table */}
+            <div className="overflow-hidden rounded-lg border border-border-default">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-bg-muted">
+                    <th className="px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-text-dim">Metric</th>
+                    <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">{productA.name}</th>
+                    <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">{productB.name}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-default">
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs text-text-secondary">Avg Latency</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchA.avgLatency}ms {benchA.avgLatency < benchB.avgLatency ? '★' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchB.avgLatency}ms {benchB.avgLatency < benchA.avgLatency ? '★' : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs text-text-secondary">p99 Latency</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchA.p99Latency}ms {benchA.p99Latency < benchB.p99Latency ? '★' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchB.p99Latency}ms {benchB.p99Latency < benchA.p99Latency ? '★' : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs text-text-secondary">Success Rate</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchA.successRate.toFixed(1)}% {benchA.successRate > benchB.successRate ? '★' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchB.successRate.toFixed(1)}% {benchB.successRate > benchA.successRate ? '★' : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs text-text-secondary">Relevance</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchA.avgRelevance.toFixed(1)}/5 {benchA.avgRelevance > benchB.avgRelevance ? '★' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      {benchB.avgRelevance.toFixed(1)}/5 {benchB.avgRelevance > benchA.avgRelevance ? '★' : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 text-xs text-text-secondary">Cost/Call</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      ${benchA.avgCost < 0.01 ? benchA.avgCost.toFixed(4) : benchA.avgCost.toFixed(3)} {benchA.avgCost < benchB.avgCost ? '★' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold text-text-primary">
+                      ${benchB.avgCost < 0.01 ? benchB.avgCost.toFixed(4) : benchB.avgCost.toFixed(3)} {benchB.avgCost < benchA.avgCost ? '★' : ''}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Domain breakdown */}
+            {domainComparison.length > 0 && (
+              <div className="mt-5">
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                  By Domain
+                </div>
+                <div className="space-y-2">
+                  {domainComparison.map((d) => (
+                    <div key={d.domain} className="flex items-center gap-3 text-xs">
+                      <span className="w-20 font-mono capitalize text-text-secondary">{d.domain}</span>
+                      <span className="w-28 text-right font-mono font-semibold text-text-primary">
+                        {productA.name} {d.relevA.toFixed(1)}
+                      </span>
+                      <span className="w-28 text-right font-mono font-semibold text-text-primary">
+                        {productB.name} {d.relevB.toFixed(1)}
+                      </span>
+                      <span className="font-mono text-[10px] text-text-dim">
+                        {d.relevA > d.relevB + 0.1 ? '★ ' + productA.name : d.relevB > d.relevA + 0.1 ? '★ ' + productB.name : 'Tie'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Benchmark verdict */}
+            <p className="mt-5 text-sm leading-relaxed text-text-secondary">
+              {generateBenchVerdict()}
+            </p>
+
+            {/* CTA */}
+            <div className="mt-4 text-center">
+              <Link
+                href={`/playground?tools=${slugA},${slugB}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
+              >
+                Run Your Own Comparison
+              </Link>
             </div>
           </div>
         )}
