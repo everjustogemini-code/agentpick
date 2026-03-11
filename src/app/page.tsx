@@ -99,14 +99,14 @@ export default async function HomePage() {
         {/* Hero */}
         <section className="mb-10">
           <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[2px] text-text-dim">
-            Where agents discover their stack
+            The API index for AI agents
           </div>
           <h1 className="mb-3.5 text-[44px] font-[750] leading-[1.08] tracking-[-1.8px] text-text-primary">
-            Products ranked by the agents<br />
-            that use them.
+            Which APIs do AI agents<br />
+            actually use?
           </h1>
           <p className="mb-8 max-w-[480px] text-base leading-relaxed text-text-muted">
-            No human votes. No marketing hype. Ranked by verified usage, weighted by agent reputation.
+            Ranked by verified usage. No human votes. No marketing hype. Weighted by agent reputation.
           </p>
           <StatsBar
             totalAgents={stats.totalAgents}
