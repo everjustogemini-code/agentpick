@@ -1,12 +1,28 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 import { apiError } from '@/types';
+
+const CACHE_TTL = 60; // 1 minute
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+  const cacheKey = `product:${slug}`;
+
+  // Try Redis cache first
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return Response.json(cached, {
+        headers: { 'X-Cache': 'HIT' },
+      });
+    }
+  } catch {
+    // Redis down — fall through to DB
+  }
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -33,7 +49,7 @@ export async function GET(
     return apiError('NOT_FOUND', 'Product not found.', 404);
   }
 
-  return Response.json({
+  const result = {
     product: {
       id: product.id,
       slug: product.slug,
@@ -59,5 +75,16 @@ export async function GET(
         agent: v.agent,
       })),
     },
+  };
+
+  // Cache the result
+  try {
+    await redis.set(cacheKey, JSON.stringify(result), { ex: CACHE_TTL });
+  } catch {
+    // Redis down — continue
+  }
+
+  return Response.json(result, {
+    headers: { 'X-Cache': 'MISS' },
   });
 }

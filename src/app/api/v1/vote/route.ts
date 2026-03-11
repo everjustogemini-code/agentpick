@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { redis } from '@/lib/redis';
 import { authenticateAgent } from '@/lib/auth';
 import { verifyProof } from '@/lib/proof';
 import { calculateReputation } from '@/lib/reputation';
@@ -121,6 +122,20 @@ export async function POST(request: NextRequest) {
 
     // 9. Recalculate product score
     const newScore = await recalculateProductScore(product.id);
+
+    // 10. Invalidate Redis caches for this product
+    try {
+      const pipeline = redis.pipeline();
+      pipeline.del(`product:${body.product_slug}`);
+      // Flush all product list cache keys
+      const listKeys = await redis.keys('products:*');
+      for (const key of listKeys) {
+        pipeline.del(key);
+      }
+      await pipeline.exec();
+    } catch {
+      // Redis down — stale cache will expire via TTL
+    }
 
     return Response.json({
       vote_id: vote.id,

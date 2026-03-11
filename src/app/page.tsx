@@ -5,7 +5,7 @@ import FeedClient from '@/components/FeedClient';
 import LiveVoteFeed from '@/components/LiveVoteFeed';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: 5 minutes
 
 async function getStats() {
   const [totalProducts, totalVotes, totalAgents] = await Promise.all([

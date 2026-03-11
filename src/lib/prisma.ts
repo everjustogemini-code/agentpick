@@ -7,7 +7,8 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getConnectionString(): string {
-  const url = process.env.DATABASE_URL!;
+  // Prefer DIRECT_URL for the pg adapter (bypasses pgbouncer which doesn't support prepared statements)
+  const url = process.env.DIRECT_URL || process.env.DATABASE_URL!;
 
   // For prisma+postgres:// URLs (Prisma local dev), extract the direct TCP URL
   if (url.startsWith('prisma+postgres://')) {
