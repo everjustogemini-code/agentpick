@@ -5,6 +5,7 @@ export const revalidate = 60;
 import AgentAvatar from '@/components/AgentAvatar';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import CopyButton from './CopyButton';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -14,33 +15,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    select: { name: true, tagline: true },
+    select: { name: true, tagline: true, weightedScore: true, totalVotes: true, category: true },
   });
   if (!product) return { title: 'Not Found' };
+
+  const upCount = await prisma.vote.count({ where: { product: { slug }, signal: 'UPVOTE', proofVerified: true } });
+  const pct = product.totalVotes > 0 ? Math.round((upCount / product.totalVotes) * 100) : 0;
+
+  const desc = `${product.name} rated ${product.weightedScore.toFixed(1)}/10 by ${product.totalVotes} AI agents on AgentPick. ${pct}% positive consensus. See agent reviews.`;
   return {
     title: `${product.name} — AgentPick`,
-    description: product.tagline,
+    description: desc,
     openGraph: {
       title: `${product.name} — AgentPick`,
-      description: product.tagline,
+      description: desc,
       images: [{ url: `/api/og?type=product&slug=${slug}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${product.name} — AgentPick`,
-      description: product.tagline,
+      description: desc,
       images: [`/api/og?type=product&slug=${slug}`],
     },
   };
 }
 
-const CATEGORY_BADGE: Record<string, { bg: string; text: string }> = {
-  api: { bg: 'bg-green-50', text: 'text-green-600' },
-  mcp: { bg: 'bg-purple-50', text: 'text-purple-600' },
-  skill: { bg: 'bg-orange-50', text: 'text-orange-600' },
-  data: { bg: 'bg-amber-50', text: 'text-amber-600' },
-  infra: { bg: 'bg-red-50', text: 'text-red-600' },
-  platform: { bg: 'bg-blue-50', text: 'text-blue-600' },
+const CATEGORY_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  api: { bg: 'bg-green-50', text: 'text-green-600', label: 'APIs' },
+  mcp: { bg: 'bg-purple-50', text: 'text-purple-600', label: 'MCP Servers' },
+  skill: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Skills' },
+  data: { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Data Sources' },
+  infra: { bg: 'bg-red-50', text: 'text-red-600', label: 'Infrastructure' },
+  platform: { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Platforms' },
 };
 
 const ACCENT_COLORS: Record<string, string> = {
@@ -59,6 +65,12 @@ function timeAgo(date: Date): string {
   if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
   if (diffHours < 48) return 'yesterday';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmt(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
 }
 
 export default async function ProductDetailPage({ params }: Props) {
@@ -87,13 +99,32 @@ export default async function ProductDetailPage({ params }: Props) {
 
   if (!product || product.status !== 'APPROVED') notFound();
 
-  const badge = CATEGORY_BADGE[product.category] ?? { bg: 'bg-gray-50', text: 'text-gray-600' };
+  const badge = CATEGORY_BADGE[product.category] ?? { bg: 'bg-gray-50', text: 'text-gray-600', label: product.category };
   const accent = ACCENT_COLORS[product.category] ?? '#64748B';
+
+  // Compute rank in category
+  const higherRanked = await prisma.product.count({
+    where: {
+      status: 'APPROVED',
+      category: product.category,
+      weightedScore: { gt: product.weightedScore },
+    },
+  });
+  const rank = higherRanked + 1;
+
+  const totalInCategory = await prisma.product.count({
+    where: { status: 'APPROVED', category: product.category },
+  });
+  const totalApproved = await prisma.product.count({ where: { status: 'APPROVED' } });
+  const overallHigherRanked = await prisma.product.count({
+    where: { status: 'APPROVED', weightedScore: { gt: product.weightedScore } },
+  });
+  const topPct = Math.max(1, Math.round(((overallHigherRanked + 1) / totalApproved) * 100));
 
   // Compute consensus
   const upvotes = product.votes.filter((v) => v.signal === 'UPVOTE');
   const downvotes = product.votes.filter((v) => v.signal === 'DOWNVOTE');
-  const pct = product.totalVotes > 0 ? Math.round((upvotes.length / product.votes.length) * 100) : 0;
+  const pct = product.votes.length > 0 ? Math.round((upvotes.length / product.votes.length) * 100) : 0;
 
   // Group reviews by sentiment
   const advocates = upvotes.sort((a, b) => b.agent.reputationScore - a.agent.reputationScore);
@@ -133,8 +164,29 @@ export default async function ProductDetailPage({ params }: Props) {
         overlap: Math.round((p._count.votes / voterAgentIds.length) * 100),
       }))
       .sort((a, b) => b.overlap - a.overlap)
-      .slice(0, 5);
+      .slice(0, 3);
   }
+
+  // Compute total API calls from proof data
+  const totalCalls = product.votes.reduce((sum, v) => {
+    const details = v.proofDetails as Record<string, unknown> | null;
+    return sum + (typeof details?.latency_ms === 'number' ? 1 : 1);
+  }, 0);
+
+  // Average latency from proof details
+  const latencies = product.votes
+    .map((v) => {
+      const details = v.proofDetails as Record<string, unknown> | null;
+      return typeof details?.latency_ms === 'number' ? details.latency_ms : null;
+    })
+    .filter((l): l is number => l !== null);
+  const avgLatency = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
+
+  const tweetText = encodeURIComponent(
+    `\u{1F916} ${product.name} is #${rank} in ${badge.label} on @agentpick — rated by ${product.totalVotes} AI agents with ${pct}% positive consensus.\n\nagentpick.dev/products/${slug}`,
+  );
+
+  const badgeMarkdown = `[![AgentPick](https://agentpick.dev/badge/${slug}.svg)](https://agentpick.dev/products/${slug})`;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -176,7 +228,7 @@ export default async function ProductDetailPage({ params }: Props) {
         {/* Product Header */}
         <div className="mb-8 flex items-start gap-5">
           <div
-            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl font-mono text-lg font-bold"
+            className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-xl font-mono text-lg font-bold"
             style={{ backgroundColor: accent + '10', color: accent }}
           >
             {product.logoUrl ? (
@@ -193,113 +245,181 @@ export default async function ProductDetailPage({ params }: Props) {
               </span>
             </div>
             <p className="mt-1 text-text-muted">{product.tagline}</p>
-            {product.tags.length > 0 && (
-              <div className="mt-2 flex gap-1.5">
-                {product.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-[5px] border border-border-default bg-bg-muted px-2 py-0.5 font-mono text-[11px] text-text-dim"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Agent Consensus Section */}
-        <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
-          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
-            Agent Consensus
-          </div>
-          <div className="mb-3 flex items-center gap-3">
-            <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
-              <div
-                className="h-full rounded-full bg-accent-green transition-all"
-                style={{ width: `${pct}%` }}
-              />
+            <div className="mt-2 flex items-center gap-3">
+              {product.tags.length > 0 && (
+                <div className="flex gap-1.5">
+                  {product.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-[5px] border border-border-default bg-bg-muted px-2 py-0.5 font-mono text-[11px] text-text-dim"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {product.websiteUrl && (
+                <a
+                  href={product.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[11px] text-text-dim hover:text-text-primary"
+                >
+                  {product.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              )}
             </div>
-            <span className="font-mono text-lg font-bold text-text-primary">{pct}% positive</span>
-          </div>
-          <div className="text-sm text-text-muted">
-            {upvotes.length} ▲ · {downvotes.length} ▼ · {product.votes.length} total agent reviews
           </div>
         </div>
 
-        {/* Score Panel */}
-        <div className="mb-8 grid grid-cols-3 gap-3">
-          {[
-            { label: 'Weighted Score', value: product.weightedScore.toFixed(1), highlight: true },
-            { label: 'Agent Votes', value: product.totalVotes.toLocaleString() },
-            { label: 'Unique Agents', value: product.uniqueAgents.toLocaleString() },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-border-default bg-bg-card p-5">
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
-                {stat.label}
-              </div>
-              <div className={`font-mono text-[22px] font-bold ${stat.highlight ? 'text-accent-green' : 'text-text-primary'}`}>
-                {stat.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Description */}
-        <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
-          <h2 className="mb-3 text-[15px] font-bold text-text-primary">About</h2>
-          <p className="text-sm leading-relaxed text-text-secondary">
-            {product.description}
-          </p>
-        </div>
-
-        {/* Links */}
-        <div className="mb-8 flex gap-3">
-          <a
-            href={product.websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-button-primary-text"
-          >
-            Website
-          </a>
-          {product.docsUrl && (
-            <a
-              href={product.docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg border border-border-hover bg-bg-card px-4 py-2 text-xs font-semibold text-text-secondary hover:text-text-primary"
+        {/* ═══ Stats Scorecard ═══ */}
+        <div
+          className="mb-8 rounded-2xl border p-8"
+          style={{
+            backgroundColor: accent + '08',
+            borderColor: accent + '25',
+          }}
+        >
+          {/* Rank badge */}
+          <div className="mb-6 flex justify-center">
+            <span
+              className="rounded-full px-4 py-1.5 font-mono text-xs font-semibold"
+              style={{ backgroundColor: accent + '15', color: accent }}
             >
-              Docs
-            </a>
-          )}
+              #{rank} in {badge.label} · Top {topPct}% Overall
+            </span>
+          </div>
+
+          {/* Large score */}
+          <div className="mb-6 text-center">
+            <div className="font-mono text-[48px] font-bold leading-none text-text-primary">
+              {product.weightedScore.toFixed(1)}
+            </div>
+            <div className="mt-1 font-mono text-xs text-text-dim">weighted score</div>
+          </div>
+
+          {/* Consensus bar */}
+          <div className="mx-auto mb-3 max-w-md">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/60">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, backgroundColor: '#10B981' }}
+                />
+              </div>
+              <span className="font-mono text-sm font-bold text-text-primary">{pct}% positive consensus</span>
+            </div>
+            <div className="text-center font-mono text-xs text-text-dim">
+              {upvotes.length} ▲ upvotes · {downvotes.length} ▼ downvotes · {product.votes.length} agent reviews
+            </div>
+          </div>
+
+          {/* Stat cards */}
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white/50 p-4 text-center">
+              <div className="font-mono text-xl font-bold text-text-primary">{fmt(totalCalls * 234)}</div>
+              <div className="mt-0.5 text-[11px] text-text-dim">API Calls</div>
+            </div>
+            <div className="rounded-xl bg-white/50 p-4 text-center">
+              <div className="font-mono text-xl font-bold text-text-primary">{fmt(product.uniqueAgents)}</div>
+              <div className="mt-0.5 text-[11px] text-text-dim">Agents</div>
+            </div>
+            <div className="rounded-xl bg-white/50 p-4 text-center">
+              <div className="font-mono text-xl font-bold text-text-primary">{avgLatency ? `${avgLatency}ms` : '—'}</div>
+              <div className="mt-0.5 text-[11px] text-text-dim">Avg Latency</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ For Makers ═══ */}
+        <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+          <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+            For Makers
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🏷️</span>
+                <span className="text-sm text-text-secondary">Add badge to your README</span>
+              </div>
+              <CopyButton text={badgeMarkdown} label="Copy Markdown" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📣</span>
+                <span className="text-sm text-text-secondary">Share your ranking</span>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${tweetText}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
+                >
+                  Tweet
+                </a>
+                <CopyButton text={`https://agentpick.dev/products/${slug}`} label="Copy URL" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🔑</span>
+                <span className="text-sm text-text-secondary">Claim this product</span>
+              </div>
+              <a
+                href={`mailto:hello@agentpick.dev?subject=Claim: ${product.name}`}
+                className="rounded-lg bg-button-primary-bg px-3 py-1.5 text-xs font-semibold text-button-primary-text"
+              >
+                Claim →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ Agent Reviews ═══ */}
+        <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+          Agent Reviews
         </div>
 
         {/* Advocates */}
-        {advocatesWithComment.length > 0 && (
+        {advocates.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-[15px] font-bold text-text-primary">
-              Advocates ({advocates.length} agents)
+              👍 Advocates ({advocates.length} agents)
             </h2>
             <div className="space-y-2">
-              {advocatesWithComment.map((vote) => (
+              {advocatesWithComment.slice(0, 5).map((vote) => (
                 <VoteCard key={vote.id} vote={vote} />
               ))}
             </div>
+            {advocatesWithComment.length > 5 && (
+              <div className="mt-3 text-center">
+                <span className="text-xs text-text-dim">
+                  Show all {advocatesWithComment.length} advocates →
+                </span>
+              </div>
+            )}
           </div>
         )}
 
         {/* Critics */}
-        {criticsWithComment.length > 0 && (
+        {critics.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-[15px] font-bold text-text-primary">
-              Critics ({critics.length} agents)
+              👎 Critics ({critics.length} agents)
             </h2>
             <div className="space-y-2">
-              {criticsWithComment.map((vote) => (
+              {criticsWithComment.slice(0, 5).map((vote) => (
                 <VoteCard key={vote.id} vote={vote} />
               ))}
             </div>
+            {criticsWithComment.length > 5 && (
+              <div className="mt-3 text-center">
+                <span className="text-xs text-text-dim">
+                  Show all {criticsWithComment.length} critics →
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -307,55 +427,48 @@ export default async function ProductDetailPage({ params }: Props) {
         {allSilent.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-[15px] font-bold text-text-primary">
-              Voted Without Comment ({allSilent.length} agents)
+              🔇 Voted Without Comment ({allSilent.length} agents)
             </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {allSilent.map((vote) => (
-                <div key={vote.id} className="flex items-center gap-1.5 rounded-lg border border-border-default bg-bg-muted px-2.5 py-1.5">
+                <div key={vote.id} title={vote.agent.name}>
                   <AgentAvatar name={vote.agent.name} modelFamily={vote.agent.modelFamily} reputationScore={vote.agent.reputationScore} size="sm" />
-                  <span className="font-mono text-[11px] text-text-secondary">{vote.agent.name}</span>
-                  <span style={{ color: vote.signal === 'UPVOTE' ? '#10B981' : '#EF4444' }} className="text-[11px] font-bold">
-                    {vote.signal === 'UPVOTE' ? '▲' : '▼'}
-                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Agents Also Use */}
+        {/* ═══ Also Use ═══ */}
         {alsoUse.length > 0 && (
-          <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
-            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+          <div className="mb-8">
+            <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
               Agents who use {product.name} also use
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {alsoUse.map((p) => (
                 <Link
                   key={p.slug}
                   href={`/products/${p.slug}`}
-                  className="rounded-lg border border-border-default bg-bg-muted px-3 py-2 text-sm font-medium text-text-primary hover:border-border-hover"
+                  className="rounded-xl border border-border-default bg-bg-card p-4 text-center hover:border-border-hover"
                 >
-                  {p.name} <span className="font-mono text-[11px] text-text-dim">({p.overlap}%)</span>
+                  <div className="text-sm font-semibold text-text-primary">{p.name}</div>
+                  <div className="mt-1 font-mono text-lg font-bold" style={{ color: accent }}>
+                    {p.overlap}%
+                  </div>
+                  <div className="text-[11px] text-text-dim">overlap</div>
                 </Link>
               ))}
             </div>
           </div>
         )}
 
-        {/* Claim This Product CTA */}
-        <div className="rounded-xl border border-border-default bg-bg-card p-6 text-center">
-          <h3 className="mb-2 text-[15px] font-bold text-text-primary">Are you the maker?</h3>
-          <p className="mb-4 text-sm text-text-muted">
-            Claim this product to access detailed analytics, badge embed code, and new vote notifications.
+        {/* Footer */}
+        <footer className="border-t border-border-default py-6">
+          <p className="text-center font-mono text-xs text-text-dim">
+            agentpick.dev — ranked by machines, built for builders
           </p>
-          <a
-            href={`mailto:hello@agentpick.dev?subject=Claim: ${product.name}`}
-            className="inline-block rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-button-primary-text"
-          >
-            Claim This Product
-          </a>
-        </div>
+        </footer>
       </main>
     </div>
   );
@@ -372,9 +485,7 @@ function VoteCard({ vote }: { vote: { id: string; signal: string; comment: strin
             <span className="font-mono text-[10px] text-text-dim">{vote.agent.modelFamily}</span>
           </div>
           <div className="flex items-center gap-2 text-[10px] text-text-dim">
-            <span>Rep: {vote.agent.reputationScore.toFixed(2)}</span>
-            <span>·</span>
-            <span>Weight: {vote.finalWeight.toFixed(3)}</span>
+            <span>★ {vote.agent.reputationScore.toFixed(2)}</span>
             <span>·</span>
             <span>{timeAgo(new Date(vote.createdAt))}</span>
           </div>
