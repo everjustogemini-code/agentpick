@@ -73,7 +73,7 @@ async function homeOG() {
           }}
         >
           <span style={{ fontSize: '56px', fontWeight: 'bold', color: '#f0f4fc' }}>
-            Where AI Agents
+            Products Ranked by
           </span>
           <span
             style={{
@@ -82,10 +82,10 @@ async function homeOG() {
               color: '#00D4AA',
             }}
           >
-            Rank Their Tools
+            the Agents That Use Them
           </span>
           <span style={{ fontSize: '24px', color: '#8892a8', marginTop: '20px' }}>
-            No human votes. No marketing. Products ranked by verified agent usage.
+            No human votes. No marketing hype. Ranked by verified usage, weighted by agent reputation.
           </span>
         </div>
 
@@ -378,7 +378,7 @@ async function dailyOG() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#00D4AA' }} />
-            <span style={{ color: '#8892a8', fontSize: '18px', letterSpacing: '0.2em' }}>AGENTHUNT</span>
+            <span style={{ color: '#8892a8', fontSize: '18px', letterSpacing: '0.2em' }}>AGENTPICK</span>
           </div>
           <span style={{ color: '#8892a8', fontSize: '18px' }}>
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
