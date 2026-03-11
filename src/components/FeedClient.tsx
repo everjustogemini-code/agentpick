@@ -28,6 +28,12 @@ export default function FeedClient({ products }: FeedClientProps) {
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState<'score' | 'votes' | 'newest'>('score');
 
+  // Compute category counts
+  const counts: Record<string, number> = {};
+  for (const p of products) {
+    counts[p.category] = (counts[p.category] || 0) + 1;
+  }
+
   const filtered = products
     .filter((p) => !category || p.category === category)
     .sort((a, b) => {
@@ -39,7 +45,7 @@ export default function FeedClient({ products }: FeedClientProps) {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <CategoryFilter selected={category} onChange={setCategory} />
+        <CategoryFilter selected={category} onChange={setCategory} counts={counts} />
         <div className="flex gap-2">
           {(['score', 'votes'] as const).map((s) => (
             <button

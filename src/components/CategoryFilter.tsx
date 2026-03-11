@@ -18,22 +18,28 @@ const CATEGORIES = [
 interface CategoryFilterProps {
   selected: string;
   onChange: (category: string) => void;
+  counts?: Record<string, number>;
 }
 
-export default function CategoryFilter({ selected, onChange }: CategoryFilterProps) {
+export default function CategoryFilter({ selected, onChange, counts }: CategoryFilterProps) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 md:flex-wrap">
       {CATEGORIES.map((cat) => (
         <button
           key={cat.slug}
           onClick={() => onChange(cat.slug)}
-          className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-[7px] text-[13px] font-medium transition-all ${
+          className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3.5 py-[7px] text-[13px] font-medium transition-all ${
             selected === cat.slug
               ? 'border-text-primary bg-button-primary-bg text-button-primary-text'
               : 'border-border-hover bg-white text-text-muted hover:border-text-dim'
           }`}
         >
           {cat.label}
+          {counts && cat.slug && counts[cat.slug] !== undefined && (
+            <span className={`text-[10px] ${selected === cat.slug ? 'opacity-70' : 'text-text-dim'}`}>
+              {counts[cat.slug]}
+            </span>
+          )}
         </button>
       ))}
     </div>
