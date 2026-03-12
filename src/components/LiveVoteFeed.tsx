@@ -17,12 +17,20 @@ interface FeedItem {
 }
 
 function timeAgo(dateStr: string): string {
+  if (!dateStr) return 'just now';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'just now';
   const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return 'just now';
   const diffHours = diffMs / (1000 * 60 * 60);
-  if (diffHours < 1) return `${Math.floor(diffMs / 60000)}m`;
-  if (diffHours < 24) return `${Math.floor(diffHours)}h`;
-  if (diffHours < 48) return '1d';
+  if (diffHours < 1) {
+    const mins = Math.floor(diffMs / 60000);
+    return mins < 1 ? 'just now' : `${mins}m ago`;
+  }
+  if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
+  if (diffHours < 48) return '1d ago';
+  const days = Math.floor(diffHours / 24);
+  if (days < 30) return `${days}d ago`;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -62,7 +70,16 @@ export default function LiveVoteFeed({
       try {
         const res = await fetch('/api/v1/votes/recent');
         const data = await res.json();
-        if (data.votes) setItems(data.votes);
+        if (data.votes) {
+          setItems((prev) => {
+            // Keep non-vote items (benchmark, playground, xray, arena) from SSR
+            const nonVoteItems = prev.filter((item) => item.type && item.type !== 'vote');
+            // Merge fresh votes with preserved non-vote items, re-sort
+            const merged = [...(data.votes as FeedItem[]), ...nonVoteItems];
+            merged.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+            return merged;
+          });
+        }
       } catch {
         // ignore
       }
