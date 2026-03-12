@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 import AgentAvatar from '@/components/AgentAvatar';
 import Link from 'next/link';
 import type { Metadata } from 'next';

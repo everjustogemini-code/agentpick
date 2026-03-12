@@ -6,7 +6,7 @@ import LiveVoteFeed from '@/components/LiveVoteFeed';
 import Link from 'next/link';
 import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
 
-export const revalidate = 300; // ISR: 5 minutes
+export const dynamic = 'force-dynamic';
 
 async function getStats() {
   const [totalProducts, totalVotes, totalAgents] = await Promise.all([

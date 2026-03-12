@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
 import { RANKING_STATUSES } from '@/lib/product-status';
 
-export const revalidate = 3600; // ISR: 1 hour
+export const dynamic = 'force-dynamic';
 
 const RANKING_CONFIGS: Record<
   string,
