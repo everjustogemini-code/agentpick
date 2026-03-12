@@ -28,13 +28,38 @@ export async function evaluateResult(
           content: `Score this search API result. Respond ONLY with JSON, no other text.
 
 Query: "${query}"
-${intent ? `Expected: "${intent}"` : ''}
+${intent ? `Context: "${intent}"` : ''}
 
 Result (truncated):
 ${resultStr}
 
-Score each 0-5 (0=terrible, 5=perfect):
-{"relevance": <number>, "freshness": <number>, "completeness": <number>, "reasoning": "<1 sentence>"}`,
+Use this rubric for RELEVANCE (0-5):
+5: All results directly relevant, includes primary/authoritative sources
+4: Most results relevant with minor gaps or tangential items
+3: Mixed — some results relevant, some clearly off-topic
+2: Few relevant results, mostly unrelated content
+1: Almost entirely irrelevant to the query
+0: No results returned or complete failure
+
+Use this rubric for FRESHNESS (0-5):
+5: All results are current (within days/weeks for time-sensitive topics)
+4: Most results recent, one or two slightly dated
+3: Mix of recent and older content
+2: Mostly outdated information
+1: All results significantly outdated
+0: Cannot determine or no dates present
+
+Use this rubric for COMPLETENESS (0-5):
+5: Covers all major aspects of the query with depth
+4: Good coverage, missing one minor angle
+3: Partial coverage — hits the main point but misses related aspects
+2: Superficial — only scratches the surface
+1: Barely addresses the query
+0: No meaningful content returned
+
+Be discriminating — avoid giving all 5s. Most results should score 3-4. Only give 5 for genuinely excellent results.
+
+{"relevance": <number>, "freshness": <number>, "completeness": <number>, "reasoning": "<1 sentence explaining the main strength or weakness>"}`,
         },
       ],
     });

@@ -500,6 +500,44 @@ export default async function ComparePage({
         )}
 
         {/* Head-to-Head Benchmark */}
+        {!hasBenchH2H && totalBenchTests > 0 && (
+          <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <h2 className="text-sm font-[650] text-text-primary">
+              Head-to-Head Benchmark
+            </h2>
+            <p className="mt-3 text-sm text-text-muted">
+              Not enough benchmark data yet — {productA.name} has {benchRunsA.length} test{benchRunsA.length !== 1 ? 's' : ''} and {productB.name} has {benchRunsB.length} test{benchRunsB.length !== 1 ? 's' : ''} (need 10+ each for comparison).
+            </p>
+            <div className="mt-4 text-center">
+              <Link
+                href={`/playground?tools=${slugA},${slugB}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              >
+                ▶ Run a comparison in the Playground
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {!hasBenchH2H && totalBenchTests === 0 && (
+          <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <h2 className="text-sm font-[650] text-text-primary">
+              Head-to-Head Benchmark
+            </h2>
+            <p className="mt-3 text-sm text-text-muted">
+              No benchmark data yet for these tools. Run a head-to-head test in the Playground to generate real performance data.
+            </p>
+            <div className="mt-4 text-center">
+              <Link
+                href={`/playground?tools=${slugA},${slugB}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              >
+                ▶ Run a comparison in the Playground
+              </Link>
+            </div>
+          </div>
+        )}
+
         {hasBenchH2H && benchA && benchB && (
           <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
             <div className="mb-5 flex items-center justify-between">

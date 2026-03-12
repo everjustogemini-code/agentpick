@@ -234,15 +234,20 @@ export default async function PlaygroundResultPage({ params }: Props) {
           {/* Monthly cost estimate */}
           <div className="mt-5 border-t border-border-default pt-4">
             <div className="mb-2 font-mono text-[10px] text-text-dim">
-              Monthly cost estimate at {fmt(volume)} calls/day:
+              Monthly cost estimate at {fmt(volume)} calls/day (based on {session.runs.length} test{session.runs.length !== 1 ? 's' : ''}):
             </div>
             <div className="flex flex-wrap gap-4">
               {rankings.map((tool) => (
                 <span key={tool.slug} className="font-mono text-xs text-text-secondary">
-                  {tool.name}: ${tool.monthlyCost < 1 ? tool.monthlyCost.toFixed(2) : Math.round(tool.monthlyCost)}
+                  {tool.name}: ~${tool.monthlyCost < 1 ? tool.monthlyCost.toFixed(2) : Math.round(tool.monthlyCost)}/mo est.
                 </span>
               ))}
             </div>
+            {session.runs.length < 10 && (
+              <p className="mt-2 font-mono text-[10px] text-amber-500">
+                Run more queries for a more accurate estimate
+              </p>
+            )}
           </div>
         </div>
 

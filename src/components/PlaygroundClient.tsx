@@ -543,7 +543,10 @@ export default function PlaygroundClient({
                         <div className="mt-0.5 font-mono text-[11px] text-text-muted">
                           Relevance: {tool.avgRelevance.toFixed(1)}/5 · Latency: {tool.avgLatency}ms ·{' '}
                           ${(tool.totalCost / tool.tests).toFixed(4)}/call ·{' '}
-                          ~${tool.monthlyCost < 1 ? tool.monthlyCost.toFixed(2) : Math.round(tool.monthlyCost)}/mo at {volume.toLocaleString()} calls/day
+                          ~${tool.monthlyCost < 1 ? tool.monthlyCost.toFixed(2) : Math.round(tool.monthlyCost)}/mo est. (based on {tool.tests} test{tool.tests !== 1 ? 's' : ''})
+                          {tool.tests < 10 && (
+                            <span className="text-amber-500"> · Run more queries for a more accurate estimate</span>
+                          )}
                         </div>
                       </div>
                     </div>
