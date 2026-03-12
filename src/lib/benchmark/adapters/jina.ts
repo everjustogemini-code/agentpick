@@ -1,7 +1,7 @@
 import type { ToolCallResult } from './types';
 
 export async function callJina(query: string, config?: Record<string, unknown>): Promise<ToolCallResult> {
-  const apiKey = process.env.JINA_API_KEY;
+  const apiKey = process.env.JINA_API_KEY?.trim();
   if (!apiKey) throw new Error('JINA_API_KEY not set');
 
   const start = performance.now();

@@ -1,7 +1,7 @@
 import type { ToolCallResult } from './types';
 
 export async function callBrave(query: string, config?: Record<string, unknown>): Promise<ToolCallResult> {
-  const apiKey = process.env.BRAVE_API_KEY;
+  const apiKey = process.env.BRAVE_API_KEY?.trim();
   if (!apiKey) throw new Error('BRAVE_API_KEY not set');
 
   const params = new URLSearchParams({
