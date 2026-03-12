@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { AgentWorkspace } from '@/components/workspace';
+import type { WorkspaceStep } from '@/types/workspace';
 
 interface DetectedTool {
   name: string;
@@ -49,12 +51,6 @@ const ANALYSIS_STEPS: { key: AnalysisStep; label: string }[] = [
   { key: 'savings', label: 'Calculating savings' },
   { key: 'report', label: 'Generating report' },
 ];
-
-function StepIcon({ status }: { status: 'pending' | 'active' | 'complete' }) {
-  if (status === 'complete') return <span className="text-[14px]">&#x2705;</span>;
-  if (status === 'active') return <span className="inline-block h-3.5 w-3.5 animate-pulse rounded-full bg-amber-400" />;
-  return <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-gray-300" />;
-}
 
 export default function XrayClient() {
   const [phase, setPhase] = useState<Phase>('input');
@@ -180,55 +176,33 @@ tools = [
 
   // --- ANALYZING PHASE (Manus-style) ---
   if (phase === 'analyzing') {
+    const workspaceSteps: WorkspaceStep[] = ANALYSIS_STEPS.map((step, i) => ({
+      label: step.label,
+      status: (i < currentStep ? 'complete' : i === currentStep ? 'active' : 'pending') as WorkspaceStep['status'],
+    }));
+
+    const wsContent = (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-button-primary-bg border-t-transparent" />
+          <div className="text-[13px] text-text-secondary">{analysisDetail}</div>
+        </div>
+      </div>
+    );
+
+    const progressPct = Math.round((currentStep / ANALYSIS_STEPS.length) * 100);
+
     return (
       <div className="mx-auto max-w-[880px]">
-        <div className="overflow-hidden rounded-2xl border border-border-default bg-white shadow-xl">
-          {/* Header */}
-          <div className="border-b border-border-default bg-bg-page px-5 py-3">
-            <div className="flex items-center gap-2">
-              <div className="flex h-5 w-5 items-center justify-center rounded bg-button-primary-bg text-[10px] font-bold text-white">
-                &#x2B21;
-              </div>
-              <span className="text-[13px] font-bold text-text-primary">Agent X-Ray</span>
-            </div>
-            <div className="mt-0.5 font-mono text-[11px] text-text-dim">
-              Analyzing your agent stack...
-            </div>
-          </div>
-
-          {/* Split view */}
-          <div className="flex min-h-[380px]">
-            {/* Left: Progress */}
-            <div className="w-[240px] shrink-0 border-r border-border-default bg-bg-page p-4">
-              <div className="mb-3 font-mono text-[9px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-                X-Ray Progress
-              </div>
-              <div className="space-y-3">
-                {ANALYSIS_STEPS.map((step, i) => {
-                  const status = i < currentStep ? 'complete' : i === currentStep ? 'active' : 'pending';
-                  return (
-                    <div key={step.key} className="flex items-center gap-2.5">
-                      <StepIcon status={status} />
-                      <span className={`text-[13px] ${
-                        status === 'pending' ? 'text-text-dim' : 'text-text-primary'
-                      }`}>
-                        {step.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right: Workspace */}
-            <div className="flex flex-1 items-center justify-center bg-[#F8FAFC] p-5">
-              <div className="text-center">
-                <div className="mb-3 inline-block h-8 w-8 animate-spin rounded-full border-2 border-button-primary-bg border-t-transparent" />
-                <div className="text-[13px] text-text-secondary">{analysisDetail}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AgentWorkspace
+          steps={workspaceSteps}
+          currentStepIndex={currentStep}
+          workspaceContent={wsContent}
+          progress={progressPct}
+          controls="arena"
+          title="Agent X-Ray"
+          subtitle="Analyzing your agent stack..."
+        />
       </div>
     );
   }

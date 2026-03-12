@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import SiteHeader from '@/components/SiteHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,23 +53,7 @@ export default async function AgentsPage() {
 
   return (
     <div className="min-h-screen bg-bg-page">
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              &#x2B21;
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/arena" className="text-sm font-medium text-text-muted hover:text-text-primary">Arena</Link>
-            <Link href="/rankings" className="text-sm font-medium text-text-muted hover:text-text-primary">Rankings</Link>
-            <Link href="/live" className="text-sm font-medium text-text-muted hover:text-text-primary">Live</Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         <h1 className="mb-2 text-[28px] font-bold tracking-[-0.5px] text-text-primary">

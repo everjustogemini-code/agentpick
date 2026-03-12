@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { AgentWorkspace } from '@/components/workspace';
+import type { WorkspaceStep } from '@/types/workspace';
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -379,11 +381,87 @@ export default function ArenaClient({ scenarios, availableTools, initialTools = 
   /* ── Workspace Phase (Manus-style split view) ── */
 
   function renderWorkspace() {
-    const statusIcon = (s: TaskStatus) => {
-      if (s === 'complete') return '✅';
-      if (s === 'active') return '⏳';
-      return '○';
-    };
+    // Map internal tasks to WorkspaceStep format
+    const workspaceSteps: WorkspaceStep[] = tasks.map((task, i) => ({
+      label: task.label,
+      status: task.status,
+      subItems: [
+        ...(i === 2 && userResults.length > 0
+          ? userResults.slice(-3).map((r) => ({
+              text: `\u00B7 ${r.toolName}: ${r.latencyMs}ms, ${r.resultCount} results${r.relevance != null ? `, ${r.relevance.toFixed(1)}/5` : ''}`,
+            }))
+          : []),
+        ...(i === 3 && optimalResults.length > 0
+          ? optimalResults.slice(-3).map((r) => ({
+              text: `\u00B7 ${r.toolName}: ${r.latencyMs}ms${r.relevance != null ? `, ${r.relevance.toFixed(1)}/5` : ''}${r.fromCache ? ' (cached)' : ''}`,
+            }))
+          : []),
+      ],
+    }));
+
+    const currentStepIndex = tasks.findIndex((t) => t.status === 'active');
+
+    // Build workspace content
+    const wsContent = workspaceContent ? (
+      <div className="animate-[slideUpCard_0.3s_ease-out]">
+        <div className="rounded-xl border border-border-default bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="rounded bg-bg-muted px-2 py-1 font-mono text-[11px] font-semibold text-text-primary">
+              {workspaceContent.phase === 'user_stack' ? 'Your Stack' : 'Optimal Stack'}: {workspaceContent.toolName}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
+              workspaceContent.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
+              {workspaceContent.success ? '200 OK' : 'Failed'}
+            </span>
+          </div>
+
+          <div className="mb-3 rounded-lg border border-border-default bg-[#F8FAFC] p-3">
+            <div className="mb-1 font-mono text-[10px] text-text-dim">Query:</div>
+            <div className="font-mono text-xs text-text-primary">&ldquo;{workspaceContent.query}&rdquo;</div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-[#F8FAFC] p-3 text-center">
+              <div className="font-mono text-lg font-bold text-text-primary">{workspaceContent.latencyMs}ms</div>
+              <div className="text-[10px] text-text-dim">Latency</div>
+            </div>
+            <div className="rounded-lg bg-[#F8FAFC] p-3 text-center">
+              <div className="font-mono text-lg font-bold text-text-primary">{workspaceContent.resultCount}</div>
+              <div className="text-[10px] text-text-dim">Results</div>
+            </div>
+            <div className="rounded-lg bg-[#F8FAFC] p-3 text-center">
+              <div className="font-mono text-lg font-bold text-text-primary">
+                {workspaceContent.relevance != null ? `${workspaceContent.relevance.toFixed(1)}/5` : '...'}
+              </div>
+              <div className="text-[10px] text-text-dim">Relevance</div>
+            </div>
+          </div>
+
+          {workspaceContent.relevance != null && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[10px] text-text-dim">Relevance:</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+                  style={{ width: `${(workspaceContent.relevance / 5) * 100}%` }}
+                />
+              </div>
+              <span className="font-mono text-[11px] font-semibold text-text-primary">
+                {workspaceContent.relevance.toFixed(1)}/5
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border-default">
+        <div className="text-center">
+          <div className="mb-2 text-2xl">&#x1F916;</div>
+          <div className="text-sm text-text-dim">Agent is initializing...</div>
+        </div>
+      </div>
+    );
 
     return (
       <div className="mx-auto max-w-5xl">
@@ -396,152 +474,15 @@ export default function ArenaClient({ scenarios, availableTools, initialTools = 
           </span>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
-          <div className="grid grid-cols-[280px_1fr] min-h-[500px]">
-            {/* Left panel — Task Progress */}
-            <div className="border-r border-border-default bg-[#F8FAFC] p-5">
-              <div className="mb-4 font-mono text-[10px] uppercase tracking-wider text-text-dim">
-                Task Progress
-              </div>
-              <div className="space-y-3">
-                {tasks.map((task, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className={`mt-0.5 text-sm ${task.status === 'active' ? 'animate-pulse' : ''}`}>
-                      {statusIcon(task.status)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <span className={`text-[13px] ${task.status === 'complete' ? 'text-text-secondary' : task.status === 'active' ? 'font-medium text-text-primary' : 'text-text-dim'}`}>
-                        {task.label}
-                      </span>
-                      {/* Show sub-results for user/optimal testing */}
-                      {i === 2 && userResults.length > 0 && (
-                        <div className="mt-1 space-y-0.5">
-                          {userResults.slice(-3).map((r, ri) => (
-                            <div key={ri} className="font-mono text-[10px] text-text-dim">
-                              · {r.toolName}: {r.latencyMs}ms, {r.resultCount} results{r.relevance != null ? `, ${r.relevance.toFixed(1)}/5` : ''}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {i === 3 && optimalResults.length > 0 && (
-                        <div className="mt-1 space-y-0.5">
-                          {optimalResults.slice(-3).map((r, ri) => (
-                            <div key={ri} className="font-mono text-[10px] text-text-dim">
-                              · {r.toolName}: {r.latencyMs}ms{r.relevance != null ? `, ${r.relevance.toFixed(1)}/5` : ''}{r.fromCache ? ' (cached)' : ''}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Progress indicator */}
-              <div className="mt-6">
-                <div className="mb-1 font-mono text-[10px] text-text-dim">
-                  {tasks.filter(t => t.status === 'complete').length} / {tasks.length} steps
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-bg-muted">
-                  <div
-                    className="h-full rounded-full bg-indigo-500 transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right panel — Agent Workspace */}
-            <div className="flex flex-col p-5">
-              <div className="mb-4 font-mono text-[10px] uppercase tracking-wider text-text-dim">
-                Agent Workspace
-              </div>
-
-              <div className="flex-1">
-                {workspaceContent ? (
-                  <div className="rounded-xl border border-border-default bg-[#F8FAFC] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="rounded bg-bg-muted px-2 py-1 font-mono text-[11px] font-semibold text-text-primary">
-                        {workspaceContent.phase === 'user_stack' ? 'Your Stack' : 'Optimal Stack'}: {workspaceContent.toolName}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
-                        workspaceContent.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                      }`}>
-                        {workspaceContent.success ? '200 OK' : 'Failed'}
-                      </span>
-                    </div>
-
-                    <div className="mb-3 rounded-lg border border-border-default bg-white p-3">
-                      <div className="mb-1 font-mono text-[10px] text-text-dim">Query:</div>
-                      <div className="font-mono text-xs text-text-primary">&ldquo;{workspaceContent.query}&rdquo;</div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-lg bg-white p-3 text-center">
-                        <div className="font-mono text-lg font-bold text-text-primary">{workspaceContent.latencyMs}ms</div>
-                        <div className="text-[10px] text-text-dim">Latency</div>
-                      </div>
-                      <div className="rounded-lg bg-white p-3 text-center">
-                        <div className="font-mono text-lg font-bold text-text-primary">{workspaceContent.resultCount}</div>
-                        <div className="text-[10px] text-text-dim">Results</div>
-                      </div>
-                      <div className="rounded-lg bg-white p-3 text-center">
-                        <div className="font-mono text-lg font-bold text-text-primary">
-                          {workspaceContent.relevance != null ? `${workspaceContent.relevance.toFixed(1)}/5` : '...'}
-                        </div>
-                        <div className="text-[10px] text-text-dim">Relevance</div>
-                      </div>
-                    </div>
-
-                    {workspaceContent.relevance != null && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-[10px] text-text-dim">Relevance:</span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-muted">
-                          <div
-                            className="h-full rounded-full bg-indigo-500 transition-all duration-700"
-                            style={{ width: `${(workspaceContent.relevance / 5) * 100}%` }}
-                          />
-                        </div>
-                        <span className="font-mono text-[11px] font-semibold text-text-primary">
-                          {workspaceContent.relevance.toFixed(1)}/5
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border-default bg-[#F8FAFC]">
-                    <div className="text-center">
-                      <div className="mb-2 text-2xl">🤖</div>
-                      <div className="text-sm text-text-dim">Agent is initializing...</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Workspace message */}
-              <div className="mt-4 rounded-lg bg-[#F8FAFC] px-3 py-2">
-                <span className="font-mono text-[11px] text-text-secondary">
-                  {workspaceMessage}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom bar — progress */}
-          <div className="border-t border-border-default bg-[#F8FAFC] px-5 py-3">
-            <div className="flex items-center gap-3">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-muted">
-                <div
-                  className="h-full rounded-full bg-indigo-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="font-mono text-xs text-text-dim">
-                {progress}% · 0:{elapsed.toString().padStart(2, '0')}
-              </span>
-            </div>
-          </div>
-        </div>
+        <AgentWorkspace
+          steps={workspaceSteps}
+          currentStepIndex={currentStepIndex}
+          workspaceContent={wsContent}
+          progress={progress}
+          elapsed={`0:${elapsed.toString().padStart(2, '0')}`}
+          controls="arena"
+          statusMessage={workspaceMessage}
+        />
       </div>
     );
   }

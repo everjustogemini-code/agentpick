@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import ArenaClient from '@/components/ArenaClient';
 import Link from 'next/link';
 import { BENCHMARKABLE_SLUGS } from '@/lib/benchmark/adapters';
+import SiteHeader from '@/components/SiteHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,33 +45,7 @@ export default async function ArenaPage({
 
   return (
     <div className="min-h-screen bg-bg-page">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              &#x2B21;
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/playground"
-              className="rounded-full border border-border-default px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-text-dim hover:border-border-hover"
-            >
-              Playground
-            </Link>
-            <Link
-              href="/xray"
-              className="rounded-full border border-border-default px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-text-dim hover:border-border-hover"
-            >
-              X-Ray
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[960px] px-6 py-10">
         {/* Hero */}

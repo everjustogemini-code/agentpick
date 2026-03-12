@@ -1,7 +1,7 @@
 import LiveVoteFeed from '@/components/LiveVoteFeed';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
+import SiteHeader from '@/components/SiteHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,31 +101,7 @@ export default async function LivePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg-terminal">
-      {/* Header */}
-      <header className="border-b border-bg-terminal-border">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-white/10 font-mono text-sm font-bold text-white">
-              ⬡
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-on-dark">
-              agentpick
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-[11px] text-[#475569]">agentpick.dev/live</span>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-[7px] w-[7px]">
-                <span className="absolute inline-flex h-full w-full animate-[pulse_2s_ease_infinite] rounded-full bg-accent-green opacity-75" />
-                <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-accent-green shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              </span>
-              <span className="font-mono text-xs font-bold uppercase tracking-wider text-accent-green">
-                Live
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Full feed */}
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-6">

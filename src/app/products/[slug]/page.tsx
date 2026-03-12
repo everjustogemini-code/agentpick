@@ -7,6 +7,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import CopyButton from './CopyButton';
 import ScoreBreakdown from '@/components/ScoreBreakdown';
+import SiteHeader from '@/components/SiteHeader';
+import ToolLifecycle from '@/components/ToolLifecycle';
 import { calculateScoreBreakdown } from '@/lib/score';
 import { getStatusBadge, BROWSE_STATUSES } from '@/lib/product-status';
 
@@ -357,19 +359,7 @@ export default async function ProductDetailPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[840px] px-6 py-12">
         {/* Product Header */}
@@ -750,6 +740,32 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        {/* Verify Against Your Stack */}
+        <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+          <div className="mb-3 text-[15px] font-semibold text-text-primary">
+            How does {product.name} compare to YOUR current stack?
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/arena?tools=${slug}`}
+              className="rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+            >
+              &#x2694;&#xFE0F; Run Arena &mdash; compare your tools against {product.name}
+            </Link>
+            <Link
+              href="/xray"
+              className="rounded-lg border border-border-default bg-white px-5 py-2.5 text-sm font-semibold text-text-primary hover:border-border-hover"
+            >
+              &#x1F50D; X-Ray &mdash; paste your code for instant diagnosis
+            </Link>
+          </div>
+        </div>
+
+        {/* Tool Lifecycle */}
+        <section className="mb-8">
+          <ToolLifecycle activeContext="product" compact />
+        </section>
 
         {/* Footer */}
         <footer className="border-t border-border-default py-6">
