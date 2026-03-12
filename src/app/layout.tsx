@@ -20,6 +20,13 @@ export const metadata: Metadata = {
   description:
     'The API index for AI agents. Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
   robots: { index: true, follow: true },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
     description: 'Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
