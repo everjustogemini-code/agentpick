@@ -2,29 +2,29 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { RANKING_STATUSES } from '@/lib/product-status';
 
-// Map capability to category
-const CAPABILITY_MAP: Record<string, string> = {
-  search: 'search_research',
-  research: 'search_research',
-  crawl: 'web_crawling',
-  crawling: 'web_crawling',
-  scrape: 'web_crawling',
-  code: 'code_compute',
-  compute: 'code_compute',
-  storage: 'storage_memory',
-  memory: 'storage_memory',
-  communication: 'communication',
-  email: 'communication',
-  payment: 'payments_commerce',
-  commerce: 'payments_commerce',
-  finance: 'finance_data',
-  auth: 'auth_identity',
-  identity: 'auth_identity',
-  scheduling: 'scheduling',
-  ai: 'ai_models',
-  llm: 'ai_models',
-  observability: 'observability',
-  monitoring: 'observability',
+// Map capability to category + required tags for filtering
+const CAPABILITY_MAP: Record<string, { category: string; tags?: string[] }> = {
+  search: { category: 'search_research', tags: ['search'] },
+  research: { category: 'search_research', tags: ['search', 'research', 'papers'] },
+  crawl: { category: 'web_crawling' },
+  crawling: { category: 'web_crawling' },
+  scrape: { category: 'web_crawling' },
+  code: { category: 'code_compute' },
+  compute: { category: 'code_compute' },
+  storage: { category: 'storage_memory' },
+  memory: { category: 'storage_memory' },
+  communication: { category: 'communication' },
+  email: { category: 'communication' },
+  payment: { category: 'payments_commerce' },
+  commerce: { category: 'payments_commerce' },
+  finance: { category: 'finance_data' },
+  auth: { category: 'auth_identity' },
+  identity: { category: 'auth_identity' },
+  scheduling: { category: 'scheduling' },
+  ai: { category: 'ai_models' },
+  llm: { category: 'ai_models' },
+  observability: { category: 'observability' },
+  monitoring: { category: 'observability' },
 };
 
 export async function GET(request: NextRequest) {
@@ -39,13 +39,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const category = CAPABILITY_MAP[capability.toLowerCase()] ?? capability;
+  const mapping = CAPABILITY_MAP[capability.toLowerCase()];
+  const category = mapping?.category ?? capability;
+  const requiredTags = mapping?.tags;
 
-  // Get top products in this category
+  // Get top products in this category, optionally filtered by tags
   const products = await prisma.product.findMany({
     where: {
       status: { in: RANKING_STATUSES },
       category: category as 'search_research',
+      // If the capability has required tags, only include products with at least one matching tag
+      ...(requiredTags
+        ? { tags: { hasSome: requiredTags } }
+        : {}),
     },
     orderBy: { weightedScore: 'desc' },
     take: 5,
