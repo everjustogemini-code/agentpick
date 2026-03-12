@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
   }
 
   let body: {
-    domain?: string;
+    scenario?: string;
+    domain?: string; // backward compat alias for scenario
     priorities?: string[];
     queries?: string[];
     tools?: string[];
@@ -45,11 +46,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { domain, priorities, queries, tools, volume } = body;
+  // Accept `scenario` (preferred) or `domain` (backward compat alias)
+  const domain = body.scenario || body.domain;
+  const { priorities, queries, tools, volume } = body;
 
   if (!domain || !queries?.length || !tools?.length) {
     return NextResponse.json(
-      { error: 'Missing required fields: domain, queries, tools' },
+      { error: 'Missing required fields: scenario (or domain), queries, tools' },
       { status: 400 },
     );
   }

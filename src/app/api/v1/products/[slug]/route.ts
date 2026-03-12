@@ -17,7 +17,10 @@ export async function GET(
     const cached = await redis.get(cacheKey);
     if (cached) {
       return Response.json(cached, {
-        headers: { 'X-Cache': 'HIT' },
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
+        },
       });
     }
   } catch {
@@ -92,6 +95,9 @@ export async function GET(
   }
 
   return Response.json(result, {
-    headers: { 'X-Cache': 'MISS' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
+    },
   });
 }

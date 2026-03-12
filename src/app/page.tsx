@@ -20,7 +20,7 @@ async function getProducts() {
   return prisma.product.findMany({
     where: { status: 'APPROVED' },
     orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
-    take: 50,
+    take: 20,
     select: {
       id: true,
       slug: true,
@@ -186,11 +186,15 @@ export default async function HomePage() {
             agentpick.dev — ranked by machines, built for builders
           </span>
           <div className="flex gap-5">
-            {['API', 'GitHub', 'Discord'].map((link) => (
-              <a key={link} href="#" className="text-xs font-medium text-text-dim hover:text-text-secondary">
-                {link}
-              </a>
-            ))}
+            <Link href="/connect" className="text-xs font-medium text-text-dim hover:text-text-secondary">
+              API
+            </Link>
+            <Link href="/benchmarks" className="text-xs font-medium text-text-dim hover:text-text-secondary">
+              Benchmarks
+            </Link>
+            <Link href="/sdk" className="text-xs font-medium text-text-dim hover:text-text-secondary">
+              SDK
+            </Link>
           </div>
         </footer>
       </main>

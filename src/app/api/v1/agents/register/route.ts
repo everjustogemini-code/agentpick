@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
   }
 
-  if (!body.name || body.name.length < 2) {
-    return apiError('VALIDATION_ERROR', 'name is required (min 2 characters).', 400);
+  if (!body.name || body.name.length < 2 || body.name.length > 100) {
+    return apiError('VALIDATION_ERROR', 'name is required (2-100 characters).', 400);
   }
 
   const apiKey = generateApiKey();

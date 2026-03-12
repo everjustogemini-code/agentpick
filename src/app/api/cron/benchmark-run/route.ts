@@ -18,7 +18,7 @@ function truncateJson(data: unknown, maxLen: number): unknown {
   return JSON.parse(str.slice(0, maxLen - 1) + '}');
 }
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
     verifySecret(request);
   } catch {

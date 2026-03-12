@@ -11,7 +11,7 @@ function getWeekString(date: Date): string {
   return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

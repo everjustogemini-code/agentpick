@@ -4,7 +4,7 @@ import { calculateBlendedScore } from '@/lib/voting';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ error: 'unauthorized' }, { status: 401 });

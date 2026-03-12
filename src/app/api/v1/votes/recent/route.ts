@@ -29,5 +29,9 @@ export async function GET() {
     createdAt: v.createdAt.toISOString(),
   }));
 
-  return Response.json({ votes });
+  return Response.json({ votes }, {
+    headers: {
+      'Cache-Control': 'public, max-age=10, stale-while-revalidate=30',
+    },
+  });
 }
