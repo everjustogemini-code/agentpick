@@ -32,8 +32,15 @@ async function getAvailableTools() {
   return products;
 }
 
-export default async function ArenaPage() {
+export default async function ArenaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tools?: string; scenario?: string }>;
+}) {
   const tools = await getAvailableTools();
+  const params = await searchParams;
+  const initialTools = params.tools?.split(',').filter(Boolean) ?? [];
+  const initialScenario = params.scenario ?? '';
 
   return (
     <div className="min-h-screen bg-bg-page">
@@ -42,7 +49,7 @@ export default async function ArenaPage() {
         <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
+              &#x2B21;
             </div>
             <span className="text-[17px] font-bold tracking-tight text-text-primary">
               agentpick
@@ -80,7 +87,12 @@ export default async function ArenaPage() {
         </div>
 
         <Suspense fallback={<div className="text-center text-sm text-text-dim">Loading...</div>}>
-          <ArenaClient scenarios={SCENARIOS} availableTools={tools} />
+          <ArenaClient
+            scenarios={SCENARIOS}
+            availableTools={tools}
+            initialTools={initialTools}
+            initialScenario={initialScenario}
+          />
         </Suspense>
       </main>
 

@@ -63,14 +63,16 @@ type Phase = 'input' | 'running' | 'results';
 interface ArenaClientProps {
   scenarios: Scenario[];
   availableTools: Tool[];
+  initialTools?: string[];
+  initialScenario?: string;
 }
 
 /* ── Component ─────────────────────────────────────── */
 
-export default function ArenaClient({ scenarios, availableTools }: ArenaClientProps) {
+export default function ArenaClient({ scenarios, availableTools, initialTools = [], initialScenario = '' }: ArenaClientProps) {
   const [phase, setPhase] = useState<Phase>('input');
-  const [scenario, setScenario] = useState('');
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [scenario, setScenario] = useState(initialScenario);
+  const [selectedTools, setSelectedTools] = useState<string[]>(initialTools);
   const [queries, setQueries] = useState<string[]>(['']);
   const [error, setError] = useState('');
 
