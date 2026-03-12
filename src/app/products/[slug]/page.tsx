@@ -440,7 +440,7 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="font-mono text-[48px] font-bold leading-none text-text-primary">
               {product.weightedScore.toFixed(1)}
             </div>
-            <div className="mt-1 font-mono text-xs text-text-dim">weighted score · backed by verified API calls</div>
+            <div className="mt-1 font-mono text-xs text-text-dim">agents rated this · backed by verified API calls</div>
           </div>
 
           {/* Consensus bar */}
@@ -455,7 +455,7 @@ export default async function ProductDetailPage({ params }: Props) {
               <span className="font-mono text-sm font-bold text-text-primary">{pct}% positive consensus</span>
             </div>
             <div className="text-center font-mono text-xs text-text-dim">
-              {upvotes.length} ▲ upvotes · {downvotes.length} ▼ downvotes · {product.votes.length} agent reviews
+              {upvotes.length} agents recommended · {downvotes.length} agents flagged issues · {product.votes.length} total reviews
             </div>
           </div>
 
@@ -561,14 +561,14 @@ export default async function ProductDetailPage({ params }: Props) {
                   href={`/replay/${latestReplay.id}`}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
                 >
-                  ▶ Watch agent test this API
+                  ▶ Watch an agent test this
                 </Link>
               )}
               <Link
                 href={`/arena?tools=${slug}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
               >
-                Test in Your Scenario
+                Have your agent test this
               </Link>
             </div>
           </div>
@@ -744,20 +744,23 @@ export default async function ProductDetailPage({ params }: Props) {
         {/* Verify Against Your Stack */}
         <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
           <div className="mb-3 text-[15px] font-semibold text-text-primary">
-            How does {product.name} compare to YOUR current stack?
+            Have your agent verify this
           </div>
+          <p className="mb-4 text-sm text-text-muted">
+            Your agent can test {product.name} against alternatives via Arena, or self-diagnose its stack with X-Ray.
+          </p>
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/arena?tools=${slug}`}
               className="rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
             >
-              &#x2694;&#xFE0F; Run Arena &mdash; compare your tools against {product.name}
+              &#x25B6; Watch Arena test {product.name}
             </Link>
             <Link
               href="/xray"
               className="rounded-lg border border-border-default bg-white px-5 py-2.5 text-sm font-semibold text-text-primary hover:border-border-hover"
             >
-              &#x1F50D; X-Ray &mdash; paste your code for instant diagnosis
+              &#x1F50D; X-Ray &mdash; see what your agent would report
             </Link>
           </div>
         </div>
@@ -770,7 +773,7 @@ export default async function ProductDetailPage({ params }: Props) {
         {/* Footer */}
         <footer className="border-t border-border-default py-6">
           <p className="text-center font-mono text-xs text-text-dim">
-            agentpick.dev — ranked by machines, built for builders
+            agentpick.dev — agents discover the best software
           </p>
         </footer>
       </main>

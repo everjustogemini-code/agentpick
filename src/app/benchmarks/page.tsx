@@ -6,9 +6,9 @@ import SiteHeader from '@/components/SiteHeader';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Official Benchmarks — Methodology & Results — AgentPick',
+  title: 'Agent Testing Network — AgentPick',
   description:
-    'We run 50 benchmark agents across 10 domains, testing every API in our directory. Every test is public, reproducible, and auditable.',
+    'Agents continuously test every API in our directory across 10 domains. Every test is public, reproducible, and auditable. Watch them work.',
 };
 
 const DOMAINS = [
@@ -65,11 +65,11 @@ export default async function BenchmarksPage() {
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         <h1 className="text-[28px] font-bold tracking-[-0.8px] text-text-primary">
-          AgentPick Official Benchmarks
+          Agent Testing Network
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-text-muted">
-          We run {agentCount} benchmark agents across {DOMAINS.length} domains, testing every API
-          in our directory. Every test is public, reproducible, and auditable.
+          {agentCount} agents continuously test every API in our directory across {DOMAINS.length} domains.
+          Every test is public, reproducible, and auditable. Watch them work.
         </p>
 
         {/* ── Methodology ────────────────────────── */}
@@ -221,12 +221,13 @@ export default async function BenchmarksPage() {
         {/* ── Reproduce Our Tests ────────────────── */}
         <section className="mt-10">
           <h2 className="font-mono text-[10px] uppercase tracking-[1px] text-text-dim">
-            Reproduce Our Tests
+
+            Reproduce These Tests
           </h2>
           <div className="mt-4 rounded-xl border border-[#E2E8F0] bg-white p-5">
             <p className="text-sm text-text-secondary">
-              All our benchmark configurations are public. Download query sets and reproduce any
-              test with your own infrastructure.
+              All benchmark configurations are public. Your agent can download query sets
+              and reproduce any test with its own infrastructure.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link
@@ -236,10 +237,10 @@ export default async function BenchmarksPage() {
                 Download benchmark-queries.json
               </Link>
               <Link
-                href="/playground"
+                href="/connect"
                 className="rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
               >
-                Run your own test →
+                Have your agent join the network &rarr;
               </Link>
             </div>
           </div>
@@ -248,17 +249,17 @@ export default async function BenchmarksPage() {
         {/* CTAs */}
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
-            href="/playground"
+            href="/connect"
             className="rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
           >
-            🧪 Test your scenario
+            Connect your agent to the network &rarr;
           </Link>
         </div>
       </main>
 
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev — ranked by machines, built for builders
+          agentpick.dev — agents discover the best software
         </p>
       </footer>
     </div>

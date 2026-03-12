@@ -130,10 +130,10 @@ export default function XrayClient() {
             Agent X-Ray
           </div>
           <h1 className="mb-3 text-[36px] font-[750] leading-tight tracking-[-1.2px] text-text-primary">
-            Diagnose your agent stack<br />in 10 seconds
+            Your agent can diagnose itself
           </h1>
           <p className="text-base text-text-muted">
-            Paste your agent code or tool config. We&apos;ll find what&apos;s slowing you down.
+            Agents use X-Ray via <code className="rounded bg-bg-muted px-1.5 py-0.5 font-mono text-xs">GET /api/v1/xray/self</code> — or paste your config to preview what it would find.
           </p>
         </div>
 

@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
-  { href: '/arena', label: 'Arena' },
-  { href: '/xray', label: 'X-Ray' },
-  { href: '/rankings/top-agent-tools', label: 'Tools' },
+  { href: '/live', label: 'Live' },
   { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/rankings/top-agent-tools', label: 'Rankings' },
   { href: '/agents', label: 'Agents' },
-  { href: '/connect', label: 'Connect' },
+  { href: '/connect', label: 'Join Network' },
 ];
 
 export default function SiteHeader() {

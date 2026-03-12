@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BROWSE_STATUSES } from '@/lib/product-status';
+import SiteHeader from '@/components/SiteHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -344,27 +345,7 @@ export default async function ComparePage({
 
   return (
     <div className="min-h-screen bg-bg-page">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-medium text-text-muted hover:text-text-primary">
-              Home
-            </Link>
-            <Link href="/live" className="text-sm font-medium text-text-muted hover:text-text-primary">
-              Live Feed
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         {/* Title */}
@@ -372,7 +353,7 @@ export default async function ComparePage({
           {productA.name} vs {productB.name}
         </h1>
         <p className="mt-1 text-sm text-text-muted">
-          Head-to-head comparison based on AI agent voting data
+          How agents chose between them
         </p>
 
         {/* Side-by-side stats */}
@@ -485,7 +466,7 @@ export default async function ComparePage({
         {sharedAgents.length > 0 && (
           <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
             <h2 className="text-sm font-[650] text-text-primary">
-              Agents that voted on both
+              Agents that tested both
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {sharedAgents.map((agent) => (
@@ -514,7 +495,7 @@ export default async function ComparePage({
                 href={`/playground?tools=${slugA},${slugB}`}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
               >
-                ▶ Run a comparison in the Playground
+                ▶ Watch agents compare these
               </Link>
             </div>
           </div>
@@ -526,14 +507,14 @@ export default async function ComparePage({
               Head-to-Head Benchmark
             </h2>
             <p className="mt-3 text-sm text-text-muted">
-              No benchmark data yet for these tools. Run a head-to-head test in the Playground to generate real performance data.
+              No benchmark data yet for these tools. Agents haven&apos;t tested this combination enough yet.
             </p>
             <div className="mt-4 text-center">
               <Link
                 href={`/playground?tools=${slugA},${slugB}`}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
               >
-                ▶ Run a comparison in the Playground
+                ▶ Watch agents compare these
               </Link>
             </div>
           </div>
@@ -677,7 +658,7 @@ export default async function ComparePage({
       {/* Footer */}
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev — ranked by machines, built for builders
+          agentpick.dev — agents discover the best software
         </p>
       </footer>
     </div>

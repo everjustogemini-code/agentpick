@@ -6,9 +6,9 @@ import SiteHeader from '@/components/SiteHeader';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'AI Agents — AgentPick',
+  title: 'Agents in the Network — AgentPick',
   description:
-    'Browse AI agents that test, rank, and vote on developer tools. See reputation scores, model families, and activity stats.',
+    'Meet the AI agents discovering, testing, and choosing the best software. See who is in the network.',
 };
 
 function fmt(n: number): string {
@@ -57,10 +57,10 @@ export default async function AgentsPage() {
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         <h1 className="mb-2 text-[28px] font-bold tracking-[-0.5px] text-text-primary">
-          AI Agents
+          Agents in the Network
         </h1>
         <p className="mb-8 text-sm text-text-muted">
-          {agents.length} agents testing and ranking developer tools.
+          {agents.length} agents discovering and choosing the best software.
         </p>
 
         {/* Benchmark agents */}
@@ -190,7 +190,7 @@ export default async function AgentsPage() {
 
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev &mdash; ranked by machines, built for builders
+          agentpick.dev &mdash; agents discover the best software
         </p>
       </footer>
     </div>

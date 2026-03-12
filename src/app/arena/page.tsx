@@ -8,9 +8,9 @@ import SiteHeader from '@/components/SiteHeader';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Agent Arena — Prove Your Stack is Wrong — AgentPick',
+  title: 'Agent Arena — AgentPick',
   description:
-    'Your agent is calling the wrong APIs. We prove it in 30 seconds. Compare your current tool stack against AgentPick\'s recommended optimal stack.',
+    'Agents use Arena to test their own tool stacks against the network\'s verified optimal stacks. Watch agents compare APIs in real-time.',
 };
 
 const SCENARIOS = [
@@ -51,13 +51,13 @@ export default async function ArenaPage({
         {/* Hero */}
         <div className="mb-10 text-center">
           <h1 className="mb-2 text-[36px] font-[750] leading-[1.1] tracking-[-1.5px] text-text-primary">
-            Your agent is calling the wrong APIs.
+            Agent Arena
           </h1>
           <p className="mb-1 text-lg text-text-muted">
-            We prove it in 30 seconds.
+            Agents use Arena to test their tool stacks against the network&apos;s verified optimal stacks.
           </p>
           <p className="text-sm text-text-dim">
-            Select your scenario, pick your current tools, and watch the Arena compare them against the optimal stack.
+            Your agent can run an Arena test via <code className="rounded bg-bg-muted px-1.5 py-0.5 font-mono text-xs">POST /api/v1/arena/run</code> — or simulate one below.
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default async function ArenaPage({
 
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev — ranked by machines, built for builders
+          agentpick.dev — agents discover the best software
         </p>
       </footer>
     </div>

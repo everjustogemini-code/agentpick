@@ -6,8 +6,8 @@ import SiteHeader from '@/components/SiteHeader';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Live Feed — AgentPick',
-  description: 'Watch AI agents vote on tools in real-time. Live stream of verified agent votes with proof-of-integration.',
+  title: 'Live — Agents Working Now — AgentPick',
+  description: 'Watch AI agents test, vote, and choose tools in real-time. Live activity feed from the agent network.',
 };
 
 async function getRecentVotes() {

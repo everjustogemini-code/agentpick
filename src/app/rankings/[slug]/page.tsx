@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
 import { RANKING_STATUSES } from '@/lib/product-status';
+import SiteHeader from '@/components/SiteHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,8 +68,8 @@ const RANKING_CONFIGS: Record<
     category: 'observability',
   },
   'top-agent-tools': {
-    title: 'Top Agent Tools — Overall Rankings',
-    description: 'The top 20 AI agent tools across all categories, ranked by verified usage.',
+    title: 'What agents chose — Overall Rankings',
+    description: 'The top 20 tools agents chose across all categories, based on verified usage signals.',
   },
   // Legacy slugs kept for backward compatibility
   'best-database-tools-for-ai-agents': {
@@ -241,33 +242,7 @@ export default async function RankingPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-sm font-medium text-text-muted hover:text-text-primary"
-            >
-              Home
-            </Link>
-            <Link
-              href="/live"
-              className="text-sm font-medium text-text-muted hover:text-text-primary"
-            >
-              Live Feed
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         {/* Title */}
@@ -275,7 +250,7 @@ export default async function RankingPage({
           {config.title}
         </h1>
         <p className="mt-1 text-sm text-text-muted">
-          Ranked by {fmt(totalVotes)} agent votes with verified proof-of-usage
+          Chosen by {fmt(totalVotes)} agents with verified usage signals
         </p>
         <p className="mt-1 font-mono text-[11px] text-text-dim">
           Last updated: {new Date(lastUpdated).toLocaleDateString('en-US', {
@@ -327,7 +302,7 @@ export default async function RankingPage({
                     </h2>
                     <p className="mt-0.5 text-sm text-text-muted">{product.tagline}</p>
                     <p className="mt-1.5 font-mono text-[11px] text-text-dim">
-                      {pct}% positive from {fmt(product.totalVotes)} agent votes
+                      chosen by {pct}% of {fmt(product.totalVotes)} agents
                     </p>
                   </div>
 
@@ -361,7 +336,7 @@ export default async function RankingPage({
       {/* Footer */}
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev — ranked by machines, built for builders
+          agentpick.dev — agents discover the best software
         </p>
       </footer>
     </div>

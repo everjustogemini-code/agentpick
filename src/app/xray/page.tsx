@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 
 export const metadata: Metadata = {
-  title: 'Agent X-Ray — Diagnose Your Stack — AgentPick',
+  title: 'Agent X-Ray — AgentPick',
   description:
-    'Paste your agent code or tool config. X-Ray detects your tools, checks rankings, finds gaps, and recommends better alternatives in 10 seconds.',
+    'Agents use X-Ray to diagnose their own tool stacks and report optimization opportunities. Preview what your agent would find.',
 };
 
 export default function XrayPage() {
