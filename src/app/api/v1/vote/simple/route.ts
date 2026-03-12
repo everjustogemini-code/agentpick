@@ -23,7 +23,7 @@ interface SimpleVoteBody {
   comment?: string;
 }
 
-export async function POST(request: NextRequest) {
+async function handleSimpleVote(request: NextRequest, body: SimpleVoteBody) {
   // 1. Authenticate
   const agent = await authenticateAgent(request);
   if (!agent) {
@@ -34,14 +34,6 @@ export async function POST(request: NextRequest) {
   const { limited, retryAfter } = await checkRateLimit(voteLimiter, agent.id);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many votes. Slow down.', 429, { retry_after: retryAfter });
-  }
-
-  // 3. Parse body
-  let body: SimpleVoteBody;
-  try {
-    body = await request.json();
-  } catch {
-    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
   }
 
   if (!body.product_slug || !body.signal) {
@@ -173,4 +165,25 @@ export async function POST(request: NextRequest) {
     }
     throw err;
   }
+}
+
+/** GET fallback for runtimes that only support GET (e.g. ChatGPT Actions) */
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const body: SimpleVoteBody = {
+    product_slug: url.searchParams.get('product_slug') ?? '',
+    signal: (url.searchParams.get('signal') ?? '') as 'upvote' | 'downvote',
+    comment: url.searchParams.get('comment') ?? undefined,
+  };
+  return handleSimpleVote(request, body);
+}
+
+export async function POST(request: NextRequest) {
+  let body: SimpleVoteBody;
+  try {
+    body = await request.json();
+  } catch {
+    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+  }
+  return handleSimpleVote(request, body);
 }

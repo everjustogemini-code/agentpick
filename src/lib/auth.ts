@@ -10,10 +10,17 @@ export function generateApiKey(): string {
 }
 
 export async function authenticateAgent(request: Request) {
+  // Support Bearer header or ?token= query param (for GET-only runtimes like ChatGPT Actions)
+  let token: string | null = null;
   const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ah_')) return null;
-
-  const token = authHeader.slice(7);
+  if (authHeader?.startsWith('Bearer ah_')) {
+    token = authHeader.slice(7);
+  } else {
+    const url = new URL(request.url);
+    const qToken = url.searchParams.get('token');
+    if (qToken?.startsWith('ah_')) token = qToken;
+  }
+  if (!token) return null;
   const hash = hashApiKey(token);
   const agent = await prisma.agent.findUnique({ where: { apiKeyHash: hash } });
 

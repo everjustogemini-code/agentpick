@@ -45,11 +45,11 @@ interface SubmitBody {
   submitted_by?: 'agent' | 'human';
 }
 
-export async function POST(request: NextRequest) {
+async function handleSubmit(request: NextRequest, body: SubmitBody) {
   // --- Auth (optional) ---
   const agent = await authenticateAgent(request);
 
-  // --- Rate limit by agent ID (20/hr) or IP (5/hr) ---
+  // --- Rate limit by agent ID (50/hr) or IP (5/hr) ---
   const limiter = agent ? submitLimiterAuth : submitLimiterAnon;
   const rateLimitKey = agent
     ? agent.id
@@ -57,14 +57,6 @@ export async function POST(request: NextRequest) {
   const { limited, retryAfter } = await checkRateLimit(limiter, rateLimitKey);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many submissions. Try again later.', 429, { retry_after: retryAfter });
-  }
-
-  // --- Parse body ---
-  let body: SubmitBody;
-  try {
-    body = await request.json();
-  } catch {
-    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
   }
 
   // --- Validate required fields ---
@@ -204,4 +196,31 @@ export async function POST(request: NextRequest) {
     },
     { status: 201 },
   );
+}
+
+/** GET fallback for runtimes that only support GET (e.g. ChatGPT Actions) */
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const tagsParam = url.searchParams.get('tags');
+  const body: SubmitBody = {
+    name: url.searchParams.get('name') ?? '',
+    url: url.searchParams.get('url') ?? '',
+    api_endpoint: url.searchParams.get('api_endpoint') ?? undefined,
+    tagline: url.searchParams.get('tagline') ?? url.searchParams.get('description') ?? undefined,
+    description: url.searchParams.get('description') ?? undefined,
+    category: url.searchParams.get('category') ?? '',
+    tags: tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+    submitted_by: (url.searchParams.get('submitted_by') as 'agent' | 'human') ?? undefined,
+  };
+  return handleSubmit(request, body);
+}
+
+export async function POST(request: NextRequest) {
+  let body: SubmitBody;
+  try {
+    body = await request.json();
+  } catch {
+    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+  }
+  return handleSubmit(request, body);
 }

@@ -5,19 +5,10 @@ import { checkRateLimit, registerLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import type { AgentRegisterRequest } from '@/types';
 
-export async function POST(request: NextRequest) {
-  // Rate limit by IP
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
+async function handleRegister(body: AgentRegisterRequest, ip: string) {
   const { limited, retryAfter } = await checkRateLimit(registerLimiter, ip);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many registration attempts.', 429, { retry_after: retryAfter });
-  }
-
-  let body: AgentRegisterRequest;
-  try {
-    body = await request.json();
-  } catch {
-    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
   }
 
   if (!body.name || body.name.length < 2 || body.name.length > 100) {
@@ -48,4 +39,31 @@ export async function POST(request: NextRequest) {
     },
     { status: 201 }
   );
+}
+
+/** GET fallback for runtimes that only support GET (e.g. ChatGPT Actions) */
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
+  const body: AgentRegisterRequest = {
+    name: url.searchParams.get('name') ?? '',
+    model_family: url.searchParams.get('model_family') ?? undefined,
+    orchestrator: url.searchParams.get('orchestrator') ?? undefined,
+    owner_email: url.searchParams.get('owner_email') ?? undefined,
+    description: url.searchParams.get('description') ?? undefined,
+  };
+  return handleRegister(body, ip);
+}
+
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
+
+  let body: AgentRegisterRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+  }
+
+  return handleRegister(body, ip);
 }
