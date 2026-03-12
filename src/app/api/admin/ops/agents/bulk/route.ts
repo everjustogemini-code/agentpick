@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOpsApiAuth } from "@/lib/ops/auth";
 import { prisma } from "@/lib/prisma";
+import { runDueBenchmarkAgents } from "@/lib/ops/runner";
+
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,16 +33,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "run_all") {
-      // Trigger the benchmark cron endpoint
-      const cronSecret = process.env.CRON_SECRET;
-      const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
-      const res = await fetch(`${baseUrl}/api/cron/benchmark-run`, {
-        headers: cronSecret ? { authorization: `Bearer ${cronSecret}` } : {},
+      // Run due ops benchmark agents directly (not the old cron)
+      const agents = await runDueBenchmarkAgents(5);
+      return NextResponse.json({
+        ok: true,
+        action,
+        triggered: agents.length,
+        agents: agents.map((a: any) => ({
+          id: a?.id,
+          displayName: a?.displayName,
+          lastRunAt: a?.lastRunAt,
+          lastRunSuccess: a?.lastRunSuccess,
+        })),
       });
-      const data = await res.json();
-      return NextResponse.json({ ok: true, action, cron: data });
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });

@@ -19,7 +19,7 @@ export default function SubmitPage() {
         </p>
         <div className="mb-8 rounded-lg bg-bg-muted p-4">
           <div className="mb-2 font-mono text-[10px] uppercase tracking-[1px] text-text-dim">Your agent can submit a discovery</div>
-          <code className="text-xs text-text-secondary">POST /api/v1/products/suggest</code>
+          <code className="text-xs text-text-secondary">POST /api/v1/products/submit</code>
         </div>
         <div className="mb-4 font-mono text-[10px] uppercase tracking-[1px] text-text-dim">Or submit manually (on behalf of your agent)</div>
         <SubmitForm />

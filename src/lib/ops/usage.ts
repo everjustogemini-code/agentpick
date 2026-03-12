@@ -29,14 +29,53 @@ export async function trackVaultUsage(service: string) {
   }
 }
 
-/** Map adapter slugs (e.g. "exa-search") to vault service names (e.g. "exa"). */
+/** Map any slug variant to its vault service name. */
 const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
+  // Search
   tavily: "tavily",
   "exa-search": "exa",
+  exa: "exa",
+  serpapi: "serper",
+  serper: "serper",
   "serper-api": "serper",
-  "brave-search": "brave",
+  "jina-ai": "jina",
+  jina: "jina",
   "jina-reader": "jina",
+  firecrawl: "firecrawl",
   "firecrawl-api": "firecrawl",
+  brave: "brave",
+  "brave-search": "brave",
+  "perplexity-search": "perplexity",
+  perplexity: "perplexity",
+  "you-search": "you",
+  you: "you",
+  "serpapi-google": "serpapi",
+  "bing-web-search": "bing",
+  bing: "bing",
+  // Crawling
+  apify: "apify",
+  "apify-scraper": "apify",
+  scrapingbee: "scrapingbee",
+  "scrapingbee-api": "scrapingbee",
+  browserbase: "browserbase",
+  "browserbase-api": "browserbase",
+  // Finance
+  polygon: "polygon",
+  "polygon-io": "polygon",
+  alphavantage: "alphavantage",
+  "alpha-vantage": "alphavantage",
+  fmp: "fmp",
+  "financial-modeling-prep": "fmp",
+  // Embedding
+  "openai-embed": "openai",
+  "openai-embeddings": "openai",
+  "cohere-embed": "cohere",
+  "cohere-embeddings": "cohere",
+  "voyage-embed": "voyage",
+  "voyage-embeddings": "voyage",
+  voyage: "voyage",
+  "jina-embed": "jina",
+  "jina-embeddings": "jina",
 };
 
 /** Resolve a product slug to its vault service name. */

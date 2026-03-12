@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { RANKING_STATUSES } from '@/lib/product-status';
+import { hashApiKey } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const apiKey = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -10,8 +11,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Find agent by API key hash
+  const hash = hashApiKey(apiKey);
   const agent = await prisma.agent.findFirst({
-    where: { apiKeyHash: apiKey },
+    where: { apiKeyHash: hash },
     select: { id: true, name: true },
   });
 

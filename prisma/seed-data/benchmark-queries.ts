@@ -549,6 +549,76 @@ const multilingual: BenchmarkQuerySeed[] = [
   { domain: 'multilingual', complexity: 'complex', query: 'Digital democracy e-governance innovation Estonia Taiwan Iceland Singapore citizen participation AI role', intent: 'Digital democracy innovation comparison across countries' },
 ];
 
+// Finance-specific queries for Polygon/AlphaVantage/FMP adapters (20 queries)
+const financeData: BenchmarkQuerySeed[] = [
+  // Simple (7)
+  { domain: 'finance_data', complexity: 'simple', query: 'AAPL stock price', intent: 'Current Apple stock quote with price and volume' },
+  { domain: 'finance_data', complexity: 'simple', query: 'NVDA previous close', intent: 'NVIDIA previous trading day close price' },
+  { domain: 'finance_data', complexity: 'simple', query: 'MSFT daily time series', intent: 'Microsoft recent daily OHLCV data' },
+  { domain: 'finance_data', complexity: 'simple', query: 'TSLA market cap', intent: 'Tesla current market capitalization' },
+  { domain: 'finance_data', complexity: 'simple', query: 'SPY ETF price', intent: 'S&P 500 ETF current price' },
+  { domain: 'finance_data', complexity: 'simple', query: 'AMZN stock quote', intent: 'Amazon current stock quote data' },
+  { domain: 'finance_data', complexity: 'simple', query: 'META PE ratio', intent: 'Meta Platforms price-to-earnings ratio' },
+  // Medium (8)
+  { domain: 'finance_data', complexity: 'medium', query: 'NVDA earnings per share quarterly trend', intent: 'NVIDIA quarterly EPS trend over recent quarters' },
+  { domain: 'finance_data', complexity: 'medium', query: 'Compare AAPL MSFT GOOGL market cap', intent: 'Market cap comparison of top 3 tech companies' },
+  { domain: 'finance_data', complexity: 'medium', query: 'TSLA revenue growth rate year over year', intent: 'Tesla annual revenue growth percentage' },
+  { domain: 'finance_data', complexity: 'medium', query: 'S&P 500 sector performance breakdown', intent: 'Performance by sector within the S&P 500' },
+  { domain: 'finance_data', complexity: 'medium', query: 'NVDA AMD INTC AI chip revenue comparison', intent: 'Revenue comparison for AI chip companies' },
+  { domain: 'finance_data', complexity: 'medium', query: 'Top 10 stocks by volume today', intent: 'Most actively traded stocks by volume' },
+  { domain: 'finance_data', complexity: 'medium', query: 'AAPL dividend history last 5 years', intent: 'Apple dividend payment history and growth' },
+  { domain: 'finance_data', complexity: 'medium', query: 'Financial sector ETF XLF vs KBE performance', intent: 'Performance comparison of financial sector ETFs' },
+  // Complex (5)
+  { domain: 'finance_data', complexity: 'complex', query: 'Build DCF model for NVDA with projected revenue growth free cash flow margins', intent: 'Data needed for NVIDIA discounted cash flow valuation' },
+  { domain: 'finance_data', complexity: 'complex', query: 'Analyze correlation between AAPL MSFT GOOGL AMZN NVDA daily returns 2025', intent: 'Return correlation matrix for Magnificent Five stocks' },
+  { domain: 'finance_data', complexity: 'complex', query: 'Compare gross margin operating margin net margin for FAANG stocks trend', intent: 'Profitability margin comparison across FAANG' },
+  { domain: 'finance_data', complexity: 'complex', query: 'Semiconductor industry aggregate revenue by company with YoY growth rates', intent: 'Industry-wide semiconductor revenue analysis' },
+  { domain: 'finance_data', complexity: 'complex', query: 'Portfolio optimization modern portfolio theory AAPL MSFT NVDA GOOGL AMZN risk return', intent: 'Data for mean-variance optimization of tech portfolio' },
+];
+
+// Crawling-specific queries — URLs to scrape (10 queries)
+const crawling: BenchmarkQuerySeed[] = [
+  // Simple — static HTML pages (4)
+  { domain: 'crawling', complexity: 'simple', query: 'https://example.com', intent: 'Basic HTML page extraction with title and body text' },
+  { domain: 'crawling', complexity: 'simple', query: 'https://httpbin.org/html', intent: 'Simple HTML page content extraction' },
+  { domain: 'crawling', complexity: 'simple', query: 'https://news.ycombinator.com', intent: 'Extract front page stories from Hacker News' },
+  { domain: 'crawling', complexity: 'simple', query: 'https://en.wikipedia.org/wiki/Artificial_intelligence', intent: 'Extract article text from Wikipedia page' },
+  // Medium — JS-heavy pages (3)
+  { domain: 'crawling', complexity: 'medium', query: 'https://github.com/trending', intent: 'Extract trending repositories list (requires JS rendering)' },
+  { domain: 'crawling', complexity: 'medium', query: 'https://docs.anthropic.com', intent: 'Extract documentation content (SPA, requires JS)' },
+  { domain: 'crawling', complexity: 'medium', query: 'https://platform.openai.com/docs', intent: 'Extract API documentation content (React SPA)' },
+  // Complex — paginated or dynamic content (3)
+  { domain: 'crawling', complexity: 'complex', query: 'https://arxiv.org/list/cs.AI/recent', intent: 'Extract recent AI paper titles and abstracts from arXiv' },
+  { domain: 'crawling', complexity: 'complex', query: 'https://producthunt.com', intent: 'Extract featured products with descriptions and upvotes' },
+  { domain: 'crawling', complexity: 'complex', query: 'https://stackoverflow.com/questions?tab=newest&tagged=llm', intent: 'Extract recent LLM-tagged questions with scores' },
+];
+
+// Embedding-specific queries — passages + retrieval queries (20 total)
+const embedding: BenchmarkQuerySeed[] = [
+  // Test passages to embed (10)
+  { domain: 'embedding', complexity: 'simple', query: 'Retrieval-augmented generation combines a retrieval step with a language model to produce factually grounded responses.', intent: 'Passage about RAG technique' },
+  { domain: 'embedding', complexity: 'simple', query: 'Vector databases like Pinecone, Weaviate, and Qdrant store high-dimensional embeddings for similarity search.', intent: 'Passage about vector databases' },
+  { domain: 'embedding', complexity: 'simple', query: 'Fine-tuning a pre-trained model on domain-specific data improves performance on specialized tasks.', intent: 'Passage about fine-tuning LLMs' },
+  { domain: 'embedding', complexity: 'simple', query: 'Prompt engineering involves crafting inputs to guide language model behavior without changing model weights.', intent: 'Passage about prompt engineering' },
+  { domain: 'embedding', complexity: 'simple', query: 'Transformer architecture uses self-attention mechanisms to process sequential data in parallel.', intent: 'Passage about transformer architecture' },
+  { domain: 'embedding', complexity: 'simple', query: 'Reinforcement learning from human feedback aligns language models with human preferences and values.', intent: 'Passage about RLHF' },
+  { domain: 'embedding', complexity: 'simple', query: 'Knowledge graphs represent structured relationships between entities and can augment LLM reasoning.', intent: 'Passage about knowledge graphs' },
+  { domain: 'embedding', complexity: 'simple', query: 'Model quantization reduces memory footprint and inference cost by using lower-precision number formats.', intent: 'Passage about quantization' },
+  { domain: 'embedding', complexity: 'simple', query: 'Multi-modal models process both text and images, enabling tasks like visual question answering.', intent: 'Passage about multi-modal models' },
+  { domain: 'embedding', complexity: 'simple', query: 'Agentic AI systems use tool calling and planning to autonomously complete complex multi-step tasks.', intent: 'Passage about AI agents' },
+  // Retrieval queries — should match specific passages above (10)
+  { domain: 'embedding', complexity: 'medium', query: 'How does RAG work with language models?', intent: 'Should retrieve RAG passage with high similarity' },
+  { domain: 'embedding', complexity: 'medium', query: 'What are the best databases for storing embeddings?', intent: 'Should retrieve vector database passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'How can I adapt a language model to my specific domain?', intent: 'Should retrieve fine-tuning passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'Best practices for writing prompts for AI', intent: 'Should retrieve prompt engineering passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'How does attention mechanism work in deep learning?', intent: 'Should retrieve transformer architecture passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'How are AI models aligned with human values?', intent: 'Should retrieve RLHF passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'Structured data representation for AI reasoning', intent: 'Should retrieve knowledge graphs passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'Making AI models smaller and faster', intent: 'Should retrieve quantization passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'AI that understands both text and images', intent: 'Should retrieve multi-modal passage' },
+  { domain: 'embedding', complexity: 'medium', query: 'AI systems that can use tools autonomously', intent: 'Should retrieve agentic AI passage' },
+];
+
 export const ALL_BENCHMARK_QUERIES: BenchmarkQuerySeed[] = [
   ...finance,
   ...legal,
@@ -560,4 +630,7 @@ export const ALL_BENCHMARK_QUERIES: BenchmarkQuerySeed[] = [
   ...science,
   ...general,
   ...multilingual,
+  ...financeData,
+  ...crawling,
+  ...embedding,
 ];

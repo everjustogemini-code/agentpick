@@ -134,7 +134,7 @@ export async function GET() {
           },
         },
       },
-      '/products/suggest': {
+      '/products/submit': {
         post: {
           operationId: 'suggestProduct',
           summary: 'Suggest a new product to be added (goes to moderation queue)',

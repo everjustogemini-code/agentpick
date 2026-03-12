@@ -2,6 +2,38 @@ import type { ProofOfIntegration } from '@/types';
 
 interface ProductForProof {
   apiBaseUrl: string | null;
+  websiteUrl?: string | null;
+}
+
+function extractHostname(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Accept proof endpoint if its domain matches the product's apiBaseUrl OR websiteUrl.
+ * Also accepts subdomains: api.stripe.com matches stripe.com and vice versa.
+ */
+function isValidProofDomain(proofEndpoint: string, product: ProductForProof): boolean {
+  const proofDomain = extractHostname(proofEndpoint);
+  if (!proofDomain) return false;
+
+  const validDomains = [
+    product.apiBaseUrl ? extractHostname(product.apiBaseUrl) : null,
+    product.websiteUrl ? extractHostname(product.websiteUrl) : null,
+  ].filter((d): d is string => d !== null);
+
+  if (validDomains.length === 0) return true; // no domains to check against
+
+  return validDomains.some(
+    (d) =>
+      proofDomain === d ||
+      proofDomain.endsWith('.' + d) ||
+      d.endsWith('.' + proofDomain),
+  );
 }
 
 export function verifyProof(
@@ -46,16 +78,10 @@ export function verifyProof(
     return { valid: false, reason: 'invalid_method' };
   }
 
-  // 5. Domain matching (if product has apiBaseUrl and proof has full URL)
-  if (product.apiBaseUrl && proof.endpoint.startsWith('http')) {
-    try {
-      const proofDomain = new URL(proof.endpoint).hostname;
-      const productDomain = new URL(product.apiBaseUrl).hostname;
-      if (proofDomain !== productDomain) {
-        return { valid: false, reason: 'domain_mismatch' };
-      }
-    } catch {
-      return { valid: false, reason: 'invalid_endpoint_url' };
+  // 5. Domain matching — accept if proof domain matches apiBaseUrl OR websiteUrl (incl. subdomains)
+  if (proof.endpoint.startsWith('http')) {
+    if (!isValidProofDomain(proof.endpoint, product)) {
+      return { valid: false, reason: 'domain_mismatch' };
     }
   }
 

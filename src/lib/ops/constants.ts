@@ -36,6 +36,9 @@ export const DOMAIN_DEFINITIONS: DomainDefinition[] = [
   { slug: "science", code: "science", label: "Science", subdomains: ["papers", "journals", "grants", "breakthroughs"], suggestedTools: ["exa", "tavily", "jina", "brave"] },
   { slug: "general", code: "gen", label: "General", subdomains: ["research", "comparison", "explainers", "shopping"], suggestedTools: ["tavily", "exa", "serper", "brave"] },
   { slug: "multilingual", code: "multi", label: "Multilingual", subdomains: ["local-search", "translation", "regional-news", "international"], suggestedTools: ["brave", "serper", "exa", "tavily"] },
+  { slug: "finance_data", code: "findata", label: "Finance Data", subdomains: ["quotes", "historical", "earnings", "fundamentals"], suggestedTools: ["polygon", "alphavantage", "fmp"] },
+  { slug: "crawling", code: "crawl", label: "Crawling", subdomains: ["static-html", "js-rendered", "paginated", "dynamic"], suggestedTools: ["apify", "scrapingbee", "browserbase", "firecrawl", "jina"] },
+  { slug: "embedding", code: "embed", label: "Embedding", subdomains: ["passage-embed", "query-embed", "retrieval", "similarity"], suggestedTools: ["openai-embed", "cohere-embed", "voyage-embed", "jina-embed"] },
 ];
 
 export const MODEL_DEFINITIONS: ModelDefinition[] = [
@@ -54,6 +57,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   { slug: "firecrawl", label: "Firecrawl", description: "Web extraction and crawl workflows" },
   { slug: "jina", label: "Jina", description: "Reader-style content extraction" },
   { slug: "perplexity", label: "Perplexity", description: "Answer-style retrieval and citations" },
+  { slug: "you", label: "You.com", description: "Web search with AI snippets" },
+  { slug: "serpapi", label: "SerpAPI", description: "Google SERP scraping API" },
+  { slug: "bing", label: "Bing", description: "Azure Cognitive Services web search" },
+  { slug: "apify", label: "Apify", description: "Web scraping and automation platform" },
+  { slug: "scrapingbee", label: "ScrapingBee", description: "JS-rendered web scraping API" },
+  { slug: "browserbase", label: "Browserbase", description: "Headless browser sessions" },
+  { slug: "polygon", label: "Polygon.io", description: "Real-time and historical stock data" },
+  { slug: "alphavantage", label: "Alpha Vantage", description: "Free stock and forex time series data" },
+  { slug: "fmp", label: "FMP", description: "Financial Modeling Prep stock quotes and fundamentals" },
+  { slug: "cohere", label: "Cohere", description: "Cohere embed and rerank models" },
+  { slug: "voyage", label: "Voyage AI", description: "High-quality text embeddings" },
   { slug: "anthropic", label: "Anthropic", description: "Anthropic model API key" },
   { slug: "openai", label: "OpenAI", description: "OpenAI model API key" },
   { slug: "google", label: "Google", description: "Google Gemini API key" },
@@ -72,6 +86,9 @@ export const DEFAULT_DISTRIBUTION: Array<{ domain: string; models: Array<{ slug:
   { domain: "science", models: [{ slug: "claude", count: 1 }, { slug: "gpt", count: 1 }, { slug: "llama", count: 1 }] },
   { domain: "general", models: [{ slug: "claude", count: 2 }, { slug: "gpt", count: 2 }, { slug: "gemini", count: 2 }, { slug: "deepseek", count: 1 }, { slug: "llama", count: 1 }] },
   { domain: "multilingual", models: [{ slug: "claude", count: 1 }, { slug: "gpt", count: 1 }, { slug: "deepseek", count: 1 }] },
+  { domain: "finance_data", models: [{ slug: "claude", count: 1 }, { slug: "gpt", count: 1 }, { slug: "gemini", count: 1 }] },
+  { domain: "crawling", models: [{ slug: "claude", count: 1 }, { slug: "gpt", count: 1 }, { slug: "gemini", count: 1 }] },
+  { domain: "embedding", models: [{ slug: "claude", count: 1 }, { slug: "gpt", count: 1 }, { slug: "gemini", count: 1 }] },
 ];
 
 export const DEFAULT_QUERYSET_SIZE = 50;

@@ -80,4 +80,19 @@ export const BENCHMARK_AGENTS: BenchmarkAgentSeed[] = [
   { name: 'benchmark-multi-claude-01', domain: 'multilingual', modelProvider: 'anthropic', modelName: 'claude-sonnet-4', modelFamily: 'Claude', complexity: ['simple', 'medium', 'complex'] },
   { name: 'benchmark-multi-gpt-01', domain: 'multilingual', modelProvider: 'openai', modelName: 'gpt-4o', modelFamily: 'GPT-4', complexity: ['simple', 'medium', 'complex'] },
   { name: 'benchmark-multi-deepseek-01', domain: 'multilingual', modelProvider: 'deepseek', modelName: 'deepseek-v3', modelFamily: 'DeepSeek', complexity: ['simple', 'medium'] },
+
+  // ═══ Finance Data (3 agents — test Polygon, AlphaVantage, FMP) ═══
+  { name: 'benchmark-findata-claude-01', domain: 'finance_data', modelProvider: 'anthropic', modelName: 'claude-sonnet-4', modelFamily: 'Claude', complexity: ['simple', 'medium', 'complex'] },
+  { name: 'benchmark-findata-gpt-01', domain: 'finance_data', modelProvider: 'openai', modelName: 'gpt-4o', modelFamily: 'GPT-4', complexity: ['simple', 'medium', 'complex'] },
+  { name: 'benchmark-findata-gemini-01', domain: 'finance_data', modelProvider: 'google', modelName: 'gemini-2.0-flash', modelFamily: 'Gemini', complexity: ['simple', 'medium'] },
+
+  // ═══ Crawling (3 agents — test Apify, ScrapingBee, Browserbase) ═══
+  { name: 'benchmark-crawl-claude-01', domain: 'crawling', modelProvider: 'anthropic', modelName: 'claude-sonnet-4', modelFamily: 'Claude', complexity: ['simple', 'medium', 'complex'] },
+  { name: 'benchmark-crawl-gpt-01', domain: 'crawling', modelProvider: 'openai', modelName: 'gpt-4o', modelFamily: 'GPT-4', complexity: ['simple', 'medium', 'complex'] },
+  { name: 'benchmark-crawl-gemini-01', domain: 'crawling', modelProvider: 'google', modelName: 'gemini-2.0-flash', modelFamily: 'Gemini', complexity: ['simple', 'medium'] },
+
+  // ═══ Embedding (3 agents — test OpenAI, Cohere, Voyage, Jina Embed) ═══
+  { name: 'benchmark-embed-claude-01', domain: 'embedding', modelProvider: 'anthropic', modelName: 'claude-sonnet-4', modelFamily: 'Claude', complexity: ['simple', 'medium'] },
+  { name: 'benchmark-embed-gpt-01', domain: 'embedding', modelProvider: 'openai', modelName: 'gpt-4o', modelFamily: 'GPT-4', complexity: ['simple', 'medium'] },
+  { name: 'benchmark-embed-gemini-01', domain: 'embedding', modelProvider: 'google', modelName: 'gemini-2.0-flash', modelFamily: 'Gemini', complexity: ['simple', 'medium'] },
 ];

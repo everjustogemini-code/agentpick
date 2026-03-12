@@ -109,6 +109,86 @@ export async function probeVaultKey(service: string, encryptedKey: string): Prom
         });
         return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
       }
+      // --- New search probes ---
+      case "perplexity": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: "health check" }], max_tokens: 10 }),
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "you": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.ydc-index.io/search?query=health+check&num_web_results=1", {
+          headers: { "X-API-Key": apiKey, Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "serpapi": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://serpapi.com/search.json?q=health+check&engine=google&num=1&api_key=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "bing": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.bing.microsoft.com/v7.0/search?q=health+check&count=1", {
+          headers: { "Ocp-Apim-Subscription-Key": apiKey, Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      // --- Crawling probes ---
+      case "apify": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.apify.com/v2/acts?token=${apiKey}&limit=1`, {
+          headers: { Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "scrapingbee": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=https://example.com&render_js=false`, {});
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: typeof data === "string" ? data.slice(0, 180) : data } };
+      }
+      case "browserbase": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://www.browserbase.com/v1/sessions?limit=1", {
+          headers: { "x-bb-api-key": apiKey, Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      // --- Finance probes ---
+      case "polygon": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.polygon.io/v2/aggs/ticker/AAPL/prev?adjusted=true&apiKey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "alphavantage": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=AAPL&outputsize=compact&apikey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "fmp": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://financialmodelingprep.com/api/v3/quote/AAPL?apikey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      // --- Embedding probes ---
+      case "cohere": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.cohere.com/v1/embed", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "embed-english-v3.0", texts: ["health check"], input_type: "search_query", truncate: "END" }),
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
+      case "voyage": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.voyageai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "voyage-3", input: ["health check"], input_type: "query" }),
+        });
+        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
+      }
       default:
         return { ok: false, status: "unsupported", latencyMs: 0, error: `No test probe is configured for ${service}.` };
     }
@@ -185,6 +265,117 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
           headers: { Authorization: `Bearer ${apiKey}` },
         });
         result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: response.ok ? 1 : 0 } };
+        break;
+      }
+      // --- New search probes ---
+      case "perplexity": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "sonar", messages: [{ role: "user", content: query }], max_tokens: 256, return_citations: true }),
+        });
+        const citations = ((data as any)?.citations ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: citations.length || (response.ok ? 1 : 0) } };
+        break;
+      }
+      case "you": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.ydc-index.io/search?query=${encodeURIComponent(query)}&num_web_results=3`, {
+          headers: { "X-API-Key": apiKey, Accept: "application/json" },
+        });
+        const hits = ((data as any)?.hits ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: hits.length } };
+        break;
+      }
+      case "serpapi": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://serpapi.com/search.json?q=${encodeURIComponent(query)}&engine=google&num=3&api_key=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        const organic = ((data as any)?.organic_results ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: organic.length } };
+        break;
+      }
+      case "bing": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=3`, {
+          headers: { "Ocp-Apim-Subscription-Key": apiKey, Accept: "application/json" },
+        });
+        const webResults = ((data as any)?.webPages?.value ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: webResults.length } };
+        break;
+      }
+      // --- Crawling probes ---
+      case "apify": {
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${apiKey}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ startUrls: [{ url: query.startsWith("http") ? query : `https://${query}` }], maxPagesPerCrawl: 1 }),
+        }, 60000);
+        const items = Array.isArray(data) ? data : [];
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: items.length } };
+        break;
+      }
+      case "scrapingbee": {
+        const { response, latencyMs } = await fetchWithTimeout(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(query.startsWith("http") ? query : `https://${query}`)}&render_js=true`, {}, 45000);
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: response.ok ? 1 : 0 } };
+        break;
+      }
+      case "browserbase": {
+        // Simplified probe — just create+delete a session to test connectivity
+        const { response, latencyMs } = await fetchWithTimeout("https://www.browserbase.com/v1/sessions", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-bb-api-key": apiKey },
+          body: JSON.stringify({ projectId: process.env.BROWSERBASE_PROJECT_ID || "default" }),
+        });
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: response.ok ? 1 : 0 } };
+        break;
+      }
+      // --- Finance probes ---
+      case "polygon": {
+        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apiKey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        const results = ((data as any)?.results ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
+      }
+      case "alphavantage": {
+        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        const tsKey = Object.keys((data as any) || {}).find((k: string) => k.startsWith("Time Series"));
+        const count = tsKey ? Object.keys(((data as any)[tsKey]) || {}).length : 0;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: count } };
+        break;
+      }
+      case "fmp": {
+        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${apiKey}`, {
+          headers: { Accept: "application/json" },
+        });
+        const results = Array.isArray(data) ? data : [];
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
+      }
+      // --- Embedding probes ---
+      case "cohere": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.cohere.com/v1/embed", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "embed-english-v3.0", texts: [query], input_type: "search_query", truncate: "END" }),
+        });
+        const embeddings = ((data as any)?.embeddings ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: embeddings.length } };
+        break;
+      }
+      case "voyage": {
+        const { response, latencyMs, data } = await fetchWithTimeout("https://api.voyageai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: "voyage-3", input: [query], input_type: "query" }),
+        });
+        const embeddings = ((data as any)?.data ?? []) as Array<any>;
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: embeddings.length } };
         break;
       }
       default:
