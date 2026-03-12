@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiError } from '@/types';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export async function GET(
   _request: NextRequest,
@@ -28,7 +29,7 @@ export async function GET(
     },
   });
 
-  if (!product || product.status !== 'APPROVED') {
+  if (!product || !BROWSE_STATUSES.includes(product.status)) {
     return apiError('NOT_FOUND', 'Product not found.', 404);
   }
 
@@ -36,13 +37,13 @@ export async function GET(
   const [overallRank, categoryRank] = await Promise.all([
     prisma.product.count({
       where: {
-        status: 'APPROVED',
+        status: { in: BROWSE_STATUSES },
         weightedScore: { gt: product.weightedScore },
       },
     }),
     prisma.product.count({
       where: {
-        status: 'APPROVED',
+        status: { in: BROWSE_STATUSES },
         category: product.category,
         weightedScore: { gt: product.weightedScore },
       },

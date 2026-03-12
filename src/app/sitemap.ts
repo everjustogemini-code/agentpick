@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 const BASE_URL = 'https://agentpick.dev';
 
@@ -34,7 +35,7 @@ const RANKING_SLUGS = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Query ALL approved products from DB
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: BROWSE_STATUSES } },
     select: { slug: true, updatedAt: true },
     orderBy: { weightedScore: 'desc' },
   });

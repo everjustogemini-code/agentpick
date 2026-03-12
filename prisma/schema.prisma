@@ -78,10 +78,18 @@ enum Category {
 }
 
 enum ProductStatus {
+  // Legacy statuses (kept for migration compatibility)
   PENDING
   APPROVED
   REJECTED
   ARCHIVED
+
+  // R5v2: Five trust levels
+  SUBMITTED        // Auto-published, unverified
+  CLAIMED          // Owner verified via DNS/email
+  SMOKE_TESTED     // Basic connectivity passed
+  BENCHMARKED      // 30+ official benchmark runs
+  LIVE_TELEMETRY   // Receiving real external agent data
 }
 
 // ============================================================

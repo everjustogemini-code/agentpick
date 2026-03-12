@@ -60,8 +60,38 @@ export async function POST(request: NextRequest) {
     return apiError('VALIDATION_ERROR', 'Maximum 5 tags allowed.', 400);
   }
 
+  // Duplicate detection: check if website URL already exists
+  const existingByUrl = await prisma.product.findFirst({
+    where: { websiteUrl: body.website_url },
+    select: { slug: true, name: true },
+  });
+  if (existingByUrl) {
+    return apiError(
+      'DUPLICATE',
+      `A product with this URL already exists: ${existingByUrl.name} (/products/${existingByUrl.slug})`,
+      409,
+    );
+  }
+
+  // URL reachability check (non-blocking, best-effort)
+  let urlReachable = true;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch(body.website_url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      redirect: 'follow',
+    });
+    clearTimeout(timeout);
+    urlReachable = resp.ok || resp.status === 405; // 405 = HEAD not allowed but site exists
+  } catch {
+    urlReachable = false;
+  }
+
   const slug = await uniqueSlug(body.name);
 
+  // R5v2: Auto-publish as SUBMITTED (visible immediately, unverified)
   const product = await prisma.product.create({
     data: {
       slug,
@@ -74,6 +104,7 @@ export async function POST(request: NextRequest) {
       apiBaseUrl: body.api_base_url ?? null,
       tags: body.tags ?? [],
       submittedBy: body.submitter_email,
+      status: 'SUBMITTED',
     },
   });
 
@@ -82,7 +113,10 @@ export async function POST(request: NextRequest) {
       product_id: product.id,
       slug: product.slug,
       status: product.status,
-      message: 'Product submitted for review.',
+      url_reachable: urlReachable,
+      message: urlReachable
+        ? 'Product published. It will be automatically verified within 24 hours.'
+        : 'Product published but the website URL could not be reached. Please check the URL.',
     },
     { status: 201 }
   );

@@ -1,22 +1,20 @@
 /**
- * R5 Three-source score calculation.
- * Blends: official benchmarks, sandbox (playground) tests, and real agent usage.
- * Weights adapt based on data availability.
+ * R5v2 Two-layer scoring.
+ * Public ranking: 40% benchmark + 60% telemetry.
+ * Sandbox/Arena/Playground data does NOT enter public score.
  */
 
 export interface ScoreBreakdown {
   benchmarkWeight: number;
-  sandboxWeight: number;
   usageWeight: number;
   benchmarkScore: number;   // 0-5
-  sandboxScore: number;     // 0-5
   usageScore: number;       // 0-5
   blendedScore: number;     // 0-10
   benchmarkCount: number;
-  sandboxSessionCount: number;
   telemetryCount: number;
   successRate: number | null;
   avgLatencyMs: number | null;
+  arenaTestCount: number;   // social proof only, not scored
 }
 
 export function calculateUsageScore(
@@ -43,29 +41,37 @@ export function calculateUsageScore(
 
 export function calculateScoreBreakdown(input: {
   avgBenchmarkRelevance: number | null;
-  avgSandboxScore: number | null;
   benchmarkCount: number;
-  sandboxSessionCount: number;
   telemetryCount: number;
   successRate: number | null;
   avgLatencyMs: number | null;
+  arenaTestCount?: number;
 }): ScoreBreakdown {
   const benchmarkScore = input.avgBenchmarkRelevance ?? 0;
-  const sandboxScore = input.avgSandboxScore ?? 0;
   const usageScore = calculateUsageScore(
     input.successRate,
     input.avgLatencyMs,
     input.telemetryCount,
   );
 
-  // Adaptive weights based on data availability
-  const benchmarkWeight = input.benchmarkCount >= 30 ? 0.32 : input.benchmarkCount >= 10 ? 0.15 : 0.05;
-  const sandboxWeight = input.sandboxSessionCount >= 10 ? 0.18 : input.sandboxSessionCount >= 3 ? 0.08 : 0.02;
-  const usageWeight = 1 - benchmarkWeight - sandboxWeight;
+  // Fixed weights: 40% benchmark + 60% telemetry
+  // If no benchmark data, usage gets full weight (and vice versa)
+  let benchmarkWeight = 0.40;
+  let usageWeight = 0.60;
+
+  if (input.benchmarkCount === 0 && input.telemetryCount === 0) {
+    benchmarkWeight = 0.40;
+    usageWeight = 0.60;
+  } else if (input.benchmarkCount === 0) {
+    benchmarkWeight = 0;
+    usageWeight = 1.0;
+  } else if (input.telemetryCount === 0) {
+    benchmarkWeight = 1.0;
+    usageWeight = 0;
+  }
 
   const raw = (
     benchmarkScore * benchmarkWeight +
-    sandboxScore * sandboxWeight +
     usageScore * usageWeight
   );
 
@@ -74,16 +80,14 @@ export function calculateScoreBreakdown(input: {
 
   return {
     benchmarkWeight,
-    sandboxWeight,
     usageWeight,
     benchmarkScore,
-    sandboxScore,
     usageScore,
     blendedScore: Math.min(10, Math.max(0, blendedScore)),
     benchmarkCount: input.benchmarkCount,
-    sandboxSessionCount: input.sandboxSessionCount,
     telemetryCount: input.telemetryCount,
     successRate: input.successRate,
     avgLatencyMs: input.avgLatencyMs,
+    arenaTestCount: input.arenaTestCount ?? 0,
   };
 }

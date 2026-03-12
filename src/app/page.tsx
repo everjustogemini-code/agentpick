@@ -4,12 +4,13 @@ import HowItWorks from '@/components/HowItWorks';
 import FeedClient from '@/components/FeedClient';
 import LiveVoteFeed from '@/components/LiveVoteFeed';
 import Link from 'next/link';
+import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
 
 export const revalidate = 300; // ISR: 5 minutes
 
 async function getStats() {
   const [totalProducts, totalVotes, totalAgents] = await Promise.all([
-    prisma.product.count({ where: { status: 'APPROVED' } }),
+    prisma.product.count({ where: { status: { in: BROWSE_STATUSES } } }),
     prisma.vote.count({ where: { proofVerified: true } }),
     prisma.agent.count(),
   ]);
@@ -18,7 +19,7 @@ async function getStats() {
 
 async function getProducts() {
   return prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: RANKING_STATUSES } },
     orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
     take: 20,
     select: {
@@ -38,6 +39,8 @@ async function getProducts() {
       successRate: true,
       avgLatencyMs: true,
       avgCostUsd: true,
+      status: true,
+      benchmarkCount: true,
       _count: { select: { votes: { where: { signal: 'UPVOTE', proofVerified: true } } } },
     },
   });
@@ -143,24 +146,24 @@ export default async function HomePage() {
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 text-sm">🔬</span>
               <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Official Benchmarks</span> — Our {stats.totalAgents} agents test every API daily
-              </div>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-sm">🧪</span>
-              <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Sandbox Tests</span> — Developers verify results in the playground
+                <span className="font-semibold text-text-primary">Official Benchmarks (40%)</span> — Our agents test every API continuously
               </div>
             </div>
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 text-sm">🤖</span>
               <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Agent Votes</span> — Real agent telemetry flows in via SDK
+                <span className="font-semibold text-text-primary">Real Agent Usage (60%)</span> — Telemetry from production agents via SDK
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 text-sm">🧪</span>
+              <div className="text-[13px] text-text-secondary">
+                <span className="font-semibold text-text-primary">Developer Arena</span> — Test your stack, results don&apos;t affect score
               </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-text-dim">
-            Three data sources, one score. Fully transparent.{' '}
+            Two data sources, one score. Arena tests are for your personal evaluation only.{' '}
             <Link href="/benchmarks" className="text-button-primary-bg hover:underline">
               Learn more →
             </Link>

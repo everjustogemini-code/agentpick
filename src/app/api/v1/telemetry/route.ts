@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 import type { TelemetryRequest } from '@/types';
 
 function validateEvent(body: TelemetryRequest): string | null {
@@ -108,10 +109,10 @@ export async function POST(request: NextRequest) {
   if (product) {
     const [rank, categoryRank, productTelemetry] = await Promise.all([
       prisma.product.count({
-        where: { status: 'APPROVED', weightedScore: { gt: product.weightedScore } },
+        where: { status: { in: BROWSE_STATUSES }, weightedScore: { gt: product.weightedScore } },
       }),
       prisma.product.count({
-        where: { status: 'APPROVED', category: product.category, weightedScore: { gt: product.weightedScore } },
+        where: { status: { in: BROWSE_STATUSES }, category: product.category, weightedScore: { gt: product.weightedScore } },
       }),
       prisma.telemetryEvent.aggregate({
         where: { productId: product.id },

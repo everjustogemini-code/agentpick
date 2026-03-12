@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { RANKING_STATUSES } from '@/lib/product-status';
 import type { Category } from '@/generated/prisma/client';
 
 const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'];
@@ -81,7 +82,7 @@ async function discoverTools(args: {
   min_score?: number;
   limit?: number;
 }) {
-  const where: Record<string, unknown> = { status: 'APPROVED' as const };
+  const where: Record<string, unknown> = { status: { in: RANKING_STATUSES } };
 
   if (args.category && VALID_CATEGORIES.includes(args.category)) {
     where.category = args.category as Category;
@@ -148,7 +149,7 @@ async function getToolDetails(args: { slug: string }) {
     },
   });
 
-  if (!product || product.status !== 'APPROVED') {
+  if (!product || !RANKING_STATUSES.includes(product.status)) {
     return { error: 'Product not found' };
   }
 
@@ -203,8 +204,8 @@ async function compareTools(args: { slug_a: string; slug_b: string }) {
     }),
   ]);
 
-  if (!a || a.status !== 'APPROVED') return { error: `Product '${args.slug_a}' not found` };
-  if (!b || b.status !== 'APPROVED') return { error: `Product '${args.slug_b}' not found` };
+  if (!a || !RANKING_STATUSES.includes(a.status)) return { error: `Product '${args.slug_a}' not found` };
+  if (!b || !RANKING_STATUSES.includes(b.status)) return { error: `Product '${args.slug_b}' not found` };
 
   const upvoteRatio = (votes: typeof a.votes) => {
     const up = votes.filter((v) => v.signal === 'UPVOTE').length;
@@ -247,7 +248,7 @@ async function getRankings(args: { category: string; limit?: number }) {
   const limit = Math.min(20, Math.max(1, args.limit ?? 10));
 
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED', category: args.category as Category },
+    where: { status: { in: RANKING_STATUSES }, category: args.category as Category },
     orderBy: { weightedScore: 'desc' },
     take: limit,
     select: {

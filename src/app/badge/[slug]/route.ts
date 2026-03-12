@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 function fmt(n: number): string {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -42,7 +43,7 @@ export async function GET(
     },
   });
 
-  if (!product || product.status !== 'APPROVED') {
+  if (!product || !BROWSE_STATUSES.includes(product.status)) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
   <rect width="200" height="28" rx="4" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1"/>
   <text x="100" y="18" fill="#64748B" font-family="monospace" font-size="11" text-anchor="middle">agentpick | not found</text>
@@ -55,7 +56,7 @@ export async function GET(
   // Get rank within category
   const rank = await prisma.product.count({
     where: {
-      status: 'APPROVED',
+      status: { in: BROWSE_STATUSES },
       category: product.category,
       weightedScore: { gt: product.weightedScore },
     },

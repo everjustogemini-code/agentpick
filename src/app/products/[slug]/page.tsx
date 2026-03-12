@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import CopyButton from './CopyButton';
 import ScoreBreakdown from '@/components/ScoreBreakdown';
 import { calculateScoreBreakdown } from '@/lib/score';
+import { getStatusBadge, BROWSE_STATUSES } from '@/lib/product-status';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -144,7 +145,7 @@ export default async function ProductDetailPage({ params }: Props) {
     },
   });
 
-  if (!product || product.status !== 'APPROVED') notFound();
+  if (!product || !BROWSE_STATUSES.includes(product.status)) notFound();
 
   const badge = CATEGORY_BADGE[product.category] ?? { bg: 'bg-gray-50', text: 'text-gray-600', label: product.category };
   const accent = ACCENT_COLORS[product.category] ?? '#64748B';
@@ -253,19 +254,10 @@ export default async function ProductDetailPage({ params }: Props) {
     };
   }
 
-  // Playground session count for this product
-  const playgroundSessionCount = await prisma.playgroundRun.count({
+  // Arena test count (social proof, not scored)
+  const arenaTestCount = await prisma.playgroundRun.count({
     where: { productId: product.id },
   });
-
-  // Sandbox avg score
-  const sandboxRuns = await prisma.playgroundRun.findMany({
-    where: { productId: product.id, relevanceScore: { not: null } },
-    select: { relevanceScore: true },
-  });
-  const avgSandboxScore = sandboxRuns.length > 0
-    ? sandboxRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / sandboxRuns.length
-    : null;
 
   // Benchmark avg relevance
   const benchRelevanceRuns = benchmarkRuns.filter((r) => r.relevanceScore != null);
@@ -273,15 +265,14 @@ export default async function ProductDetailPage({ params }: Props) {
     ? benchRelevanceRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / benchRelevanceRuns.length
     : null;
 
-  // R5: Score breakdown
+  // R5v2: Two-layer score breakdown (40% benchmark + 60% telemetry)
   const breakdown = calculateScoreBreakdown({
     avgBenchmarkRelevance,
-    avgSandboxScore,
     benchmarkCount,
-    sandboxSessionCount: playgroundSessionCount,
     telemetryCount: product.telemetryCount,
     successRate: product.successRate ?? null,
     avgLatencyMs: product.avgLatencyMs ?? null,
+    arenaTestCount,
   });
 
   // "Agents also use" — find products that share the most voters
@@ -392,11 +383,14 @@ export default async function ProductDetailPage({ params }: Props) {
               <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.8px] ${badge.bg} ${badge.text}`}>
                 {product.category}
               </span>
-              {product.isClaimed && (
-                <span className="rounded-full bg-green-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-green-600">
-                  Claimed ✓
-                </span>
-              )}
+              {(() => {
+                const trustBadge = getStatusBadge(product.status, product.benchmarkCount, product.telemetryCount);
+                return (
+                  <span className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold ${trustBadge.bg} ${trustBadge.text}`}>
+                    {trustBadge.label}
+                  </span>
+                );
+              })()}
             </div>
             <p className="mt-1 text-text-muted">{product.tagline}</p>
             <div className="mt-2 flex items-center gap-3">
@@ -490,16 +484,14 @@ export default async function ProductDetailPage({ params }: Props) {
           slug={slug}
           score={breakdown.blendedScore}
           benchmarkWeight={breakdown.benchmarkWeight}
-          sandboxWeight={breakdown.sandboxWeight}
           usageWeight={breakdown.usageWeight}
           benchmarkScore={breakdown.benchmarkScore}
-          sandboxScore={breakdown.sandboxScore}
           usageScore={breakdown.usageScore}
           benchmarkCount={breakdown.benchmarkCount}
-          sandboxSessionCount={breakdown.sandboxSessionCount}
           telemetryCount={breakdown.telemetryCount}
           successRate={breakdown.successRate}
           avgLatencyMs={breakdown.avgLatencyMs}
+          arenaTestCount={breakdown.arenaTestCount}
         />
 
         {/* ═══ Benchmark Performance ═══ */}
@@ -616,7 +608,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 #{rank} in {badge.label} · Top {topPct}% overall
               </div>
               <div className="mt-1 font-mono text-[11px] text-text-dim">
-                Tested by {benchmarkStats.totalAgents} agents across {benchmarkStats.domains.length} domains · {playgroundSessionCount} playground sessions
+                Tested by {benchmarkStats.totalAgents} agents across {benchmarkStats.domains.length} domains · {arenaTestCount} arena tests
               </div>
             </div>
           )}

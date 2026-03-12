@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { RANKING_STATUSES } from '@/lib/product-status';
 import type { Category } from '@/generated/prisma/client';
 
 const CACHE_TTL = 120; // 2 minutes
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0'));
   const search = searchParams.get('search');
 
-  const where: Record<string, unknown> = { status: 'APPROVED' as const };
+  const where: Record<string, unknown> = { status: { in: RANKING_STATUSES } };
   if (category && VALID_CATEGORIES.includes(category)) {
     where.category = category;
   }

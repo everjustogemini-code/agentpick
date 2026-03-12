@@ -3,6 +3,7 @@ import { permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
+import { RANKING_STATUSES } from '@/lib/product-status';
 
 export const revalidate = 3600; // ISR: 1 hour
 
@@ -189,7 +190,7 @@ export default async function RankingPage({
     );
   }
 
-  const where: Record<string, unknown> = { status: 'APPROVED' as const };
+  const where: Record<string, unknown> = { status: { in: RANKING_STATUSES } };
   if (config.category) where.category = config.category;
 
   const products = await prisma.product.findMany({

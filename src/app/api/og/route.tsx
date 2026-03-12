@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { prisma } from '@/lib/prisma';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const runtime = 'nodejs';
 
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
 
 async function homeOG() {
   const [productCount, agentCount, voteCount] = await Promise.all([
-    prisma.product.count({ where: { status: 'APPROVED' } }),
+    prisma.product.count({ where: { status: { in: BROWSE_STATUSES } } }),
     prisma.agent.count(),
     prisma.vote.count({ where: { proofVerified: true } }),
   ]);
@@ -290,7 +291,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 async function rankingOG(category: string) {
   const catName = CATEGORY_NAMES[category] ?? `Best ${category} for AI Agents`;
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED', category: category as 'search_research' },
+    where: { status: { in: BROWSE_STATUSES }, category: category as 'search_research' },
     orderBy: { weightedScore: 'desc' },
     take: 5,
     select: { name: true, weightedScore: true },
@@ -434,7 +435,7 @@ async function playgroundOG(sessionId: string) {
 
 async function dailyOG() {
   const topProducts = await prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: BROWSE_STATUSES } },
     orderBy: { weightedScore: 'desc' },
     take: 5,
   });

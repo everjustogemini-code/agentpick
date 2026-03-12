@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { recalculateProductScore } from '@/lib/voting';
 import { redis } from '@/lib/redis';
 import Anthropic from '@anthropic-ai/sdk';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -161,7 +162,7 @@ export async function GET(request: Request) {
 
     const candidateProducts = await prisma.product.findMany({
       where: {
-        status: 'APPROVED',
+        status: { in: BROWSE_STATUSES },
         id: { notIn: excludeIds.length > 0 ? excludeIds : ['_none_'] },
       },
       orderBy: { weightedScore: 'desc' },

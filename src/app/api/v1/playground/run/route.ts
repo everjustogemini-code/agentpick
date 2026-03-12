@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { callToolAPI, BENCHMARKABLE_SLUGS } from '@/lib/benchmark/adapters';
 import { evaluateResult } from '@/lib/benchmark/evaluator';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 import type { Prisma } from '@/generated/prisma/client';
 
 export const maxDuration = 120;
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
   // Look up product IDs for each tool
   const products = await prisma.product.findMany({
-    where: { slug: { in: validTools }, status: 'APPROVED' },
+    where: { slug: { in: validTools }, status: { in: BROWSE_STATUSES } },
     select: { id: true, slug: true, name: true },
   });
 

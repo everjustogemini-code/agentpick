@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const maxDuration = 60;
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   // Get products with score changes (compare current vs yesterday snapshot)
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: BROWSE_STATUSES } },
     orderBy: { weightedScore: 'desc' },
     select: { id: true, name: true, slug: true, weightedScore: true, totalVotes: true, category: true },
   });

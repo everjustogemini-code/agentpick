@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,7 @@ async function resolveSlug(input: string): Promise<string | null> {
   // 3. Fuzzy match: slug contains input or name matches
   const fuzzy = await prisma.product.findMany({
     where: {
-      status: 'APPROVED',
+      status: { in: BROWSE_STATUSES },
       OR: [
         { slug: { contains: input } },
         { name: { contains: input, mode: 'insensitive' } },

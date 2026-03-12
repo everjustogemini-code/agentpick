@@ -21,6 +21,8 @@ interface Product {
   successRate?: number | null;
   avgLatencyMs?: number | null;
   avgCostUsd?: number | null;
+  status?: string;
+  benchmarkCount?: number;
   _count?: { votes: number };
 }
 
@@ -125,6 +127,8 @@ export default function FeedClient({ products }: FeedClientProps) {
               telemetryCount={product.telemetryCount}
               successRate={product.successRate}
               avgLatencyMs={product.avgLatencyMs}
+              status={product.status}
+              benchmarkCount={product.benchmarkCount}
             />
           ))
         )}

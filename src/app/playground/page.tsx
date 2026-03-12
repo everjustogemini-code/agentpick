@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Suspense } from 'react';
 import PlaygroundClient from '@/components/PlaygroundClient';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ async function getAvailableTools(): Promise<
           'firecrawl-api',
         ],
       },
-      status: 'APPROVED',
+      status: { in: BROWSE_STATUSES },
     },
     select: { slug: true, name: true },
     orderBy: { weightedScore: 'desc' },

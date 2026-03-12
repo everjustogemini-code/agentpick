@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { calculateBlendedScore } from '@/lib/voting';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
 
   // Get all approved products
   const products = await prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: BROWSE_STATUSES } },
     select: { id: true, weightedScore: true },
   });
 

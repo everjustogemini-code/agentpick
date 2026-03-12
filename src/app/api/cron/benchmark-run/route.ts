@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { callToolAPI, BENCHMARKABLE_SLUGS, DOMAIN_TO_TASK } from '@/lib/benchmark/adapters';
 import { evaluateResult } from '@/lib/benchmark/evaluator';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const maxDuration = 300; // 5 min max for Vercel
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
     // Get benchmarkable products
     const products = await prisma.product.findMany({
       where: {
-        status: 'APPROVED',
+        status: { in: BROWSE_STATUSES },
         slug: { in: BENCHMARKABLE_SLUGS },
       },
       select: { id: true, slug: true },

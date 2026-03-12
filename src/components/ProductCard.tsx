@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ConsensusBar from './ConsensusBar';
+import { getStatusBadge } from '@/lib/product-status';
 
 interface ProductCardProps {
   rank: number;
@@ -18,6 +19,8 @@ interface ProductCardProps {
   telemetryCount?: number;
   successRate?: number | null;
   avgLatencyMs?: number | null;
+  status?: string;
+  benchmarkCount?: number;
 }
 
 const CATEGORY_BADGE: Record<string, { bg: string; text: string }> = {
@@ -75,11 +78,14 @@ export default function ProductCard({
   telemetryCount,
   successRate,
   avgLatencyMs,
+  status,
+  benchmarkCount,
 }: ProductCardProps) {
   const badge = CATEGORY_BADGE[category] ?? { bg: 'bg-gray-50', text: 'text-gray-600' };
   const accent = ACCENT_COLORS[category] ?? '#64748B';
   const showNew = isNew(approvedAt);
   const upvoteCount = upvotes ?? totalVotes;
+  const trustBadge = status ? getStatusBadge(status, benchmarkCount, telemetryCount) : null;
 
   return (
     <Link href={`/products/${slug}`}>
@@ -117,6 +123,11 @@ export default function ProductCard({
             <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.8px] ${badge.bg} ${badge.text}`}>
               {category}
             </span>
+            {trustBadge && (
+              <span className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-semibold ${trustBadge.bg} ${trustBadge.text}`}>
+                {trustBadge.label}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-text-muted">{tagline}</p>
           {/* Consensus bar */}

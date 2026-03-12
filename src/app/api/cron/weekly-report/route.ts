@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export const maxDuration = 120;
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
   // Top products
   const topProducts = await prisma.product.findMany({
-    where: { status: 'APPROVED' },
+    where: { status: { in: BROWSE_STATUSES } },
     orderBy: { weightedScore: 'desc' },
     take: 5,
     select: { name: true, slug: true, weightedScore: true, totalVotes: true, category: true },
