@@ -246,13 +246,43 @@ export default async function PlaygroundResultPage({ params }: Props) {
           </div>
         </div>
 
+        {/* Contribution message */}
+        <div className="mt-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-center text-sm text-green-700">
+          This test contributed to AgentPick rankings. Your sandbox data is now part of the score.
+        </div>
+
         {/* Actions */}
-        <div className="mt-6 flex items-center justify-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/playground"
             className="rounded-lg bg-button-primary-bg px-4 py-2 text-xs font-semibold text-white"
           >
-            Run Another Test
+            🔄 Run Another Test
+          </Link>
+          <Link
+            href={`/playground/${sessionId}`}
+            className="rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"
+          >
+            📣 Share Results
+          </Link>
+        </div>
+
+        {/* SDK CTA */}
+        <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-[#0F172A] p-6 text-center">
+          <h3 className="text-sm font-semibold text-white">
+            Want continuous monitoring?
+          </h3>
+          <div className="mt-3 inline-block rounded-lg bg-[#1E293B] px-4 py-2 font-mono text-sm text-[#34D399]">
+            pip install agentpick
+          </div>
+          <p className="mt-3 text-xs text-[#94A3B8]">
+            Get auto-fallback + cost alerts + this dashboard for every API call your agent makes.
+          </p>
+          <Link
+            href="/sdk"
+            className="mt-3 inline-block text-xs font-medium text-indigo-400 hover:text-indigo-300"
+          >
+            Learn more about the SDK →
           </Link>
         </div>
       </main>
