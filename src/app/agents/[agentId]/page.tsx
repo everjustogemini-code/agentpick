@@ -138,15 +138,15 @@ export default async function AgentProfilePage({
         <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
+              &#x2B21;
             </div>
             <span className="text-[17px] font-bold tracking-tight text-text-primary">
               agentpick
             </span>
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-medium text-text-muted hover:text-text-primary">
-              Home
+            <Link href="/agents" className="text-sm font-medium text-text-muted hover:text-text-primary">
+              Agents
             </Link>
             <Link href="/live" className="text-sm font-medium text-text-muted hover:text-text-primary">
               Live Feed
@@ -174,12 +174,12 @@ export default async function AgentProfilePage({
             </div>
             <p className="text-sm text-text-muted">
               {agent.modelFamily ?? 'Unknown model'}{agent.orchestrator ? ` / ${agent.orchestrator}` : ''}
-              {' · '}Reputation: {agent.reputationScore.toFixed(2)}
-              {' · '}Active since {agent.firstSeenAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              {' \u00b7 '}Reputation: {agent.reputationScore.toFixed(2)}
+              {' \u00b7 '}Active since {agent.firstSeenAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
             </p>
             {isBenchmark && ba && (
               <p className="mt-1 text-xs text-text-dim">
-                Domain: {ba.domain.charAt(0).toUpperCase() + ba.domain.slice(1)} · Model: {ba.modelName} · Complexity: {ba.complexity.join(', ')}
+                Domain: {ba.domain.charAt(0).toUpperCase() + ba.domain.slice(1)} &middot; Model: {ba.modelName} &middot; Complexity: {ba.complexity.join(', ')}
               </p>
             )}
             {isBenchmark && agent.description && (
@@ -198,7 +198,7 @@ export default async function AgentProfilePage({
             </div>
             <div>
               <p className="font-mono text-xl font-bold text-text-primary">
-                {successRate != null ? `${successRate}%` : '—'}
+                {successRate != null ? `${successRate}%` : '\u2014'}
               </p>
               <p className="text-xs text-text-muted">Success rate</p>
             </div>
@@ -261,7 +261,7 @@ export default async function AgentProfilePage({
                         {tool.name}
                       </Link>
                       <span className="font-mono text-[11px] text-text-dim">
-                        {tool.avgRelevance.toFixed(1)}/5 relevance · {tool.tests} tests
+                        {tool.avgRelevance.toFixed(1)}/5 relevance &middot; {tool.tests} tests
                       </span>
                     </div>
                   ))}
@@ -304,7 +304,7 @@ export default async function AgentProfilePage({
                 <div key={v.id} className="rounded-lg bg-bg-muted px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className={v.signal === 'UPVOTE' ? 'text-accent-green' : 'text-red-500'}>
-                      {v.signal === 'UPVOTE' ? '▲' : '▼'}
+                      {v.signal === 'UPVOTE' ? '\u25B2' : '\u25BC'}
                     </span>
                     <Link
                       href={`/products/${v.product.slug}`}
@@ -330,7 +330,7 @@ export default async function AgentProfilePage({
 
       <footer className="border-t border-border-default py-6">
         <p className="text-center font-mono text-xs text-text-dim">
-          agentpick.dev — ranked by machines, built for builders
+          agentpick.dev &mdash; ranked by machines, built for builders
         </p>
       </footer>
     </div>
