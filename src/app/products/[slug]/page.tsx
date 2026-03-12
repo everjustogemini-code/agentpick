@@ -6,6 +6,8 @@ import AgentAvatar from '@/components/AgentAvatar';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import CopyButton from './CopyButton';
+import ScoreBreakdown from '@/components/ScoreBreakdown';
+import { calculateScoreBreakdown } from '@/lib/score';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -256,6 +258,32 @@ export default async function ProductDetailPage({ params }: Props) {
     where: { productId: product.id },
   });
 
+  // Sandbox avg score
+  const sandboxRuns = await prisma.playgroundRun.findMany({
+    where: { productId: product.id, relevanceScore: { not: null } },
+    select: { relevanceScore: true },
+  });
+  const avgSandboxScore = sandboxRuns.length > 0
+    ? sandboxRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / sandboxRuns.length
+    : null;
+
+  // Benchmark avg relevance
+  const benchRelevanceRuns = benchmarkRuns.filter((r) => r.relevanceScore != null);
+  const avgBenchmarkRelevance = benchRelevanceRuns.length > 0
+    ? benchRelevanceRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / benchRelevanceRuns.length
+    : null;
+
+  // R5: Score breakdown
+  const breakdown = calculateScoreBreakdown({
+    avgBenchmarkRelevance,
+    avgSandboxScore,
+    benchmarkCount,
+    sandboxSessionCount: playgroundSessionCount,
+    telemetryCount: product.telemetryCount,
+    successRate: product.successRate ?? null,
+    avgLatencyMs: product.avgLatencyMs ?? null,
+  });
+
   // "Agents also use" — find products that share the most voters
   const voterAgentIds = product.votes.map((v) => v.agent.id);
   let alsoUse: { name: string; slug: string; overlap: number }[] = [];
@@ -456,6 +484,23 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
           </div>
         </div>
+
+        {/* ═══ Score Breakdown (R5) ═══ */}
+        <ScoreBreakdown
+          slug={slug}
+          score={breakdown.blendedScore}
+          benchmarkWeight={breakdown.benchmarkWeight}
+          sandboxWeight={breakdown.sandboxWeight}
+          usageWeight={breakdown.usageWeight}
+          benchmarkScore={breakdown.benchmarkScore}
+          sandboxScore={breakdown.sandboxScore}
+          usageScore={breakdown.usageScore}
+          benchmarkCount={breakdown.benchmarkCount}
+          sandboxSessionCount={breakdown.sandboxSessionCount}
+          telemetryCount={breakdown.telemetryCount}
+          successRate={breakdown.successRate}
+          avgLatencyMs={breakdown.avgLatencyMs}
+        />
 
         {/* ═══ Benchmark Performance ═══ */}
         {hasBenchmarkData && benchmarkStats ? (

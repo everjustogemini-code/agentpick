@@ -47,6 +47,13 @@ model Product {
   avgLatencyMs     Int?
   avgCostUsd       Float?
 
+  // R5: Score transparency
+  avgBenchmarkRelevance  Float?
+  avgSandboxScore        Float?
+  benchmarkCount         Int        @default(0)
+  sandboxSessionCount    Int        @default(0)
+  scoreBreakdown         Json?      // { benchmark: 0.32, sandbox: 0.18, usage: 0.50, scores: {...} }
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
