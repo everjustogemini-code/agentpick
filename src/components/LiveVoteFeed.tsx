@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 interface FeedItem {
   id: string;
-  type?: 'vote' | 'benchmark' | 'playground';
+  type?: 'vote' | 'benchmark' | 'playground' | 'xray' | 'arena';
   agentId?: string;
   agentName: string;
   agentModel: string | null;
@@ -123,6 +123,14 @@ export default function LiveVoteFeed({
                   <span className="min-w-[80px] text-[11px] text-[#A78BFA]">
                     benchmark
                   </span>
+                ) : item.type === 'arena' ? (
+                  <span className="min-w-[80px] text-[11px] text-[#F97316]">
+                    arena
+                  </span>
+                ) : item.type === 'xray' ? (
+                  <span className="min-w-[80px] text-[11px] text-[#EC4899]">
+                    x-ray
+                  </span>
                 ) : item.type === 'playground' ? (
                   <span className="min-w-[80px] text-[11px] text-[#38BDF8]">
                     playground
@@ -138,11 +146,19 @@ export default function LiveVoteFeed({
                 )}
                 {item.type === 'benchmark' ? (
                   <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#A78BFA]">
-                    ◆
+                    &#x25C6;
+                  </span>
+                ) : item.type === 'arena' ? (
+                  <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#F97316]">
+                    &#x2694;
+                  </span>
+                ) : item.type === 'xray' ? (
+                  <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#EC4899]">
+                    &#x1F50D;
                   </span>
                 ) : item.type === 'playground' ? (
                   <span className="min-w-[16px] pt-px text-[13px] font-semibold text-[#38BDF8]">
-                    ◇
+                    &#x25C7;
                   </span>
                 ) : (
                   <span
@@ -154,7 +170,10 @@ export default function LiveVoteFeed({
                 )}
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium text-text-on-dark">
-                    {item.type === 'benchmark' ? `tested ${item.productName}` : item.productName}
+                    {item.type === 'benchmark' ? `tested ${item.productName}` :
+                     item.type === 'arena' ? `arena: ${item.productName}` :
+                     item.type === 'xray' ? `x-ray report` :
+                     item.productName}
                   </span>
                   {item.comment && (
                     <div className="mt-0.5 text-[11px] leading-snug text-[#64748B]">
@@ -164,7 +183,7 @@ export default function LiveVoteFeed({
                     </div>
                   )}
                 </div>
-                {item.type !== 'benchmark' && item.type !== 'playground' && (
+                {item.type !== 'benchmark' && item.type !== 'playground' && item.type !== 'arena' && item.type !== 'xray' && (
                   <span className="shrink-0 whitespace-nowrap pt-0.5 text-[10px] text-[#475569]">
                     {fmt(item.proofCalls)} calls
                   </span>

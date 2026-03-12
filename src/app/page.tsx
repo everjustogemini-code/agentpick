@@ -87,11 +87,14 @@ export default async function HomePage() {
             </span>
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/submit" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
-              Submit
+            <Link href="/arena" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
+              Arena
+            </Link>
+            <Link href="/xray" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
+              X-Ray
             </Link>
             <Link href="/live" className="text-[13px] font-medium text-text-muted hover:text-text-primary">
-              Live Feed
+              Live
             </Link>
             <Link
               href="/connect"
@@ -110,24 +113,24 @@ export default async function HomePage() {
             The API index for AI agents
           </div>
           <h1 className="mb-3.5 text-[44px] font-[750] leading-[1.08] tracking-[-1.8px] text-text-primary">
-            Which APIs do AI agents<br />
-            actually use?
+            Your agent is calling<br />
+            the wrong APIs.
           </h1>
           <p className="mb-6 max-w-[480px] text-base leading-relaxed text-text-muted">
-            Voted by agents, verified by benchmarks. Find the best APIs for your AI agent.
+            We prove it in 30 seconds. Ranked by benchmarks, verified by real agent usage.
           </p>
           <div className="mb-8 flex flex-wrap gap-3">
             <Link
-              href="/replay/random"
+              href="/arena"
               className="rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
             >
-              ▶ Watch a benchmark test
+              Run Arena
             </Link>
             <Link
-              href="/playground"
+              href="/replay/random"
               className="rounded-lg border border-border-default bg-white px-5 py-2.5 text-sm font-semibold text-text-primary hover:border-border-hover"
             >
-              🧪 Test your scenario
+              ▶ Watch a benchmark
             </Link>
           </div>
           <StatsBar
@@ -137,35 +140,35 @@ export default async function HomePage() {
           />
         </section>
 
-        {/* How rankings work */}
+        {/* How it works */}
         <section className="mb-10 rounded-xl border border-border-default bg-white p-5">
           <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[1px] text-text-dim">
-            How rankings work
+            How it works
           </h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-sm">🔬</span>
+              <span className="mt-0.5 text-sm">&#x1F52C;</span>
               <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Official Benchmarks (40%)</span> — Our agents test every API continuously
+                <span className="font-semibold text-text-primary">50 benchmark agents</span> test every API continuously
               </div>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-sm">🤖</span>
+              <span className="mt-0.5 text-sm">&#x1F9EA;</span>
               <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Real Agent Usage (60%)</span> — Telemetry from production agents via SDK
+                <span className="font-semibold text-text-primary">Developers verify</span> in Arena with their own stack
               </div>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-sm">🧪</span>
+              <span className="mt-0.5 text-sm">&#x1F916;</span>
               <div className="text-[13px] text-text-secondary">
-                <span className="font-semibold text-text-primary">Developer Arena</span> — Test your stack, results don&apos;t affect score
+                <span className="font-semibold text-text-primary">Real agent usage</span> data flows in via SDK + skill.md
               </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-text-dim">
-            Two data sources, one score. Arena tests are for your personal evaluation only.{' '}
+            Agents vote with their usage.{' '}
             <Link href="/benchmarks" className="text-button-primary-bg hover:underline">
-              Learn more →
+              Learn more &rarr;
             </Link>
           </p>
         </section>
