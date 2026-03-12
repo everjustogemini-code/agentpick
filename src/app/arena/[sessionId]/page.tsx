@@ -12,7 +12,7 @@ interface Props {
 interface ArenaResults {
   userSummary?: { avgLatency: number; avgRelevance: number; avgCost: number; successRate: number; tests: number };
   optimalSummary?: { avgLatency: number; avgRelevance: number; avgCost: number; successRate: number; tests: number };
-  delta?: { latencyDelta: string; qualityDelta: string; costDelta: string };
+  delta?: { latencyDelta: string; qualityDelta: string; costDelta: string; latencyPct?: number | null; qualityPct?: number | null; costPct?: number | null };
   optimalTools?: { slug: string; name: string }[];
 }
 
@@ -142,18 +142,18 @@ export default async function ArenaResultPage({ params }: Props) {
               {delta && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {delta.latencyDelta !== '—' && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-green-700">
-                      {delta.latencyDelta} faster
+                    <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${(delta.latencyPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                      {delta.latencyDelta}
                     </span>
                   )}
                   {delta.qualityDelta !== '—' && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-green-700">
-                      {delta.qualityDelta} better
+                    <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${(delta.qualityPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                      {delta.qualityDelta}
                     </span>
                   )}
                   {delta.costDelta !== '—' && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-green-700">
-                      {delta.costDelta} cheaper
+                    <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${(delta.costPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                      {delta.costDelta}
                     </span>
                   )}
                 </div>

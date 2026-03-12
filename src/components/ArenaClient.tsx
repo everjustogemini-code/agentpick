@@ -43,7 +43,10 @@ interface ArenaComplete {
   url: string;
   userSummary: Summary;
   optimalSummary: Summary;
-  delta: { latencyDelta: string; qualityDelta: string; costDelta: string };
+  delta: {
+    latencyDelta: string; qualityDelta: string; costDelta: string;
+    latencyPct?: number | null; qualityPct?: number | null; costPct?: number | null;
+  };
   optimalTools: { slug: string; name: string }[];
 }
 
@@ -595,18 +598,24 @@ export default function ArenaClient({ scenarios, availableTools }: ArenaClientPr
             {/* Delta badges */}
             <div className="mt-4 flex flex-wrap gap-2">
               {delta.latencyDelta !== '—' && (
-                <span className="rounded-full bg-green-100 px-2.5 py-1 font-mono text-[11px] font-semibold text-green-700">
-                  {delta.latencyDelta} faster
+                <span className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                  (delta.latencyPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'
+                }`}>
+                  {delta.latencyDelta}
                 </span>
               )}
               {delta.qualityDelta !== '—' && (
-                <span className="rounded-full bg-green-100 px-2.5 py-1 font-mono text-[11px] font-semibold text-green-700">
-                  {delta.qualityDelta} better results
+                <span className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                  (delta.qualityPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'
+                }`}>
+                  {delta.qualityDelta}
                 </span>
               )}
               {delta.costDelta !== '—' && (
-                <span className="rounded-full bg-green-100 px-2.5 py-1 font-mono text-[11px] font-semibold text-green-700">
-                  {delta.costDelta} cheaper
+                <span className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold ${
+                  (delta.costPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'
+                }`}>
+                  {delta.costDelta}
                 </span>
               )}
             </div>

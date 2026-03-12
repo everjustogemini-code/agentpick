@@ -304,15 +304,32 @@ export async function POST(request: NextRequest) {
         const userSummary = computeSummary(userResults);
         const optimalSummary = computeSummary(optimalResults);
 
+        // Delta calculations: positive = optimal is better, negative = optimal is worse
+        // Latency: lower is better, so (user - optimal) / user * 100 → positive means optimal is faster
+        const latencyPct = userSummary.avgLatency > 0 && optimalSummary.avgLatency > 0
+          ? Math.round(((userSummary.avgLatency - optimalSummary.avgLatency) / userSummary.avgLatency) * 100)
+          : null;
+        // Quality: higher is better, so (optimal - user) / user * 100 → positive means optimal has better quality
+        const qualityPct = userSummary.avgRelevance > 0 && optimalSummary.avgRelevance > 0
+          ? Math.round(((optimalSummary.avgRelevance - userSummary.avgRelevance) / userSummary.avgRelevance) * 100)
+          : null;
+        // Cost: lower is better, so (user - optimal) / user * 100 → positive means optimal saves money
+        const costPct = userSummary.avgCost > 0 && optimalSummary.avgCost > 0
+          ? Math.round(((userSummary.avgCost - optimalSummary.avgCost) / userSummary.avgCost) * 100)
+          : null;
+
         const delta = {
-          latencyDelta: userSummary.avgLatency > 0
-            ? (userSummary.avgLatency / optimalSummary.avgLatency).toFixed(1) + 'x'
+          latencyPct,
+          latencyDelta: latencyPct != null
+            ? (latencyPct > 0 ? `${latencyPct}% faster` : latencyPct < 0 ? `${Math.abs(latencyPct)}% slower` : 'same speed')
             : '—',
-          qualityDelta: optimalSummary.avgRelevance > 0 && userSummary.avgRelevance > 0
-            ? Math.round(((optimalSummary.avgRelevance - userSummary.avgRelevance) / userSummary.avgRelevance) * 100) + '%'
+          qualityPct,
+          qualityDelta: qualityPct != null
+            ? (qualityPct > 0 ? `${qualityPct}% better` : qualityPct < 0 ? `${Math.abs(qualityPct)}% worse` : 'same quality')
             : '—',
-          costDelta: userSummary.avgCost > 0 && optimalSummary.avgCost > 0
-            ? Math.round(((userSummary.avgCost - optimalSummary.avgCost) / userSummary.avgCost) * 100) + '%'
+          costPct,
+          costDelta: costPct != null
+            ? (costPct > 0 ? `saves ${costPct}%` : costPct < 0 ? `costs ${Math.abs(costPct)}% more` : 'same cost')
             : '—',
         };
 
