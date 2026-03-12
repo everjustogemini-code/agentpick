@@ -41,10 +41,9 @@ function getPrismaClient(): PrismaClient {
   }
 
   const client = createPrismaClient();
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
-    globalForPrisma.prismaCreatedAt = now;
-  }
+  // Cache globally in ALL environments to reuse connections within a serverless instance
+  globalForPrisma.prisma = client;
+  globalForPrisma.prismaCreatedAt = now;
   return client;
 }
 
