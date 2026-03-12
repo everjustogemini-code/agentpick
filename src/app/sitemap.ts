@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 
+export const dynamic = 'force-dynamic';
+
 const BASE_URL = 'https://agentpick.dev';
 
 const DOMAIN_SLUGS = [
