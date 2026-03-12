@@ -43,10 +43,30 @@ export default async function AgentsPage() {
       lastActiveAt: true,
       firstSeenAt: true,
       tier: true,
-      benchmarkAgent: { select: { id: true, domain: true, modelName: true } },
+      benchmarkAgent: { select: { id: true, domain: true, modelName: true, totalTests: true } },
+      benchmarkConfig: { select: { totalRuns: true, totalTests: true } },
       _count: { select: { telemetryEvents: true, votes: true } },
     },
   });
+
+  // Determine which agents are "Official Testers" (have BenchmarkAgentConfig)
+  const officialConfigs = await prisma.benchmarkAgentConfig.findMany({
+    select: { agentId: true },
+  });
+  const officialAgentIds = new Set(officialConfigs.map((c: { agentId: string }) => c.agentId));
+
+  // Get benchmark contribution counts
+  const benchmarkContributions = await (prisma.telemetryEvent as any).groupBy({
+    by: ['agentId'],
+    where: { isBenchmarkContribution: true },
+    _count: true,
+    orderBy: { _count: { agentId: 'desc' } },
+    take: 10,
+  }).catch(() => [] as { agentId: string; _count: number }[]);
+  const contributionMap = new Map<string, number>();
+  for (const c of benchmarkContributions) {
+    contributionMap.set(c.agentId, c._count);
+  }
 
   const benchmarkAgents = agents.filter((a) => a.benchmarkAgent);
   const externalAgents = agents.filter((a) => !a.benchmarkAgent);
@@ -85,7 +105,7 @@ export default async function AgentsPage() {
                         {agent.name}
                       </span>
                       <span className="rounded-full bg-purple-50 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-purple-600">
-                        benchmark
+                        {officialAgentIds.has(agent.id) ? 'Official Tester' : 'Benchmark'}
                       </span>
                     </div>
                     <p className="text-xs text-text-muted truncate">
@@ -102,9 +122,9 @@ export default async function AgentsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-sm font-bold text-text-primary">
-                        {fmt(agent._count.telemetryEvents)}
+                        {fmt(agent.benchmarkConfig?.totalRuns ?? agent.benchmarkAgent?.totalTests ?? 0)}
                       </p>
-                      <p className="text-[10px] text-text-dim">tests</p>
+                      <p className="text-[10px] text-text-dim">runs</p>
                     </div>
                     <div className="text-right">
                       <p className="font-mono text-sm font-bold text-text-primary">
@@ -145,6 +165,9 @@ export default async function AgentsPage() {
                       <span className="text-sm font-semibold text-text-primary truncate">
                         {agent.name}
                       </span>
+                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-indigo-600">
+                        Community Agent
+                      </span>
                       {agent.tier <= 2 && (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-amber-600">
                           tier {agent.tier}
@@ -183,6 +206,43 @@ export default async function AgentsPage() {
                   </div>
                 </Link>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Top Benchmark Contributors */}
+        {benchmarkContributions.length > 0 && (
+          <section className="mt-10">
+            <h2 className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-text-dim">
+              Top Benchmark Contributors
+            </h2>
+            <div className="space-y-2">
+              {benchmarkContributions.slice(0, 10).map((c: { agentId: string; _count: number }, i: number) => {
+                const agent = agents.find((a) => a.id === c.agentId);
+                if (!agent) return null;
+                return (
+                  <Link
+                    key={c.agentId}
+                    href={`/agents/${c.agentId}`}
+                    className="flex items-center gap-4 rounded-xl border border-border-default bg-white px-5 py-3 transition-colors hover:border-border-hover"
+                  >
+                    <span className="font-mono text-sm font-bold text-text-dim w-6 text-right">
+                      {i + 1}
+                    </span>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-mono text-xs font-bold text-emerald-600">
+                      {agent.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-semibold text-text-primary">{agent.name}</span>
+                      <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-emerald-600">
+                        Top Contributor
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm font-bold text-text-primary">{fmt(c._count)}</span>
+                    <span className="text-[10px] text-text-dim">contributions</span>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

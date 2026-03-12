@@ -51,7 +51,28 @@ export async function POST(request: NextRequest) {
     select: { id: true, slug: true, weightedScore: true, category: true, telemetryCount: true },
   });
 
-  // 5. Create telemetry event
+  // 5. Determine if this is a benchmark contribution
+  const hasQuery = typeof (body as any).query === 'string' && (body as any).query.length > 0;
+  const hasResultCount = typeof (body as any).result_count === 'number';
+  const isBenchmarkContribution = hasQuery && hasResultCount && body.latency_ms != null && typeof body.success === 'boolean';
+
+  // Dedup: same agent + tool + query within 24h → not a new contribution
+  let isDuplicate = false;
+  if (isBenchmarkContribution && product) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const existing = await prisma.telemetryEvent.findFirst({
+      where: {
+        agentId: agent.id,
+        tool: body.tool,
+        query: (body as any).query,
+        createdAt: { gte: twentyFourHoursAgo },
+      },
+      select: { id: true },
+    });
+    isDuplicate = !!existing;
+  }
+
+  // 5b. Create telemetry event
   const event = await prisma.telemetryEvent.create({
     data: {
       agentId: agent.id,
@@ -63,6 +84,9 @@ export async function POST(request: NextRequest) {
       latencyMs: body.latency_ms ?? null,
       costUsd: body.cost_usd ?? null,
       context: body.context ?? null,
+      query: hasQuery ? (body as any).query : null,
+      resultCount: hasResultCount ? (body as any).result_count : null,
+      isBenchmarkContribution: isBenchmarkContribution && !isDuplicate,
     },
   });
 

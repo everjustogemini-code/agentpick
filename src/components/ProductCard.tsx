@@ -72,6 +72,7 @@ export default function ProductCard({
   tags,
   totalVotes,
   weightedScore,
+  uniqueAgents,
   logoUrl,
   upvotes,
   approvedAt,
@@ -130,14 +131,22 @@ export default function ProductCard({
             )}
           </div>
           <p className="mt-1 text-sm text-text-muted">{tagline}</p>
-          {/* Consensus bar */}
+          {/* Consensus bar + unified metric */}
           <div className="mt-2 flex items-center gap-2">
             <ConsensusBar
               upvotes={upvoteCount}
               totalVotes={totalVotes}
               weightedScore={weightedScore}
             />
-            <span className="shrink-0 text-[9px] tracking-wide text-text-dim">verified calls</span>
+            <span className="shrink-0 text-[9px] tracking-wide text-text-dim">
+              {totalVotes > 0 && (telemetryCount ?? 0) > 0
+                ? `Chosen by ${uniqueAgents} agent${uniqueAgents !== 1 ? 's' : ''} · ${fmt(telemetryCount!)} verified calls`
+                : (telemetryCount ?? 0) > 0
+                  ? `${fmt(telemetryCount!)} API calls tracked`
+                  : totalVotes > 0
+                    ? `${uniqueAgents} agent${uniqueAgents !== 1 ? 's' : ''} recommended`
+                    : 'No data yet'}
+            </span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {tags.slice(0, 3).map((tag) => (
@@ -159,16 +168,8 @@ export default function ProductCard({
               {fmt(totalVotes)}
             </span>
           </div>
-          {(telemetryCount ?? 0) > 0 && (
-            <div className="flex flex-col items-center gap-0.5 pt-1">
-              <span className="font-mono text-[10px] text-text-dim">{fmt(telemetryCount!)} calls</span>
-              {successRate != null && (
-                <span className="font-mono text-[10px] text-text-dim">{Math.round(successRate * 100)}%</span>
-              )}
-              {avgLatencyMs != null && (
-                <span className="font-mono text-[10px] text-text-dim">{avgLatencyMs}ms</span>
-              )}
-            </div>
+          {successRate != null && (
+            <span className="pt-0.5 font-mono text-[10px] text-text-dim">{Math.round(successRate * 100)}% · {avgLatencyMs ?? '—'}ms</span>
           )}
         </div>
       </div>

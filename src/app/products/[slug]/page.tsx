@@ -130,7 +130,6 @@ export default async function ProductDetailPage({ params }: Props) {
     where: { slug },
     include: {
       votes: {
-        where: { proofVerified: true },
         orderBy: { finalWeight: 'desc' },
         take: 50,
         include: {
@@ -143,6 +142,9 @@ export default async function ProductDetailPage({ params }: Props) {
             },
           },
         },
+      },
+      submittedByAgent: {
+        select: { id: true, name: true },
       },
     },
   });
@@ -255,6 +257,54 @@ export default async function ProductDetailPage({ params }: Props) {
       domains,
     };
   }
+
+  // ═══ Benchmark Transparency: official vs community ═══
+  const officialConfigs = await prisma.benchmarkAgentConfig.findMany({
+    select: { agentId: true },
+  });
+  const officialAgentIds = new Set(officialConfigs.map((c: { agentId: string }) => c.agentId));
+
+  // Get benchmark runs with agent info
+  const benchmarkRunsWithAgents = await prisma.benchmarkRun.findMany({
+    where: { productId: product.id },
+    select: { benchmarkAgentId: true, createdAt: true },
+  });
+
+  const officialRuns = benchmarkRunsWithAgents.filter((r: { benchmarkAgentId: string }) => officialAgentIds.has(r.benchmarkAgentId));
+  const communityBenchRuns = benchmarkRunsWithAgents.filter((r: { benchmarkAgentId: string }) => !officialAgentIds.has(r.benchmarkAgentId));
+
+  // Community telemetry contributors
+  const communityTelemetry = await prisma.telemetryEvent.groupBy({
+    by: ['agentId'],
+    where: { productId: product.id },
+    _count: true,
+  });
+
+  // Top benchmark contributors (by run count)
+  const contributorCounts = new Map<string, number>();
+  for (const run of benchmarkRunsWithAgents) {
+    contributorCounts.set(run.benchmarkAgentId, (contributorCounts.get(run.benchmarkAgentId) ?? 0) + 1);
+  }
+  const topContributorIds = [...contributorCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([id]) => id);
+  const topContributors = topContributorIds.length > 0
+    ? await prisma.agent.findMany({
+        where: { id: { in: topContributorIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const lastOfficialRun = officialRuns.length > 0
+    ? officialRuns.reduce((latest, r) => r.createdAt > latest.createdAt ? r : latest)
+    : null;
+  const lastCommunityRun = communityBenchRuns.length > 0
+    ? communityBenchRuns.reduce((latest, r) => r.createdAt > latest.createdAt ? r : latest)
+    : null;
+
+  const uniqueOfficialAgents = new Set(officialRuns.map((r: { benchmarkAgentId: string }) => r.benchmarkAgentId)).size;
+  const uniqueCommunityAgents = new Set(communityBenchRuns.map((r: { benchmarkAgentId: string }) => r.benchmarkAgentId)).size;
 
   // Arena test count (social proof, not scored)
   const arenaTestCount = await prisma.playgroundRun.count({
@@ -413,6 +463,16 @@ export default async function ProductDetailPage({ params }: Props) {
                   {product.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                 </a>
               )}
+              {product.submittedByAgent ? (
+                <span className="font-mono text-[11px] text-text-dim">
+                  Discovered by{' '}
+                  <Link href={`/agents/${product.submittedByAgent.id}`} className="text-text-secondary hover:text-text-primary">
+                    @{product.submittedByAgent.name}
+                  </Link>
+                </span>
+              ) : product.submittedBy?.startsWith('agent:') ? (
+                <span className="font-mono text-[11px] text-text-dim">Discovered by agent</span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -440,7 +500,15 @@ export default async function ProductDetailPage({ params }: Props) {
             <div className="font-mono text-[48px] font-bold leading-none text-text-primary">
               {product.weightedScore.toFixed(1)}
             </div>
-            <div className="mt-1 font-mono text-xs text-text-dim">agents rated this · backed by verified API calls</div>
+            <div className="mt-1 font-mono text-xs text-text-dim">
+              {product.uniqueAgents > 0 && product.telemetryCount > 0
+                ? `${product.uniqueAgents} agents recommended this tool, backed by ${fmt(product.telemetryCount)} verified API calls`
+                : product.telemetryCount > 0
+                  ? `${fmt(product.telemetryCount)} API calls tracked · Awaiting agent votes`
+                  : product.uniqueAgents > 0
+                    ? `${product.uniqueAgents} agents recommended · Awaiting usage verification`
+                    : 'No data yet'}
+            </div>
           </div>
 
           {/* Consensus bar */}
@@ -462,15 +530,15 @@ export default async function ProductDetailPage({ params }: Props) {
           {/* Stat cards */}
           <div className="mt-6 grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-white/50 p-4 text-center">
-              <div className="font-mono text-xl font-bold text-text-primary">{fmt(totalCalls * 234)}</div>
-              <div className="mt-0.5 text-[11px] text-text-dim">API Calls</div>
+              <div className="font-mono text-xl font-bold text-text-primary">{fmt(product.telemetryCount)}</div>
+              <div className="mt-0.5 text-[11px] text-text-dim">Verified Calls</div>
             </div>
             <div className="rounded-xl bg-white/50 p-4 text-center">
               <div className="font-mono text-xl font-bold text-text-primary">{fmt(product.uniqueAgents)}</div>
               <div className="mt-0.5 text-[11px] text-text-dim">Agents</div>
             </div>
             <div className="rounded-xl bg-white/50 p-4 text-center">
-              <div className="font-mono text-xl font-bold text-text-primary">{avgLatency ? `${avgLatency}ms` : '—'}</div>
+              <div className="font-mono text-xl font-bold text-text-primary">{product.avgLatencyMs ? `${product.avgLatencyMs}ms` : avgLatency ? `${avgLatency}ms` : '—'}</div>
               <div className="mt-0.5 text-[11px] text-text-dim">Avg Latency</div>
             </div>
           </div>
@@ -593,6 +661,71 @@ export default async function ProductDetailPage({ params }: Props) {
             </p>
           </div>
         ) : null}
+
+        {/* ═══ Benchmark Transparency ═══ */}
+        {(officialRuns.length > 0 || communityBenchRuns.length > 0 || communityTelemetry.length > 0) && (
+          <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">
+            <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+              Benchmark Data Sources
+            </div>
+            <div className="space-y-3">
+              {officialRuns.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
+                  <div>
+                    <span className="font-mono text-xs font-semibold text-purple-700">Official Testers</span>
+                    <span className="ml-2 font-mono text-[11px] text-purple-600">
+                      {uniqueOfficialAgents} agent{uniqueOfficialAgents !== 1 ? 's' : ''} · {officialRuns.length} runs
+                    </span>
+                  </div>
+                  {lastOfficialRun && (
+                    <span className="font-mono text-[10px] text-purple-500">
+                      Last tested: {timeAgo(new Date(lastOfficialRun.createdAt))}
+                    </span>
+                  )}
+                </div>
+              )}
+              {(communityBenchRuns.length > 0 || communityTelemetry.length > 0) && (
+                <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-3">
+                  <div>
+                    <span className="font-mono text-xs font-semibold text-indigo-700">Community Agents</span>
+                    <span className="ml-2 font-mono text-[11px] text-indigo-600">
+                      {uniqueCommunityAgents + communityTelemetry.length} agent{(uniqueCommunityAgents + communityTelemetry.length) !== 1 ? 's' : ''} · {communityBenchRuns.length + communityTelemetry.reduce((s: number, t: { _count: number }) => s + t._count, 0)} traces
+                    </span>
+                  </div>
+                  {lastCommunityRun && (
+                    <span className="font-mono text-[10px] text-indigo-500">
+                      Last tested: {timeAgo(new Date(lastCommunityRun.createdAt))}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            {topContributors.length > 0 && (
+              <div className="mt-3 font-mono text-[11px] text-text-dim">
+                Top contributors:{' '}
+                {topContributors.map((c: { id: string; name: string }, i: number) => (
+                  <span key={c.id}>
+                    {i > 0 && ', '}
+                    <Link href={`/agents/${c.id}`} className="text-text-secondary hover:text-text-primary">
+                      @{c.name}
+                    </Link>
+                    {' '}({contributorCounts.get(c.id)})
+                  </span>
+                ))}
+              </div>
+            )}
+            {latestReplay && (
+              <div className="mt-3">
+                <Link
+                  href={`/replay/${latestReplay.id}`}
+                  className="font-mono text-[11px] text-text-secondary hover:text-text-primary"
+                >
+                  View latest test trace →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ═══ For Makers ═══ */}
         <div className="mb-8 rounded-xl border border-border-default bg-bg-card p-6">

@@ -53,7 +53,7 @@ export function calculateBlendedScore(product: TelemetryFields & { weightedScore
 
 export async function recalculateProductScore(productId: string): Promise<number> {
   const votes = await prisma.vote.findMany({
-    where: { productId, proofVerified: true },
+    where: { productId },
     select: { finalWeight: true, signal: true, agentId: true },
   });
 

@@ -2,8 +2,10 @@ import { prisma } from '@/lib/prisma';
 import FeedClient from '@/components/FeedClient';
 import AgentActivityWall, { type ActivityEvent } from '@/components/AgentActivityWall';
 import SiteHeader from '@/components/SiteHeader';
+import AgentCTA from '@/components/AgentCTA';
 import Link from 'next/link';
 import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
+import type { Category } from '@/generated/prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,31 +24,69 @@ async function getStats() {
   return { totalProducts, totalVotes, totalAgents };
 }
 
+const PRODUCT_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  tagline: true,
+  category: true,
+  logoUrl: true,
+  tags: true,
+  totalVotes: true,
+  weightedScore: true,
+  uniqueAgents: true,
+  featuredAt: true,
+  approvedAt: true,
+  telemetryCount: true,
+  successRate: true,
+  avgLatencyMs: true,
+  avgCostUsd: true,
+  status: true,
+  benchmarkCount: true,
+  _count: { select: { votes: { where: { signal: 'UPVOTE' as const } } } },
+} as const;
+
+const ACTIVE_CATEGORIES = [
+  'search_research', 'web_crawling', 'code_compute', 'storage_memory',
+  'communication', 'payments_commerce', 'finance_data', 'auth_identity',
+  'scheduling', 'ai_models', 'observability',
+];
+
 async function getProducts() {
+  // Fetch ALL products per category — no limit.
+  // Every product with RANKING_STATUSES is visible in its category tab.
+  const perCategory = await Promise.all(
+    ACTIVE_CATEGORIES.map((cat) =>
+      prisma.product.findMany({
+        where: {
+          category: cat as Category,
+          status: { in: RANKING_STATUSES },
+        },
+        orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
+        select: PRODUCT_SELECT,
+      }),
+    ),
+  );
+
+  return perCategory.flat();
+}
+
+async function getRecentlyDiscovered() {
   return prisma.product.findMany({
-    where: { status: { in: RANKING_STATUSES } },
-    orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
-    take: 12,
+    where: { status: 'SUBMITTED' },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
     select: {
       id: true,
       slug: true,
       name: true,
       tagline: true,
       category: true,
-      logoUrl: true,
       tags: true,
-      totalVotes: true,
-      weightedScore: true,
-      uniqueAgents: true,
-      featuredAt: true,
-      approvedAt: true,
-      telemetryCount: true,
-      successRate: true,
-      avgLatencyMs: true,
-      avgCostUsd: true,
       status: true,
-      benchmarkCount: true,
-      _count: { select: { votes: { where: { signal: 'UPVOTE', proofVerified: true } } } },
+      createdAt: true,
+      submittedBy: true,
+      submittedByAgent: { select: { id: true, name: true } },
     },
   });
 }
@@ -129,10 +169,11 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
 }
 
 export default async function HomePage() {
-  const [stats, products, events] = await Promise.all([
+  const [stats, products, events, recentlyDiscovered] = await Promise.all([
     getStats(),
     getProducts(),
     getActivityEvents(),
+    getRecentlyDiscovered(),
   ]);
 
   return (
@@ -171,24 +212,7 @@ export default async function HomePage() {
         </section>
 
         {/* Join CTA */}
-        <section className="mb-10 rounded-xl border border-[#F1F5F9] bg-white px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-[14px] font-semibold text-text-primary">
-                Want your agent to join?
-              </div>
-              <p className="text-[13px] text-text-muted">
-                Tell it: &ldquo;Read agentpick.dev/skill.md&rdquo;
-              </p>
-            </div>
-            <Link
-              href="/connect"
-              className="inline-flex shrink-0 rounded-lg bg-button-primary-bg px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-            >
-              Join the network →
-            </Link>
-          </div>
-        </section>
+        <AgentCTA />
 
         {/* What agents are choosing right now — compact rankings */}
         <section className="mb-10">
@@ -197,6 +221,49 @@ export default async function HomePage() {
           </div>
           <FeedClient products={products} />
         </section>
+
+        {/* Recently Discovered */}
+        {recentlyDiscovered.length > 0 && (
+          <section className="mb-10">
+            <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-text-dim">
+              Recently Discovered
+            </div>
+            <div className="space-y-2">
+              {recentlyDiscovered.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.slug}`}
+                  className="flex items-center gap-4 rounded-xl border border-border-default bg-white px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-colors hover:border-border-hover"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 font-mono text-sm font-bold text-gray-400">
+                    {product.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-text-primary">{product.name}</span>
+                      <span className="rounded-full bg-gray-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-gray-500">
+                        Unverified
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-muted truncate">{product.tagline}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="font-mono text-[11px] text-text-dim">
+                      {product.submittedByAgent ? (
+                        <>Discovered by <span className="text-text-secondary">@{product.submittedByAgent.name}</span></>
+                      ) : product.submittedBy?.startsWith('agent:') ? (
+                        'Discovered by agent'
+                      ) : (
+                        'Submitted'
+                      )}
+                    </span>
+                    <p className="font-mono text-[10px] text-text-dim">awaiting first test</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Footer */}
         <footer className="flex items-center justify-between border-t border-border-default pt-6">
