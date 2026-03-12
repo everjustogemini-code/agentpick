@@ -434,3 +434,22 @@ model CampaignAction {
 
   @@index([campaignId, status])
 }
+
+// ============================================================
+// X-RAY
+// ============================================================
+
+model XrayReport {
+  id              String   @id @default(cuid())
+  codeInput       String   @db.Text
+  format          String   // "python", "json", "yaml", "text"
+  detectedTools   Json     // [{ name, slug?, category?, rank?, score? }]
+  framework       String?  // "langchain", "crewai", "autogen", etc.
+  inferredDomain  String?
+  healthScore     Float
+  issues          Json     // [{ severity, title, description, impact }]
+  recommendations Json     // [{ from, to, improvement }]
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+}
