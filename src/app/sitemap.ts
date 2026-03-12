@@ -3,6 +3,19 @@ import { prisma } from '@/lib/prisma';
 
 const BASE_URL = 'https://agentpick.dev';
 
+const DOMAIN_SLUGS = [
+  'finance',
+  'legal',
+  'healthcare',
+  'ecommerce',
+  'devtools',
+  'education',
+  'news',
+  'science',
+  'general',
+  'multilingual',
+];
+
 const RANKING_SLUGS = [
   'best-search-apis-for-agents',
   'best-web-crawling-tools-for-agents',
@@ -74,5 +87,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  return [...staticPages, ...productPages, ...rankingPages];
+  const benchmarkPages: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/benchmarks`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.85,
+    },
+    {
+      url: `${BASE_URL}/playground`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/sdk`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    },
+    ...DOMAIN_SLUGS.map((d) => ({
+      url: `${BASE_URL}/benchmarks/${d}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    })),
+  ];
+
+  return [...staticPages, ...productPages, ...rankingPages, ...benchmarkPages];
 }
