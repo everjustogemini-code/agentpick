@@ -23,7 +23,7 @@ function createLimiter(limit: number, window: string, prefix: string) {
 export const telemetryLimiter = createLimiter(100, '1m', 'agentpick:telemetry');
 export const voteLimiter = createLimiter(10, '1m', 'agentpick:vote');
 export const registerLimiter = createLimiter(5, '1h', 'agentpick:register');
-export const submitLimiterAuth = createLimiter(20, '1h', 'agentpick:submit:auth');
+export const submitLimiterAuth = createLimiter(50, '1h', 'agentpick:submit:auth');
 export const submitLimiterAnon = createLimiter(5, '1h', 'agentpick:submit:anon');
 export const productsLimiter = createLimiter(100, '1m', 'agentpick:products');
 

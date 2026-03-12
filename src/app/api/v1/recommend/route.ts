@@ -27,6 +27,23 @@ const CAPABILITY_MAP: Record<string, { category: string; tags?: string[] }> = {
   monitoring: { category: 'observability' },
 };
 
+// Fuzzy aliases: common alternate names → category slug
+const CAPABILITY_ALIASES: Record<string, string> = {
+  database: 'storage_memory',
+  db: 'storage_memory',
+  vector: 'storage_memory',
+  vector_memory: 'storage_memory',
+  ai_inference: 'ai_models',
+  inference: 'ai_models',
+  model: 'ai_models',
+  embedding: 'storage_memory',
+  embeddings: 'storage_memory',
+  pdf: 'code_compute',
+  document_intel: 'code_compute',
+  scraping: 'web_crawling',
+  payments: 'payments_commerce',
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const capability = searchParams.get('capability');
@@ -40,7 +57,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const mapping = CAPABILITY_MAP[capability.toLowerCase()];
+    const capLower = capability.toLowerCase();
+    const mapping = CAPABILITY_MAP[capLower];
 
     // If no mapping found, also try looking up as a category slug directly
     const VALID_CATEGORIES = [
@@ -48,9 +66,49 @@ export async function GET(request: NextRequest) {
       'communication', 'payments_commerce', 'finance_data', 'auth_identity',
       'scheduling', 'ai_models', 'observability',
     ];
-    const isCategorySlug = VALID_CATEGORIES.includes(capability.toLowerCase());
+    const isCategorySlug = VALID_CATEGORIES.includes(capLower);
 
-    if (!mapping && !isCategorySlug) {
+    // Check fuzzy aliases before falling through to DB lookup
+    const aliasCategory = CAPABILITY_ALIASES[capLower];
+    if (!mapping && !isCategorySlug && aliasCategory) {
+      // Alias matched — treat as category slug
+      const products = await prisma.product.findMany({
+        where: {
+          status: { in: RANKING_STATUSES },
+          category: aliasCategory as 'search_research',
+        },
+        orderBy: { weightedScore: 'desc' },
+        take: 5,
+        select: {
+          slug: true,
+          name: true,
+          weightedScore: true,
+          successRate: true,
+          avgLatencyMs: true,
+          avgCostUsd: true,
+        },
+      });
+
+      if (products.length > 0) {
+        const top = products[0];
+        const alternatives = products.slice(1, 4).map(p => ({
+          slug: p.slug,
+          name: p.name,
+          score: p.weightedScore,
+          reason: buildReason(p, top),
+        }));
+
+        return NextResponse.json({
+          recommended: top.slug,
+          name: top.name,
+          score: top.weightedScore,
+          reason: `Highest ranked for ${capability}`,
+          alternatives,
+        });
+      }
+    }
+
+    if (!mapping && !isCategorySlug && !aliasCategory) {
       // Also try Capability table as last resort
       const dbCapability = await prisma.capability.findFirst({
         where: {
