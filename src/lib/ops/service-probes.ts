@@ -1,4 +1,5 @@
 import { decryptSecret } from "./crypto";
+import { trackVaultUsage } from "./usage";
 
 export interface ProbeResult {
   ok: boolean;
@@ -128,6 +129,7 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
   }
 
   try {
+    let result: ProbeResult;
     switch (service) {
       case "tavily": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.tavily.com/search", {
@@ -136,7 +138,8 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
           body: JSON.stringify({ api_key: apiKey, query, max_results: 3 }),
         });
         const results = ((data as any)?.results ?? []) as Array<any>;
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
       }
       case "exa":
       case "exa-search": {
@@ -146,7 +149,8 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
           body: JSON.stringify({ query, numResults: 3 }),
         });
         const results = ((data as any)?.results ?? []) as Array<any>;
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
       }
       case "serper": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://google.serper.dev/search", {
@@ -155,14 +159,16 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
           body: JSON.stringify({ q: query }),
         });
         const results = ((data as any)?.organic ?? []) as Array<any>;
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
       }
       case "brave": {
         const { response, latencyMs, data } = await fetchWithTimeout(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}`, {
           headers: { Accept: "application/json", "X-Subscription-Token": apiKey },
         });
         const results = ((data as any)?.web?.results ?? []) as Array<any>;
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
       }
       case "firecrawl": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.firecrawl.dev/v1/search", {
@@ -171,17 +177,25 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
           body: JSON.stringify({ query, limit: 3 }),
         });
         const results = ((data as any)?.data ?? []) as Array<any>;
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
+        break;
       }
       case "jina": {
         const { response, latencyMs } = await fetchWithTimeout(`https://s.jina.ai/${encodeURIComponent(query)}`, {
           headers: { Authorization: `Bearer ${apiKey}` },
         });
-        return { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: response.ok ? 1 : 0 } };
+        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: response.ok ? 1 : 0 } };
+        break;
       }
       default:
         return { ok: false, status: "unsupported", latencyMs: 0, error: `No benchmark probe exists for ${service}.` };
     }
+
+    // Fire-and-forget usage tracking for vault keys
+    const vaultService = service === "exa-search" ? "exa" : service;
+    trackVaultUsage(vaultService).catch(() => {});
+
+    return result;
   } catch (error) {
     return {
       ok: false,

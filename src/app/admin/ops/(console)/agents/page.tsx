@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AgentsTableClient, SeedFleetButton } from "@/lib/ops/client";
+import { AgentsTableClient, BulkAgentActions, SeedFleetButton } from "@/lib/ops/client";
 import { listBenchmarkAgents } from "@/lib/ops/data";
 import { Panel } from "@/lib/ops/ui";
 
@@ -19,6 +19,12 @@ export default async function OpsAgentsPage() {
             + Create Agent
           </Link>
         </div>
+      </div>
+
+      {/* Bulk Actions */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-black/10 bg-white px-5 py-3">
+        <span className="text-sm font-medium text-black/50">Bulk:</span>
+        <BulkAgentActions />
       </div>
 
       <Panel title="Fleet Inventory">

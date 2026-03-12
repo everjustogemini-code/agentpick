@@ -5,6 +5,7 @@ import { callSerper } from './serper';
 import { callBrave } from './brave';
 import { callJina } from './jina';
 import { callFirecrawl } from './firecrawl';
+import { trackVaultUsage, vaultServiceForSlug } from '@/lib/ops/usage';
 
 export type { ToolCallResult };
 
@@ -38,7 +39,17 @@ export async function callToolAPI(
   }
 
   try {
-    return await adapter(query, config);
+    const result = await adapter(query, config);
+
+    // Fire-and-forget usage tracking — map slug to vault service name
+    if (result.statusCode >= 200 && result.statusCode < 500) {
+      const vaultService = vaultServiceForSlug(slug);
+      if (vaultService) {
+        trackVaultUsage(vaultService).catch(() => {});
+      }
+    }
+
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return {

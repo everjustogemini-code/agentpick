@@ -169,6 +169,48 @@ export function SeedFleetButton() {
   );
 }
 
+export function BulkAgentActions() {
+  const router = useRouter();
+  const [loading, setLoading] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  async function bulkAction(action: string, label: string) {
+    setLoading(action);
+    setMessage("");
+    try {
+      const res = await requestJson<{ ok: boolean; updated?: number; cron?: unknown }>(
+        "/api/admin/ops/agents/bulk",
+        { body: { action } },
+      );
+      if (action === "run_all") {
+        setMessage("Benchmark cron triggered.");
+      } else {
+        setMessage(`${label}: ${res.updated ?? 0} agents updated.`);
+      }
+      router.refresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button tone="ghost" onClick={() => bulkAction("activate_all", "Activated")} disabled={loading !== null}>
+        {loading === "activate_all" ? "Activating..." : "Activate All"}
+      </Button>
+      <Button tone="ghost" onClick={() => bulkAction("pause_all", "Paused")} disabled={loading !== null}>
+        {loading === "pause_all" ? "Pausing..." : "Pause All"}
+      </Button>
+      <Button tone="primary" onClick={() => bulkAction("run_all", "Run")} disabled={loading !== null}>
+        {loading === "run_all" ? "Triggering..." : "Run All Now"}
+      </Button>
+      {message ? <span className="text-sm" style={{ color: OPS_COLOR_TOKENS.muted }}>{message}</span> : null}
+    </div>
+  );
+}
+
 export function AgentsTableClient(props: { agents: AgentListItem[] }) {
   const [domain, setDomain] = useState("all");
   const [provider, setProvider] = useState("all");

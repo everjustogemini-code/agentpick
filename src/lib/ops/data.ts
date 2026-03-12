@@ -381,7 +381,6 @@ export async function deleteBenchmarkAgent(id: string) {
 
 export async function listApiKeys() {
   const records = await db.apiKeyVault.findMany({
-    where: { NOT: { service: { startsWith: "__" } } },
     orderBy: { service: "asc" },
   });
   return records.map(serializeApiKey);
@@ -422,6 +421,10 @@ export async function saveApiKey(input: SaveApiKeyInput) {
 export async function deleteApiKey(id: string) {
   await db.apiKeyVault.delete({ where: { id } });
 }
+
+// Usage tracking (trackVaultUsage, vaultServiceForSlug) lives in ./usage.ts
+// to avoid circular imports with service-probes.ts.
+export { trackVaultUsage, vaultServiceForSlug } from "./usage";
 
 export async function testApiKey(id: string) {
   const record = await db.apiKeyVault.findUnique({ where: { id } });

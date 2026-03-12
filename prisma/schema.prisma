@@ -40,6 +40,7 @@ model Product {
   playgroundRuns   PlaygroundRun[]
   outreachContacts OutreachContact[]
   claim            ProductClaim?
+  capabilities     ProductCapability[]
 
   isClaimed     Boolean        @default(false)
   telemetryCount   Int            @default(0)
@@ -572,4 +573,40 @@ model BenchmarkOpsSettings {
   alertOpenclaw      Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// ============================================================
+// CAPABILITY GRAPH
+// ============================================================
+
+model Capability {
+  id           String               @id @default(cuid())
+  slug         String               @unique
+  name         String
+  description  String               @db.VarChar(500)
+  capCategory  String               // "search", "extraction", "generation", etc.
+  icon         String?              // emoji or icon key
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  products     ProductCapability[]
+
+  @@index([capCategory])
+  @@index([sortOrder])
+}
+
+model ProductCapability {
+  id           String     @id @default(cuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id])
+  capabilityId String
+  capability   Capability @relation(fields: [capabilityId], references: [id])
+  strength     Float      @default(1.0)  // 0.0-1.0 how well this product delivers
+  notes        String?
+  createdAt    DateTime   @default(now())
+
+  @@unique([productId, capabilityId])
+  @@index([capabilityId])
+  @@index([productId])
 }
