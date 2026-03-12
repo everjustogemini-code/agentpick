@@ -2,13 +2,12 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 function getRedis() {
-  if (!process.env.UPSTASH_REDIS_URL || !process.env.UPSTASH_REDIS_TOKEN) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
     return null;
   }
-  return new Redis({
-    url: process.env.UPSTASH_REDIS_URL,
-    token: process.env.UPSTASH_REDIS_TOKEN,
-  });
+  return new Redis({ url, token });
 }
 
 function createLimiter(limit: number, window: string, prefix: string) {
