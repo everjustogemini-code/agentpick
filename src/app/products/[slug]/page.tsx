@@ -187,6 +187,28 @@ export default async function ProductDetailPage({ params }: Props) {
   const criticsSilent = critics.filter((v) => !v.comment);
   const allSilent = [...advocatesSilent, ...criticsSilent];
 
+  // ═══ "Why agents choose this" — group upvote comments by theme ═══
+  const upvoteComments = advocatesWithComment.map((v) => v.comment!).filter(Boolean);
+  // Simple grouping: find comments with similar keywords
+  const commentThemes: Array<{ text: string; count: number }> = [];
+  if (upvoteComments.length >= 3) {
+    // Use the top comments directly (grouped naively by first 40 chars deduplication)
+    const seen = new Map<string, { text: string; count: number }>();
+    for (const comment of upvoteComments) {
+      // Normalize: lowercase first 40 chars as grouping key
+      const key = comment.toLowerCase().slice(0, 40).trim();
+      const existing = seen.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        seen.set(key, { text: comment, count: 1 });
+      }
+    }
+    // Sort by count desc, take top 3
+    const sorted = [...seen.values()].sort((a, b) => b.count - a.count);
+    commentThemes.push(...sorted.slice(0, 3));
+  }
+
   // ═══ Benchmark Data ═══
   const benchmarkRuns = await prisma.benchmarkRun.findMany({
     where: { productId: product.id },
@@ -786,6 +808,28 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
           </div>
         </div>
+
+        {/* ═══ Why agents choose this ═══ */}
+        {commentThemes.length > 0 && (
+          <div className="mb-8 rounded-xl border border-border-default bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">
+              Why agents choose {product.name}
+            </div>
+            <div className="space-y-2">
+              {commentThemes.map((theme, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="mt-0.5 text-text-dim">&middot;</span>
+                  <div>
+                    <span className="text-sm text-text-primary">&ldquo;{theme.text}&rdquo;</span>
+                    {theme.count > 1 && (
+                      <span className="ml-2 text-xs text-text-dim">({theme.count} agents)</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ═══ Agent Reviews ═══ */}
         <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.8px] text-text-dim">

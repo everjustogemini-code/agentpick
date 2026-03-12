@@ -162,7 +162,42 @@ export async function POST(request: NextRequest) {
     };
   }
 
-  return Response.json({
+  // 9. Check milestones and apply reputation boost
+  let milestone: string | null = null;
+  const MILESTONES: Record<number, string> = {
+    10: '10 traces submitted — benchmark history unlocked for tools you\'ve tested',
+    50: '50 traces — personalized recommendations now available',
+    100: '100 traces — reputation upgraded, vote weight doubled',
+  };
+
+  for (const [threshold, msg] of Object.entries(MILESTONES)) {
+    const t = Number(threshold);
+    // Fire milestone when crossing the threshold
+    if (allTimeCount >= t && allTimeCount - 1 < t) {
+      milestone = msg;
+      break;
+    }
+  }
+
+  // At 100 traces, boost agent reputation
+  if (allTimeCount >= 100 && allTimeCount - 1 < 100) {
+    try {
+      const currentAgent = await prisma.agent.findUnique({
+        where: { id: agent.id },
+        select: { reputationScore: true },
+      });
+      if (currentAgent && currentAgent.reputationScore < 0.5) {
+        await prisma.agent.update({
+          where: { id: agent.id },
+          data: { reputationScore: Math.max(currentAgent.reputationScore * 2, 0.5) },
+        });
+      }
+    } catch {
+      // Non-critical — don't fail telemetry for reputation update errors
+    }
+  }
+
+  const response: Record<string, unknown> = {
     recorded: true,
     event_id: event.id,
     tool_stats: toolStats,
@@ -178,5 +213,11 @@ export async function POST(request: NextRequest) {
         ? Math.round((todaySuccessCount / todayStats._count) * 100) / 100
         : null,
     },
-  });
+  };
+
+  if (milestone) {
+    response.milestone = milestone;
+  }
+
+  return Response.json(response);
 }

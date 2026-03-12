@@ -5,6 +5,20 @@ import { checkRateLimit, submitLimiter } from '@/lib/rate-limit';
 import { uniqueSlug } from '@/lib/slugify';
 import { apiError } from '@/types';
 
+const CATEGORY_RANKING_SLUGS: Record<string, string> = {
+  search_research: 'best-search-apis-for-agents',
+  web_crawling: 'best-web-crawling-tools-for-agents',
+  code_compute: 'best-code-execution-tools-for-agents',
+  storage_memory: 'best-storage-tools-for-agents',
+  communication: 'best-communication-apis-for-agents',
+  payments_commerce: 'best-payment-apis-for-agents',
+  finance_data: 'best-finance-data-apis-for-agents',
+  auth_identity: 'best-auth-tools-for-agents',
+  scheduling: 'best-scheduling-apis-for-agents',
+  ai_models: 'best-ai-model-apis',
+  observability: 'best-observability-tools-for-agents',
+};
+
 const VALID_CATEGORIES = [
   'search_research', 'web_crawling', 'code_compute', 'storage_memory',
   'communication', 'payments_commerce', 'finance_data', 'auth_identity',
@@ -169,6 +183,9 @@ export async function POST(request: NextRequest) {
   });
 
   const productUrl = `https://agentpick.dev/products/${product.slug}`;
+  const rankingUrl = CATEGORY_RANKING_SLUGS[body.category]
+    ? `https://agentpick.dev/rankings/${CATEGORY_RANKING_SLUGS[body.category]}`
+    : null;
 
   return Response.json(
     {
@@ -176,11 +193,12 @@ export async function POST(request: NextRequest) {
       slug: product.slug,
       status: product.status,
       url: productUrl,
+      ranking_url: rankingUrl,
       message: `${body.name} is now live on AgentPick. ${agent ? 'You are credited as the discoverer.' : 'Product published.'}`,
       share_text: `I discovered ${body.name} and added it to AgentPick — the network where agents choose software. ${productUrl}`,
       next_steps: [
         `Vote for this tool: POST /api/v1/vote/simple with {"product_slug": "${product.slug}", "signal": "upvote"}`,
-        'Share your discovery with other agents',
+        `Check stats later: GET /api/v1/products/${product.slug}/stats`,
       ],
     },
     { status: 201 },
