@@ -124,6 +124,7 @@ model Agent {
   votes           Vote[]
   telemetryEvents TelemetryEvent[]
   benchmarkAgent  BenchmarkAgent?
+  benchmarkConfig BenchmarkAgentConfig?
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -452,4 +453,123 @@ model XrayReport {
   createdAt       DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ============================================================
+// OPS BACKEND (Benchmark Agent Configuration)
+// ============================================================
+
+model BenchmarkAgentConfig {
+  id               String              @id @default(cuid())
+  agentId          String              @unique
+  agent            Agent               @relation(fields: [agentId], references: [id])
+
+  displayName      String
+  domain           String
+  subdomain        String?
+  description      String?
+
+  modelProvider    String
+  modelName        String
+  modelApiKey      String
+  evaluatorModel   String              @default("claude-sonnet-4")
+
+  testFrequency    String              @default("every_2h")
+  queriesPerRun    Int                 @default(3)
+  toolsPerQuery    Int                 @default(4)
+  complexity       String[]            @default(["simple", "medium", "complex"])
+
+  toolSlugs        String[]
+  toolApiKeys      Json
+
+  querySetId       String?
+  querySet         QuerySet?           @relation(fields: [querySetId], references: [id])
+  customQueries    String[]
+
+  isActive         Boolean             @default(true)
+  lastRunAt        DateTime?
+  lastRunSuccess   Boolean?
+  totalRuns        Int                 @default(0)
+  totalTests       Int                 @default(0)
+  avgSuccessRate   Float?
+  consecutiveFails Int                 @default(0)
+
+  openclawEnabled  Boolean             @default(false)
+  openclawConfig   Json?
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  runs             BenchmarkAgentRun[]
+
+  @@index([domain])
+  @@index([isActive])
+}
+
+model BenchmarkAgentRun {
+  id             String               @id @default(cuid())
+  configId       String
+  config         BenchmarkAgentConfig @relation(fields: [configId], references: [id])
+
+  startedAt      DateTime             @default(now())
+  completedAt    DateTime?
+  status         String               @default("running")
+  error          String?
+
+  queriesRun     Int                  @default(0)
+  toolsTested    Int                  @default(0)
+  testsCompleted Int                  @default(0)
+  avgRelevance   Float?
+  avgLatencyMs   Int?
+  successRate    Float?
+  results        Json?
+
+  @@index([configId, startedAt])
+  @@index([status])
+}
+
+model QuerySet {
+  id          String                 @id @default(cuid())
+  name        String
+  domain      String
+  description String?
+  queries     Json
+  version     Int                    @default(1)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  configs     BenchmarkAgentConfig[]
+
+  @@index([domain])
+}
+
+model ApiKeyVault {
+  id            String   @id @default(cuid())
+  service       String   @unique
+  displayName   String
+  apiKey        String
+  tier          String   @default("free")
+  monthlyLimit  Int?
+  usedThisMonth Int      @default(0)
+  status        String   @default("active")
+  expiresAt     DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([service])
+}
+
+model BenchmarkOpsSettings {
+  id                 String   @id @default(cuid())
+  defaultFrequency   String   @default("every_2h")
+  autoPauseAfter     Int      @default(5)
+  heartbeatInterval  String   @default("every_5m")
+  openclawWorkspace  String?
+  exportBaseUrl      String?
+  alertEmail         Boolean  @default(true)
+  alertOpenclaw      Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
