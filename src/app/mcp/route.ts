@@ -71,6 +71,31 @@ const SERVER_INFO = {
         required: ['category'],
       },
     },
+    {
+      name: 'arena_compare',
+      description:
+        'Compare your current tool stack against AgentPick\'s recommended optimal stack for your scenario. Returns performance comparison with latency, quality, cost, and recommendations.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          scenario: {
+            type: 'string',
+            description: 'Use case domain: finance, legal, ecommerce, devtools, news, science, education, general',
+          },
+          current_tools: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Slugs of tools you currently use (e.g. ["tavily", "firecrawl"])',
+          },
+          queries: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Test queries to compare on',
+          },
+        },
+        required: ['scenario', 'current_tools', 'queries'],
+      },
+    },
   ],
 };
 
@@ -274,6 +299,61 @@ async function getRankings(args: { category: string; limit?: number }) {
   };
 }
 
+async function arenaCompare(args: { scenario: string; current_tools: string[]; queries: string[] }) {
+  // Get benchmark data for user's tools and alternatives
+  const userProducts = await prisma.product.findMany({
+    where: { slug: { in: args.current_tools } },
+    select: { slug: true, name: true, weightedScore: true, avgBenchmarkRelevance: true, avgLatencyMs: true, avgCostUsd: true, successRate: true },
+  });
+
+  // Find top alternatives
+  const alternatives = await prisma.product.findMany({
+    where: {
+      status: { in: RANKING_STATUSES },
+      slug: { notIn: args.current_tools },
+      category: 'search_research', // primary category
+    },
+    orderBy: { weightedScore: 'desc' },
+    take: 3,
+    select: { slug: true, name: true, weightedScore: true, avgBenchmarkRelevance: true, avgLatencyMs: true, avgCostUsd: true, successRate: true },
+  });
+
+  const userAvgScore = userProducts.length > 0
+    ? userProducts.reduce((s, p) => s + (p.avgBenchmarkRelevance ?? 0), 0) / userProducts.length
+    : 0;
+  const optimalAvgScore = alternatives.length > 0
+    ? alternatives.reduce((s, p) => s + (p.avgBenchmarkRelevance ?? 0), 0) / Math.min(alternatives.length, args.current_tools.length)
+    : 0;
+
+  return {
+    scenario: args.scenario,
+    your_stack: userProducts.map(p => ({
+      slug: p.slug,
+      name: p.name,
+      score: p.weightedScore,
+      relevance: p.avgBenchmarkRelevance,
+      latency: p.avgLatencyMs,
+      cost: p.avgCostUsd,
+    })),
+    optimal_stack: alternatives.map(p => ({
+      slug: p.slug,
+      name: p.name,
+      score: p.weightedScore,
+      relevance: p.avgBenchmarkRelevance,
+      latency: p.avgLatencyMs,
+      cost: p.avgCostUsd,
+    })),
+    summary: {
+      your_avg_relevance: userAvgScore.toFixed(1),
+      optimal_avg_relevance: optimalAvgScore.toFixed(1),
+      improvement: optimalAvgScore > userAvgScore
+        ? `+${Math.round(((optimalAvgScore - userAvgScore) / Math.max(userAvgScore, 0.1)) * 100)}% better relevance`
+        : 'Your stack is already optimal',
+    },
+    arena_url: `https://agentpick.dev/arena?scenario=${args.scenario}&tools=${args.current_tools.join(',')}`,
+  };
+}
+
 // --- MCP Protocol Handling ---
 
 interface MCPRequest {
@@ -322,6 +402,9 @@ async function handleMCPRequest(req: MCPRequest) {
           break;
         case 'get_rankings':
           result = await getRankings(args as Parameters<typeof getRankings>[0]);
+          break;
+        case 'arena_compare':
+          result = await arenaCompare(args as Parameters<typeof arenaCompare>[0]);
           break;
         default:
           return mcpError(req.id, -32601, `Unknown tool: ${toolName}`);
