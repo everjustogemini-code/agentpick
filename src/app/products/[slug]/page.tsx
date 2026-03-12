@@ -566,7 +566,13 @@ export default async function ProductDetailPage({ params }: Props) {
             )}
 
             {/* CTA */}
-            <div className="mt-5 text-center">
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <Link
+                href={`/products/${slug}/benchmarks`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C0F1A] px-4 py-2 text-xs font-medium text-white hover:bg-[#1E293B]"
+              >
+                ▶ Watch a benchmark test
+              </Link>
               <Link
                 href={`/playground?tools=${slug}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:border-border-hover hover:text-text-primary"

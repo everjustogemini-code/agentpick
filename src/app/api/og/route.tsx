@@ -28,6 +28,11 @@ export async function GET(request: Request) {
     if (sessionId) return playgroundOG(sessionId);
   }
 
+  if (type === 'replay') {
+    const replayId = searchParams.get('id') || '';
+    if (replayId) return replayOG(replayId);
+  }
+
   if (type === 'daily') {
     return dailyOG();
   }
@@ -485,6 +490,74 @@ async function dailyOG() {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630 }
+  );
+}
+
+async function replayOG(id: string) {
+  const run = await prisma.benchmarkRun.findUnique({
+    where: { id },
+    include: { product: { select: { name: true } } },
+  });
+
+  if (!run) return homeOG();
+
+  const agent = await prisma.benchmarkAgent.findUnique({
+    where: { id: run.benchmarkAgentId },
+    include: { agent: { select: { name: true } } },
+  });
+
+  return new ImageResponse(
+    (
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: '#0C0F1A', padding: '60px', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
+          <div style={{ display: 'flex', width: '40px', height: '40px', backgroundColor: '#4F46E5', borderRadius: '10px', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '20px' }}>
+            ⬡
+          </div>
+          <span style={{ color: '#64748B', fontSize: '20px' }}>agentpick benchmark replay</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+          <div style={{ display: 'flex', color: '#94A3B8', fontSize: '18px' }}>
+            Agent: {agent?.agent.name ?? 'benchmark-agent'}
+          </div>
+          <div style={{ display: 'flex', color: '#94A3B8', fontSize: '18px' }}>
+            Testing: {run.product.name} · {run.domain} domain
+          </div>
+          <div style={{ display: 'flex', color: '#E2E8F0', fontSize: '24px', marginTop: '20px' }}>
+            {`Query: "${run.query.slice(0, 60)}"`}
+          </div>
+          <div style={{ display: 'flex', gap: '40px', marginTop: '30px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ color: '#34D399', fontSize: '36px', fontWeight: 'bold' }}>
+                {run.relevanceScore?.toFixed(1) ?? '—'}/5
+              </span>
+              <span style={{ color: '#64748B', fontSize: '16px' }}>relevance</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ color: '#F97316', fontSize: '36px', fontWeight: 'bold' }}>
+                {run.latencyMs}ms
+              </span>
+              <span style={{ color: '#64748B', fontSize: '16px' }}>latency</span>
+            </div>
+            {run.costUsd != null && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ color: '#3B82F6', fontSize: '36px', fontWeight: 'bold' }}>
+                  ${run.costUsd.toFixed(4)}
+                </span>
+                <span style={{ color: '#64748B', fontSize: '16px' }}>cost</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#F97316', fontSize: '28px' }}>▶</span>
+          <span style={{ color: '#E2E8F0', fontSize: '20px' }}>Watch the full test</span>
+          <span style={{ color: '#64748B', fontSize: '16px', marginLeft: 'auto' }}>agentpick.dev/replay/{id.slice(0, 8)}</span>
         </div>
       </div>
     ),
