@@ -18,10 +18,18 @@ async function ensureToolApiKeys(config: any): Promise<Record<string, string>> {
   const missing = slugs.filter(s => !existing[s] || String(existing[s]).length < 5);
   if (missing.length === 0) return existing;
 
-  // Resolve from vault
+  // Resolve from vault — map slug to vault service name first
   const resolved: Record<string, string> = { ...existing };
   for (const slug of missing) {
-    const record = await db.apiKeyVault.findUnique({ where: { service: slug } });
+    // Try slug directly, then mapped vault service name
+    let record = await db.apiKeyVault.findUnique({ where: { service: slug } });
+    if (!record?.apiKey) {
+      const { vaultServiceForSlug } = await import("./usage");
+      const vaultService = vaultServiceForSlug(slug);
+      if (vaultService && vaultService !== slug) {
+        record = await db.apiKeyVault.findUnique({ where: { service: vaultService } });
+      }
+    }
     if (record?.apiKey) resolved[slug] = record.apiKey;
   }
 

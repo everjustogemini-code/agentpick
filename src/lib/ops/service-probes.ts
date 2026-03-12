@@ -39,7 +39,8 @@ export async function probeVaultKey(service: string, encryptedKey: string): Prom
   }
 
   try {
-    switch (service) {
+    const resolvedSvc = SLUG_TO_PROBE_SERVICE[service] || service;
+    switch (resolvedSvc) {
       case "tavily": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.tavily.com/search", {
           method: "POST",
@@ -202,7 +203,31 @@ export async function probeVaultKey(service: string, encryptedKey: string): Prom
   }
 }
 
+// Maps product slugs to the service names used in probe switch cases
+const SLUG_TO_PROBE_SERVICE: Record<string, string> = {
+  "polygon-io": "polygon",
+  "alpha-vantage": "alphavantage",
+  "financial-modeling-prep": "fmp",
+  "perplexity-search": "perplexity",
+  "you-search": "you",
+  "serpapi-google": "serpapi",
+  "bing-web-search": "bing",
+  "openai-embed": "openai",
+  "cohere-embed": "cohere",
+  "voyage-embed": "voyage",
+  "jina-embed": "jina",
+  "apify-scraper": "apify",
+  "scrapingbee-api": "scrapingbee",
+  "browserbase-api": "browserbase",
+  "exa-search": "exa",
+  "jina-ai": "jina",
+  "firecrawl-api": "firecrawl",
+  "brave-search": "brave",
+  "serper-api": "serper",
+};
+
 export async function runToolProbe(service: string, encryptedKey: string, query: string): Promise<ProbeResult> {
+  const resolvedService = SLUG_TO_PROBE_SERVICE[service] || service;
   const apiKey = decryptSecret(encryptedKey);
   if (!apiKey) {
     return { ok: false, status: "missing", latencyMs: 0, error: `Missing key for ${service}.` };
@@ -210,7 +235,7 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
 
   try {
     let result: ProbeResult;
-    switch (service) {
+    switch (resolvedService) {
       case "tavily": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.tavily.com/search", {
           method: "POST",
