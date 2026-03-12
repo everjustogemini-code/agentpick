@@ -1,20 +1,48 @@
 /**
- * R5v2 Two-layer scoring.
- * Public ranking: 40% benchmark + 60% telemetry.
- * Sandbox/Arena/Playground data does NOT enter public score.
+ * R6 Four-source scoring.
+ * Sources ranked by trust:
+ *   Router traces:     weight 1.0 (verified, real production data)
+ *   Official benchmark: weight 0.8 (controlled but synthetic)
+ *   Community telemetry: weight 0.5 (self-reported, less trustworthy)
+ *   Simple votes:       weight 0.2 (opinion, no proof)
  */
 
-export interface ScoreBreakdown {
-  benchmarkWeight: number;
-  usageWeight: number;
-  benchmarkScore: number;   // 0-5
-  usageScore: number;       // 0-5
-  blendedScore: number;     // 0-10
+export const SOURCE_WEIGHTS = {
+  router: 1.0,
+  benchmark: 0.8,
+  community: 0.5,
+  vote: 0.2,
+} as const;
+
+export interface SourceCounts {
+  routerCount: number;
   benchmarkCount: number;
-  telemetryCount: number;
+  communityCount: number;
+  voteCount: number;
+}
+
+export interface ScoreBreakdown {
+  // Per-source scores (0-5 each)
+  routerScore: number;
+  benchmarkScore: number;
+  communityScore: number;
+  voteScore: number;
+  // Per-source weights (sum to 1.0)
+  routerWeight: number;
+  benchmarkWeight: number;
+  communityWeight: number;
+  voteWeight: number;
+  // Blended
+  blendedScore: number;     // 0-10
+  // Counts
+  routerCount: number;
+  benchmarkCount: number;
+  communityCount: number;
+  voteCount: number;
+  // Aggregate stats
   successRate: number | null;
   avgLatencyMs: number | null;
-  arenaTestCount: number;   // social proof only, not scored
+  arenaTestCount: number;
 }
 
 export function calculateUsageScore(
@@ -46,46 +74,74 @@ export function calculateScoreBreakdown(input: {
   successRate: number | null;
   avgLatencyMs: number | null;
   arenaTestCount?: number;
+  // R6: per-source data
+  routerCount?: number;
+  routerSuccessRate?: number | null;
+  routerAvgLatencyMs?: number | null;
+  communityCount?: number;
+  communitySuccessRate?: number | null;
+  communityAvgLatencyMs?: number | null;
+  voteScore?: number;
+  voteCount?: number;
 }): ScoreBreakdown {
+  const routerCount = input.routerCount ?? 0;
+  const communityCount = input.communityCount ?? (input.telemetryCount - routerCount);
+  const benchmarkCount = input.benchmarkCount;
+  const voteCount = input.voteCount ?? 0;
+
+  // Calculate per-source scores (0-5)
+  const routerScore = calculateUsageScore(
+    input.routerSuccessRate ?? input.successRate,
+    input.routerAvgLatencyMs ?? input.avgLatencyMs,
+    routerCount,
+  );
   const benchmarkScore = input.avgBenchmarkRelevance ?? 0;
-  const usageScore = calculateUsageScore(
-    input.successRate,
-    input.avgLatencyMs,
-    input.telemetryCount,
+  const communityScore = calculateUsageScore(
+    input.communitySuccessRate ?? input.successRate,
+    input.communityAvgLatencyMs ?? input.avgLatencyMs,
+    communityCount > 0 ? communityCount : 0,
   );
+  const voteScoreVal = Math.min(5, (input.voteScore ?? 0));
 
-  // Fixed weights: 40% benchmark + 60% telemetry
-  // If no benchmark data, usage gets full weight (and vice versa)
-  let benchmarkWeight = 0.40;
-  let usageWeight = 0.60;
+  // Calculate dynamic weights based on data availability
+  // Base weights from SOURCE_WEIGHTS, but only for sources that have data
+  const rawWeights: Record<string, number> = {};
+  if (routerCount > 0) rawWeights.router = SOURCE_WEIGHTS.router;
+  if (benchmarkCount > 0) rawWeights.benchmark = SOURCE_WEIGHTS.benchmark;
+  if (communityCount > 0) rawWeights.community = SOURCE_WEIGHTS.community;
+  if (voteCount > 0) rawWeights.vote = SOURCE_WEIGHTS.vote;
 
-  if (input.benchmarkCount === 0 && input.telemetryCount === 0) {
-    benchmarkWeight = 0.40;
-    usageWeight = 0.60;
-  } else if (input.benchmarkCount === 0) {
-    benchmarkWeight = 0;
-    usageWeight = 1.0;
-  } else if (input.telemetryCount === 0) {
-    benchmarkWeight = 1.0;
-    usageWeight = 0;
-  }
+  const totalWeight = Object.values(rawWeights).reduce((s, w) => s + w, 0) || 1;
 
+  const routerWeight = (rawWeights.router ?? 0) / totalWeight;
+  const benchmarkWeight = (rawWeights.benchmark ?? 0) / totalWeight;
+  const communityWeight = (rawWeights.community ?? 0) / totalWeight;
+  const voteWeight = (rawWeights.vote ?? 0) / totalWeight;
+
+  // Blend: each source contributes its score * its normalized weight
+  // Scores are 0-5, we multiply by 2 to get 0-10 scale
   const raw = (
+    routerScore * routerWeight +
     benchmarkScore * benchmarkWeight +
-    usageScore * usageWeight
+    communityScore * communityWeight +
+    voteScoreVal * voteWeight
   );
-
-  // Normalize to 0-10
-  const blendedScore = Math.round(raw * 20) / 10;
+  const blendedScore = Math.round(raw * 20) / 10; // 0-5 → 0-10
 
   return {
-    benchmarkWeight,
-    usageWeight,
+    routerScore,
     benchmarkScore,
-    usageScore,
+    communityScore,
+    voteScore: voteScoreVal,
+    routerWeight,
+    benchmarkWeight,
+    communityWeight,
+    voteWeight,
     blendedScore: Math.min(10, Math.max(0, blendedScore)),
-    benchmarkCount: input.benchmarkCount,
-    telemetryCount: input.telemetryCount,
+    routerCount,
+    benchmarkCount,
+    communityCount: Math.max(0, communityCount),
+    voteCount,
     successRate: input.successRate,
     avgLatencyMs: input.avgLatencyMs,
     arenaTestCount: input.arenaTestCount ?? 0,

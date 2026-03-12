@@ -6,6 +6,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const maxDuration = 120;
 
+async function getSourceStats(productId: string, source: string) {
+  const events = await prisma.telemetryEvent.aggregate({
+    where: { productId, source },
+    _count: true,
+    _avg: { latencyMs: true },
+  });
+  const successCount = await prisma.telemetryEvent.count({
+    where: { productId, source, success: true },
+  });
+  const count = events._count;
+  return {
+    count,
+    successRate: count > 0 ? Math.round((successCount / count) * 100) : null,
+    avgLatencyMs: events._avg.latencyMs ? Math.round(events._avg.latencyMs) : null,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -19,6 +36,8 @@ export async function GET(request: NextRequest) {
       telemetryCount: true,
       successRate: true,
       avgLatencyMs: true,
+      weightedScore: true,
+      totalVotes: true,
     },
   });
 
@@ -37,12 +56,21 @@ export async function GET(request: NextRequest) {
       ? benchRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / benchRuns.length
       : null;
 
-    // Arena test count (social proof only, not scored)
+    // Arena test count (social proof only)
     const arenaTestCount = await prisma.playgroundRun.count({
       where: { productId: product.id },
     });
 
-    // R5v2: Two-layer score (40% benchmark + 60% telemetry, no sandbox)
+    // Per-source telemetry stats
+    const [routerStats, communityStats] = await Promise.all([
+      getSourceStats(product.id, 'router'),
+      getSourceStats(product.id, 'community'),
+    ]);
+
+    // Vote score (linear: 100 weighted votes = score of 5)
+    const voteScore = Math.min(5, Math.max(0, (product.weightedScore / 10) * 5));
+
+    // R6: Four-source score
     const breakdown = calculateScoreBreakdown({
       avgBenchmarkRelevance,
       benchmarkCount,
@@ -50,6 +78,14 @@ export async function GET(request: NextRequest) {
       successRate: product.successRate,
       avgLatencyMs: product.avgLatencyMs,
       arenaTestCount,
+      routerCount: routerStats.count,
+      routerSuccessRate: routerStats.successRate,
+      routerAvgLatencyMs: routerStats.avgLatencyMs,
+      communityCount: communityStats.count,
+      communitySuccessRate: communityStats.successRate,
+      communityAvgLatencyMs: communityStats.avgLatencyMs,
+      voteScore,
+      voteCount: product.totalVotes,
     });
 
     await prisma.product.update({
@@ -59,11 +95,18 @@ export async function GET(request: NextRequest) {
         benchmarkCount,
         sandboxSessionCount: arenaTestCount,
         scoreBreakdown: {
-          benchmarkWeight: breakdown.benchmarkWeight,
-          usageWeight: breakdown.usageWeight,
+          routerScore: breakdown.routerScore,
           benchmarkScore: breakdown.benchmarkScore,
-          usageScore: breakdown.usageScore,
-          blendedScore: breakdown.blendedScore,
+          communityScore: breakdown.communityScore,
+          voteScore: breakdown.voteScore,
+          routerWeight: breakdown.routerWeight,
+          benchmarkWeight: breakdown.benchmarkWeight,
+          communityWeight: breakdown.communityWeight,
+          voteWeight: breakdown.voteWeight,
+          routerCount: breakdown.routerCount,
+          benchmarkCount: breakdown.benchmarkCount,
+          communityCount: breakdown.communityCount,
+          voteCount: breakdown.voteCount,
           arenaTestCount,
         } as unknown as Prisma.InputJsonValue,
         weightedScore: breakdown.blendedScore,

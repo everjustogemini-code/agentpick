@@ -346,7 +346,30 @@ export default async function ProductDetailPage({ params }: Props) {
     ? benchRelevanceRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / benchRelevanceRuns.length
     : null;
 
-  // R5v2: Two-layer score breakdown (40% benchmark + 60% telemetry)
+  // R6: Per-source telemetry counts
+  const [routerStats, communityStats] = await Promise.all([
+    prisma.telemetryEvent.aggregate({
+      where: { productId: product.id, source: 'router' },
+      _count: true,
+      _avg: { latencyMs: true },
+    }).then(async (agg) => {
+      const sc = await prisma.telemetryEvent.count({ where: { productId: product.id, source: 'router', success: true } });
+      return { count: agg._count, successRate: agg._count > 0 ? Math.round((sc / agg._count) * 100) : null, avgLatencyMs: agg._avg.latencyMs ? Math.round(agg._avg.latencyMs) : null };
+    }),
+    prisma.telemetryEvent.aggregate({
+      where: { productId: product.id, source: 'community' },
+      _count: true,
+      _avg: { latencyMs: true },
+    }).then(async (agg) => {
+      const sc = await prisma.telemetryEvent.count({ where: { productId: product.id, source: 'community', success: true } });
+      return { count: agg._count, successRate: agg._count > 0 ? Math.round((sc / agg._count) * 100) : null, avgLatencyMs: agg._avg.latencyMs ? Math.round(agg._avg.latencyMs) : null };
+    }),
+  ]);
+
+  // Vote score (linear: 100 weighted votes = score of 5)
+  const voteScoreRaw = Math.min(5, Math.max(0, (product.weightedScore / 10) * 5));
+
+  // R6: Four-source score breakdown
   const breakdown = calculateScoreBreakdown({
     avgBenchmarkRelevance,
     benchmarkCount,
@@ -354,6 +377,14 @@ export default async function ProductDetailPage({ params }: Props) {
     successRate: product.successRate ?? null,
     avgLatencyMs: product.avgLatencyMs ?? null,
     arenaTestCount,
+    routerCount: routerStats.count,
+    routerSuccessRate: routerStats.successRate,
+    routerAvgLatencyMs: routerStats.avgLatencyMs,
+    communityCount: communityStats.count,
+    communitySuccessRate: communityStats.successRate,
+    communityAvgLatencyMs: communityStats.avgLatencyMs,
+    voteScore: voteScoreRaw,
+    voteCount: product.totalVotes,
   });
 
   // "Agents also use" — find products that share the most voters
@@ -566,16 +597,22 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* ═══ Score Breakdown (R5) ═══ */}
+        {/* ═══ Score Breakdown (R6) ═══ */}
         <ScoreBreakdown
           slug={slug}
           score={breakdown.blendedScore}
-          benchmarkWeight={breakdown.benchmarkWeight}
-          usageWeight={breakdown.usageWeight}
+          routerScore={breakdown.routerScore}
+          routerWeight={breakdown.routerWeight}
+          routerCount={breakdown.routerCount}
           benchmarkScore={breakdown.benchmarkScore}
-          usageScore={breakdown.usageScore}
+          benchmarkWeight={breakdown.benchmarkWeight}
           benchmarkCount={breakdown.benchmarkCount}
-          telemetryCount={breakdown.telemetryCount}
+          communityScore={breakdown.communityScore}
+          communityWeight={breakdown.communityWeight}
+          communityCount={breakdown.communityCount}
+          voteScore={breakdown.voteScore}
+          voteWeight={breakdown.voteWeight}
+          voteCount={breakdown.voteCount}
           successRate={breakdown.successRate}
           avgLatencyMs={breakdown.avgLatencyMs}
           arenaTestCount={breakdown.arenaTestCount}

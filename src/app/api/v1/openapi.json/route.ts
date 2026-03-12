@@ -222,6 +222,45 @@ export async function GET() {
           },
         },
       },
+      '/route/{capability}': {
+        post: {
+          operationId: 'routeRequest',
+          summary: 'Route an API call through AgentPick (BYOK proxy with auto-fallback)',
+          description: 'Proxy your API calls through AgentPick for monitoring, fallback, and smart routing. Your API keys are used in-memory only and never stored.',
+          tags: ['Router'],
+          parameters: [
+            { name: 'capability', in: 'path', required: true, schema: { type: 'string', enum: ['search', 'crawl', 'embed', 'finance'] }, description: 'The capability type' },
+          ],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/RouterRequest' } } },
+          },
+          responses: {
+            200: { description: 'Proxied response with metadata', content: { 'application/json': { schema: { $ref: '#/components/schemas/RouterResponse' } } } },
+            401: { $ref: '#/components/responses/Unauthorized' },
+            429: { $ref: '#/components/responses/RateLimited' },
+            502: { description: 'Router error (all tools failed)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          },
+        },
+        get: {
+          operationId: 'routeRequestGet',
+          summary: 'Route an API call (GET fallback for restricted runtimes)',
+          tags: ['Router'],
+          parameters: [
+            { name: 'capability', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'token', in: 'query', required: true, schema: { type: 'string' }, description: 'AgentPick API key' },
+            { name: 'tool', in: 'query', schema: { type: 'string' }, description: 'Tool slug (omit for smart routing)' },
+            { name: 'tool_api_key', in: 'query', schema: { type: 'string' }, description: 'Your tool API key (BYOK, never stored)' },
+            { name: 'query', in: 'query', schema: { type: 'string' }, description: 'Search query or input text' },
+            { name: 'fallback', in: 'query', schema: { type: 'string' }, description: 'Comma-separated fallback tool slugs' },
+          ],
+          responses: {
+            200: { description: 'Proxied response', content: { 'application/json': { schema: { $ref: '#/components/schemas/RouterResponse' } } } },
+            401: { $ref: '#/components/responses/Unauthorized' },
+            502: { description: 'Router error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          },
+        },
+      },
       '/telemetry': {
         post: {
           operationId: 'submitTelemetry',
@@ -447,6 +486,32 @@ export async function GET() {
             agent: {
               type: 'object',
               properties: { name: { type: 'string' }, modelFamily: { type: 'string', nullable: true }, reputationScore: { type: 'number' } },
+            },
+          },
+        },
+        RouterRequest: {
+          type: 'object',
+          required: ['params'],
+          properties: {
+            tool: { type: 'string', description: 'Tool slug (omit for smart routing)' },
+            tool_api_key: { type: 'string', description: 'Your API key for the tool (BYOK). Used in-memory only, NEVER stored.' },
+            params: { type: 'object', description: 'Parameters passed through to the tool API', properties: { query: { type: 'string' }, max_results: { type: 'integer' } } },
+            fallback: { type: 'array', items: { type: 'string' }, description: 'Fallback tool slugs to try if primary fails' },
+          },
+        },
+        RouterResponse: {
+          type: 'object',
+          properties: {
+            data: { type: 'object', description: 'Original API response, untouched' },
+            meta: {
+              type: 'object',
+              properties: {
+                tool_used: { type: 'string' },
+                latency_ms: { type: 'number' },
+                fallback_used: { type: 'boolean' },
+                fallback_from: { type: 'string' },
+                trace_id: { type: 'string' },
+              },
             },
           },
         },

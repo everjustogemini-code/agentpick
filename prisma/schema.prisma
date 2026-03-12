@@ -194,6 +194,7 @@ model TelemetryEvent {
   context     String?
   query       String?
   resultCount Int?
+  source      String   @default("community") // "router", "benchmark", "community", "vote"
   isBenchmarkContribution Boolean @default(false)
   createdAt   DateTime @default(now())
 
@@ -201,6 +202,7 @@ model TelemetryEvent {
   @@index([agentId, createdAt])
   @@index([productId, createdAt])
   @@index([task])
+  @@index([source])
   @@index([isBenchmarkContribution, agentId])
 }
 

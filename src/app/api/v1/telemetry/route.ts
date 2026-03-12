@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 5b. Create telemetry event
+  const isActualBenchmark = isBenchmarkContribution && !isDuplicate;
   const event = await prisma.telemetryEvent.create({
     data: {
       agentId: agent.id,
@@ -86,7 +87,8 @@ export async function POST(request: NextRequest) {
       context: body.context ?? null,
       query: hasQuery ? (body as any).query : null,
       resultCount: hasResultCount ? (body as any).result_count : null,
-      isBenchmarkContribution: isBenchmarkContribution && !isDuplicate,
+      source: isActualBenchmark ? 'benchmark' : 'community',
+      isBenchmarkContribution: isActualBenchmark,
     },
   });
 
