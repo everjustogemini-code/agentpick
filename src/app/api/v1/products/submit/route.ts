@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
-import { checkRateLimit, submitLimiter } from '@/lib/rate-limit';
+import { checkRateLimit, submitLimiterAuth, submitLimiterAnon } from '@/lib/rate-limit';
 import { uniqueSlug } from '@/lib/slugify';
 import { apiError } from '@/types';
 
@@ -49,11 +49,12 @@ export async function POST(request: NextRequest) {
   // --- Auth (optional) ---
   const agent = await authenticateAgent(request);
 
-  // --- Rate limit by agent ID or IP ---
+  // --- Rate limit by agent ID (20/hr) or IP (5/hr) ---
+  const limiter = agent ? submitLimiterAuth : submitLimiterAnon;
   const rateLimitKey = agent
-    ? `submit:${agent.id}`
-    : `submit:${request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'}`;
-  const { limited, retryAfter } = await checkRateLimit(submitLimiter, rateLimitKey);
+    ? agent.id
+    : request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
+  const { limited, retryAfter } = await checkRateLimit(limiter, rateLimitKey);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many submissions. Try again later.', 429, { retry_after: retryAfter });
   }

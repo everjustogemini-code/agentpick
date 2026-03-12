@@ -21,9 +21,10 @@ function createLimiter(limit: number, window: string, prefix: string) {
 }
 
 export const telemetryLimiter = createLimiter(100, '1m', 'agentpick:telemetry');
-export const voteLimiter = createLimiter(20, '1h', 'agentpick:vote');
+export const voteLimiter = createLimiter(10, '1m', 'agentpick:vote');
 export const registerLimiter = createLimiter(5, '1h', 'agentpick:register');
-export const submitLimiter = createLimiter(3, '1h', 'agentpick:submit');
+export const submitLimiterAuth = createLimiter(20, '1h', 'agentpick:submit:auth');
+export const submitLimiterAnon = createLimiter(5, '1h', 'agentpick:submit:anon');
 export const productsLimiter = createLimiter(100, '1m', 'agentpick:products');
 
 export async function checkRateLimit(
@@ -33,7 +34,7 @@ export async function checkRateLimit(
   if (!limiter) return { limited: false }; // No Redis = no rate limiting (dev mode)
   const result = await limiter.limit(key);
   if (!result.success) {
-    return { limited: true, retryAfter: Math.ceil((result.reset - Date.now()) / 1000) };
+    return { limited: true, retryAfter: Math.min(Math.ceil((result.reset - Date.now()) / 1000), 60) };
   }
   return { limited: false };
 }

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { uniqueSlug } from '@/lib/slugify';
-import { checkRateLimit, submitLimiter } from '@/lib/rate-limit';
+import { checkRateLimit, submitLimiterAnon } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import type { ProductSubmitRequest } from '@/types';
 
@@ -19,7 +19,7 @@ function isValidUrl(str: string): boolean {
 export async function POST(request: NextRequest) {
   // Rate limit by IP
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
-  const { limited, retryAfter } = await checkRateLimit(submitLimiter, ip);
+  const { limited, retryAfter } = await checkRateLimit(submitLimiterAnon, ip);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many submissions.', 429, { retry_after: retryAfter });
   }
