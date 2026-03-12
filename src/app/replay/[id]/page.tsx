@@ -46,13 +46,11 @@ export default async function ReplayPage({ params }: Props) {
 
   if (!run) notFound();
 
-  // Get benchmark agent info
   const benchAgent = await prisma.benchmarkAgent.findUnique({
     where: { id: run.benchmarkAgentId },
     include: { agent: { select: { name: true } } },
   });
 
-  // Parse raw response for results
   const rawResponse = run.rawResponse as Record<string, unknown> | null;
   const results: { title: string; url: string }[] = [];
   if (rawResponse?.results && Array.isArray(rawResponse.results)) {
@@ -92,27 +90,27 @@ export default async function ReplayPage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0C0F1A]">
-      <header className="border-b border-[#1E293B] py-3">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6">
+    <div className="min-h-screen bg-bg-page">
+      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[960px] items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-indigo-600 font-mono text-sm font-bold text-white">
-              ⬡
+            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
+              &#x2B21;
             </div>
-            <span className="text-[17px] font-bold tracking-tight text-white">
+            <span className="text-[17px] font-bold tracking-tight text-text-primary">
               agentpick
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
               href={`/products/${run.product.slug}`}
-              className="font-mono text-[11px] text-[#64748B] hover:text-white"
+              className="text-[13px] font-medium text-text-muted hover:text-text-primary"
             >
               {run.product.name}
             </Link>
             <Link
-              href={`/playground?tools=${run.product.slug}`}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+              href={`/arena?tools=${run.product.slug}`}
+              className="rounded-lg bg-button-primary-bg px-4 py-[7px] text-[13px] font-semibold text-button-primary-text"
             >
               Run this test yourself
             </Link>
@@ -120,20 +118,20 @@ export default async function ReplayPage({ params }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[840px] px-6 py-8">
+      <main className="mx-auto max-w-[960px] px-6 py-8">
         <BenchmarkReplay data={replayData} />
 
         {/* Actions */}
-        <div className="mt-6 flex items-center justify-center gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href={`/playground?tools=${run.product.slug}&domain=${run.domain}`}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            href={`/arena?tools=${run.product.slug}&scenario=${run.domain}`}
+            className="rounded-lg bg-button-primary-bg px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
           >
             Run this same test yourself
           </Link>
           <Link
             href={`/products/${run.product.slug}`}
-            className="rounded-lg border border-[#1E293B] px-4 py-2 text-sm font-medium text-[#94A3B8] hover:border-[#334155] hover:text-white"
+            className="rounded-lg border border-border-default bg-white px-5 py-2.5 text-sm font-semibold text-text-primary hover:border-border-hover"
           >
             View {run.product.name} page
           </Link>
