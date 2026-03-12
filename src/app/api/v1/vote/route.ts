@@ -10,6 +10,7 @@ import { checkRateLimit, voteLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import type { VoteRequest } from '@/types';
 import type { VoteSignal } from '@/generated/prisma/client';
+import { BROWSE_STATUSES } from '@/lib/product-status';
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   const product = await prisma.product.findUnique({
     where: { slug: body.product_slug },
   });
-  if (!product || product.status !== 'APPROVED') {
+  if (!product || !BROWSE_STATUSES.includes(product.status as any)) {
     return apiError('NOT_FOUND', `Product "${body.product_slug}" not found.`, 404);
   }
 
