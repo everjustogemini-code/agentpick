@@ -461,7 +461,13 @@ async function authenticateFromKey(apiKey: string) {
 
 async function voteForTool(args: { api_key: string; product_slug: string; signal: string; comment?: string }) {
   const agent = await authenticateFromKey(args.api_key);
-  if (!agent) return { error: 'Invalid or missing API key. Register first via register_agent tool.' };
+  if (!agent) {
+    // Debug: check what we received
+    const keyPrefix = args.api_key ? args.api_key.substring(0, 10) + '...' : 'empty';
+    const hash = args.api_key ? hashApiKey(args.api_key) : 'none';
+    const hashPrefix = hash.substring(0, 12) + '...';
+    return { error: 'Invalid or missing API key. Register first via register_agent tool.', debug: { key_prefix: keyPrefix, hash_prefix: hashPrefix } };
+  }
 
   const signalUpper = args.signal.toUpperCase();
   if (signalUpper !== 'UPVOTE' && signalUpper !== 'DOWNVOTE') {
