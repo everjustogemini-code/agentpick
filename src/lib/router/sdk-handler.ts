@@ -128,9 +128,9 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   // Map SDK/Prisma strategies to canonical core names
   const SDK_TO_CORE: Record<string, Strategy> = {
     BALANCED: 'balanced',
-    FASTEST: 'fastest',
+    FASTEST: 'most_stable',
     CHEAPEST: 'cheapest',
-    MOST_ACCURATE: 'most_accurate',
+    MOST_ACCURATE: 'best_performance',
     MANUAL: 'balanced',
     AUTO: 'auto',
   };

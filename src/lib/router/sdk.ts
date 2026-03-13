@@ -53,10 +53,10 @@ export function isRouterStrategy(value: unknown): value is RouterStrategyValue {
 export function normalizeStrategy(value: string): RouterStrategyValue | null {
   const upper = value.toUpperCase();
   if (VALID_STRATEGIES.includes(upper as RouterStrategyValue)) return upper as RouterStrategyValue;
-  // Legacy aliases from /connect page naming
+  // Map canonical API names to Prisma enum values
   const aliases: Record<string, RouterStrategyValue> = {
     BEST_PERFORMANCE: 'MOST_ACCURATE',
-    MOST_STABLE: 'BALANCED',
+    MOST_STABLE: 'FASTEST',
   };
   return aliases[upper] ?? null;
 }
@@ -176,9 +176,9 @@ export async function applyStrategy(
 function sdkToRouterStrategy(strategy: RouterStrategyValue): Strategy {
   const upper = strategy.toUpperCase();
   switch (upper) {
-    case 'FASTEST': return 'fastest';
+    case 'FASTEST': return 'most_stable';
     case 'CHEAPEST': return 'cheapest';
-    case 'MOST_ACCURATE': return 'most_accurate';
+    case 'MOST_ACCURATE': return 'best_performance';
     case 'AUTO': return 'auto';
     case 'BALANCED':
     default: return 'balanced';

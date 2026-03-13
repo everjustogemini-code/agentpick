@@ -67,24 +67,24 @@ Also available: /route/crawl, /route/embed, /route/finance`}</pre>
           <h2 className="mb-4 text-lg font-bold text-text-primary">Pick how we route</h2>
           <div className="space-y-2 text-[13px]">
             <div className="flex items-start gap-3">
-              <span className="w-[160px] shrink-0 font-mono font-bold text-button-primary-bg">AUTO ★</span>
-              <span className="text-text-secondary">AI analyzes each query, picks optimal tool (recommended)</span>
+              <span className="w-[180px] shrink-0 font-mono font-bold text-button-primary-bg">auto ★</span>
+              <span className="text-text-secondary">AI routing (recommended)</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="w-[160px] shrink-0 font-mono text-text-primary">BALANCED</span>
-              <span className="text-text-secondary">Best quality/cost ratio</span>
+              <span className="w-[180px] shrink-0 font-mono text-text-primary">balanced</span>
+              <span className="text-text-secondary">Best value</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="w-[160px] shrink-0 font-mono text-text-primary">MOST_ACCURATE</span>
-              <span className="text-text-secondary">Highest quality, may cost more</span>
+              <span className="w-[180px] shrink-0 font-mono text-text-primary">best_performance</span>
+              <span className="text-text-secondary">Highest quality</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="w-[160px] shrink-0 font-mono text-text-primary">CHEAPEST</span>
-              <span className="text-text-secondary">Lowest cost above quality floor</span>
+              <span className="w-[180px] shrink-0 font-mono text-text-primary">cheapest</span>
+              <span className="text-text-secondary">Lowest cost</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="w-[160px] shrink-0 font-mono text-text-primary">FASTEST</span>
-              <span className="text-text-secondary">Lowest latency, real-time apps</span>
+              <span className="w-[180px] shrink-0 font-mono text-text-primary">most_stable</span>
+              <span className="text-text-secondary">Highest uptime</span>
             </div>
           </div>
         </div>

@@ -70,7 +70,16 @@ interface StrategyComparison {
   }>;
 }
 
-const STRATEGIES = ['BALANCED', 'FASTEST', 'CHEAPEST', 'MOST_ACCURATE', 'AUTO'] as const;
+const STRATEGIES = ['AUTO', 'BALANCED', 'MOST_ACCURATE', 'CHEAPEST', 'FASTEST'] as const;
+
+/** Display names: Prisma enum → canonical API names */
+const STRATEGY_DISPLAY: Record<string, string> = {
+  AUTO: 'auto',
+  BALANCED: 'balanced',
+  MOST_ACCURATE: 'best_performance',
+  CHEAPEST: 'cheapest',
+  FASTEST: 'most_stable',
+};
 
 /* ─── Helper ─── */
 function fetcher(path: string, apiKey: string, options?: RequestInit) {
@@ -225,47 +234,155 @@ export default function RouterDashboardPage() {
     }
   };
 
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [newKey, setNewKey] = useState('');
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setRegisterLoading(true);
+    try {
+      const res = await fetch('/api/v1/agents/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: registerName || 'my-agent',
+          owner_email: registerEmail || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: { message: 'Registration failed' } }));
+        throw new Error(data.error?.message || `Error ${res.status}`);
+      }
+      const data = await res.json();
+      setNewKey(data.api_key);
+      // Auto-login with the new key
+      setInputKey(data.api_key);
+      await fetchDashboard(data.api_key);
+      setApiKey(data.api_key);
+      localStorage.setItem('agentpick_api_key', data.api_key);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed.');
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     setApiKey('');
     setInputKey('');
     setAccount(null);
     setUsage(null);
     setCalls([]);
+    setNewKey('');
+    setShowRegister(false);
     localStorage.removeItem('agentpick_api_key');
   };
 
   /* ─── Login Screen ─── */
   if (!apiKey || !account) {
+    // Show the new API key if just registered
+    if (newKey) {
+      return (
+        <div className="mx-auto max-w-md px-4 py-20">
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">Your API Key</h1>
+          <p className="mb-4 text-sm text-gray-500">Save this key — you won&apos;t see it again.</p>
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <code className="block break-all font-mono text-sm text-gray-800">{newKey}</code>
+          </div>
+          <button
+            onClick={() => { navigator.clipboard.writeText(newKey); }}
+            className="mt-3 w-full rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+          >
+            Copy to clipboard
+          </button>
+          <p className="mt-4 text-xs text-gray-400">Loading dashboard...</p>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-md px-4 py-20">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">Router Dashboard</h1>
-        <p className="mb-8 text-sm text-gray-500">Enter your AgentPick API key to view your dashboard.</p>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">API Key</label>
-            <input
-              type="password"
-              value={inputKey}
-              onChange={(e) => setInputKey(e.target.value)}
-              placeholder="ah_live_sk_..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
-            />
-          </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading || !inputKey}
-            className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-          >
-            {loading ? 'Checking...' : 'View Dashboard'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Don&apos;t have a key?{' '}
-          <Link href="/connect" className="text-orange-500 hover:underline">Get started</Link>
-        </p>
+        {!showRegister ? (
+          <>
+            <p className="mb-8 text-sm text-gray-500">Enter your AgentPick API key to view your dashboard.</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">API Key</label>
+                <input
+                  type="password"
+                  value={inputKey}
+                  onChange={(e) => setInputKey(e.target.value)}
+                  placeholder="ah_live_sk_..."
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !inputKey}
+                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {loading ? 'Checking...' : 'View Dashboard'}
+              </button>
+            </form>
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => { setShowRegister(true); setError(''); }}
+                className="text-sm font-medium text-orange-500 hover:underline"
+              >
+                Create new account (free)
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-8 text-sm text-gray-500">Create a free account to get your API key instantly.</p>
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Agent name</label>
+                <input
+                  type="text"
+                  value={registerName}
+                  onChange={(e) => setRegisterName(e.target.value)}
+                  placeholder="my-agent"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Email (optional)</label>
+                <input
+                  type="email"
+                  value={registerEmail}
+                  onChange={(e) => setRegisterEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              <button
+                type="submit"
+                disabled={registerLoading}
+                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {registerLoading ? 'Creating...' : 'Create account & get API key'}
+              </button>
+            </form>
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => { setShowRegister(false); setError(''); }}
+                className="text-sm text-gray-400 hover:underline"
+              >
+                Already have a key? Sign in
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -342,15 +459,15 @@ export default function RouterDashboardPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {strategyLoading === s ? '...' : s.toLowerCase()}{s === 'AUTO' ? ' ★' : ''}
+              {strategyLoading === s ? '...' : (STRATEGY_DISPLAY[s] ?? s.toLowerCase())}{s === 'AUTO' ? ' ★' : ''}
             </button>
           ))}
         </div>
         {strategyError && <p className="mt-2 text-xs text-red-500">{strategyError}</p>}
         <p className="mt-3 text-xs text-gray-400">
-          {account.strategy === 'AUTO' && 'AI analyzes each query and picks the optimal tool.'}
-          {account.strategy === 'BALANCED' && 'Best quality/cost ratio. Good for general use.'}
-          {account.strategy === 'FASTEST' && 'Lowest latency tools. Best for real-time apps.'}
+          {account.strategy === 'AUTO' && 'AI routing — analyzes each query and picks the optimal tool.'}
+          {account.strategy === 'BALANCED' && 'Best value — quality/cost ratio. Good for general use.'}
+          {account.strategy === 'FASTEST' && 'Highest uptime — most reliable tools first.'}
           {account.strategy === 'CHEAPEST' && 'Lowest cost above quality floor.'}
           {account.strategy === 'MOST_ACCURATE' && 'Highest quality results, may cost more.'}
           {account.strategy === 'MANUAL' && 'Uses your custom priority tool list.'}

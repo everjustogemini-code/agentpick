@@ -22,8 +22,8 @@ describe('normalizeStrategy', () => {
   it('maps legacy aliases', () => {
     expect(normalizeStrategy('BEST_PERFORMANCE')).toBe('MOST_ACCURATE');
     expect(normalizeStrategy('best_performance')).toBe('MOST_ACCURATE');
-    expect(normalizeStrategy('MOST_STABLE')).toBe('BALANCED');
-    expect(normalizeStrategy('most_stable')).toBe('BALANCED');
+    expect(normalizeStrategy('MOST_STABLE')).toBe('FASTEST');
+    expect(normalizeStrategy('most_stable')).toBe('FASTEST');
   });
 
   it('rejects invalid strategies', () => {

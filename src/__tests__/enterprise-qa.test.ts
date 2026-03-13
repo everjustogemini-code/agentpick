@@ -95,7 +95,7 @@ describe('P1-3: Priority tools affect fallback chain', () => {
   });
 
   it('all strategies produce non-empty results for valid capabilities', () => {
-    const strategies = ['balanced', 'most_accurate', 'cheapest', 'fastest'] as const;
+    const strategies = ['balanced', 'best_performance', 'cheapest', 'most_stable'] as const;
     for (const strategy of strategies) {
       for (const capability of Object.keys(CAPABILITY_TOOLS)) {
         const ranked = getRankedToolsForCapability(capability, strategy);
@@ -156,7 +156,7 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
   });
 
   it('most_accurate returns tools for search', () => {
-    const ranked = getRankedToolsForCapability('search', 'most_accurate');
+    const ranked = getRankedToolsForCapability('search', 'best_performance');
     expect(ranked.length).toBeGreaterThan(0);
     expect(ranked[0]).toBe('exa-search'); // Highest quality
   });
@@ -168,12 +168,12 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
   });
 
   it('fastest returns tools for search', () => {
-    const ranked = getRankedToolsForCapability('search', 'fastest');
+    const ranked = getRankedToolsForCapability('search', 'most_stable');
     expect(ranked.length).toBeGreaterThan(0);
   });
 
   it('all strategies return tools for finance', () => {
-    const strategies = ['balanced', 'most_accurate', 'cheapest', 'fastest'] as const;
+    const strategies = ['balanced', 'best_performance', 'cheapest', 'most_stable'] as const;
     for (const s of strategies) {
       const ranked = getRankedToolsForCapability('finance', s);
       expect(ranked.length).toBe(3);
@@ -195,7 +195,7 @@ describe('P1-5: Strategy naming consistency', () => {
 
   it('normalizes lowercase variants', () => {
     expect(normalizeStrategy('balanced')).toBe('BALANCED');
-    expect(normalizeStrategy('fastest')).toBe('FASTEST');
+    expect(normalizeStrategy('most_stable')).toBe('FASTEST');
     expect(normalizeStrategy('cheapest')).toBe('CHEAPEST');
     expect(normalizeStrategy('auto')).toBe('AUTO');
   });
@@ -203,8 +203,8 @@ describe('P1-5: Strategy naming consistency', () => {
   it('maps legacy aliases (best_performance, most_stable)', () => {
     expect(normalizeStrategy('best_performance')).toBe('MOST_ACCURATE');
     expect(normalizeStrategy('BEST_PERFORMANCE')).toBe('MOST_ACCURATE');
-    expect(normalizeStrategy('most_stable')).toBe('BALANCED');
-    expect(normalizeStrategy('MOST_STABLE')).toBe('BALANCED');
+    expect(normalizeStrategy('most_stable')).toBe('FASTEST');
+    expect(normalizeStrategy('MOST_STABLE')).toBe('FASTEST');
   });
 
   it('rejects invalid strategy names', () => {
@@ -316,7 +316,7 @@ describe('P1-6: Budget enforcement returns 402', () => {
 
 describe('P1-5: Priority tools do not get overridden by strategy', () => {
   it('getRankedToolsForCapability respects exclusions across all strategies', () => {
-    const strategies = ['balanced', 'fastest', 'cheapest', 'most_accurate'] as const;
+    const strategies = ['balanced', 'most_stable', 'cheapest', 'best_performance'] as const;
     for (const s of strategies) {
       const ranked = getRankedToolsForCapability('search', s, ['exa-search']);
       expect(ranked).not.toContain('exa-search');

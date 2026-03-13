@@ -14,23 +14,25 @@ import { escapeHtml } from '@/lib/sanitize';
 
 const VALID_CAPABILITIES = Object.keys(CAPABILITY_TOOLS);
 
-const VALID_STRATEGIES: Strategy[] = ['auto', 'balanced', 'fastest', 'cheapest', 'most_accurate'];
+const VALID_STRATEGIES: Strategy[] = ['auto', 'balanced', 'best_performance', 'cheapest', 'most_stable'];
 
 /** Maximum allowed query length to prevent abuse */
 const MAX_QUERY_LENGTH = 2000;
 
 /** Accept legacy/uppercase strategy names as aliases and map them to canonical names */
 const STRATEGY_ALIASES: Record<string, Strategy> = {
-  // Legacy internal names
-  best_performance: 'most_accurate',
-  most_stable: 'balanced',
-  // Uppercase SDK/Prisma enum names
+  // Uppercase SDK/Prisma enum names → canonical
   BALANCED: 'balanced',
-  FASTEST: 'fastest',
+  FASTEST: 'most_stable',
   CHEAPEST: 'cheapest',
-  MOST_ACCURATE: 'most_accurate',
+  MOST_ACCURATE: 'best_performance',
   MANUAL: 'balanced',
   AUTO: 'auto',
+  // Alt forms
+  fastest: 'most_stable',
+  most_accurate: 'best_performance',
+  BEST_PERFORMANCE: 'best_performance',
+  MOST_STABLE: 'most_stable',
 };
 
 function resolveStrategy(raw: string): Strategy | null {
@@ -41,9 +43,9 @@ function resolveStrategy(raw: string): Strategy | null {
 /** Map canonical core strategy names to SDK/Prisma enum values for call recording */
 const CORE_TO_SDK: Record<string, string> = {
   balanced: 'BALANCED',
-  fastest: 'FASTEST',
+  best_performance: 'MOST_ACCURATE',
   cheapest: 'CHEAPEST',
-  most_accurate: 'MOST_ACCURATE',
+  most_stable: 'FASTEST',
   auto: 'AUTO',
 };
 

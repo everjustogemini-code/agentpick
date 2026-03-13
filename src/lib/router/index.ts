@@ -111,7 +111,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
 };
 
-export type Strategy = 'auto' | 'balanced' | 'fastest' | 'cheapest' | 'most_accurate';
+export type Strategy = 'auto' | 'balanced' | 'best_performance' | 'cheapest' | 'most_stable';
 
 export interface RouterRequest {
   tool?: string;
@@ -196,14 +196,14 @@ export function getRankedToolsForCapability(
     if (!cb) return -1;
 
     switch (strategy) {
-      case 'most_accurate':
+      case 'best_performance':
         // Highest quality first
         return cb.quality - ca.quality;
-      case 'fastest':
-        // Lowest latency first, with quality floor
+      case 'most_stable':
+        // Highest stability first, with quality floor
         if (ca.quality < 2.5 && cb.quality >= 2.5) return 1;
         if (cb.quality < 2.5 && ca.quality >= 2.5) return -1;
-        return ca.latency - cb.latency;
+        return cb.stability - ca.stability;
       case 'cheapest':
         // Lowest cost first, but must have quality >= 3.0
         if (ca.quality < 3.0 && cb.quality >= 3.0) return 1;
