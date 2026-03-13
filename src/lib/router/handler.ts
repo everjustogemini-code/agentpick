@@ -14,20 +14,21 @@ import { escapeHtml } from '@/lib/sanitize';
 
 const VALID_CAPABILITIES = Object.keys(CAPABILITY_TOOLS);
 
-const VALID_STRATEGIES: Strategy[] = ['balanced', 'best_performance', 'cheapest', 'most_stable', 'auto'];
+const VALID_STRATEGIES: Strategy[] = ['auto', 'balanced', 'fastest', 'cheapest', 'most_accurate'];
 
 /** Maximum allowed query length to prevent abuse */
 const MAX_QUERY_LENGTH = 2000;
 
-/** Accept SDK strategy names as aliases and map them to core names */
+/** Accept legacy/uppercase strategy names as aliases and map them to canonical names */
 const STRATEGY_ALIASES: Record<string, Strategy> = {
-  fastest: 'cheapest',
-  most_accurate: 'best_performance',
-  // Also accept uppercase SDK names
+  // Legacy internal names
+  best_performance: 'most_accurate',
+  most_stable: 'balanced',
+  // Uppercase SDK/Prisma enum names
   BALANCED: 'balanced',
-  FASTEST: 'cheapest',
+  FASTEST: 'fastest',
   CHEAPEST: 'cheapest',
-  MOST_ACCURATE: 'best_performance',
+  MOST_ACCURATE: 'most_accurate',
   MANUAL: 'balanced',
   AUTO: 'auto',
 };
@@ -37,12 +38,12 @@ function resolveStrategy(raw: string): Strategy | null {
   return STRATEGY_ALIASES[raw] ?? STRATEGY_ALIASES[raw.toUpperCase()] ?? null;
 }
 
-/** Map core strategy names to SDK enum values for call recording */
+/** Map canonical core strategy names to SDK/Prisma enum values for call recording */
 const CORE_TO_SDK: Record<string, string> = {
   balanced: 'BALANCED',
-  best_performance: 'MOST_ACCURATE',
+  fastest: 'FASTEST',
   cheapest: 'CHEAPEST',
-  most_stable: 'BALANCED',
+  most_accurate: 'MOST_ACCURATE',
   auto: 'AUTO',
 };
 
@@ -144,13 +145,30 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
   }
 
-  // 4. Route the request
+  // 4. Budget enforcement — block routing before dispatch (same as sdk-handler)
+  let preAccount;
+  try {
+    preAccount = await ensureDeveloperAccount(agent.id);
+    if (
+      typeof preAccount.monthlyBudgetUsd === 'number' &&
+      preAccount.monthlyBudgetUsd >= 0 &&
+      preAccount.spentThisMonth >= preAccount.monthlyBudgetUsd
+    ) {
+      return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
+        details: { budget: preAccount.monthlyBudgetUsd, spent: preAccount.spentThisMonth },
+      });
+    }
+  } catch {
+    // If account check fails, allow routing (fail-open for /route/* surface)
+  }
+
+  // 5. Route the request
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body);
 
-    // P0-3: Record the call for analytics (same as sdk-handler does)
+    // Record the call for analytics
     try {
-      const account = await ensureDeveloperAccount(agent.id);
+      const account = preAccount ?? await ensureDeveloperAccount(agent.id);
       const strategyUsed = CORE_TO_SDK[body.strategy ?? 'balanced'] ?? 'BALANCED';
       await recordRouterCall(
         account.id,

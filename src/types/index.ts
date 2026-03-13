@@ -62,5 +62,10 @@ export function apiError(
   const body: ApiError = {
     error: { code, message, ...extra },
   };
-  return Response.json(body, { status });
+  const headers: Record<string, string> = {};
+  // Include Retry-After header on 429 responses
+  if (status === 429 && extra?.retry_after) {
+    headers['Retry-After'] = String(extra.retry_after);
+  }
+  return Response.json(body, { status, headers });
 }

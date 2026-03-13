@@ -7,8 +7,9 @@
 import { describe, it, expect } from 'vitest';
 import { escapeHtml, sanitizeForJsonLd, stripHtml } from '@/lib/sanitize';
 import { getRankedToolsForCapability, CAPABILITY_TOOLS } from '@/lib/router/index';
-import { aiRoute, type QueryContext } from '@/lib/router/ai-classify';
+import { aiRoute, fastClassify, type QueryContext } from '@/lib/router/ai-classify';
 import { normalizeStrategy, isRouterStrategy } from '@/lib/router/sdk';
+import { apiError } from '@/types';
 
 // ── P0-1: Reflected XSS ──
 
@@ -94,7 +95,7 @@ describe('P1-3: Priority tools affect fallback chain', () => {
   });
 
   it('all strategies produce non-empty results for valid capabilities', () => {
-    const strategies = ['balanced', 'best_performance', 'cheapest', 'most_stable'] as const;
+    const strategies = ['balanced', 'most_accurate', 'cheapest', 'fastest'] as const;
     for (const strategy of strategies) {
       for (const capability of Object.keys(CAPABILITY_TOOLS)) {
         const ranked = getRankedToolsForCapability(capability, strategy);
@@ -154,8 +155,8 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
     expect(ranked[0]).toBeDefined();
   });
 
-  it('best_performance returns tools for search', () => {
-    const ranked = getRankedToolsForCapability('search', 'best_performance');
+  it('most_accurate returns tools for search', () => {
+    const ranked = getRankedToolsForCapability('search', 'most_accurate');
     expect(ranked.length).toBeGreaterThan(0);
     expect(ranked[0]).toBe('exa-search'); // Highest quality
   });
@@ -166,14 +167,13 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
     expect(ranked[0]).toBe('serpapi'); // Lowest cost
   });
 
-  it('most_stable returns tools for search', () => {
-    const ranked = getRankedToolsForCapability('search', 'most_stable');
+  it('fastest returns tools for search', () => {
+    const ranked = getRankedToolsForCapability('search', 'fastest');
     expect(ranked.length).toBeGreaterThan(0);
-    expect(ranked[0]).toBe('serpapi'); // Highest stability
   });
 
   it('all strategies return tools for finance', () => {
-    const strategies = ['balanced', 'best_performance', 'cheapest', 'most_stable'] as const;
+    const strategies = ['balanced', 'most_accurate', 'cheapest', 'fastest'] as const;
     for (const s of strategies) {
       const ranked = getRankedToolsForCapability('finance', s);
       expect(ranked.length).toBe(3);
@@ -231,11 +231,103 @@ describe('P1-5: Strategy naming consistency', () => {
   });
 });
 
+// ── P0-3: Rate limiting 429 with Retry-After ──
+
+describe('P0-3: Rate limiting response includes Retry-After', () => {
+  it('apiError returns Retry-After header on 429', async () => {
+    const response = apiError('RATE_LIMITED', 'Too many requests.', 429, { retry_after: 60 });
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('60');
+  });
+
+  it('apiError does NOT include Retry-After on non-429 responses', async () => {
+    const response = apiError('VALIDATION_ERROR', 'Bad input.', 400, { retry_after: 60 });
+    expect(response.status).toBe(400);
+    expect(response.headers.get('Retry-After')).toBeNull();
+  });
+
+  it('apiError body contains error code and message', async () => {
+    const response = apiError('RATE_LIMITED', 'Slow down.', 429, { retry_after: 30 });
+    const body = await response.json();
+    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(body.error.message).toBe('Slow down.');
+    expect(body.error.retry_after).toBe(30);
+  });
+});
+
+// ── P1-7: Finance metric classification ──
+
+describe('P1-7: Finance metric queries classified correctly', () => {
+  it('classifies "NVDA PE ratio" as finance/realtime', () => {
+    const result = fastClassify('NVDA PE ratio');
+    expect(result).not.toBeNull();
+    expect(result!.domain).toBe('finance');
+  });
+
+  it('classifies "AAPL earnings" as finance/realtime', () => {
+    const result = fastClassify('AAPL earnings');
+    expect(result).not.toBeNull();
+    expect(result!.domain).toBe('finance');
+  });
+
+  it('classifies "TSLA revenue margin" as finance', () => {
+    const result = fastClassify('TSLA revenue margin');
+    expect(result).not.toBeNull();
+    expect(result!.domain).toBe('finance');
+  });
+
+  it('classifies "bitcoin price today" as finance/realtime', () => {
+    const result = fastClassify('bitcoin price today');
+    expect(result).not.toBeNull();
+    expect(result!.domain).toBe('finance');
+    expect(result!.freshness).toBe('realtime');
+  });
+
+  it('classifies "MSFT stock price" as finance/realtime', () => {
+    const result = fastClassify('MSFT stock price');
+    expect(result).not.toBeNull();
+    expect(result!.domain).toBe('finance');
+    expect(result!.type).toBe('realtime');
+  });
+
+  it('routes finance context to finance tools', () => {
+    const ctx: QueryContext = { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
+    const tools = aiRoute(ctx, 'finance');
+    expect(tools.length).toBe(3);
+  });
+});
+
+// ── P1-6: Budget enforcement ──
+
+describe('P1-6: Budget enforcement returns 402', () => {
+  it('apiError can return 402 BUDGET_EXCEEDED', async () => {
+    const response = apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded.', 402, {
+      details: { budget: 10, spent: 10.5 },
+    });
+    expect(response.status).toBe(402);
+    const body = await response.json();
+    expect(body.error.code).toBe('BUDGET_EXCEEDED');
+    expect(body.error.details.budget).toBe(10);
+    expect(body.error.details.spent).toBe(10.5);
+  });
+});
+
+// ── P1-5: Priority tools ──
+
+describe('P1-5: Priority tools do not get overridden by strategy', () => {
+  it('getRankedToolsForCapability respects exclusions across all strategies', () => {
+    const strategies = ['balanced', 'fastest', 'cheapest', 'most_accurate'] as const;
+    for (const s of strategies) {
+      const ranked = getRankedToolsForCapability('search', s, ['exa-search']);
+      expect(ranked).not.toContain('exa-search');
+    }
+  });
+});
+
 // ── P2-9: Boundary validation ──
 
 describe('P2-9: Boundary validation', () => {
   it('MAX_QUERY_LENGTH is 2000', () => {
-    // This test validates the constant exists and is reasonable
     const maxLen = 2000;
     const longQuery = 'a'.repeat(maxLen + 1);
     expect(longQuery.length).toBeGreaterThan(maxLen);
@@ -244,6 +336,14 @@ describe('P2-9: Boundary validation', () => {
   it('budget upper bound rejects $999,999,999', () => {
     const maxBudget = 100_000;
     expect(999_999_999).toBeGreaterThan(maxBudget);
+  });
+
+  it('escapeHtml handles all special characters', () => {
+    expect(escapeHtml('&')).toBe('&amp;');
+    expect(escapeHtml('<')).toBe('&lt;');
+    expect(escapeHtml('>')).toBe('&gt;');
+    expect(escapeHtml('"')).toBe('&quot;');
+    expect(escapeHtml("'")).toBe('&#x27;');
   });
 });
 

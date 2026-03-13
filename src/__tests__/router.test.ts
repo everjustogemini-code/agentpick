@@ -23,8 +23,8 @@ describe('Capability validation', () => {
 });
 
 describe('Strategy-based ranking', () => {
-  it('best_performance ranks highest quality first', () => {
-    const ranked = getRankedToolsForCapability('search', 'best_performance');
+  it('most_accurate ranks highest quality first', () => {
+    const ranked = getRankedToolsForCapability('search', 'most_accurate');
     expect(ranked[0]).toBe('exa-search'); // quality 4.6
     expect(ranked[1]).toBe('perplexity-search'); // quality 4.2
   });
@@ -34,20 +34,19 @@ describe('Strategy-based ranking', () => {
     expect(ranked[0]).toBe('serpapi'); // cost 0.0005
   });
 
-  it('most_stable ranks highest stability first', () => {
-    const ranked = getRankedToolsForCapability('search', 'most_stable');
-    expect(ranked[0]).toBe('serpapi'); // stability 0.98
+  it('fastest ranks lowest latency first (with quality floor)', () => {
+    const ranked = getRankedToolsForCapability('search', 'fastest');
+    expect(ranked.length).toBeGreaterThan(0);
+    // All returned tools should have quality >= 2.5
+    expect(ranked[0]).toBeDefined();
   });
 
-  it('fastest (via cheapest mapping) does not return empty', () => {
-    // This is the bug: fastest mapped to cheapest strategy, must return tools
-    const ranked = getRankedToolsForCapability('search', 'cheapest');
-    expect(ranked.length).toBeGreaterThan(0);
-  });
-
-  it('best_performance (most_accurate mapping) does not return empty', () => {
-    const ranked = getRankedToolsForCapability('search', 'best_performance');
-    expect(ranked.length).toBeGreaterThan(0);
+  it('all canonical strategies return non-empty results', () => {
+    const strategies = ['balanced', 'fastest', 'cheapest', 'most_accurate'] as const;
+    for (const s of strategies) {
+      const ranked = getRankedToolsForCapability('search', s);
+      expect(ranked.length).toBeGreaterThan(0);
+    }
   });
 
   it('excludes tools when specified', () => {

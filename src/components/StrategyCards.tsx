@@ -18,11 +18,19 @@ const STRATEGIES = [
     highlight: false,
   },
   {
-    id: 'best_quality',
-    name: 'best quality',
+    id: 'most_accurate',
+    name: 'most_accurate',
     badge: null,
-    description: 'Highest accuracy',
+    description: 'Highest quality results',
     metrics: { cost: '$0.002', quality: '4.6/5', latency: '315ms' },
+    highlight: false,
+  },
+  {
+    id: 'fastest',
+    name: 'fastest',
+    badge: null,
+    description: 'Lowest latency',
+    metrics: { cost: '$0.0005', quality: '3.0/5', latency: '89ms' },
     highlight: false,
   },
   {
@@ -31,14 +39,6 @@ const STRATEGIES = [
     badge: null,
     description: 'Lowest cost',
     metrics: { cost: '$0.0005', quality: '3.0/5', latency: '89ms' },
-    highlight: false,
-  },
-  {
-    id: 'most_stable',
-    name: 'most stable',
-    badge: null,
-    description: 'Maximum uptime',
-    metrics: { cost: '$0.001', quality: '4.2/5', latency: '182ms', extra: '99.8% up' },
     highlight: false,
   },
 ];
@@ -79,11 +79,6 @@ export default function StrategyCards() {
                 <div className="font-mono text-[12px] text-text-secondary">
                   {s.metrics.quality} · {s.metrics.latency}
                 </div>
-                {s.metrics.extra && (
-                  <div className="font-mono text-[11px] text-success">
-                    {s.metrics.extra}
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -125,12 +125,12 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   const rawStrategy = body.strategy && isRouterStrategy(body.strategy) ? body.strategy : (account.strategy as RouterStrategyValue);
   const strategyUsed = rawStrategy.toUpperCase() as RouterStrategyValue;
 
-  // Map SDK strategies to core router strategies (case-insensitive)
+  // Map SDK/Prisma strategies to canonical core names
   const SDK_TO_CORE: Record<string, Strategy> = {
     BALANCED: 'balanced',
-    FASTEST: 'cheapest',
+    FASTEST: 'fastest',
     CHEAPEST: 'cheapest',
-    MOST_ACCURATE: 'best_performance',
+    MOST_ACCURATE: 'most_accurate',
     MANUAL: 'balanced',
     AUTO: 'auto',
   };

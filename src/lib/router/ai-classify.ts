@@ -34,18 +34,26 @@ const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
  * Catches obvious patterns without needing an LLM call.
  * Returns null if uncertain — falls through to Haiku.
  */
-function fastClassify(query: string): QueryContext | null {
+export function fastClassify(query: string): QueryContext | null {
   const lower = query.toLowerCase();
 
   // Realtime / finance signals
-  const financeTerms = /\b(stock|price|ticker|share|market cap|earnings|dividend|p\/e|crypto|bitcoin|btc|eth|ethereum|forex|exchange rate|trading)\b/i;
+  const financeTerms = /\b(stock|price|ticker|share|market cap|earnings|dividend|p\/e|pe ratio|pe\b|eps|revenue|margin|valuation|ratio|roi|ebitda|cash flow|balance sheet|income statement|quarterly|annual report|sec filing|crypto|bitcoin|btc|eth|ethereum|forex|exchange rate|trading)\b/i;
   const realtimeTerms = /\b(today|right now|current|live|real.?time|latest price|price now)\b/i;
+
+  // Ticker-like patterns: 1-5 uppercase letters followed by finance terms
+  const tickerPattern = /\b[A-Z]{1,5}\b/;
+  const hasTickerWithFinance = tickerPattern.test(query) && financeTerms.test(lower);
 
   if (financeTerms.test(lower) && realtimeTerms.test(lower)) {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
   }
   if (financeTerms.test(lower) && /\b(price|stock|ticker|market cap|crypto)\b/i.test(lower)) {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
+  }
+  // Finance metric queries like "NVDA PE ratio", "AAPL earnings"
+  if (hasTickerWithFinance) {
+    return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'recent' };
   }
 
   // News signals — strong news indicators OR news + time reference

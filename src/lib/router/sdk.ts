@@ -148,7 +148,9 @@ export async function applyStrategy(
     return modified;
   }
 
-  if (!modified.tool) {
+  // Only set a strategy-based tool if there are no priority_tools.
+  // Priority tools take precedence and are handled by routeRequest().
+  if (!modified.tool && !modified.priority_tools?.length) {
     const best = getBestToolForStrategy(capability, account.strategy, account.excludedTools, account.latencyBudgetMs);
     if (best) {
       modified.tool = best;
@@ -172,12 +174,11 @@ export async function applyStrategy(
  * Map SDK strategies to core router strategies.
  */
 function sdkToRouterStrategy(strategy: RouterStrategyValue): Strategy {
-  // Normalize to uppercase for case-insensitive matching
   const upper = strategy.toUpperCase();
   switch (upper) {
-    case 'FASTEST': return 'cheapest'; // fastest ≈ cheapest (low latency tools tend to be simple/cheap)
+    case 'FASTEST': return 'fastest';
     case 'CHEAPEST': return 'cheapest';
-    case 'MOST_ACCURATE': return 'best_performance';
+    case 'MOST_ACCURATE': return 'most_accurate';
     case 'AUTO': return 'auto';
     case 'BALANCED':
     default: return 'balanced';

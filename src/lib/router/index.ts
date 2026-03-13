@@ -111,7 +111,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
 };
 
-export type Strategy = 'balanced' | 'best_performance' | 'cheapest' | 'most_stable' | 'auto';
+export type Strategy = 'auto' | 'balanced' | 'fastest' | 'cheapest' | 'most_accurate';
 
 export interface RouterRequest {
   tool?: string;
@@ -196,18 +196,19 @@ export function getRankedToolsForCapability(
     if (!cb) return -1;
 
     switch (strategy) {
-      case 'best_performance':
+      case 'most_accurate':
         // Highest quality first
         return cb.quality - ca.quality;
+      case 'fastest':
+        // Lowest latency first, with quality floor
+        if (ca.quality < 2.5 && cb.quality >= 2.5) return 1;
+        if (cb.quality < 2.5 && ca.quality >= 2.5) return -1;
+        return ca.latency - cb.latency;
       case 'cheapest':
         // Lowest cost first, but must have quality >= 3.0
         if (ca.quality < 3.0 && cb.quality >= 3.0) return 1;
         if (cb.quality < 3.0 && ca.quality >= 3.0) return -1;
         return ca.cost - cb.cost;
-      case 'most_stable':
-        // Highest stability first, then quality
-        if (cb.stability !== ca.stability) return cb.stability - ca.stability;
-        return cb.quality - ca.quality;
       case 'balanced':
       default: {
         // Best bang for buck: quality / (cost * latency), but avoid div by zero
@@ -270,6 +271,54 @@ function isFailure(result: ToolCallResult): boolean {
 }
 
 /**
+ * Circuit breaker: tracks recent failures per tool.
+ * Tools that fail repeatedly get deprioritized in routing.
+ */
+const toolHealthMap = new Map<string, { failures: number; lastFailure: number; lastSuccess: number }>();
+const CIRCUIT_BREAKER_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const CIRCUIT_BREAKER_THRESHOLD = 3; // 3 failures in window = deprioritize
+
+function recordToolHealth(slug: string, success: boolean) {
+  const now = Date.now();
+  const entry = toolHealthMap.get(slug) ?? { failures: 0, lastFailure: 0, lastSuccess: 0 };
+  if (success) {
+    entry.lastSuccess = now;
+    // Successful call reduces failure count
+    entry.failures = Math.max(0, entry.failures - 1);
+  } else {
+    entry.failures++;
+    entry.lastFailure = now;
+  }
+  toolHealthMap.set(slug, entry);
+}
+
+function isToolDegraded(slug: string): boolean {
+  const entry = toolHealthMap.get(slug);
+  if (!entry) return false;
+  const now = Date.now();
+  // Reset if window has passed since last failure
+  if (now - entry.lastFailure > CIRCUIT_BREAKER_WINDOW_MS) {
+    entry.failures = 0;
+    return false;
+  }
+  return entry.failures >= CIRCUIT_BREAKER_THRESHOLD;
+}
+
+/** Reorder tools: move degraded tools to the end of the list */
+function applyCircuitBreaker(tools: string[]): string[] {
+  const healthy: string[] = [];
+  const degraded: string[] = [];
+  for (const tool of tools) {
+    if (isToolDegraded(tool)) {
+      degraded.push(tool);
+    } else {
+      healthy.push(tool);
+    }
+  }
+  return [...healthy, ...degraded];
+}
+
+/**
  * Main router function.
  * Proxies the request, handles fallback through ALL capability tools, records traces.
  */
@@ -294,7 +343,9 @@ export async function routeRequest(
   }
 
   // Step 1: Build the ordered tool list for this capability + strategy
-  const rankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy);
+  // Apply circuit breaker to deprioritize repeatedly failing tools
+  const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy);
+  const rankedTools = applyCircuitBreaker(rawRankedTools);
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }
@@ -368,6 +419,9 @@ export async function routeRequest(
       };
     }
     lastResult = result;
+
+    // Record tool health for circuit breaker
+    recordToolHealth(candidateSlug, !isFailure(result));
 
     if (!isFailure(result)) {
       // Success!
