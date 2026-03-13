@@ -152,7 +152,7 @@ export default async function ArenaResultPage({ params }: Props) {
                     </span>
                   )}
                   {delta.costDelta !== '—' && (
-                    <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${(delta.costPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                    <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${(delta.costPct ?? 0) <= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
                       {delta.costDelta}
                     </span>
                   )}

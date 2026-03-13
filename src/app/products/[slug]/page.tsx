@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import CopyButton from './CopyButton';
 import ScoreBreakdown from '@/components/ScoreBreakdown';
+import ProductVoteBox from '@/components/ProductVoteBox';
 import SiteHeader from '@/components/SiteHeader';
 import ToolLifecycle from '@/components/ToolLifecycle';
 import { calculateScoreBreakdown } from '@/lib/score';
@@ -617,6 +618,9 @@ export default async function ProductDetailPage({ params }: Props) {
           avgLatencyMs={breakdown.avgLatencyMs}
           arenaTestCount={breakdown.arenaTestCount}
         />
+
+        {/* ═══ Vote Box ═══ */}
+        <ProductVoteBox slug={slug} productName={product.name} />
 
         {/* ═══ Benchmark Performance ═══ */}
         {hasBenchmarkData && benchmarkStats ? (

@@ -313,9 +313,9 @@ export async function POST(request: NextRequest) {
         const qualityPct = userSummary.avgRelevance > 0 && optimalSummary.avgRelevance > 0
           ? Math.round(((optimalSummary.avgRelevance - userSummary.avgRelevance) / userSummary.avgRelevance) * 100)
           : null;
-        // Cost: lower is better, so (user - optimal) / user * 100 → positive means optimal saves money
+        // Cost: (optimal - user) / user * 100 → positive means optimal costs more, negative means optimal saves
         const costPct = userSummary.avgCost > 0 && optimalSummary.avgCost > 0
-          ? Math.round(((userSummary.avgCost - optimalSummary.avgCost) / userSummary.avgCost) * 100)
+          ? Math.round(((optimalSummary.avgCost - userSummary.avgCost) / userSummary.avgCost) * 100)
           : null;
 
         const delta = {
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
             : '—',
           costPct,
           costDelta: costPct != null
-            ? (costPct > 0 ? `saves ${costPct}%` : costPct < 0 ? `costs ${Math.abs(costPct)}% more` : 'same cost')
+            ? (costPct > 0 ? `costs ${costPct}% more` : costPct < 0 ? `saves ${Math.abs(costPct)}%` : 'same cost')
             : '—',
         };
 

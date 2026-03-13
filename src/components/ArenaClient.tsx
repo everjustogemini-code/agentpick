@@ -556,7 +556,7 @@ export default function ArenaClient({ scenarios, availableTools, initialTools = 
               )}
               {delta.costDelta !== '—' && (
                 <span className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold ${
-                  (delta.costPct ?? 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'
+                  (delta.costPct ?? 0) <= 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'
                 }`}>
                   {delta.costDelta}
                 </span>
