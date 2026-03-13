@@ -1,0 +1,391 @@
+/**
+ * Router SDK — Developer account management, strategy-based routing, usage tracking.
+ * Extends the existing router core (./index.ts) without modifying it.
+ */
+
+import { prisma } from '@/lib/prisma';
+import { BROWSE_STATUSES } from '@/lib/product-status';
+import type { RouterRequest, RouterResponse, Strategy } from './index';
+import { getRankedToolsForCapability } from './index';
+
+const db = prisma as any;
+
+export type RouterStrategyValue = 'BALANCED' | 'FASTEST' | 'CHEAPEST' | 'MOST_ACCURATE' | 'MANUAL' | 'AUTO';
+export type RouterPlanValue = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+
+const PLAN_LIMITS: Record<RouterPlanValue, number> = {
+  FREE: 100,
+  STARTER: 1000,
+  PRO: 10000,
+  ENTERPRISE: 1_000_000,
+};
+
+const CAPABILITY_TO_CATEGORY: Record<string, string> = {
+  search: 'search_research',
+  crawl: 'web_crawling',
+  embed: 'storage_memory',
+  finance: 'finance_data',
+  code: 'code_compute',
+  storage: 'storage_memory',
+  communication: 'communication',
+  payments: 'payments_commerce',
+  auth: 'auth_identity',
+  scheduling: 'scheduling',
+  ai: 'ai_models',
+  observability: 'observability',
+};
+
+function isNewBillingCycle(date: Date) {
+  const now = new Date();
+  return date.getUTCFullYear() !== now.getUTCFullYear() || date.getUTCMonth() !== now.getUTCMonth();
+}
+
+const VALID_STRATEGIES: RouterStrategyValue[] = ["BALANCED", "FASTEST", "CHEAPEST", "MOST_ACCURATE", "MANUAL", "AUTO"];
+
+export function isRouterStrategy(value: unknown): value is RouterStrategyValue {
+  return VALID_STRATEGIES.includes(String(value).toUpperCase() as RouterStrategyValue);
+}
+
+/**
+ * Normalize strategy to canonical uppercase form.
+ * Accepts case-insensitive input + legacy aliases.
+ */
+export function normalizeStrategy(value: string): RouterStrategyValue | null {
+  const upper = value.toUpperCase();
+  if (VALID_STRATEGIES.includes(upper as RouterStrategyValue)) return upper as RouterStrategyValue;
+  // Legacy aliases from /connect page naming
+  const aliases: Record<string, RouterStrategyValue> = {
+    BEST_PERFORMANCE: 'MOST_ACCURATE',
+    MOST_STABLE: 'BALANCED',
+  };
+  return aliases[upper] ?? null;
+}
+
+/**
+ * Get or create a DeveloperAccount for an agent.
+ */
+export async function ensureDeveloperAccount(agentId: string) {
+  let account = await db.developerAccount.findUnique({
+    where: { agentId },
+  });
+
+  if (!account) {
+    account = await db.developerAccount.create({
+      data: {
+        agentId,
+        priorityTools: [],
+        excludedTools: [],
+      },
+    });
+  } else if (isNewBillingCycle(account.billingCycleStart)) {
+    account = await db.developerAccount.update({
+      where: { id: account.id },
+      data: {
+        spentThisMonth: 0,
+        billingCycleStart: new Date(),
+      },
+    });
+  }
+
+  return account;
+}
+
+/**
+ * Check daily usage against plan limits.
+ * Returns { allowed: boolean, remaining: number, limit: number }.
+ */
+export async function checkUsageLimit(developerId: string, plan: RouterPlanValue) {
+  const limit = PLAN_LIMITS[plan];
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayCount = await db.routerCall.count({
+    where: {
+      developerId,
+      createdAt: { gte: todayStart },
+    },
+  });
+
+  return {
+    allowed: todayCount < limit,
+    remaining: Math.max(0, limit - todayCount),
+    limit,
+    used: todayCount,
+  };
+}
+
+/**
+ * Apply strategy to modify which tool is selected.
+ * Returns a modified RouterRequest with the best tool for the strategy.
+ */
+export async function applyStrategy(
+  capability: string,
+  request: RouterRequest,
+  account: {
+    strategy: RouterStrategyValue;
+    priorityTools: string[];
+    excludedTools: string[];
+    fallbackEnabled: boolean;
+    maxFallbacks: number;
+    latencyBudgetMs: number | null;
+  },
+): Promise<RouterRequest> {
+  const modified: RouterRequest = {
+    ...request,
+    params: request.params,
+    fallback: request.fallback ? [...request.fallback] : undefined,
+  };
+
+  if (account.strategy === 'MANUAL' && account.priorityTools.length > 0) {
+    if (!modified.tool) {
+      modified.tool = account.priorityTools[0];
+    }
+    if (account.fallbackEnabled) {
+      modified.fallback = account.priorityTools
+        .filter((tool) => tool !== modified.tool && !account.excludedTools.includes(tool))
+        .slice(0, account.maxFallbacks);
+    }
+    return modified;
+  }
+
+  if (!modified.tool) {
+    const best = getBestToolForStrategy(capability, account.strategy, account.excludedTools, account.latencyBudgetMs);
+    if (best) {
+      modified.tool = best;
+    }
+  }
+
+  if (account.fallbackEnabled && !(modified.fallback?.length)) {
+    const fallbacks = account.priorityTools
+      .filter((tool) => tool !== modified.tool && !account.excludedTools.includes(tool))
+      .slice(0, account.maxFallbacks);
+
+    if (fallbacks.length > 0) {
+      modified.fallback = fallbacks;
+    }
+  }
+
+  return modified;
+}
+
+/**
+ * Map SDK strategies to core router strategies.
+ */
+function sdkToRouterStrategy(strategy: RouterStrategyValue): Strategy {
+  // Normalize to uppercase for case-insensitive matching
+  const upper = strategy.toUpperCase();
+  switch (upper) {
+    case 'FASTEST': return 'cheapest'; // fastest ≈ cheapest (low latency tools tend to be simple/cheap)
+    case 'CHEAPEST': return 'cheapest';
+    case 'MOST_ACCURATE': return 'best_performance';
+    case 'AUTO': return 'auto';
+    case 'BALANCED':
+    default: return 'balanced';
+  }
+}
+
+/**
+ * Find best tool based on strategy using CAPABILITY_TOOLS + hardcoded characteristics.
+ */
+function getBestToolForStrategy(
+  capability: string,
+  strategy: RouterStrategyValue,
+  exclude: string[],
+  _latencyBudgetMs: number | null,
+): string | null {
+  const routerStrategy = sdkToRouterStrategy(strategy);
+  const ranked = getRankedToolsForCapability(capability, routerStrategy, exclude);
+  return ranked[0] ?? null;
+}
+
+/**
+ * Record a RouterCall after routing completes.
+ */
+export async function recordRouterCall(
+  developerId: string,
+  capability: string,
+  query: string,
+  request: RouterRequest,
+  response: RouterResponse,
+  strategyUsed: RouterStrategyValue,
+  byokUsed: boolean,
+  fallbackChain: string[],
+) {
+  const meta = response.meta as RouterResponse['meta'] & {
+    cost_usd?: number;
+    result_count?: number;
+  };
+
+  // Determine success: trace_id starting with "trace_fail_" means all tools failed
+  const isSuccess = !meta.trace_id.startsWith('trace_fail_');
+  const statusCode = isSuccess ? 200 : 502;
+
+  const call = await db.routerCall.create({
+    data: {
+      developerId,
+      capability,
+      query,
+      toolRequested: request.tool ?? null,
+      toolUsed: meta.tool_used,
+      fallbackUsed: meta.fallback_used,
+      fallbackFrom: meta.fallback_from ?? null,
+      fallbackChain,
+      statusCode,
+      latencyMs: meta.latency_ms,
+      resultCount: meta.result_count ?? null,
+      aiClassification: meta.ai_classification ?? null,
+      costUsd: meta.cost_usd ?? 0,
+      success: isSuccess,
+      strategyUsed,
+      byokUsed,
+      traceId: meta.trace_id,
+    },
+  });
+
+  const currentAccount = await db.developerAccount.findUnique({
+    where: { id: developerId },
+    select: {
+      totalCalls: true,
+      totalFallbacks: true,
+      totalCostUsd: true,
+      avgLatencyMs: true,
+      spentThisMonth: true,
+      billingCycleStart: true,
+    },
+  });
+
+  if (currentAccount) {
+    const previousCalls = currentAccount.totalCalls ?? 0;
+    const nextCalls = previousCalls + 1;
+    const nextAvgLatency =
+      previousCalls > 0 && currentAccount.avgLatencyMs !== null
+        ? (currentAccount.avgLatencyMs * previousCalls + meta.latency_ms) / nextCalls
+        : meta.latency_ms;
+    const resetMonthlySpend = isNewBillingCycle(currentAccount.billingCycleStart);
+
+    await db.developerAccount.update({
+      where: { id: developerId },
+      data: {
+        totalCalls: { increment: 1 },
+        totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
+        totalCostUsd: { increment: meta.cost_usd ?? 0 },
+        spentThisMonth: resetMonthlySpend ? meta.cost_usd ?? 0 : (currentAccount.spentThisMonth ?? 0) + (meta.cost_usd ?? 0),
+        billingCycleStart: resetMonthlySpend ? new Date() : undefined,
+        avgLatencyMs: nextAvgLatency,
+      },
+    });
+  }
+
+  return call;
+}
+
+/**
+ * Get usage stats for a developer account.
+ */
+export async function getUsageStats(developerId: string, days = 7) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const calls = await db.routerCall.findMany({
+    where: { developerId, createdAt: { gte: since } },
+    select: {
+      capability: true,
+      toolUsed: true,
+      latencyMs: true,
+      costUsd: true,
+      success: true,
+      fallbackUsed: true,
+      createdAt: true,
+    },
+  });
+
+  const totalCalls = calls.length;
+  const successCalls = calls.filter((call: { success: boolean }) => call.success).length;
+  const fallbackCalls = calls.filter((call: { fallbackUsed: boolean }) => call.fallbackUsed).length;
+  const avgLatency =
+    totalCalls > 0 ? Math.round(calls.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / totalCalls) : 0;
+  const totalCost = calls.reduce((sum: number, call: { costUsd: number }) => sum + call.costUsd, 0);
+
+  const byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }> = {};
+  const capGroups = new Map<string, typeof calls>();
+  for (const call of calls) {
+    const group = capGroups.get(call.capability) ?? [];
+    group.push(call);
+    capGroups.set(call.capability, group);
+  }
+  for (const [capability, group] of capGroups) {
+    byCapability[capability] = {
+      calls: group.length,
+      avgLatency: Math.round(
+        group.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / group.length,
+      ),
+      successRate: group.filter((call: { success: boolean }) => call.success).length / group.length,
+    };
+  }
+
+  const byTool: Record<string, { calls: number; avgLatency: number }> = {};
+  const toolGroups = new Map<string, typeof calls>();
+  for (const call of calls) {
+    const group = toolGroups.get(call.toolUsed) ?? [];
+    group.push(call);
+    toolGroups.set(call.toolUsed, group);
+  }
+  for (const [tool, group] of toolGroups) {
+    byTool[tool] = {
+      calls: group.length,
+      avgLatency: Math.round(
+        group.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / group.length,
+      ),
+    };
+  }
+
+  return {
+    period: { days, since: since.toISOString() },
+    totalCalls,
+    successRate: totalCalls > 0 ? successCalls / totalCalls : 0,
+    fallbackRate: totalCalls > 0 ? fallbackCalls / totalCalls : 0,
+    avgLatencyMs: avgLatency,
+    totalCostUsd: Math.round(totalCost * 100) / 100,
+    byCapability,
+    byTool,
+  };
+}
+
+/**
+ * Get fallback analytics.
+ */
+export async function getFallbackStats(developerId: string, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const fallbackCalls = await db.routerCall.findMany({
+    where: {
+      developerId,
+      fallbackUsed: true,
+      createdAt: { gte: since },
+    },
+    select: {
+      fallbackFrom: true,
+      toolUsed: true,
+      capability: true,
+      latencyMs: true,
+      createdAt: true,
+    },
+  });
+
+  const triggersByTool: Record<string, number> = {};
+  const recoveriesByTool: Record<string, number> = {};
+  for (const call of fallbackCalls) {
+    if (call.fallbackFrom) {
+      triggersByTool[call.fallbackFrom] = (triggersByTool[call.fallbackFrom] ?? 0) + 1;
+    }
+    recoveriesByTool[call.toolUsed] = (recoveriesByTool[call.toolUsed] ?? 0) + 1;
+  }
+
+  return {
+    period: { days, since: since.toISOString() },
+    totalFallbacks: fallbackCalls.length,
+    triggersByTool,
+    recoveriesByTool,
+  };
+}

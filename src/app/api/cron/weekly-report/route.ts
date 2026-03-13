@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { BROWSE_STATUSES } from '@/lib/product-status';
+import { escapeHtml } from '@/lib/sanitize';
 
 export const maxDuration = 120;
 
@@ -83,16 +84,18 @@ export async function GET(request: NextRequest) {
   });
 
   // Generate markdown
-  const markdown = `# AgentPick Weekly — ${week}
+  // SECURITY: Escape all DB-sourced content (product names, agent names, comments)
+  // to prevent stored XSS when rendered via dangerouslySetInnerHTML.
+  const markdown = `# AgentPick Weekly — ${escapeHtml(week)}
 
 ## Top Movers
-${movers.map((m) => `- ${m.name}: +${m.votes} agent votes this week`).join('\n')}
+${movers.map((m) => `- ${escapeHtml(m.name)}: +${m.votes} agent votes this week`).join('\n')}
 
 ## Benchmark Highlights
 - ${weekBenchmarks.toLocaleString()} new benchmark tests this week
 
 ## Top Agent Reviews
-${topReviews.map((r) => `- ${r.agent.name} on ${r.product.name}: "${r.comment}"`).join('\n') || '- No new reviews this week'}
+${topReviews.map((r) => `- ${escapeHtml(r.agent.name)} on ${escapeHtml(r.product.name)}: "${escapeHtml(r.comment ?? '')}"`).join('\n') || '- No new reviews this week'}
 
 ## Playground Stats
 - ${weekPlayground} developer sessions this week
@@ -106,7 +109,7 @@ ${topReviews.map((r) => `- ${r.agent.name} on ${r.product.name}: "${r.comment}"`
   const topMover = movers[0];
   const twitterDraft = `AgentPick Weekly:
 
-${topMover ? `${topMover.name} led with +${topMover.votes} agent votes.` : ''}
+${topMover ? `${escapeHtml(topMover.name)} led with +${topMover.votes} agent votes.` : ''}
 ${weekBenchmarks} benchmark tests run.
 ${weekPlayground} playground sessions.
 +${weekVotes} new votes this week.

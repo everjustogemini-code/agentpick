@@ -461,7 +461,44 @@ export async function listQuerySets() {
   return records.map(serializeQuerySet);
 }
 
+/**
+ * Generate finance-data-specific queries using ticker symbols.
+ * Finance APIs (Polygon, Alpha Vantage, FMP) expect tickers, not search-style text.
+ */
+function generateFinanceDataQuerySet(count: number): QueryItem[] {
+  const tickers = [
+    "AAPL", "NVDA", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NFLX", "AMD", "INTC",
+    "DIS", "NKE", "UBER", "SHOP", "COIN", "SPY", "QQQ", "DIA", "IWM", "PLTR",
+    "ABNB", "SNOW", "HOOD", "CRM", "ORCL", "ADBE", "PYPL", "SQ", "ROKU", "SOFI",
+    "BAC", "JPM", "GS", "WMT", "COST", "HD", "LOW", "PFE", "JNJ", "UNH",
+    "XOM", "CVX", "BA", "LMT", "RTX", "V", "MA", "BRK.B", "KO", "PEP",
+  ];
+  const intents = [
+    "Get current market price and volume data.",
+    "Retrieve recent price history for trend analysis.",
+    "Check previous trading day close price.",
+    "Fetch real-time quote with bid/ask spread.",
+    "Get daily OHLCV data for the symbol.",
+  ];
+  const complexity: QueryItem["complexity"][] = ["simple", "medium", "complex"];
+
+  const results: QueryItem[] = [];
+  for (let index = 0; index < count; index += 1) {
+    results.push({
+      query: tickers[index % tickers.length],
+      complexity: complexity[index % complexity.length],
+      intent: intents[index % intents.length],
+    });
+  }
+  return results;
+}
+
 export function generateQuerySet(domain: string, count = DEFAULT_QUERYSET_SIZE): QueryItem[] {
+  // Finance data APIs need ticker-based queries, not search-style text queries
+  if (domain === "finance_data") {
+    return generateFinanceDataQuerySet(count);
+  }
+
   const domainMeta = findDomain(domain);
   const intents = [
     "Return authoritative sources with clear citations.",

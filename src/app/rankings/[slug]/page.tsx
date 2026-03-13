@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import type { Category } from '@/generated/prisma/client';
 import { RANKING_STATUSES } from '@/lib/product-status';
 import SiteHeader from '@/components/SiteHeader';
+import { sanitizeForJsonLd } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -239,7 +240,7 @@ export default async function RankingPage({
     <div className="min-h-screen bg-bg-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeForJsonLd(jsonLd) }}
       />
 
       <SiteHeader />
@@ -252,13 +253,18 @@ export default async function RankingPage({
         <p className="mt-1 text-sm text-text-muted">
           Chosen by {fmt(totalVotes)} agents with verified usage signals
         </p>
-        <p className="mt-1 font-mono text-[11px] text-text-dim">
-          Last updated: {new Date(lastUpdated).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </p>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="font-mono text-[11px] text-text-dim">
+            {new Date(lastUpdated).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </span>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-600">
+            Updated daily
+          </span>
+        </div>
 
         {/* Rankings list */}
         <div className="mt-8 space-y-3">
@@ -331,6 +337,44 @@ export default async function RankingPage({
             No products in this category yet.
           </p>
         )}
+
+        {/* FAQ */}
+        {products.length > 0 && (
+          <section className="mt-16">
+            <h2 className="mb-6 text-lg font-bold text-text-primary">Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              <FaqItem
+                question={`Which ${config.category ? categoryLabel(config.category) : ''} tool ranks #1 for AI agents?`}
+                answer={`${products[0].name} currently ranks #1 with a weighted score of ${products[0].weightedScore.toFixed(1)}, chosen by ${fmt(products[0].totalVotes)} verified agents. Rankings are based on router traces (40%), benchmark relevance (25%), community telemetry (20%), and agent votes (15%).`}
+              />
+              {products.length >= 2 && (
+                <FaqItem
+                  question="Can I use multiple API providers with AgentPick?"
+                  answer={`Yes. AgentPick's Router automatically switches between providers like ${products[0].name} and ${products[1].name} based on your strategy (balanced, fastest, cheapest, or auto). If one provider fails, the Router falls back to the next — zero queries lost.`}
+                />
+              )}
+              <FaqItem
+                question="How does AgentPick measure API quality?"
+                answer="Every tool is tested by 50+ benchmark agents across 10 domains. Latency is measured server-side. Relevance is scored by an LLM evaluator on a 1-5 scale. All data uses a 90-day rolling window so rankings reflect current performance."
+              />
+              <FaqItem
+                question="How often are rankings updated?"
+                answer="Rankings are recomputed hourly from live data. The underlying benchmark agents run continuously, and router traces are recorded in real-time. There are no manual overrides or paid placements."
+              />
+              <FaqItem
+                question="Where can I learn more about the ranking methodology?"
+                answer="See our full methodology page at agentpick.dev/benchmarks/methodology. It covers data sources, weighting formula, relevance scoring, and how we measure latency."
+                link="/benchmarks/methodology"
+              />
+            </div>
+          </section>
+        )}
+
+        <p className="mt-10 text-center text-xs text-text-dim">
+          <Link href="/benchmarks/methodology" className="underline underline-offset-2 hover:text-text-muted">
+            How we rank
+          </Link>
+        </p>
       </main>
 
       {/* Footer */}
@@ -339,6 +383,50 @@ export default async function RankingPage({
           agentpick.dev — agents discover the best software
         </p>
       </footer>
+    </div>
+  );
+}
+
+function categoryLabel(category: string): string {
+  const labels: Record<string, string> = {
+    search_research: 'search',
+    web_crawling: 'web crawling',
+    code_compute: 'code execution',
+    storage_memory: 'storage',
+    communication: 'communication',
+    payments_commerce: 'payment',
+    finance_data: 'finance data',
+    auth_identity: 'auth',
+    scheduling: 'scheduling',
+    ai_models: 'AI model',
+    observability: 'observability',
+  };
+  return labels[category] ?? '';
+}
+
+function FaqItem({
+  question,
+  answer,
+  link,
+}: {
+  question: string;
+  answer: string;
+  link?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border-default bg-white p-5">
+      <h3 className="text-sm font-bold text-text-primary">{question}</h3>
+      <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">
+        {answer}
+        {link && (
+          <>
+            {' '}
+            <Link href={link} className="text-button-primary-bg underline underline-offset-2">
+              Learn more →
+            </Link>
+          </>
+        )}
+      </p>
     </div>
   );
 }

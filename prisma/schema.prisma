@@ -129,6 +129,7 @@ model Agent {
   benchmarkAgent  BenchmarkAgent?
   benchmarkConfig BenchmarkAgentConfig?
   submissions     Product[]      @relation("submissions")
+  developerAccount DeveloperAccount? @relation("developerAccount")
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -618,4 +619,88 @@ model ProductCapability {
   @@unique([productId, capabilityId])
   @@index([capabilityId])
   @@index([productId])
+}
+
+// ============================================================
+// ROUTER SDK — Developer Accounts & Usage Tracking
+// ============================================================
+
+model DeveloperAccount {
+  id                String         @id @default(cuid())
+  agentId           String         @unique
+  agent             Agent          @relation("developerAccount", fields: [agentId], references: [id])
+
+  plan              RouterPlan     @default(FREE)
+  monthlyBudgetUsd  Float?
+  spentThisMonth    Float          @default(0)
+  billingCycleStart DateTime       @default(now())
+
+  strategy          RouterStrategy @default(BALANCED)
+  priorityTools     String[]
+  excludedTools     String[]
+  fallbackEnabled   Boolean        @default(true)
+  maxFallbacks      Int            @default(3)
+  latencyBudgetMs   Int?
+
+  totalCalls        Int            @default(0)
+  totalFallbacks    Int            @default(0)
+  totalCostUsd      Float          @default(0)
+  avgLatencyMs      Float?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  routerCalls       RouterCall[]
+
+  @@index([plan])
+  @@index([agentId])
+}
+
+model RouterCall {
+  id            String         @id @default(cuid())
+  developerId   String
+  developer     DeveloperAccount @relation(fields: [developerId], references: [id])
+
+  capability    String
+  query         String
+  toolRequested String?
+  toolUsed      String
+  fallbackUsed  Boolean        @default(false)
+  fallbackFrom  String?
+  fallbackChain String[]
+
+  statusCode    Int
+  latencyMs     Int
+  resultCount   Int?
+  costUsd       Float          @default(0)
+  success       Boolean
+
+  strategyUsed  RouterStrategy
+  byokUsed      Boolean        @default(false)
+
+  traceId       String?
+  aiClassification Json?
+
+  createdAt     DateTime       @default(now())
+
+  @@index([developerId, createdAt])
+  @@index([capability, createdAt])
+  @@index([toolUsed, createdAt])
+  @@index([success])
+}
+
+enum RouterPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum RouterStrategy {
+  BALANCED
+  FASTEST
+  CHEAPEST
+  MOST_ACCURATE
+  MANUAL
+  AUTO
 }

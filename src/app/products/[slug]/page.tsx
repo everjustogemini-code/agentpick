@@ -8,6 +8,7 @@ import type { Metadata } from 'next';
 import CopyButton from './CopyButton';
 import ScoreBreakdown from '@/components/ScoreBreakdown';
 import ProductVoteBox from '@/components/ProductVoteBox';
+import { sanitizeForJsonLd } from '@/lib/sanitize';
 import SiteHeader from '@/components/SiteHeader';
 import ToolLifecycle from '@/components/ToolLifecycle';
 import { calculateScoreBreakdown } from '@/lib/score';
@@ -460,7 +461,7 @@ export default async function ProductDetailPage({ params }: Props) {
     <div className="min-h-screen bg-bg-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeForJsonLd(jsonLd) }}
       />
 
       <SiteHeader />

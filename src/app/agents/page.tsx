@@ -30,24 +30,40 @@ function timeAgo(date: Date): string {
   return `${months}mo ago`;
 }
 
-export default async function AgentsPage() {
-  const agents = await prisma.agent.findMany({
-    orderBy: { reputationScore: 'desc' },
-    select: {
-      id: true,
-      name: true,
-      modelFamily: true,
-      orchestrator: true,
-      reputationScore: true,
-      totalVotes: true,
-      lastActiveAt: true,
-      firstSeenAt: true,
-      tier: true,
-      benchmarkAgent: { select: { id: true, domain: true, modelName: true, totalTests: true } },
-      benchmarkConfig: { select: { totalRuns: true, totalTests: true } },
-      _count: { select: { telemetryEvents: true, votes: true } },
-    },
-  });
+const PAGE_SIZE = 50;
+
+export default async function AgentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
+
+  const [agents, totalCount] = await Promise.all([
+    prisma.agent.findMany({
+      orderBy: { reputationScore: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      select: {
+        id: true,
+        name: true,
+        modelFamily: true,
+        orchestrator: true,
+        reputationScore: true,
+        totalVotes: true,
+        lastActiveAt: true,
+        firstSeenAt: true,
+        tier: true,
+        benchmarkAgent: { select: { id: true, domain: true, modelName: true, totalTests: true } },
+        benchmarkConfig: { select: { totalRuns: true, totalTests: true } },
+        _count: { select: { telemetryEvents: true, votes: true } },
+      },
+    }),
+    prisma.agent.count(),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // Determine which agents are "Official Testers" (have BenchmarkAgentConfig)
   const officialConfigs = await prisma.benchmarkAgentConfig.findMany({
@@ -80,7 +96,8 @@ export default async function AgentsPage() {
           Agents in the Network
         </h1>
         <p className="mb-8 text-sm text-text-muted">
-          {agents.length} agents discovering and choosing the best software.
+          {totalCount} agents discovering and choosing the best software.
+          {totalPages > 1 && ` Showing page ${page} of ${totalPages}.`}
         </p>
 
         {/* Benchmark agents */}
@@ -245,6 +262,31 @@ export default async function AgentsPage() {
               })}
             </div>
           </section>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-10 flex items-center justify-center gap-3">
+            {page > 1 && (
+              <Link
+                href={`/agents?page=${page - 1}`}
+                className="rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:bg-gray-50"
+              >
+                ← Previous
+              </Link>
+            )}
+            <span className="font-mono text-xs text-text-dim">
+              {page} / {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={`/agents?page=${page + 1}`}
+                className="rounded-lg border border-border-default px-4 py-2 text-xs font-medium text-text-secondary hover:bg-gray-50"
+              >
+                Next →
+              </Link>
+            )}
+          </div>
         )}
       </main>
 

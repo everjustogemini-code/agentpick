@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { callToolAPI } from '@/lib/benchmark/adapters/index';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import type { ToolCallResult } from '@/lib/benchmark/adapters/types';
+import { getClassification, aiRoute, type QueryContext } from './ai-classify';
 
 // Maps tool slugs to their env var names for BYOK key injection
 const SLUG_TO_ENV_VAR: Record<string, string> = {
@@ -71,11 +72,55 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
   observability: 'observability',
 };
 
+/**
+ * CAPABILITY_TOOLS: Only these slugs can be selected for each capability.
+ * Every slug here MUST have a working adapter in ADAPTERS map.
+ * This prevents the router from picking tools like Mapbox for search.
+ */
+export const CAPABILITY_TOOLS: Record<string, string[]> = {
+  search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'perplexity-search', 'you-search', 'jina-ai', 'serpapi-google', 'bing-web-search'],
+  crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
+  embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed'],
+  finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
+};
+
+/**
+ * Hardcoded tool characteristics for strategy differentiation.
+ * Used when DB benchmark data is insufficient to differentiate tools.
+ */
+export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: number; latency: number; stability: number }> = {
+  'exa-search':             { quality: 4.6, cost: 0.002,   latency: 315,  stability: 0.95 },
+  tavily:                   { quality: 4.0, cost: 0.001,   latency: 182,  stability: 0.97 },
+  serpapi:                  { quality: 3.0, cost: 0.0005,  latency: 89,   stability: 0.98 },
+  'brave-search':           { quality: 3.2, cost: 0.001,   latency: 150,  stability: 0.93 },
+  'perplexity-search':      { quality: 4.2, cost: 0.003,   latency: 500,  stability: 0.90 },
+  'you-search':             { quality: 3.0, cost: 0.001,   latency: 200,  stability: 0.92 },
+  'jina-ai':                { quality: 3.5, cost: 0.001,   latency: 250,  stability: 0.94 },
+  'serpapi-google':          { quality: 3.2, cost: 0.001,   latency: 120,  stability: 0.96 },
+  'bing-web-search':         { quality: 3.0, cost: 0.001,   latency: 180,  stability: 0.94 },
+  firecrawl:                { quality: 4.0, cost: 0.002,   latency: 1200, stability: 0.93 },
+  apify:                    { quality: 3.5, cost: 0.003,   latency: 2000, stability: 0.90 },
+  scrapingbee:              { quality: 3.0, cost: 0.002,   latency: 1500, stability: 0.91 },
+  browserbase:              { quality: 3.8, cost: 0.005,   latency: 3000, stability: 0.88 },
+  'polygon-io':             { quality: 4.5, cost: 0.001,   latency: 100,  stability: 0.99 },
+  'alpha-vantage':          { quality: 3.5, cost: 0.0,     latency: 300,  stability: 0.95 },
+  'financial-modeling-prep': { quality: 3.8, cost: 0.001,   latency: 200,  stability: 0.96 },
+  'openai-embed':           { quality: 4.5, cost: 0.0001,  latency: 150,  stability: 0.99 },
+  'cohere-embed':           { quality: 4.0, cost: 0.0001,  latency: 120,  stability: 0.98 },
+  'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
+  'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
+};
+
+export type Strategy = 'balanced' | 'best_performance' | 'cheapest' | 'most_stable' | 'auto';
+
 export interface RouterRequest {
   tool?: string;
   tool_api_key?: string;
   params: Record<string, unknown>;
   fallback?: string[];
+  strategy?: Strategy;
+  /** Request-level priority tools — overrides account-level and strategy-based selection. */
+  priority_tools?: string[];
 }
 
 export interface RouterResponse {
@@ -86,6 +131,8 @@ export interface RouterResponse {
     fallback_used: boolean;
     fallback_from?: string;
     trace_id: string;
+    ai_classification?: QueryContext & { reasoning?: string };
+    classification_ms?: number;
   };
 }
 
@@ -122,24 +169,54 @@ async function callWithKey(
 }
 
 /**
- * Find the best tool for a given capability from rankings.
+ * Get ALL tools for a capability, ranked by strategy.
+ * Returns a sorted list of slugs — first = best pick.
+ * ONLY returns tools from CAPABILITY_TOOLS (tools with working adapters).
  */
-async function getBestToolForCapability(capability: string, exclude?: string[]): Promise<string | null> {
-  const category = CAPABILITY_TO_CATEGORY[capability];
-  if (!category) return null;
+export function getRankedToolsForCapability(
+  capability: string,
+  strategy: Strategy = 'balanced',
+  exclude?: string[],
+): string[] {
+  const allowedSlugs = CAPABILITY_TOOLS[capability];
+  if (!allowedSlugs) return [];
 
-  const products = await prisma.product.findMany({
-    where: {
-      category: category as any,
-      status: { in: BROWSE_STATUSES },
-      ...(exclude?.length ? { slug: { notIn: exclude } } : {}),
-    },
-    orderBy: { weightedScore: 'desc' },
-    select: { slug: true },
-    take: 1,
+  const filtered = exclude?.length
+    ? allowedSlugs.filter(s => !exclude.includes(s))
+    : [...allowedSlugs];
+
+  if (filtered.length === 0) return [];
+
+  // Sort by strategy using hardcoded characteristics
+  return filtered.sort((a, b) => {
+    const ca = TOOL_CHARACTERISTICS[a];
+    const cb = TOOL_CHARACTERISTICS[b];
+    if (!ca && !cb) return 0;
+    if (!ca) return 1;
+    if (!cb) return -1;
+
+    switch (strategy) {
+      case 'best_performance':
+        // Highest quality first
+        return cb.quality - ca.quality;
+      case 'cheapest':
+        // Lowest cost first, but must have quality >= 3.0
+        if (ca.quality < 3.0 && cb.quality >= 3.0) return 1;
+        if (cb.quality < 3.0 && ca.quality >= 3.0) return -1;
+        return ca.cost - cb.cost;
+      case 'most_stable':
+        // Highest stability first, then quality
+        if (cb.stability !== ca.stability) return cb.stability - ca.stability;
+        return cb.quality - ca.quality;
+      case 'balanced':
+      default: {
+        // Best bang for buck: quality / (cost * latency), but avoid div by zero
+        const scoreA = ca.quality / (Math.max(ca.cost, 0.0001) * Math.max(ca.latency, 1));
+        const scoreB = cb.quality / (Math.max(cb.cost, 0.0001) * Math.max(cb.latency, 1));
+        return scoreB - scoreA;
+      }
+    }
   });
-
-  return products[0]?.slug ?? null;
 }
 
 /**
@@ -187,12 +264,14 @@ async function recordTrace(
 }
 
 function isFailure(result: ToolCallResult): boolean {
-  return result.statusCode >= 500 || result.statusCode === 429 || result.statusCode === 0;
+  // 5xx server error, 429 rate limit, 0 timeout, 401/402/403 auth/payment failure = all trigger fallback
+  return result.statusCode >= 500 || result.statusCode === 429 || result.statusCode === 0
+    || result.statusCode === 401 || result.statusCode === 402 || result.statusCode === 403;
 }
 
 /**
  * Main router function.
- * Proxies the request, handles fallback, records traces.
+ * Proxies the request, handles fallback through ALL capability tools, records traces.
  */
 export async function routeRequest(
   agentId: string,
@@ -200,112 +279,156 @@ export async function routeRequest(
   request: RouterRequest,
 ): Promise<{ response: RouterResponse; headers?: Record<string, string> }> {
   const query = extractQuery(request.params);
+  const strategy = request.strategy ?? 'balanced';
 
-  // Step 1: Determine which tool to use
-  let toolSlug: string = request.tool ?? '';
-  if (!toolSlug) {
-    const best = await getBestToolForCapability(capability);
-    if (!best) {
-      throw new Error(`No tools available for capability: ${capability}`);
+  // Step 0: If auto strategy, classify the query first
+  let aiClassificationResult: QueryContext | undefined;
+  let classificationMs = 0;
+  let aiRankedTools: string[] | undefined;
+
+  if (strategy === 'auto') {
+    const classification = await getClassification(query, capability);
+    aiClassificationResult = classification.context;
+    classificationMs = classification.classificationMs;
+    aiRankedTools = aiRoute(classification.context, capability);
+  }
+
+  // Step 1: Build the ordered tool list for this capability + strategy
+  const rankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy);
+  if (rankedTools.length === 0) {
+    throw new Error(`No tools available for capability: ${capability}`);
+  }
+
+  // Step 2: Determine primary tool and build priority chain.
+  // Precedence: explicit `tool` > request-level `priority_tools` > strategy-based ranking
+  let toolSlug: string;
+  if (request.tool) {
+    toolSlug = request.tool;
+  } else if (request.priority_tools?.length) {
+    // Request-level priority overrides strategy-based selection
+    toolSlug = request.priority_tools[0];
+  } else {
+    toolSlug = rankedTools[0];
+  }
+
+  // Step 3: Build complete fallback chain
+  // Order: requested tool → priority_tools → explicit fallbacks → remaining ranked tools
+  const triedTools: string[] = [];
+  const fullChain: string[] = [toolSlug];
+
+  // Add remaining priority tools (after the first which is already toolSlug)
+  if (request.priority_tools?.length) {
+    for (const pt of request.priority_tools) {
+      if (!fullChain.includes(pt)) fullChain.push(pt);
     }
-    toolSlug = best;
   }
 
-  // Step 2: Call the tool
-  const result = await callWithKey(toolSlug, query, request.tool_api_key, request.params);
-
-  // Step 3: If successful, record trace and return
-  if (!isFailure(result)) {
-    const traceId = await recordTrace(agentId, toolSlug, capability, result, false);
-    return {
-      response: {
-        data: result.response,
-        meta: {
-          tool_used: toolSlug,
-          latency_ms: result.latencyMs,
-          fallback_used: false,
-          trace_id: traceId,
-        },
-      },
-    };
-  }
-
-  // Step 4: Failure — record the failure trace
-  await recordTrace(agentId, toolSlug, capability, result, false);
-
-  // Step 5: Try fallback
-  const failedTool = toolSlug;
-  const triedTools = [toolSlug];
-
-  // Try explicit fallback list first
+  // Add explicit fallbacks from request
   if (request.fallback?.length) {
-    for (const fallbackSlug of request.fallback) {
-      if (triedTools.includes(fallbackSlug)) continue;
-      triedTools.push(fallbackSlug);
-
-      // Use agent's key for fallback if available, otherwise AgentPick's
-      const fallbackResult = await callWithKey(fallbackSlug, query, undefined, request.params);
-
-      if (!isFailure(fallbackResult)) {
-        const traceId = await recordTrace(agentId, fallbackSlug, capability, fallbackResult, true, failedTool);
-        return {
-          response: {
-            data: fallbackResult.response,
-            meta: {
-              tool_used: fallbackSlug,
-              latency_ms: fallbackResult.latencyMs,
-              fallback_used: true,
-              fallback_from: failedTool,
-              trace_id: traceId,
-            },
-          },
-          headers: { 'X-AgentPick-Fallback': fallbackSlug },
-        };
-      }
-
-      // Fallback also failed — record and try next
-      await recordTrace(agentId, fallbackSlug, capability, fallbackResult, true, failedTool);
+    for (const fb of request.fallback) {
+      if (!fullChain.includes(fb)) fullChain.push(fb);
     }
   }
 
-  // Try #2 ranked tool from rankings using AgentPick's key
-  const autoFallback = await getBestToolForCapability(capability, triedTools);
-  if (autoFallback) {
-    const autoResult = await callWithKey(autoFallback, query, undefined, request.params);
+  // Add remaining ranked tools not yet in chain
+  for (const rt of rankedTools) {
+    if (!fullChain.includes(rt)) fullChain.push(rt);
+  }
 
-    if (!isFailure(autoResult)) {
-      const traceId = await recordTrace(agentId, autoFallback, capability, autoResult, true, failedTool);
+  // Step 4: Try each tool in order until one succeeds.
+  // Cap at 3 fallbacks max to prevent unbounded latency.
+  const MAX_ATTEMPTS = 4; // 1 primary + 3 fallbacks
+  let firstFailedTool: string | undefined;
+  let lastResult: ToolCallResult | undefined;
+  const routeStartTime = Date.now();
+  const TOTAL_TIMEOUT_MS = 12_000; // Hard ceiling: 12s total routing time
+
+  for (const candidateSlug of fullChain) {
+    if (triedTools.includes(candidateSlug)) continue;
+    if (triedTools.length >= MAX_ATTEMPTS) break;
+    if (Date.now() - routeStartTime > TOTAL_TIMEOUT_MS) break;
+    triedTools.push(candidateSlug);
+
+    const isFallbackAttempt = triedTools.length > 1;
+    // Only use BYOK key for the first tool (the one the caller specified)
+    const apiKey = (!isFallbackAttempt && request.tool_api_key) ? request.tool_api_key : undefined;
+
+    let result: ToolCallResult;
+    try {
+      result = await callWithKey(candidateSlug, query, apiKey, request.params);
+    } catch (adapterErr) {
+      // Adapter threw (e.g. missing API key) — treat as failure, continue fallback
+      console.error(`[Router] Adapter ${candidateSlug} threw:`, adapterErr);
+      result = {
+        statusCode: 0,
+        latencyMs: 0,
+        resultCount: 0,
+        response: { error: adapterErr instanceof Error ? adapterErr.message : 'Adapter error' },
+        costUsd: 0,
+      };
+    }
+    lastResult = result;
+
+    if (!isFailure(result)) {
+      // Success!
+      const traceId = await recordTrace(
+        agentId, candidateSlug, capability, result,
+        isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+      );
+      const meta: RouterResponse['meta'] = {
+        tool_used: candidateSlug,
+        latency_ms: result.latencyMs,
+        fallback_used: isFallbackAttempt,
+        fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
+        trace_id: traceId,
+      };
+      if (aiClassificationResult) {
+        meta.ai_classification = {
+          ...aiClassificationResult,
+          reasoning: buildAiReasoning(aiClassificationResult, candidateSlug),
+        };
+        meta.classification_ms = classificationMs;
+      }
       return {
-        response: {
-          data: autoResult.response,
-          meta: {
-            tool_used: autoFallback,
-            latency_ms: autoResult.latencyMs,
-            fallback_used: true,
-            fallback_from: failedTool,
-            trace_id: traceId,
-          },
-        },
-        headers: { 'X-AgentPick-Fallback': autoFallback },
+        response: { data: result.response, meta },
+        headers: isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : undefined,
       };
     }
 
-    await recordTrace(agentId, autoFallback, capability, autoResult, true, failedTool);
+    // Failed — record the failure and continue
+    if (!firstFailedTool) firstFailedTool = candidateSlug;
+    await recordTrace(
+      agentId, candidateSlug, capability, result,
+      isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+    );
   }
 
-  // All fallbacks failed — return original error
+  // All tools failed — return last failure
   const traceId = `trace_fail_${Date.now()}`;
   return {
     response: {
-      data: result.response,
+      data: lastResult?.response ?? { error: 'All tools failed' },
       meta: {
         tool_used: toolSlug,
-        latency_ms: result.latencyMs,
-        fallback_used: false,
+        latency_ms: lastResult?.latencyMs ?? 0,
+        fallback_used: triedTools.length > 1,
+        fallback_from: firstFailedTool,
         trace_id: traceId,
       },
     },
   };
+}
+
+function buildAiReasoning(ctx: QueryContext, toolUsed: string): string {
+  const parts: string[] = [];
+  if (ctx.type === 'research' || ctx.depth === 'deep') parts.push('Deep research');
+  else if (ctx.type === 'news') parts.push('News query');
+  else if (ctx.type === 'realtime') parts.push('Realtime data');
+  else parts.push('Simple lookup');
+
+  if (ctx.domain !== 'general') parts.push(ctx.domain);
+  parts.push(`→ ${toolUsed}`);
+  return parts.join(' + ');
 }
 
 /**

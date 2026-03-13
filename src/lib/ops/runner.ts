@@ -55,8 +55,17 @@ function chooseQueries(config: any, querySet: any) {
   return generateQuerySet(config.domain, Math.max(config.queriesPerRun || 3, 3)).map((item) => item.query).slice(0, config.queriesPerRun || 3);
 }
 
-function scoreProbe(details: Record<string, unknown> | undefined) {
+function scoreProbe(details: Record<string, unknown> | undefined, domain?: string) {
   const results = Number(details?.results ?? 0);
+
+  // Finance data APIs return structured data — a single quote/bar is a complete valid response.
+  // Polygon prev close returns exactly 1 bar, FMP quote returns 1 element array.
+  // These should score high, not be penalized for "only 1 result".
+  if (domain === "finance_data") {
+    if (results <= 0) return 0.2;
+    return 0.92; // Any successful result from a finance API is a high-quality response
+  }
+
   if (results <= 0) return 0.2;
   if (results === 1) return 0.6;
   if (results === 2) return 0.8;
@@ -99,7 +108,7 @@ export async function runBenchmarkAgentNow(configId: string) {
         tool,
         success: probe.ok,
         latencyMs: probe.latencyMs || null,
-        relevance: probe.ok ? scoreProbe(probe.details) : 0,
+        relevance: probe.ok ? scoreProbe(probe.details, config.domain) : 0,
         status: probe.status,
         error: probe.error ?? null,
         meta: probe.details ?? {},

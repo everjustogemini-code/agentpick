@@ -1,0 +1,93 @@
+import { NextRequest } from 'next/server';
+import { authenticateAgent } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
+import { apiError } from '@/types';
+
+const db = prisma as any;
+
+export async function GET(request: NextRequest) {
+  const agent = await authenticateAgent(request);
+  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+
+  const account = await ensureDeveloperAccount(agent.id);
+  return Response.json({
+    account: {
+      id: account.id,
+      plan: account.plan,
+      strategy: account.strategy,
+      priorityTools: account.priorityTools,
+      excludedTools: account.excludedTools,
+      fallbackEnabled: account.fallbackEnabled,
+      maxFallbacks: account.maxFallbacks,
+      latencyBudgetMs: account.latencyBudgetMs,
+      monthlyBudgetUsd: account.monthlyBudgetUsd,
+      spentThisMonth: account.spentThisMonth,
+      totalCalls: account.totalCalls,
+      totalFallbacks: account.totalFallbacks,
+    },
+  });
+}
+
+export async function PATCH(request: NextRequest) {
+  const agent = await authenticateAgent(request);
+  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+
+  const account = await ensureDeveloperAccount(agent.id);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+  }
+
+  const update: Record<string, unknown> = {};
+  if (body.strategy && typeof body.strategy === 'string') {
+    const normalized = normalizeStrategy(body.strategy);
+    if (!normalized) {
+      return apiError('VALIDATION_ERROR', 'strategy must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO', 400);
+    }
+    update.strategy = normalized;
+  }
+  if (Array.isArray(body.priority_tools)) {
+    update.priorityTools = body.priority_tools.filter((tool: unknown) => typeof tool === 'string');
+  }
+  if (Array.isArray(body.excluded_tools)) {
+    update.excludedTools = body.excluded_tools.filter((tool: unknown) => typeof tool === 'string');
+  }
+  if (typeof body.fallback_enabled === 'boolean') {
+    update.fallbackEnabled = body.fallback_enabled;
+  }
+  if (typeof body.max_fallbacks === 'number') {
+    update.maxFallbacks = Math.min(Math.max(body.max_fallbacks, 0), 5);
+  }
+  if (typeof body.latency_budget_ms === 'number' || body.latency_budget_ms === null) {
+    update.latencyBudgetMs = body.latency_budget_ms;
+  }
+  if (typeof body.monthly_budget_usd === 'number' || body.monthly_budget_usd === null) {
+    update.monthlyBudgetUsd = body.monthly_budget_usd;
+  }
+
+  if (Object.keys(update).length === 0) {
+    return apiError('VALIDATION_ERROR', 'No valid fields to update.', 400);
+  }
+
+  const updated = await db.developerAccount.update({
+    where: { id: account.id },
+    data: update,
+  });
+
+  return Response.json({
+    message: 'Account updated.',
+    account: {
+      strategy: updated.strategy,
+      priorityTools: updated.priorityTools,
+      excludedTools: updated.excludedTools,
+      fallbackEnabled: updated.fallbackEnabled,
+      maxFallbacks: updated.maxFallbacks,
+      latencyBudgetMs: updated.latencyBudgetMs,
+      monthlyBudgetUsd: updated.monthlyBudgetUsd,
+    },
+  });
+}

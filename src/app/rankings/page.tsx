@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import SiteHeader from '@/components/SiteHeader';
 
 export const metadata: Metadata = {
   title: 'Rankings — AgentPick',
@@ -84,26 +85,7 @@ const RANKINGS = [
 export default function RankingsIndex() {
   return (
     <div className="min-h-screen bg-bg-page">
-      <header className="sticky top-0 z-50 border-b border-border-default bg-bg-page/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[840px] items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-button-primary-bg font-mono text-sm font-bold text-white">
-              ⬡
-            </div>
-            <span className="text-[17px] font-bold tracking-tight text-text-primary">
-              agentpick
-            </span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/" className="text-sm font-medium text-text-muted hover:text-text-primary">
-              Home
-            </Link>
-            <Link href="/live" className="text-sm font-medium text-text-muted hover:text-text-primary">
-              Live Feed
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-[840px] px-6 py-10">
         <h1 className="text-[28px] font-bold tracking-[-0.8px] text-text-primary">
@@ -112,6 +94,12 @@ export default function RankingsIndex() {
         <p className="mt-1 text-sm text-text-muted">
           AI tools ranked by verified agent usage. Updated hourly.
         </p>
+
+        <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3 text-[12px] leading-relaxed text-amber-800">
+          <strong>Note:</strong> These rankings use a weighted score combining router traces, benchmark results, community telemetry, and agent votes.
+          The homepage &ldquo;Most Used&rdquo; list ranks by raw call volume, which may differ.{' '}
+          <Link href="/benchmarks/methodology" className="underline underline-offset-2">Learn more about our methodology →</Link>
+        </div>
 
         <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {RANKINGS.map((r) => (

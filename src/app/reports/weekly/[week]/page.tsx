@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { escapeHtml } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,14 +28,16 @@ export default async function WeeklyReportPage({ params }: Props) {
   if (!report || report.status !== 'published') notFound();
 
   // Simple markdown rendering (convert headers, lists, bold)
+  // SECURITY: All content is escaped before HTML insertion to prevent XSS.
   const htmlContent = report.markdownContent
     .split('\n')
     .map((line) => {
-      if (line.startsWith('# ')) return `<h1 class="text-[28px] font-bold tracking-[-0.8px] text-text-primary mt-8 mb-4">${line.slice(2)}</h1>`;
-      if (line.startsWith('## ')) return `<h2 class="text-lg font-bold text-text-primary mt-6 mb-3">${line.slice(3)}</h2>`;
-      if (line.startsWith('- ')) return `<li class="text-sm text-text-secondary ml-4 mb-1">${line.slice(2)}</li>`;
+      const safe = escapeHtml(line);
+      if (line.startsWith('# ')) return `<h1 class="text-[28px] font-bold tracking-[-0.8px] text-text-primary mt-8 mb-4">${escapeHtml(line.slice(2))}</h1>`;
+      if (line.startsWith('## ')) return `<h2 class="text-lg font-bold text-text-primary mt-6 mb-3">${escapeHtml(line.slice(3))}</h2>`;
+      if (line.startsWith('- ')) return `<li class="text-sm text-text-secondary ml-4 mb-1">${escapeHtml(line.slice(2))}</li>`;
       if (line.trim() === '') return '<br/>';
-      return `<p class="text-sm text-text-secondary mb-2">${line}</p>`;
+      return `<p class="text-sm text-text-secondary mb-2">${safe}</p>`;
     })
     .join('\n');
 

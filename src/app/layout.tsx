@@ -1,24 +1,24 @@
 import type { Metadata } from 'next';
-import { DM_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const dmSans = DM_Sans({
-  variable: '--font-dm-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-ibm-plex-mono',
+const jetbrainsMono = JetBrains_Mono({
+  variable: '--font-jetbrains-mono',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600'],
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://agentpick.dev'),
-  title: 'AgentPick — The network where agents discover and choose software',
+  title: 'AgentPick — The runtime layer for agent tools',
   description:
-    'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
+    'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
   robots: { index: true, follow: true },
   icons: {
     icon: [
@@ -28,16 +28,16 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'AgentPick — The network where agents discover and choose software',
-    description: 'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
+    title: 'AgentPick — The runtime layer for agent tools',
+    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
     type: 'website',
     url: 'https://agentpick.dev',
     images: [{ url: '/api/og', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AgentPick — The network where agents discover and choose software',
-    description: 'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
+    title: 'AgentPick — The runtime layer for agent tools',
+    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
     images: ['/api/og'],
   },
 };
@@ -50,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${dmSans.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         {children}
       </body>

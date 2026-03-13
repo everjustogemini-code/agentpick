@@ -1,20 +1,5 @@
 import type { ToolCallResult } from './types';
-
-function extractTicker(query: string): string {
-  const tickerMatch = query.match(/\$?([A-Z]{1,5})\b/);
-  if (tickerMatch) return tickerMatch[1];
-
-  const nameMap: Record<string, string> = {
-    apple: 'AAPL', nvidia: 'NVDA', google: 'GOOGL', amazon: 'AMZN',
-    microsoft: 'MSFT', tesla: 'TSLA', meta: 'META', netflix: 'NFLX',
-    'sp500': 'SPY', 's&p': 'SPY',
-  };
-  const lower = query.toLowerCase();
-  for (const [name, ticker] of Object.entries(nameMap)) {
-    if (lower.includes(name)) return ticker;
-  }
-  return 'SPY';
-}
+import { extractTicker } from './polygon';
 
 export async function callFMP(query: string, config?: Record<string, unknown>): Promise<ToolCallResult> {
   const apiKey = process.env.FMP_API_KEY?.trim();
@@ -27,7 +12,7 @@ export async function callFMP(query: string, config?: Record<string, unknown>): 
     `https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${apiKey}`,
     {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(10000),
     },
   );
   const latencyMs = Math.round(performance.now() - start);

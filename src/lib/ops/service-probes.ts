@@ -1,5 +1,6 @@
 import { decryptSecret } from "./crypto";
 import { trackVaultUsage } from "./usage";
+import { extractTicker } from "@/lib/benchmark/adapters/polygon";
 
 export interface ProbeResult {
   ok: boolean;
@@ -355,16 +356,17 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
       }
       // --- Finance probes ---
       case "polygon": {
-        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
-        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apiKey=${apiKey}`, {
+        const ticker = extractTicker(query);
+        const encodedTicker = encodeURIComponent(ticker);
+        const { response, latencyMs, data } = await fetchWithTimeout(`https://api.polygon.io/v2/aggs/ticker/${encodedTicker}/prev?adjusted=true&apiKey=${apiKey}`, {
           headers: { Accept: "application/json" },
-        });
+        }, 10000);
         const results = ((data as any)?.results ?? []) as Array<any>;
         result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: results.length } };
         break;
       }
       case "alphavantage": {
-        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
+        const ticker = extractTicker(query);
         const { response, latencyMs, data } = await fetchWithTimeout(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${ticker}&outputsize=compact&apikey=${apiKey}`, {
           headers: { Accept: "application/json" },
         });
@@ -374,7 +376,7 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
         break;
       }
       case "fmp": {
-        const ticker = query.match(/\$?([A-Z]{1,5})\b/)?.[1] || "SPY";
+        const ticker = extractTicker(query);
         const { response, latencyMs, data } = await fetchWithTimeout(`https://financialmodelingprep.com/api/v3/quote/${ticker}?apikey=${apiKey}`, {
           headers: { Accept: "application/json" },
         });

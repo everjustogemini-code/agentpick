@@ -1,0 +1,272 @@
+/**
+ * Enhanced route handler that integrates DeveloperAccount, strategy, and usage tracking.
+ * Used by the new /api/v1/router/* endpoints.
+ */
+
+import { NextRequest } from 'next/server';
+import { authenticateAgent } from '@/lib/auth';
+import { checkRateLimit, routerSdkLimiter } from '@/lib/rate-limit';
+import { apiError } from '@/types';
+import { routeRequest, CAPABILITY_TOOLS } from './index';
+import type { RouterRequest, Strategy } from './index';
+import {
+  applyStrategy,
+  checkUsageLimit,
+  ensureDeveloperAccount,
+  isRouterStrategy,
+  recordRouterCall,
+  type RouterPlanValue,
+  type RouterStrategyValue,
+} from './sdk';
+import { escapeHtml } from '@/lib/sanitize';
+
+type RouterSdkRequest = Omit<RouterRequest, 'strategy'> & {
+  strategy?: RouterStrategyValue;
+};
+
+const VALID_CAPABILITIES = Object.keys(CAPABILITY_TOOLS);
+
+/** Maximum allowed query length to prevent abuse */
+const MAX_QUERY_LENGTH = 2000;
+
+export async function handleSdkRouteRequest(request: NextRequest, capability: string) {
+  // Validate capability before any upstream dispatch (sanitize to prevent reflected XSS)
+  if (!VALID_CAPABILITIES.includes(capability)) {
+    return apiError(
+      'NOT_FOUND',
+      `Unknown capability "${escapeHtml(capability)}". Valid capabilities: ${VALID_CAPABILITIES.join(', ')}`,
+      404,
+    );
+  }
+
+  const agent = await authenticateAgent(request);
+  if (!agent) {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
+
+  const { limited, retryAfter } = await checkRateLimit(routerSdkLimiter, agent.id);
+  if (limited) {
+    return apiError('RATE_LIMITED', 'Too many requests. Slow down.', 429, { retry_after: retryAfter });
+  }
+
+  const account = await ensureDeveloperAccount(agent.id);
+  const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue);
+  if (!usage.allowed) {
+    return apiError('USAGE_LIMIT', `Daily limit reached (${usage.limit} calls). Upgrade plan for more.`, 429, {
+      details: { plan: account.plan, limit: usage.limit, used: usage.used },
+    });
+  }
+
+  let body: RouterSdkRequest;
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const params: Record<string, unknown> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      if (!['tool', 'tool_api_key', 'token', 'fallback', 'strategy', 'priority_tools', 'priority', 'priorityTools'].includes(key)) {
+        params[key] = value;
+      }
+    }
+    const fallbackParam = url.searchParams.get('fallback');
+    const strategyParam = url.searchParams.get('strategy');
+    const priorityParam = url.searchParams.get('priority_tools') ?? url.searchParams.get('priority');
+    body = {
+      tool: url.searchParams.get('tool') ?? undefined,
+      tool_api_key: url.searchParams.get('tool_api_key') ?? undefined,
+      params,
+      fallback: fallbackParam ? fallbackParam.split(',').map((item) => item.trim()).filter(Boolean) : undefined,
+      strategy: isRouterStrategy(strategyParam) ? strategyParam : undefined,
+      priority_tools: priorityParam ? priorityParam.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+    };
+  } else {
+    try {
+      const parsed = await request.json();
+      // Accept priority_tools, priority, and priorityTools as aliases
+      const rawPriority = parsed.priority_tools ?? parsed.priority ?? parsed.priorityTools;
+      if (Array.isArray(rawPriority)) {
+        parsed.priority_tools = rawPriority.filter((t: unknown) => typeof t === 'string');
+      }
+      body = parsed;
+    } catch {
+      return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+    }
+  }
+
+  if (!body.params || typeof body.params !== 'object') {
+    return apiError('VALIDATION_ERROR', 'params object is required.', 400);
+  }
+
+  // Validate query length before routing (P2-9: boundary validation)
+  const preQuery = extractQueryFromParams(body.params);
+  if (!preQuery || preQuery.trim().length === 0) {
+    return apiError('VALIDATION_ERROR', 'A non-empty query is required. Provide query, q, text, input, url, ticker, or symbol in params.', 400);
+  }
+  if (preQuery.length > MAX_QUERY_LENGTH) {
+    return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
+  }
+
+  if (body.tool_api_key && account.plan === 'FREE') {
+    return apiError('PLAN_RESTRICTED', 'BYOK is available on STARTER and above.', 403, {
+      details: { plan: account.plan },
+    });
+  }
+
+  // P1-6: Hard budget enforcement — block routing before dispatch
+  if (
+    typeof account.monthlyBudgetUsd === 'number' &&
+    account.monthlyBudgetUsd >= 0 &&
+    account.spentThisMonth >= account.monthlyBudgetUsd
+  ) {
+    return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
+      details: { budget: account.monthlyBudgetUsd, spent: account.spentThisMonth },
+    });
+  }
+
+  // Normalize strategy to uppercase canonical form for consistent SDK_TO_CORE mapping
+  const rawStrategy = body.strategy && isRouterStrategy(body.strategy) ? body.strategy : (account.strategy as RouterStrategyValue);
+  const strategyUsed = rawStrategy.toUpperCase() as RouterStrategyValue;
+
+  // Map SDK strategies to core router strategies (case-insensitive)
+  const SDK_TO_CORE: Record<string, Strategy> = {
+    BALANCED: 'balanced',
+    FASTEST: 'cheapest',
+    CHEAPEST: 'cheapest',
+    MOST_ACCURATE: 'best_performance',
+    MANUAL: 'balanced',
+    AUTO: 'auto',
+  };
+  const coreStrategy: Strategy = SDK_TO_CORE[strategyUsed.toUpperCase()] ?? 'balanced';
+
+  // P1-3: Priority precedence: request-level priority_tools > account-level priorityTools > strategy
+  const effectivePriority = body.priority_tools?.length
+    ? body.priority_tools
+    : (account.priorityTools?.length ? account.priorityTools : undefined);
+
+  const routeBody: RouterRequest = {
+    tool: body.tool,
+    tool_api_key: body.tool_api_key,
+    params: body.params,
+    fallback: body.fallback,
+    strategy: coreStrategy,
+    priority_tools: effectivePriority,
+  };
+
+  const modifiedRequest = await applyStrategy(capability, routeBody, {
+    strategy: strategyUsed,
+    priorityTools: account.priorityTools,
+    excludedTools: account.excludedTools,
+    fallbackEnabled: account.fallbackEnabled,
+    maxFallbacks: account.maxFallbacks,
+    latencyBudgetMs: account.latencyBudgetMs,
+  });
+
+  try {
+    const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, modifiedRequest);
+    const query = extractQueryFromParams(routeBody.params);
+    const fallbackChain = buildFallbackChain(modifiedRequest, response);
+
+    // Always record the call — success or failure
+    await recordRouterCall(
+      account.id,
+      capability,
+      query,
+      routeBody,
+      response,
+      strategyUsed,
+      Boolean(routeBody.tool_api_key),
+      fallbackChain,
+    ).catch(() => {});
+
+    const enrichedResponse = {
+      ...response,
+      meta: {
+        ...response.meta,
+        strategy: strategyUsed,
+        plan: account.plan,
+        calls_remaining: Math.max(0, usage.remaining - 1),
+      },
+    };
+
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-AgentPick-Plan': account.plan,
+      'X-AgentPick-Remaining': String(Math.max(0, usage.remaining - 1)),
+    };
+    if (extraHeaders) {
+      Object.assign(responseHeaders, extraHeaders);
+    }
+
+    return new Response(JSON.stringify(enrichedResponse), {
+      status: 200,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    // Record the failure
+    const query = extractQueryFromParams(routeBody.params);
+    const message = error instanceof Error ? error.message : 'Router error';
+    await recordRouterCall(
+      account.id,
+      capability,
+      query,
+      routeBody,
+      {
+        data: { error: message },
+        meta: { tool_used: modifiedRequest.tool ?? 'unknown', latency_ms: 0, fallback_used: false, trace_id: `trace_fail_${Date.now()}` },
+      },
+      strategyUsed,
+      Boolean(routeBody.tool_api_key),
+      [],
+    ).catch(() => {});
+    // Return stable contract: always include tool_used and results fields
+    return new Response(JSON.stringify({
+      error: 'ROUTER_ERROR',
+      message,
+      data: null,
+      meta: {
+        tool_used: null,
+        latency_ms: 0,
+        fallback_used: false,
+        trace_id: `trace_fail_${Date.now()}`,
+        strategy: strategyUsed,
+        plan: account.plan,
+        calls_remaining: Math.max(0, usage.remaining - 1),
+      },
+      results: [],
+    }), {
+      status: 502,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-AgentPick-Plan': account.plan,
+        'X-AgentPick-Remaining': String(Math.max(0, usage.remaining - 1)),
+      },
+    });
+  }
+}
+
+function extractQueryFromParams(params: Record<string, unknown>): string {
+  for (const key of ['query', 'q', 'text', 'input', 'url', 'ticker', 'symbol']) {
+    if (typeof params[key] === 'string') {
+      return params[key] as string;
+    }
+  }
+
+  for (const value of Object.values(params)) {
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function buildFallbackChain(request: RouterRequest, response: { meta: { tool_used: string; fallback_used: boolean; fallback_from?: string } }) {
+  if (response.meta.fallback_used) {
+    const chain = [response.meta.fallback_from, response.meta.tool_used].filter(Boolean) as string[];
+    return [...new Set(chain)];
+  }
+
+  const chain = [request.tool, ...(request.fallback ?? [])].filter(Boolean) as string[];
+  if (!chain.includes(response.meta.tool_used)) {
+    chain.push(response.meta.tool_used);
+  }
+  return [...new Set(chain)];
+}

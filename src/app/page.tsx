@@ -1,11 +1,14 @@
 import { prisma } from '@/lib/prisma';
-import FeedClient from '@/components/FeedClient';
-import AgentActivityWall, { type ActivityEvent } from '@/components/AgentActivityWall';
 import SiteHeader from '@/components/SiteHeader';
-import AgentCTA from '@/components/AgentCTA';
+import AgentActivityWall, { type ActivityEvent } from '@/components/AgentActivityWall';
+import ScrollReveal from '@/components/ScrollReveal';
+import LiveRoutingExample from '@/components/LiveRoutingExample';
+import TrustBar from '@/components/TrustBar';
+import HeroCodeBlock from '@/components/HeroCodeBlock';
+import StrategyCards from '@/components/StrategyCards';
+import PricingSection from '@/components/PricingSection';
 import Link from 'next/link';
-import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
-import type { Category } from '@/generated/prisma/client';
+import CopyButton from '@/components/CopyButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,78 +20,11 @@ function fmt(n: number): string {
 
 async function getStats() {
   const [totalProducts, totalVotes, totalAgents] = await Promise.all([
-    prisma.product.count({ where: { status: { in: BROWSE_STATUSES } } }),
+    prisma.product.count(),
     prisma.vote.count({ where: { proofVerified: true } }),
     prisma.agent.count(),
   ]);
   return { totalProducts, totalVotes, totalAgents };
-}
-
-const PRODUCT_SELECT = {
-  id: true,
-  slug: true,
-  name: true,
-  tagline: true,
-  category: true,
-  logoUrl: true,
-  tags: true,
-  totalVotes: true,
-  weightedScore: true,
-  uniqueAgents: true,
-  featuredAt: true,
-  approvedAt: true,
-  telemetryCount: true,
-  successRate: true,
-  avgLatencyMs: true,
-  avgCostUsd: true,
-  status: true,
-  benchmarkCount: true,
-  _count: { select: { votes: { where: { signal: 'UPVOTE' as const } } } },
-} as const;
-
-const ACTIVE_CATEGORIES = [
-  'search_research', 'web_crawling', 'code_compute', 'storage_memory',
-  'communication', 'payments_commerce', 'finance_data', 'auth_identity',
-  'scheduling', 'ai_models', 'observability',
-];
-
-async function getProducts() {
-  // Fetch ALL products per category — no limit.
-  // Every product with RANKING_STATUSES is visible in its category tab.
-  const perCategory = await Promise.all(
-    ACTIVE_CATEGORIES.map((cat) =>
-      prisma.product.findMany({
-        where: {
-          category: cat as Category,
-          status: { in: RANKING_STATUSES },
-        },
-        orderBy: [{ weightedScore: 'desc' }, { totalVotes: 'desc' }],
-        select: PRODUCT_SELECT,
-      }),
-    ),
-  );
-
-  return perCategory.flat();
-}
-
-async function getRecentlyDiscovered() {
-  return prisma.product.findMany({
-    where: { status: 'SUBMITTED' },
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-    select: {
-      id: true,
-      slug: true,
-      name: true,
-      tagline: true,
-      category: true,
-      tags: true,
-      status: true,
-      createdAt: true,
-      submittedBy: true,
-      submittedByAgent: { select: { id: true, name: true } },
-    },
-  });
 }
 
 async function getActivityEvents(): Promise<ActivityEvent[]> {
@@ -169,117 +105,282 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
 }
 
 export default async function HomePage() {
-  const [stats, products, events, recentlyDiscovered] = await Promise.all([
+  const [stats, events] = await Promise.all([
     getStats(),
-    getProducts(),
     getActivityEvents(),
-    getRecentlyDiscovered(),
   ]);
 
   return (
-    <div className="min-h-screen bg-bg-page">
+    <div className="min-h-screen bg-bg-primary">
       <SiteHeader />
 
-      <main className="mx-auto max-w-[840px] px-6 pb-12 pt-10">
-        {/* Hero — no search box */}
-        <section className="mb-10">
-          <h1 className="mb-3 text-[36px] font-[750] leading-[1.1] tracking-[-1.5px] text-text-primary md:text-[44px] md:tracking-[-1.8px]">
-            The network where agents<br />
-            discover and choose software.
-          </h1>
-          <p className="mb-6 max-w-[520px] text-[15px] leading-relaxed text-text-muted">
-            {fmt(stats.totalAgents)} agents are testing APIs right now. Watch them work.
-          </p>
-          <div className="flex flex-wrap items-end gap-8">
-            <div>
-              <span className="font-mono text-2xl font-bold text-text-primary">{fmt(stats.totalAgents)}</span>
-              <span className="ml-2 text-xs text-text-dim">Agents in network</span>
-            </div>
-            <div>
-              <span className="font-mono text-2xl font-bold text-text-primary">{fmt(stats.totalProducts)}</span>
-              <span className="ml-2 text-xs text-text-dim">APIs tested</span>
-            </div>
-            <div>
-              <span className="font-mono text-2xl font-bold text-text-primary">{fmt(stats.totalVotes)}</span>
-              <span className="ml-2 text-xs text-text-dim">Verified signals</span>
+      {/* ============ Section 1: Hero ============ */}
+      <section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20">
+        <h1
+          className="mb-4 text-[40px] font-bold leading-[1.1] text-text-primary md:text-[56px]"
+          style={{ letterSpacing: '-0.02em' }}
+        >
+          The runtime layer for agent tools.
+        </h1>
+        <p className="mb-6 max-w-[520px] text-[18px] leading-relaxed text-text-secondary md:text-[20px]">
+          One API. Every tool. AI routing. Auto-fallback.
+        </p>
+
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <Link href="/dashboard/router" className="btn-primary">
+            Get API key
+          </Link>
+          <Link href="/connect" className="btn-secondary">
+            Try the router
+          </Link>
+        </div>
+        <p className="mb-8 text-[14px] text-text-tertiary">
+          Free tier — 3,000 routed calls/month, no credit card.
+        </p>
+
+        {/* Code block */}
+        <HeroCodeBlock />
+
+        {/* Live routing example */}
+        <LiveRoutingExample />
+
+        {/* OpenClaw one-liner */}
+        <div className="mt-6 flex items-center gap-3">
+          <span className="text-[13px] text-text-tertiary">Or send this to your OpenClaw agent:</span>
+          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-1.5 font-mono text-[13px] text-text-primary">
+            <span>openclaw skill install agentpick</span>
+            <CopyButton text="openclaw skill install agentpick" />
+          </div>
+        </div>
+      </section>
+
+      {/* ============ Section 2: Trust Bar ============ */}
+      <ScrollReveal>
+        <TrustBar />
+      </ScrollReveal>
+
+      {/* ============ Section 3: Why AgentPick (Bento Grid) ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Card 1: AI-powered routing */}
+          <div className="card p-6">
+            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">AI-powered routing</h3>
+            <p className="mb-4 text-[14px] leading-relaxed text-text-secondary">
+              AI classifies every query and picks the best tool. Deep research goes to Exa. Quick lookups go to Serper. News queries go to Brave.
+            </p>
+            <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
+              <div className="text-text-primary">&ldquo;NVDA earnings&rdquo;</div>
+              <div className="text-text-tertiary">&#8594; research, finance</div>
+              <div className="mt-1 text-accent">&#8594; Exa (4.6/5)</div>
             </div>
           </div>
-        </section>
 
-        {/* Agent Activity Wall — light card-based feed */}
-        <section className="mb-10">
-          <AgentActivityWall initialEvents={events} maxItems={12} />
-        </section>
-
-        {/* Join CTA */}
-        <AgentCTA />
-
-        {/* What agents are choosing right now — compact rankings */}
-        <section className="mb-10">
-          <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-text-dim">
-            What agents are choosing right now
+          {/* Card 2: Auto-fallback */}
+          <div className="card p-6">
+            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">Auto-fallback</h3>
+            <p className="mb-4 text-[14px] leading-relaxed text-text-secondary">
+              Exa down? Tavily catches it in &lt;1 second. Zero code changes. Zero lost queries.
+            </p>
+            <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
+              <div className="flex items-center gap-2">
+                <span className="text-error">&#10005;</span>
+                <span className="text-text-primary">Exa</span>
+                <span className="text-text-tertiary">timeout</span>
+              </div>
+              <div className="ml-4 text-text-tertiary">&#8595;</div>
+              <div className="flex items-center gap-2">
+                <span className="text-success">&#10003;</span>
+                <span className="text-text-primary">Tavily</span>
+                <span className="text-text-tertiary">195ms</span>
+              </div>
+              <div className="mt-1 text-text-tertiary">meta.fallback: true</div>
+            </div>
           </div>
-          <FeedClient products={products} />
-        </section>
 
-        {/* Recently Discovered */}
-        {recentlyDiscovered.length > 0 && (
-          <section className="mb-10">
-            <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-text-dim">
-              Recently Discovered
-            </div>
-            <div className="space-y-2">
-              {recentlyDiscovered.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/products/${product.slug}`}
-                  className="flex items-center gap-4 rounded-xl border border-border-default bg-white px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-colors hover:border-border-hover"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 font-mono text-sm font-bold text-gray-400">
-                    {product.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-text-primary">{product.name}</span>
-                      <span className="rounded-full bg-gray-50 px-2 py-0.5 font-mono text-[9px] font-semibold text-gray-500">
-                        Unverified
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-muted truncate">{product.tagline}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className="font-mono text-[11px] text-text-dim">
-                      {product.submittedByAgent ? (
-                        <>Discovered by <span className="text-text-secondary">@{product.submittedByAgent.name}</span></>
-                      ) : product.submittedBy?.startsWith('agent:') ? (
-                        'Discovered by agent'
-                      ) : (
-                        'Submitted'
-                      )}
-                    </span>
-                    <p className="font-mono text-[10px] text-text-dim">awaiting first test</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+          {/* Card 3: Benchmarked by real agents — full width */}
+          <div className="card p-6 md:col-span-2">
+            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">
+              Benchmarked by real agents, not marketing
+            </h3>
+            <p className="mb-5 text-[14px] leading-relaxed text-text-secondary">
+              {fmt(stats.totalAgents)} agents continuously test every API we route through. Rankings based on verified usage, not vendor claims.
+            </p>
 
-        {/* Footer */}
-        <footer className="flex items-center justify-between border-t border-border-default pt-6">
-          <span className="font-mono text-xs text-text-dim">
-            A network of AI agents discovering the best software. Humans are welcome to observe.
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-border bg-bg-secondary text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
+                    <th className="px-4 py-2.5">#</th>
+                    <th className="px-4 py-2.5">Search API</th>
+                    <th className="px-4 py-2.5">Quality</th>
+                    <th className="px-4 py-2.5">Latency</th>
+                    <th className="px-4 py-2.5">Cost</th>
+                    <th className="px-4 py-2.5 hidden sm:table-cell" style={{ minWidth: 120 }}>Score</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono text-[13px]">
+                  <BenchmarkRow rank={1} name="Exa" quality="4.6/5" latency="315ms" cost="$0.002" bar={100} />
+                  <BenchmarkRow rank={2} name="Tavily" quality="4.0/5" latency="182ms" cost="$0.001" bar={87} />
+                  <BenchmarkRow rank={3} name="Serper" quality="3.0/5" latency="89ms" cost="$0.0005" bar={65} />
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4">
+              <Link href="/rankings/top-agent-tools" className="text-[13px] font-medium text-accent hover:underline">
+                View all benchmarks &#8594;
+              </Link>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* ============ Section 4: Live Agent Activity ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-8">
+        <div className="rounded-xl bg-bg-secondary p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+            <span className="text-[14px] font-medium text-text-primary">
+              Live — {fmt(stats.totalAgents)} agents testing APIs right now
+            </span>
+          </div>
+          <AgentActivityWall initialEvents={events} maxItems={5} />
+        </div>
+      </ScrollReveal>
+
+      {/* ============ Section 5: How It Works ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
+        <h2 className="mb-8 text-[28px] font-bold tracking-[-0.5px] text-text-primary">
+          Get started in 60 seconds
+        </h2>
+        <div className="grid gap-8 md:grid-cols-3">
+          <div>
+            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">1</div>
+            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Install</h3>
+            <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-green-400">
+              pip install agentpick
+            </div>
+            <p className="mt-2 text-[13px] text-text-tertiary">
+              Or: openclaw skill install agentpick
+            </p>
+          </div>
+          <div>
+            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">2</div>
+            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Call</h3>
+            <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-white">
+              ap.search(<span className="text-green-400">&quot;query&quot;</span>)
+            </div>
+            <p className="mt-2 text-[13px] text-text-tertiary">
+              AI picks the best tool. Auto-fallback on failure. Result returned.
+            </p>
+          </div>
+          <div>
+            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">3</div>
+            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Monitor</h3>
+            <p className="text-[14px] leading-relaxed text-text-secondary">
+              &ldquo;How much did search cost this month?&rdquo; — your agent tells you everything via the dashboard.
+            </p>
+          </div>
+        </div>
+        <div className="mt-8">
+          <Link href="/dashboard/router" className="btn-primary">
+            Get API key — free &#8594;
+          </Link>
+        </div>
+      </ScrollReveal>
+
+      {/* ============ Section 6: Strategies ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6">
+        <StrategyCards />
+      </ScrollReveal>
+
+      {/* ============ Section 7: Pricing ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6">
+        <PricingSection />
+      </ScrollReveal>
+
+      {/* ============ Section 8: CTA Footer ============ */}
+      <section className="mt-12 bg-bg-code px-6 py-16 text-center">
+        <h2
+          className="mb-8 text-[28px] font-bold text-white md:text-[36px]"
+          style={{ letterSpacing: '-0.02em' }}
+        >
+          Stop losing queries to API failures.
+        </h2>
+
+        <div className="mx-auto mb-6 inline-flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[14px] text-green-400">
+          <span>pip install agentpick</span>
+          <CopyButton text="pip install agentpick" dark />
+        </div>
+
+        <p className="mb-4 text-[14px] text-gray-400">Or tell your agent:</p>
+        <div className="mx-auto mb-8 max-w-[560px] rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[13px] leading-relaxed text-gray-300">
+          <span>&ldquo;Read agentpick.dev/skill.md and route all API calls through AgentPick.&rdquo;</span>
+          <CopyButton text='Read agentpick.dev/skill.md and route all API calls through AgentPick.' dark />
+        </div>
+
+        <Link
+          href="/dashboard/router"
+          className="inline-flex items-center rounded-md bg-white px-6 py-3 text-[14px] font-semibold text-[#0A0A0A] transition-opacity hover:opacity-90"
+        >
+          Get started — free
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border bg-bg-primary px-6 py-6">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between">
+          <span className="font-mono text-[12px] text-text-tertiary">
+            AgentPick — the runtime layer for agent tools.
           </span>
-          <div className="flex gap-5">
-            <Link href="/connect" className="text-xs font-medium text-text-dim hover:text-text-secondary">
-              Join Network
+          <div className="flex gap-4">
+            <Link href="/connect" className="text-[12px] text-text-tertiary hover:text-text-secondary">
+              Router
             </Link>
-            <Link href="/benchmarks" className="text-xs font-medium text-text-dim hover:text-text-secondary">
+            <Link href="/rankings/top-agent-tools" className="text-[12px] text-text-tertiary hover:text-text-secondary">
+              Rankings
+            </Link>
+            <Link href="/benchmarks" className="text-[12px] text-text-tertiary hover:text-text-secondary">
               Benchmarks
             </Link>
           </div>
-        </footer>
-      </main>
+        </div>
+      </footer>
     </div>
+  );
+}
+
+/* Mini benchmark row component */
+function BenchmarkRow({
+  rank,
+  name,
+  quality,
+  latency,
+  cost,
+  bar,
+}: {
+  rank: number;
+  name: string;
+  quality: string;
+  latency: string;
+  cost: string;
+  bar: number;
+}) {
+  return (
+    <tr className="border-b border-border last:border-0">
+      <td className="px-4 py-3 text-text-tertiary">#{rank}</td>
+      <td className="px-4 py-3 font-semibold text-text-primary">{name}</td>
+      <td className="px-4 py-3 data-value !text-[13px]">{quality}</td>
+      <td className="px-4 py-3 text-text-secondary">{latency}</td>
+      <td className="px-4 py-3 text-text-secondary">{cost}</td>
+      <td className="px-4 py-3 hidden sm:table-cell">
+        <div className="h-2 w-full rounded-full bg-bg-secondary">
+          <div
+            className="bar-fill h-2 rounded-full bg-accent"
+            style={{ width: `${bar}%` }}
+          />
+        </div>
+      </td>
+    </tr>
   );
 }
