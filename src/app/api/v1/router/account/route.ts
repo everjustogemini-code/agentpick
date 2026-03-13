@@ -11,9 +11,16 @@ export async function GET(request: NextRequest) {
   if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
   const account = await ensureDeveloperAccount(agent.id);
+
+  const planLimits: Record<string, number> = {
+    FREE: 3000, STARTER: 10000, PRO: 100000, ENTERPRISE: 1_000_000,
+  };
+  const monthlyLimit = planLimits[account.plan] ?? 3000;
+
   return Response.json({
     account: {
       id: account.id,
+      email: agent.ownerEmail ?? null,
       plan: account.plan,
       strategy: account.strategy,
       priorityTools: account.priorityTools,
@@ -25,6 +32,12 @@ export async function GET(request: NextRequest) {
       spentThisMonth: account.spentThisMonth,
       totalCalls: account.totalCalls,
       totalFallbacks: account.totalFallbacks,
+      usage: {
+        monthlyLimit,
+        monthlyUsed: account.totalCalls,
+        monthlyRemaining: Math.max(0, monthlyLimit - account.totalCalls),
+      },
+      createdAt: account.createdAt,
     },
   });
 }

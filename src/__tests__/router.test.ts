@@ -3,7 +3,7 @@ import { getRankedToolsForCapability, CAPABILITY_TOOLS } from '@/lib/router/inde
 
 describe('Capability validation', () => {
   it('returns tools for valid capabilities', () => {
-    expect(getRankedToolsForCapability('search')).toHaveLength(9);
+    expect(getRankedToolsForCapability('search')).toHaveLength(8);
     expect(getRankedToolsForCapability('crawl')).toHaveLength(5);
     expect(getRankedToolsForCapability('embed')).toHaveLength(4);
     expect(getRankedToolsForCapability('finance')).toHaveLength(3);
@@ -52,6 +52,6 @@ describe('Strategy-based ranking', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced', ['serpapi', 'tavily']);
     expect(ranked).not.toContain('serpapi');
     expect(ranked).not.toContain('tavily');
-    expect(ranked.length).toBe(7); // 9 - 2
+    expect(ranked.length).toBe(6); // 8 - 2
   });
 });

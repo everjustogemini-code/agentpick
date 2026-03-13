@@ -296,6 +296,8 @@ export async function getUsageStats(developerId: string, days = 7) {
       costUsd: true,
       success: true,
       fallbackUsed: true,
+      strategyUsed: true,
+      aiClassification: true,
       createdAt: true,
     },
   });
@@ -340,6 +342,42 @@ export async function getUsageStats(developerId: string, days = 7) {
     };
   }
 
+  // AI routing summary: breakdown by strategy used
+  const byStrategy: Record<string, { calls: number; avgLatency: number; successRate: number }> = {};
+  const stratGroups = new Map<string, typeof calls>();
+  for (const call of calls) {
+    const strat = call.strategyUsed ?? 'UNKNOWN';
+    const group = stratGroups.get(strat) ?? [];
+    group.push(call);
+    stratGroups.set(strat, group);
+  }
+  for (const [strat, group] of stratGroups) {
+    byStrategy[strat] = {
+      calls: group.length,
+      avgLatency: Math.round(
+        group.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / group.length,
+      ),
+      successRate: group.filter((call: { success: boolean }) => call.success).length / group.length,
+    };
+  }
+
+  // AI classification summary (for AUTO strategy calls)
+  const aiCalls = calls.filter((call: { aiClassification: unknown }) => call.aiClassification != null);
+  const aiRouting = {
+    totalAiRoutedCalls: aiCalls.length,
+    byType: {} as Record<string, number>,
+    byDomain: {} as Record<string, number>,
+  };
+  for (const call of aiCalls) {
+    const classification = call.aiClassification as { type?: string; domain?: string } | null;
+    if (classification?.type) {
+      aiRouting.byType[classification.type] = (aiRouting.byType[classification.type] ?? 0) + 1;
+    }
+    if (classification?.domain) {
+      aiRouting.byDomain[classification.domain] = (aiRouting.byDomain[classification.domain] ?? 0) + 1;
+    }
+  }
+
   return {
     period: { days, since: since.toISOString() },
     totalCalls,
@@ -349,6 +387,8 @@ export async function getUsageStats(developerId: string, days = 7) {
     totalCostUsd: Math.round(totalCost * 100) / 100,
     byCapability,
     byTool,
+    byStrategy,
+    aiRouting,
   };
 }
 

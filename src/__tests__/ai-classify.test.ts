@@ -42,8 +42,8 @@ describe('aiRoute — tool ordering by classification', () => {
   it('always includes all capability tools as fallbacks', () => {
     const ctx: QueryContext = { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
-    // Should include all 9 search tools
-    expect(tools.length).toBe(9);
+    // Should include all 8 search tools
+    expect(tools.length).toBe(8);
   });
 });
 

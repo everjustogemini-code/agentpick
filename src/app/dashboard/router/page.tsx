@@ -561,7 +561,7 @@ export default function RouterDashboardPage() {
         <div className="space-y-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Strategy</span>
-            <span className="font-mono text-gray-700">{account.strategy.toLowerCase()}</span>
+            <span className="font-mono text-gray-700">{STRATEGY_DISPLAY[account.strategy] ?? account.strategy.toLowerCase()}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Fallback enabled</span>
@@ -587,6 +587,18 @@ export default function RouterDashboardPage() {
               <span className="font-mono text-gray-700">{account.priorityTools.join(', ')}</span>
             </div>
           )}
+          {account.excludedTools.length > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Excluded tools</span>
+              <span className="font-mono text-gray-700">{account.excludedTools.join(', ')}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Latency budget</span>
+            <span className="text-gray-700">
+              {account.latencyBudgetMs !== null ? `${account.latencyBudgetMs}ms` : 'No limit'}
+            </span>
+          </div>
         </div>
       </div>
 

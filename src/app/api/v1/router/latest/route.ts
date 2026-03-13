@@ -1,14 +1,23 @@
+import { NextRequest } from 'next/server';
+import { authenticateAgent } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { ensureDeveloperAccount } from '@/lib/router/sdk';
+import { apiError } from '@/types';
 
 /**
  * GET /api/v1/router/latest
- * Public (no auth) — returns the most recent RouterCall for the homepage live routing example.
- * Strips developer-identifying data. Cached for 15s.
+ * Authenticated — returns the most recent RouterCall for the authenticated agent.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const agent = await authenticateAgent(request);
+  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+
   try {
-    const call = await prisma.routerCall.findFirst({
+    const account = await ensureDeveloperAccount(agent.id);
+
+    const db = prisma as any;
+    const call = await db.routerCall.findFirst({
+      where: { developerId: account.id },
       orderBy: { createdAt: 'desc' },
       select: {
         query: true,
@@ -24,15 +33,15 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(
+    return Response.json(
       { call: call ?? null },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30',
+          'Cache-Control': 'private, max-age=5',
         },
       },
     );
   } catch {
-    return NextResponse.json({ call: null }, { status: 200 });
+    return Response.json({ call: null }, { status: 200 });
   }
 }
