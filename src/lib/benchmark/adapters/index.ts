@@ -82,6 +82,66 @@ const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>)
   'jina-embeddings': callJinaEmbed,
 };
 
+/**
+ * Maps any adapter key / alias to its canonical Product.slug in the database.
+ * Used by the benchmark runner to resolve productId when saving BenchmarkRun records.
+ */
+export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
+  // === Search ===
+  tavily: 'tavily',
+  exa: 'exa-search',
+  'exa-search': 'exa-search',
+  serper: 'serpapi',
+  serpapi: 'serpapi',
+  'serper-api': 'serpapi',
+  brave: 'brave-search',
+  'brave-search': 'brave-search',
+  jina: 'jina-ai',
+  'jina-ai': 'jina-ai',
+  'jina-reader': 'jina-ai',
+  firecrawl: 'firecrawl',
+  'firecrawl-api': 'firecrawl',
+  perplexity: 'perplexity-search',
+  'perplexity-search': 'perplexity-search',
+  you: 'you-search',
+  'you-search': 'you-search',
+  'serpapi-google': 'serpapi-google',
+  bing: 'bing-web-search',
+  'bing-web-search': 'bing-web-search',
+  // === Crawling ===
+  apify: 'apify',
+  'apify-scraper': 'apify',
+  scrapingbee: 'scrapingbee',
+  'scrapingbee-api': 'scrapingbee',
+  browserbase: 'browserbase',
+  'browserbase-api': 'browserbase',
+  // === Finance Data ===
+  polygon: 'polygon-io',
+  'polygon-io': 'polygon-io',
+  alphavantage: 'alpha-vantage',
+  'alpha-vantage': 'alpha-vantage',
+  fmp: 'financial-modeling-prep',
+  'financial-modeling-prep': 'financial-modeling-prep',
+  // === Embedding ===
+  'openai-embed': 'openai-embed',
+  'openai-embeddings': 'openai-embed',
+  'cohere-embed': 'cohere-embed',
+  'cohere-embeddings': 'cohere-embed',
+  voyage: 'voyage-embed',
+  'voyage-embed': 'voyage-embed',
+  'voyage-embeddings': 'voyage-embed',
+  'jina-embed': 'jina-embed',
+  'jina-embeddings': 'jina-embed',
+};
+
+/**
+ * Resolves an adapter key/alias to the canonical product slug.
+ * Returns the slug as-is if no mapping exists (fallback).
+ */
+export function resolveProductSlug(adapterKey: string): string {
+  return ALIAS_TO_PRODUCT_SLUG[adapterKey] ?? adapterKey;
+}
+
 // Product slugs that exist in the Product table AND have working adapters.
 export const BENCHMARKABLE_SLUGS = [
   // Search

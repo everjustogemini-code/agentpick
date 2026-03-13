@@ -5,6 +5,7 @@ import { getFrequencyMs } from "./utils";
 import { recalculateProductScore } from "@/lib/voting";
 import { calculateReputation } from "@/lib/reputation";
 import { calculateDiversity } from "@/lib/sybil";
+import { resolveProductSlug } from "@/lib/benchmark/adapters";
 
 const db = prisma as any;
 
@@ -148,10 +149,53 @@ export async function runBenchmarkAgentNow(configId: string) {
     },
   });
 
+  // --- Create BenchmarkRun records for each tool+query result ---
+  await createBenchmarkRunRecords(config.agentId, config.domain, results);
+
   // --- Auto-vote based on benchmark results ---
   await autoVoteFromBenchmarkResults(config.agentId, results, run.id);
 
   return getBenchmarkAgentById(configId);
+}
+
+/**
+ * Create individual BenchmarkRun records for each tool+query result.
+ * These feed into score-aggregate cron for avgBenchmarkRelevance.
+ */
+async function createBenchmarkRunRecords(
+  agentId: string,
+  domain: string,
+  results: Array<{ query: string; tool: string; success: boolean; latencyMs: number | null; relevance: number; status?: unknown; meta?: Record<string, unknown> }>,
+) {
+  for (const r of results) {
+    const productSlug = resolveProductSlug(r.tool);
+    const product = await db.product.findUnique({
+      where: { slug: productSlug },
+      select: { id: true },
+    });
+    if (!product) continue;
+
+    try {
+      await db.benchmarkRun.create({
+        data: {
+          benchmarkAgentId: agentId,
+          queryId: `auto:${Date.now()}:${r.tool}:${r.query.substring(0, 20)}`,
+          productId: product.id,
+          query: r.query,
+          statusCode: typeof r.status === 'number' ? r.status : (r.success ? 200 : 500),
+          latencyMs: r.latencyMs ?? 0,
+          resultCount: Number(r.meta?.results ?? 0),
+          relevanceScore: r.relevance,
+          domain,
+          complexity: 'standard',
+          success: r.success,
+          costUsd: null,
+        },
+      });
+    } catch {
+      // Skip duplicates or other errors — don't block the run
+    }
+  }
 }
 
 /**
@@ -182,9 +226,10 @@ async function autoVoteFromBenchmarkResults(
     else if (avgRelevance < 2.0) signal = 'DOWNVOTE';
     if (!signal) continue;
 
-    // Find product by slug
+    // Find product by slug (resolve alias → canonical product slug)
+    const productSlug = resolveProductSlug(toolSlug);
     const product = await db.product.findUnique({
-      where: { slug: toolSlug },
+      where: { slug: productSlug },
       select: { id: true },
     });
     if (!product) continue;
