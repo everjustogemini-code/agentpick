@@ -131,6 +131,23 @@ Rules:
 - AI/ML/framework/API/code → tech domain
 - court/SEC/regulation/law → legal domain
 
+Examples:
+"NVDA stock price" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
+"bitcoin price today" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
+"TSLA insider trading SEC filing" → {"type":"research","domain":"finance","depth":"deep","freshness":"any"}
+"latest AI funding rounds 2026" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
+"OpenAI announced new model" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
+"explain transformer architecture in detail" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"compare Redis vs Memcached" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"how does attention mechanism work" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"SEC ruling on crypto regulation 2025" → {"type":"news","domain":"legal","depth":"shallow","freshness":"recent"}
+"GDPR compliance requirements for SaaS" → {"type":"research","domain":"legal","depth":"deep","freshness":"any"}
+"what is kubernetes" → {"type":"simple","domain":"tech","depth":"shallow","freshness":"any"}
+"who is Sam Altman" → {"type":"simple","domain":"general","depth":"shallow","freshness":"any"}
+"best react state management library" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"EUR USD exchange rate" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
+"Y Combinator W26 batch companies" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
+
 No explanation. JSON only.`;
 
 async function classifyQuery(query: string, _capability: string): Promise<QueryContext> {

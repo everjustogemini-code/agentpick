@@ -9,6 +9,7 @@ const TIERS = [
     features: ['All strategies', 'Dashboard', '4 capabilities'],
     cta: 'Start free',
     primary: true,
+    disabled: false,
   },
   {
     name: 'Pro',
@@ -16,8 +17,9 @@ const TIERS = [
     period: '/mo',
     calls: '10K calls/mo',
     features: ['All strategies', 'Dashboard', '4 capabilities', 'Priority routing'],
-    cta: 'Get Pro',
+    cta: 'Coming soon',
     primary: false,
+    disabled: true,
   },
   {
     name: 'Growth',
@@ -25,8 +27,9 @@ const TIERS = [
     period: '/mo',
     calls: '100K calls/mo',
     features: ['All strategies', 'Dashboard', '4 capabilities', 'Priority routing', 'SLA'],
-    cta: 'Get Growth',
+    cta: 'Coming soon',
     primary: false,
+    disabled: true,
   },
 ];
 
@@ -62,12 +65,18 @@ export default function PricingSection() {
               ))}
             </ul>
 
-            <Link
-              href="/dashboard/router"
-              className={tier.primary ? 'btn-primary text-center' : 'btn-secondary text-center'}
-            >
-              {tier.cta}
-            </Link>
+            {tier.disabled ? (
+              <span className="btn-secondary cursor-not-allowed text-center opacity-60">
+                {tier.cta}
+              </span>
+            ) : (
+              <Link
+                href="/dashboard/router"
+                className={tier.primary ? 'btn-primary text-center' : 'btn-secondary text-center'}
+              >
+                {tier.cta}
+              </Link>
+            )}
           </div>
         ))}
       </div>

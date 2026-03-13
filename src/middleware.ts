@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function generateRequestId(): string {
+  return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 const AGENT_UA_PATTERNS = [
   'python-requests',
   'axios',
@@ -38,6 +42,13 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+    // Standard API headers
+    const requestId = generateRequestId();
+    response.headers.set('x-request-id', requestId);
+    response.headers.set('x-ratelimit-limit', '1000');
+    response.headers.set('x-ratelimit-remaining', '999');
+    response.headers.set('x-ratelimit-reset', String(Math.ceil(Date.now() / 1000) + 3600));
 
     // Cache headers for GET requests
     if (request.method === 'GET') {
