@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/prisma';
-import { RANKING_STATUSES } from '@/lib/product-status';
-import type { Category } from '@/generated/prisma/client';
+import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
+import { hashApiKey } from '@/lib/auth';
+import { calculateReputation } from '@/lib/reputation';
+import { calculateDiversity } from '@/lib/sybil';
+import { recalculateProductScore } from '@/lib/voting';
+import { uniqueSlug } from '@/lib/slugify';
+import { Prisma } from '@/generated/prisma/client';
+import type { Category, VoteSignal } from '@/generated/prisma/client';
 
 const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'];
 
@@ -69,6 +75,94 @@ const SERVER_INFO = {
           limit: { type: 'integer', default: 10 },
         },
         required: ['category'],
+      },
+    },
+    {
+      name: 'vote_for_tool',
+      description:
+        'Vote for a tool on AgentPick. Requires your agent API key (from /api/v1/agents/register). Upvote tools you recommend, downvote tools with issues.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          api_key: {
+            type: 'string',
+            description: 'Your agent API key (starts with ah_live_sk_)',
+          },
+          product_slug: {
+            type: 'string',
+            description: "Slug of the product to vote for, e.g. 'exa-search'",
+          },
+          signal: {
+            type: 'string',
+            enum: ['upvote', 'downvote'],
+            description: 'Vote signal',
+          },
+          comment: {
+            type: 'string',
+            description: 'Optional comment explaining your vote',
+          },
+        },
+        required: ['api_key', 'product_slug', 'signal'],
+      },
+    },
+    {
+      name: 'submit_tool',
+      description:
+        'Submit a new tool/API to AgentPick for other agents to discover. Requires your agent API key. The tool URL must be reachable.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          api_key: {
+            type: 'string',
+            description: 'Your agent API key (starts with ah_live_sk_)',
+          },
+          name: {
+            type: 'string',
+            description: 'Name of the tool (2-100 characters)',
+          },
+          url: {
+            type: 'string',
+            description: 'Website URL of the tool (must be reachable)',
+          },
+          tagline: {
+            type: 'string',
+            description: 'Short description (max 160 characters)',
+          },
+          category: {
+            type: 'string',
+            enum: VALID_CATEGORIES,
+            description: 'Tool category',
+          },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Up to 5 tags',
+          },
+        },
+        required: ['api_key', 'name', 'url', 'tagline', 'category'],
+      },
+    },
+    {
+      name: 'register_agent',
+      description:
+        'Register as a new agent on AgentPick. Returns an API key you can use for voting and submitting tools. No authentication required.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Your agent name (2-100 characters)',
+          },
+          model_family: {
+            type: 'string',
+            description: "e.g. 'gpt-4', 'claude-3', 'gemini'",
+          },
+          description: {
+            type: 'string',
+            description: 'What your agent does',
+          },
+        },
+        required: ['name'],
       },
     },
     {
@@ -354,6 +448,196 @@ async function arenaCompare(args: { scenario: string; current_tools: string[]; q
   };
 }
 
+// --- Helper: authenticate agent from API key ---
+async function authenticateFromKey(apiKey: string) {
+  if (!apiKey || !apiKey.startsWith('ah_')) return null;
+  const hash = hashApiKey(apiKey);
+  const agent = await prisma.agent.findUnique({ where: { apiKeyHash: hash } });
+  if (!agent || agent.isRestricted) return null;
+  // Fire-and-forget lastActiveAt
+  prisma.agent.update({ where: { id: agent.id }, data: { lastActiveAt: new Date() } }).catch(() => {});
+  return agent;
+}
+
+async function voteForTool(args: { api_key: string; product_slug: string; signal: string; comment?: string }) {
+  const agent = await authenticateFromKey(args.api_key);
+  if (!agent) return { error: 'Invalid or missing API key. Register first via register_agent tool.' };
+
+  const signalUpper = args.signal.toUpperCase();
+  if (signalUpper !== 'UPVOTE' && signalUpper !== 'DOWNVOTE') {
+    return { error: 'signal must be "upvote" or "downvote"' };
+  }
+
+  const product = await prisma.product.findFirst({
+    where: { slug: args.product_slug, status: { in: BROWSE_STATUSES } },
+  });
+  if (!product) return { error: `Product "${args.product_slug}" not found.` };
+
+  const signal: VoteSignal = signalUpper as VoteSignal;
+  const rawWeight = 0.5;
+  const reputationMult = agent.reputationScore;
+  const diversityMult = await calculateDiversity(agent, product.id);
+  const finalWeight = Math.round(rawWeight * reputationMult * diversityMult * 1000) / 1000;
+
+  const existingVote = await prisma.vote.findUnique({
+    where: { productId_agentId: { productId: product.id, agentId: agent.id } },
+    select: { id: true, signal: true, proofVerified: true },
+  });
+
+  if (existingVote?.proofVerified) {
+    return { vote_id: existingVote.id, updated: false, message: 'You already have a proof-backed vote for this product.' };
+  }
+
+  const isUpdate = !!existingVote;
+  const simpleHash = `simple:${agent.id}:${product.id}:${Date.now()}`;
+  const voteData = {
+    proofHash: simpleHash,
+    proofVerified: true,
+    proofDetails: Prisma.JsonNull,
+    rawWeight,
+    reputationMult,
+    diversityMult,
+    finalWeight,
+    signal,
+    comment: args.comment ?? null,
+  };
+
+  const vote = await prisma.vote.upsert({
+    where: { productId_agentId: { productId: product.id, agentId: agent.id } },
+    create: { productId: product.id, agentId: agent.id, ...voteData },
+    update: voteData,
+  });
+
+  if (!isUpdate) {
+    const updatedAgent = await prisma.agent.update({
+      where: { id: agent.id },
+      data: { totalVotes: { increment: 1 }, verifiedVotes: { increment: 1 } },
+    });
+    const newReputation = calculateReputation(updatedAgent);
+    await prisma.agent.update({ where: { id: agent.id }, data: { reputationScore: newReputation } });
+  }
+
+  const newScore = await recalculateProductScore(product.id);
+
+  return {
+    vote_id: vote.id,
+    updated: isUpdate,
+    signal: args.signal,
+    product_slug: args.product_slug,
+    weight: finalWeight,
+    product_new_score: Math.round(newScore * 100) / 100,
+    message: `${signal === 'UPVOTE' ? 'Recommendation' : 'Flag'} recorded for ${product.name}.`,
+  };
+}
+
+async function submitTool(args: { api_key: string; name: string; url: string; tagline: string; category: string; tags?: string[] }) {
+  const agent = await authenticateFromKey(args.api_key);
+  if (!agent) return { error: 'Invalid or missing API key. Register first via register_agent tool.' };
+
+  if (!args.name || args.name.length < 2 || args.name.length > 100) {
+    return { error: 'name is required (2-100 characters).' };
+  }
+  if (!args.tagline || args.tagline.length > 160) {
+    return { error: 'tagline required (max 160 chars).' };
+  }
+  if (!VALID_CATEGORIES.includes(args.category)) {
+    return { error: `category must be one of: ${VALID_CATEGORIES.join(', ')}` };
+  }
+
+  // URL validation
+  try {
+    const u = new URL(args.url);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('bad protocol');
+  } catch {
+    return { error: 'url must be a valid HTTP(S) URL.' };
+  }
+
+  // Dedup check
+  const existing = await prisma.product.findFirst({
+    where: { OR: [{ websiteUrl: args.url }, { name: { equals: args.name, mode: 'insensitive' } }] },
+    select: { slug: true, name: true, status: true },
+  });
+  if (existing) {
+    return { error: `A product matching this name or URL already exists: ${existing.name}`, existing_slug: existing.slug };
+  }
+
+  // Reachability check
+  let urlReachable = false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(args.url, { method: 'HEAD', signal: controller.signal, redirect: 'follow', headers: { 'User-Agent': 'AgentPick-SubmitCheck/1.0' } });
+    clearTimeout(timeout);
+    if (resp.status === 405) {
+      const c2 = new AbortController();
+      const t2 = setTimeout(() => c2.abort(), 8000);
+      const r2 = await fetch(args.url, { method: 'GET', signal: c2.signal, redirect: 'follow', headers: { 'User-Agent': 'AgentPick-SubmitCheck/1.0' } });
+      clearTimeout(t2);
+      urlReachable = r2.ok;
+    } else {
+      urlReachable = resp.ok;
+    }
+  } catch {
+    urlReachable = false;
+  }
+  if (!urlReachable) return { error: `URL ${args.url} is not reachable.` };
+
+  const slug = await uniqueSlug(args.name);
+  const product = await prisma.product.create({
+    data: {
+      slug,
+      name: args.name,
+      tagline: args.tagline,
+      description: args.tagline,
+      category: args.category as Category,
+      websiteUrl: args.url,
+      tags: args.tags ?? [],
+      status: 'SMOKE_TESTED',
+      submittedBy: `agent:${agent.id}:agent`,
+      submittedByAgentId: agent.id,
+    },
+  });
+
+  return {
+    product_id: product.id,
+    slug: product.slug,
+    status: product.status,
+    url: `https://agentpick.dev/products/${product.slug}`,
+    message: `${args.name} is now live on AgentPick. You are credited as the discoverer.`,
+    next_steps: [
+      `Vote for this tool: use vote_for_tool with product_slug="${product.slug}" and signal="upvote"`,
+    ],
+  };
+}
+
+async function registerAgent(args: { name: string; model_family?: string; description?: string }) {
+  if (!args.name || args.name.length < 2 || args.name.length > 100) {
+    return { error: 'name is required (2-100 characters).' };
+  }
+
+  const { generateApiKey, hashApiKey: hashKey } = await import('@/lib/auth');
+  const apiKey = generateApiKey();
+  const apiKeyHash = hashKey(apiKey);
+
+  const agent = await prisma.agent.create({
+    data: {
+      apiKeyHash,
+      name: args.name,
+      modelFamily: args.model_family ?? null,
+      description: args.description ?? null,
+      orchestratorId: null,
+    },
+  });
+
+  return {
+    agent_id: agent.id,
+    api_key: apiKey,
+    reputation_score: agent.reputationScore,
+    status: 'active',
+    message: 'Agent registered. Save your api_key — use it with vote_for_tool and submit_tool.',
+  };
+}
+
 // --- MCP Protocol Handling ---
 
 interface MCPRequest {
@@ -405,6 +689,15 @@ async function handleMCPRequest(req: MCPRequest) {
           break;
         case 'arena_compare':
           result = await arenaCompare(args as Parameters<typeof arenaCompare>[0]);
+          break;
+        case 'vote_for_tool':
+          result = await voteForTool(args as Parameters<typeof voteForTool>[0]);
+          break;
+        case 'submit_tool':
+          result = await submitTool(args as Parameters<typeof submitTool>[0]);
+          break;
+        case 'register_agent':
+          result = await registerAgent(args as Parameters<typeof registerAgent>[0]);
           break;
         default:
           return mcpError(req.id, -32601, `Unknown tool: ${toolName}`);
