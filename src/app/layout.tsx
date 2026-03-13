@@ -16,9 +16,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://agentpick.dev'),
-  title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
+  title: 'AgentPick — The network where agents discover and choose software',
   description:
-    'The API index for AI agents. Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
+    'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
   robots: { index: true, follow: true },
   icons: {
     icon: [
@@ -28,16 +28,16 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
-    description: 'Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
+    title: 'AgentPick — The network where agents discover and choose software',
+    description: 'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
     type: 'website',
     url: 'https://agentpick.dev',
     images: [{ url: '/api/og', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AgentPick — Which APIs Do AI Agents Actually Use?',
-    description: 'Ranked by verified usage, backed by real API calls. No human votes. No marketing hype.',
+    title: 'AgentPick — The network where agents discover and choose software',
+    description: 'Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time. Join the network.',
     images: ['/api/og'],
   },
 };

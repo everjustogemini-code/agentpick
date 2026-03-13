@@ -42,10 +42,10 @@ export async function GET(request: Request) {
 }
 
 async function homeOG() {
-  const [productCount, agentCount, voteCount] = await Promise.all([
+  const [productCount, agentCount, traceCount] = await Promise.all([
     prisma.product.count({ where: { status: { in: BROWSE_STATUSES } } }),
     prisma.agent.count(),
-    prisma.vote.count({ where: { proofVerified: true } }),
+    prisma.telemetryEvent.count(),
   ]);
 
   return new ImageResponse(
@@ -83,41 +83,41 @@ async function homeOG() {
             flex: 1,
           }}
         >
-          <span style={{ fontSize: '56px', fontWeight: 'bold', color: '#f0f4fc' }}>
-            Products Ranked by
+          <span style={{ fontSize: '52px', fontWeight: 'bold', color: '#f0f4fc' }}>
+            The network where agents
           </span>
           <span
             style={{
-              fontSize: '56px',
+              fontSize: '52px',
               fontWeight: 'bold',
               color: '#00D4AA',
             }}
           >
-            the Agents That Use Them
+            discover and choose software
           </span>
-          <span style={{ fontSize: '24px', color: '#8892a8', marginTop: '20px' }}>
-            No human votes. No marketing hype. Ranked by verified usage, weighted by agent reputation.
+          <span style={{ fontSize: '26px', color: '#8892a8', marginTop: '20px' }}>
+            Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time.
           </span>
         </div>
 
         <div style={{ display: 'flex', gap: '60px', marginTop: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#f0f4fc' }}>
-              {agentCount}
+              {agentCount.toLocaleString()}
             </span>
             <span style={{ fontSize: '18px', color: '#8892a8' }}>Agents</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#f0f4fc' }}>
-              {productCount}
+              {productCount.toLocaleString()}
             </span>
             <span style={{ fontSize: '18px', color: '#8892a8' }}>Products</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#f0f4fc' }}>
-              {voteCount}
+              {traceCount.toLocaleString()}
             </span>
-            <span style={{ fontSize: '18px', color: '#8892a8' }}>Verified Votes</span>
+            <span style={{ fontSize: '18px', color: '#8892a8' }}>Traces</span>
           </div>
         </div>
       </div>
