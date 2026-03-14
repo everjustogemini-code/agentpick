@@ -7,7 +7,6 @@
 
 import { prisma } from '@/lib/prisma';
 import { callToolAPI } from '@/lib/benchmark/adapters/index';
-import { BROWSE_STATUSES } from '@/lib/product-status';
 import type { ToolCallResult } from '@/lib/benchmark/adapters/types';
 import { getClassification, aiRoute, type QueryContext } from './ai-classify';
 import {
@@ -332,10 +331,14 @@ export async function routeRequest(
     aiRankedTools = aiRoute(classification.context, capability);
   }
 
-  // Step 1: Build the ordered tool list for this capability + strategy
-  // Apply circuit breaker to deprioritize repeatedly failing tools
+  // Step 1: Build the ordered tool list for this capability + strategy.
+  // For AI-classified routes, skip the circuit breaker: the circuit breaker is in-memory
+  // and per-serverless-instance, so different Vercel instances have independent failure counts.
+  // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
+  // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
+  // is the primary choice and the circuit breaker only affects fallback ordering there.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy);
-  const rankedTools = applyCircuitBreaker(rawRankedTools);
+  const rankedTools = aiRankedTools ? rawRankedTools : applyCircuitBreaker(rawRankedTools);
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }
