@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import { CodeGeneratorWidget } from '@/components/CodeGeneratorWidget';
+import Playground from '@/components/Playground';
 
 export const metadata: Metadata = {
   title: 'Route your API calls through AgentPick',
@@ -28,6 +29,13 @@ export default function ConnectPage() {
             Interactive code generator
           </p>
           <CodeGeneratorWidget />
+        </section>
+
+        <section className="mb-8 w-full">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
+            Interactive API playground
+          </p>
+          <Playground />
         </section>
 
         {/* Quick Start */}
