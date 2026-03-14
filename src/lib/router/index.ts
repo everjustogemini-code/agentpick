@@ -10,51 +10,11 @@ import { callToolAPI } from '@/lib/benchmark/adapters/index';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import type { ToolCallResult } from '@/lib/benchmark/adapters/types';
 import { getClassification, aiRoute, type QueryContext } from './ai-classify';
-
-// Maps tool slugs to their env var names for BYOK key injection
-const SLUG_TO_ENV_VAR: Record<string, string> = {
-  tavily: 'TAVILY_API_KEY',
-  'exa-search': 'EXA_API_KEY',
-  exa: 'EXA_API_KEY',
-  serpapi: 'SERPER_API_KEY',
-  serper: 'SERPER_API_KEY',
-  'serper-api': 'SERPER_API_KEY',
-  'jina-ai': 'JINA_API_KEY',
-  jina: 'JINA_API_KEY',
-  'jina-reader': 'JINA_API_KEY',
-  firecrawl: 'FIRECRAWL_API_KEY',
-  'firecrawl-api': 'FIRECRAWL_API_KEY',
-  brave: 'BRAVE_API_KEY',
-  'brave-search': 'BRAVE_API_KEY',
-  'perplexity-search': 'PERPLEXITY_API_KEY',
-  perplexity: 'PERPLEXITY_API_KEY',
-  'you-search': 'YOU_API_KEY',
-  you: 'YOU_API_KEY',
-  'serpapi-google': 'SERPAPI_KEY',
-  'bing-web-search': 'BING_API_KEY',
-  bing: 'BING_API_KEY',
-  apify: 'APIFY_API_KEY',
-  'apify-scraper': 'APIFY_API_KEY',
-  scrapingbee: 'SCRAPINGBEE_API_KEY',
-  'scrapingbee-api': 'SCRAPINGBEE_API_KEY',
-  browserbase: 'BROWSERBASE_API_KEY',
-  'browserbase-api': 'BROWSERBASE_API_KEY',
-  polygon: 'POLYGON_API_KEY',
-  'polygon-io': 'POLYGON_API_KEY',
-  alphavantage: 'ALPHAVANTAGE_API_KEY',
-  'alpha-vantage': 'ALPHAVANTAGE_API_KEY',
-  fmp: 'FMP_API_KEY',
-  'financial-modeling-prep': 'FMP_API_KEY',
-  'openai-embed': 'OPENAI_API_KEY',
-  'openai-embeddings': 'OPENAI_API_KEY',
-  'cohere-embed': 'COHERE_API_KEY',
-  'cohere-embeddings': 'COHERE_API_KEY',
-  'voyage-embed': 'VOYAGE_API_KEY',
-  'voyage-embeddings': 'VOYAGE_API_KEY',
-  voyage: 'VOYAGE_API_KEY',
-  'jina-embed': 'JINA_API_KEY',
-  'jina-embeddings': 'JINA_API_KEY',
-};
+import {
+  getByokEnvVarForService,
+  resolveStoredByokKeyForSlug,
+  touchByokKeyUsage,
+} from './byok';
 
 // Map capability names to categories for auto-routing
 const CAPABILITY_TO_CATEGORY: Record<string, string> = {
@@ -133,7 +93,16 @@ export interface RouterResponse {
     trace_id: string;
     ai_classification?: QueryContext & { reasoning?: string };
     classification_ms?: number;
+    cost_usd?: number;
+    result_count?: number;
+    byok_used?: boolean;
+    byok_service?: string;
   };
+}
+
+interface RouteRequestOptions {
+  developerId?: string;
+  storedByokKeys?: unknown;
 }
 
 /**
@@ -145,15 +114,16 @@ async function callWithKey(
   query: string,
   toolApiKey?: string,
   params?: Record<string, unknown>,
+  envVarOverride?: string | null,
 ): Promise<ToolCallResult> {
-  const envVar = SLUG_TO_ENV_VAR[slug];
+  const envVar = envVarOverride;
 
   if (toolApiKey && envVar) {
     // BYOK: temporarily inject key for this call
     const originalValue = process.env[envVar];
     process.env[envVar] = toolApiKey;
     try {
-      return await callToolAPI(slug, query, params);
+      return await callToolAPI(slug, query, params, { trackUsage: false });
     } finally {
       // ALWAYS restore — even on error
       if (originalValue !== undefined) {
@@ -165,7 +135,7 @@ async function callWithKey(
   }
 
   // No BYOK key — use AgentPick's vault key (already in env)
-  return callToolAPI(slug, query, params);
+  return callToolAPI(slug, query, params, { trackUsage: true });
 }
 
 /**
@@ -333,6 +303,7 @@ export async function routeRequest(
   agentId: string,
   capability: string,
   request: RouterRequest,
+  options: RouteRequestOptions = {},
 ): Promise<{ response: RouterResponse; headers?: Record<string, string> }> {
   const query = extractQuery(request.params);
   const strategy = request.strategy ?? 'balanced';
@@ -398,6 +369,8 @@ export async function routeRequest(
   const MAX_ATTEMPTS = 4; // 1 primary + 3 fallbacks
   let firstFailedTool: string | undefined;
   let lastResult: ToolCallResult | undefined;
+  let lastAttemptUsedByok = false;
+  let lastByokService: string | undefined;
   const routeStartTime = Date.now();
   const TOTAL_TIMEOUT_MS = 12_000; // Hard ceiling: 12s total routing time
 
@@ -408,12 +381,20 @@ export async function routeRequest(
     triedTools.push(candidateSlug);
 
     const isFallbackAttempt = triedTools.length > 1;
-    // Only use BYOK key for the first tool (the one the caller specified)
-    const apiKey = (!isFallbackAttempt && request.tool_api_key) ? request.tool_api_key : undefined;
+    const requestKey = !isFallbackAttempt && request.tool_api_key ? request.tool_api_key : undefined;
+    const storedByok = !requestKey
+      ? resolveStoredByokKeyForSlug(options.storedByokKeys, candidateSlug)
+      : null;
+    const byokService = storedByok?.service;
+    const envVar = requestKey
+      ? getByokEnvVarForService(candidateSlug)
+      : (storedByok ? getByokEnvVarForService(storedByok.service) : null);
+    const apiKey = requestKey ?? storedByok?.apiKey;
+    const byokUsed = Boolean(apiKey && envVar);
 
     let result: ToolCallResult;
     try {
-      result = await callWithKey(candidateSlug, query, apiKey, request.params);
+      result = await callWithKey(candidateSlug, query, apiKey, request.params, envVar);
     } catch (adapterErr) {
       // Adapter threw (e.g. missing API key) — treat as failure, continue fallback
       console.error(`[Router] Adapter ${candidateSlug} threw:`, adapterErr);
@@ -426,11 +407,16 @@ export async function routeRequest(
       };
     }
     lastResult = result;
+    lastAttemptUsedByok = byokUsed;
+    lastByokService = byokUsed ? (byokService ?? candidateSlug) : undefined;
 
     // Record tool health for circuit breaker
     recordToolHealth(candidateSlug, !isFailure(result));
 
     if (!isFailure(result)) {
+      if (storedByok && options.developerId) {
+        touchByokKeyUsage(options.developerId, options.storedByokKeys, candidateSlug).catch(() => {});
+      }
       // Success!
       const traceId = await recordTrace(
         agentId, candidateSlug, capability, result,
@@ -442,6 +428,10 @@ export async function routeRequest(
         fallback_used: isFallbackAttempt,
         fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
         trace_id: traceId,
+        cost_usd: result.costUsd,
+        result_count: result.resultCount,
+        byok_used: byokUsed,
+        byok_service: byokUsed ? (byokService ?? candidateSlug) : undefined,
       };
       if (aiClassificationResult) {
         meta.ai_classification = {
@@ -475,6 +465,10 @@ export async function routeRequest(
         fallback_used: triedTools.length > 1,
         fallback_from: firstFailedTool,
         trace_id: traceId,
+        cost_usd: lastResult?.costUsd ?? 0,
+        result_count: lastResult?.resultCount ?? 0,
+        byok_used: lastAttemptUsedByok,
+        byok_service: lastByokService,
       },
     },
   };

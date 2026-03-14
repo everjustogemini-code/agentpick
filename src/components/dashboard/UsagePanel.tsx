@@ -515,14 +515,14 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
 
         <div className="rounded-[28px] border border-slate-200 bg-slate-50/90 p-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Estimated cost
+            Estimated router spend
           </p>
           <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
             {formatCurrency(projectedCost)}
           </p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Projected monthly spend from {formatCurrency(panel.spentThisMonth)} spent so far this
-            month.
+            Projected platform-managed spend from {formatCurrency(panel.spentThisMonth)} routed so
+            far this month.
           </p>
           <p className="mt-3 text-sm text-slate-500">
             {panel.monthlyBudgetUsd === null

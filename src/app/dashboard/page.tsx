@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
+import { ByokPanel } from '@/components/dashboard/ByokPanel';
 
 const API_KEY_STORAGE_KEY = 'agentpick_api_key';
 
@@ -121,8 +122,9 @@ export default function DashboardPage() {
             Account, usage, and routing on one screen.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Track your plan, monthly usage progress, current routing strategy, estimated cost, and
-            budget cap from the main dashboard without bouncing into a separate router console.
+            Track your plan, monthly usage progress, current routing strategy, estimated spend,
+            saved provider keys, and budget cap from the main dashboard without bouncing into a
+            separate router console.
           </p>
         </div>
 
@@ -169,6 +171,7 @@ export default function DashboardPage() {
             ) : null}
 
             <UsagePanel apiKey={apiKey} onLogout={handleLogout} />
+            <ByokPanel apiKey={apiKey} onAuthError={handleLogout} />
           </div>
         ) : (
           <div className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_0.95fr]">

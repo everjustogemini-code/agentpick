@@ -9,7 +9,7 @@ import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import { routeRequest, CAPABILITY_TOOLS } from './index';
 import type { RouterRequest, Strategy } from './index';
-import { ensureDeveloperAccount, recordRouterCall } from './sdk';
+import { ensureDeveloperAccount, recordRouterCall, type RouterStrategyValue } from './sdk';
 import { escapeHtml } from '@/lib/sanitize';
 
 const VALID_CAPABILITIES = Object.keys(CAPABILITY_TOOLS);
@@ -164,16 +164,12 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     // If account check fails, allow routing (fail-open for /route/* surface)
   }
 
-  // 4b. BYOK plan restriction — FREE plan cannot use bring-your-own API keys
-  if (body.tool_api_key && preAccount?.plan === 'FREE') {
-    return apiError('PLAN_RESTRICTED', 'BYOK is available on STARTER and above.', 403, {
-      details: { plan: preAccount.plan },
-    });
-  }
-
   // 5. Route the request
   try {
-    const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body);
+    const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body, {
+      developerId: preAccount?.id,
+      storedByokKeys: preAccount?.byokKeys,
+    });
 
     // Record the call for analytics
     try {
@@ -185,9 +181,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         query,
         body,
         response,
-        strategyUsed as any,
-        !!body.tool_api_key,
-        response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [response.meta.tool_used],
+        strategyUsed as RouterStrategyValue,
+        Boolean(response.meta.byok_used),
+        response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [],
       );
     } catch (recordErr) {
       // Don't fail the request if recording fails

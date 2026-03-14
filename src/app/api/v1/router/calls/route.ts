@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { ensureDeveloperAccount } from '@/lib/router/sdk';
-import { prisma } from '@/lib/prisma';
 import { apiError } from '@/types';
-
-const db = prisma as any;
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   const agent = await authenticateAgent(request);
@@ -20,7 +18,7 @@ export async function GET(request: NextRequest) {
     where.capability = capability;
   }
 
-  const calls = await db.routerCall.findMany({
+  const calls = await prisma.routerCall.findMany({
     where,
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -33,6 +31,7 @@ export async function GET(request: NextRequest) {
       strategyUsed: true,
       latencyMs: true,
       costUsd: true,
+      byokUsed: true,
       success: true,
       fallbackUsed: true,
       fallbackFrom: true,

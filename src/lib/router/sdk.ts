@@ -3,13 +3,13 @@
  * Extends the existing router core (./index.ts) without modifying it.
  */
 
+import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
-import { BROWSE_STATUSES } from '@/lib/product-status';
 import { ROUTER_PLAN_DAILY_LIMITS, type RouterPlanCode } from './plans';
 import type { RouterRequest, RouterResponse, Strategy } from './index';
 import { getRankedToolsForCapability } from './index';
 
-const db = prisma as any;
+const db = prisma;
 
 export type RouterStrategyValue = 'BALANCED' | 'FASTEST' | 'CHEAPEST' | 'MOST_ACCURATE' | 'MANUAL' | 'AUTO';
 export type RouterPlanValue = RouterPlanCode;
@@ -231,7 +231,9 @@ export async function recordRouterCall(
       statusCode,
       latencyMs: meta.latency_ms,
       resultCount: meta.result_count ?? null,
-      aiClassification: meta.ai_classification ?? null,
+      aiClassification: meta.ai_classification
+        ? (meta.ai_classification as unknown as Prisma.InputJsonValue)
+        : undefined,
       costUsd: meta.cost_usd ?? 0,
       success: isSuccess,
       strategyUsed,
@@ -266,8 +268,10 @@ export async function recordRouterCall(
       data: {
         totalCalls: { increment: 1 },
         totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
-        totalCostUsd: { increment: meta.cost_usd ?? 0 },
-        spentThisMonth: resetMonthlySpend ? meta.cost_usd ?? 0 : (currentAccount.spentThisMonth ?? 0) + (meta.cost_usd ?? 0),
+        totalCostUsd: byokUsed ? undefined : { increment: meta.cost_usd ?? 0 },
+        spentThisMonth: byokUsed
+          ? (resetMonthlySpend ? 0 : currentAccount.spentThisMonth ?? 0)
+          : (resetMonthlySpend ? meta.cost_usd ?? 0 : (currentAccount.spentThisMonth ?? 0) + (meta.cost_usd ?? 0)),
         billingCycleStart: resetMonthlySpend ? new Date() : undefined,
         avgLatencyMs: nextAvgLatency,
       },
@@ -291,6 +295,7 @@ export async function getUsageStats(developerId: string, days = 7) {
       toolUsed: true,
       latencyMs: true,
       costUsd: true,
+      byokUsed: true,
       success: true,
       fallbackUsed: true,
       strategyUsed: true,
@@ -302,9 +307,15 @@ export async function getUsageStats(developerId: string, days = 7) {
   const totalCalls = calls.length;
   const successCalls = calls.filter((call: { success: boolean }) => call.success).length;
   const fallbackCalls = calls.filter((call: { fallbackUsed: boolean }) => call.fallbackUsed).length;
+  const byokCalls = calls.filter((call: { byokUsed: boolean }) => call.byokUsed).length;
   const avgLatency =
     totalCalls > 0 ? Math.round(calls.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / totalCalls) : 0;
-  const totalCost = calls.reduce((sum: number, call: { costUsd: number }) => sum + call.costUsd, 0);
+  const platformCost = calls
+    .filter((call: { byokUsed: boolean }) => !call.byokUsed)
+    .reduce((sum: number, call: { costUsd: number }) => sum + call.costUsd, 0);
+  const byokSavings = calls
+    .filter((call: { byokUsed: boolean }) => call.byokUsed)
+    .reduce((sum: number, call: { costUsd: number }) => sum + call.costUsd, 0);
 
   const byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }> = {};
   const capGroups = new Map<string, typeof calls>();
@@ -381,7 +392,11 @@ export async function getUsageStats(developerId: string, days = 7) {
     successRate: totalCalls > 0 ? successCalls / totalCalls : 0,
     fallbackRate: totalCalls > 0 ? fallbackCalls / totalCalls : 0,
     avgLatencyMs: avgLatency,
-    totalCostUsd: Math.round(totalCost * 100) / 100,
+    totalCostUsd: Math.round(platformCost * 100) / 100,
+    totalToolCostUsd: Math.round((platformCost + byokSavings) * 100) / 100,
+    byokSavingsUsd: Math.round(byokSavings * 100) / 100,
+    byokCalls,
+    byokCoverageRate: totalCalls > 0 ? byokCalls / totalCalls : 0,
     byCapability,
     byTool,
     byStrategy,

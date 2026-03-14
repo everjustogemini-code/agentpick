@@ -116,12 +116,6 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
   }
 
-  if (body.tool_api_key && account.plan === 'FREE') {
-    return apiError('PLAN_RESTRICTED', 'BYOK is available on STARTER and above.', 403, {
-      details: { plan: account.plan },
-    });
-  }
-
   // P1-6: Hard budget enforcement — block routing before dispatch
   if (
     typeof account.monthlyBudgetUsd === 'number' &&
@@ -172,7 +166,10 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   });
 
   try {
-    const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, modifiedRequest);
+    const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, modifiedRequest, {
+      developerId: account.id,
+      storedByokKeys: account.byokKeys,
+    });
     const query = extractQueryFromParams(routeBody.params);
     const fallbackChain = buildFallbackChain(modifiedRequest, response);
 
@@ -184,7 +181,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       routeBody,
       response,
       strategyUsed,
-      Boolean(routeBody.tool_api_key),
+      Boolean(response.meta.byok_used),
       fallbackChain,
     ).catch(() => {});
 
@@ -215,35 +212,36 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     // Record the failure
     const query = extractQueryFromParams(routeBody.params);
     const message = error instanceof Error ? error.message : 'Router error';
-    await recordRouterCall(
-      account.id,
-      capability,
-      query,
-      routeBody,
-      {
-        data: { error: message },
-        meta: { tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? CAPABILITY_TOOLS[capability]?.[0] ?? capability, latency_ms: 0, fallback_used: false, trace_id: `trace_fail_${Date.now()}` },
-      },
-      strategyUsed,
-      Boolean(routeBody.tool_api_key),
-      [],
-    ).catch(() => {});
-    // Return stable contract: always include tool_used and results fields
-    return new Response(JSON.stringify({
+    const failureResponse = {
       error: 'ROUTER_ERROR',
       message,
       data: null,
       meta: {
-        tool_used: null,
+        tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? 'unknown',
         latency_ms: 0,
         fallback_used: false,
         trace_id: `trace_fail_${Date.now()}`,
+        cost_usd: 0,
+        result_count: 0,
+        byok_used: false,
         strategy: strategyUsed,
         plan: account.plan,
         calls_remaining: Math.max(0, usage.remaining - 1),
       },
       results: [],
-    }), {
+    };
+    await recordRouterCall(
+      account.id,
+      capability,
+      query,
+      routeBody,
+      failureResponse,
+      strategyUsed,
+      Boolean(failureResponse.meta.byok_used),
+      [],
+    ).catch(() => {});
+    // Return stable contract: always include tool_used and results fields
+    return new Response(JSON.stringify(failureResponse), {
       status: 502,
       headers: {
         'Content-Type': 'application/json',
