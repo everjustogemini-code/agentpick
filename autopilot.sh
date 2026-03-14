@@ -1,13 +1,14 @@
 #!/bin/bash
-# AgentPick Autopilot — Orchestration Loop
-# Runs: PM → Orchestrator → Claude Code/Codex → Merge → QA → repeat
+# AgentPick Autopilot v2 — Continuous parallel development
+# Claude Code + Codex run simultaneously, zero idle time
 
-set -e
 REPO="/Users/pwclaw/Desktop/code/agenthunt"
 WORKSPACE="/Users/pwclaw/.openclaw/workspace"
 CODEX="/opt/homebrew/bin/codex"
 BOT="8535747885:AAFZBbF7WsOfzKuJu_s7MxnbRXI8bO3NQDk"
 CHAT="5986849183"
+LOGDIR="/tmp/autopilot"
+mkdir -p "$LOGDIR"
 
 # Load API keys
 export ANTHROPIC_API_KEY=$(python3 -c "import json; from pathlib import Path; print(json.load(open(Path.home()/'.openclaw/agents/main/agent/auth-profiles.json'))['profiles']['anthropic:default']['key'])")
@@ -16,194 +17,242 @@ export OPENAI_API_KEY=$(python3 -c "import json; from pathlib import Path; print
 tg() {
   curl -s -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
     -H "Content-Type: application/json" \
+    -d "{\"chat_id\": \"${CHAT}\", \"text\": $(python3 -c "import json; print(json.dumps('$1'))")}" > /dev/null 2>&1
+}
+
+tg_raw() {
+  curl -s -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+    -H "Content-Type: application/json" \
     -d "{\"chat_id\": \"${CHAT}\", \"text\": \"$1\"}" > /dev/null 2>&1
 }
 
 cd "$REPO"
 
-echo "🚀 AgentPick Autopilot starting..."
-tg "🚀 AgentPick Autopilot 启动"
+CYCLE=${1:-1}
+echo "🚀 AgentPick Autopilot v2 — Cycle $CYCLE starting at $(date)"
+tg_raw "🚀 Autopilot v2 Cycle $CYCLE starting"
 
 # ═══════════════════════════════════════════
 # STEP 1: PM Agent — produce next version spec
 # ═══════════════════════════════════════════
-echo "📋 Step 1: PM Agent producing NEXT_VERSION.md..."
-tg "📋 PM Agent 正在分析当前版本并产出下一版需求..."
+echo "📋 Step 1: PM producing NEXT_VERSION.md..."
 
-claude --print --permission-mode bypassPermissions \
-  --model claude-opus-4-6 \
-  -p "You are the AgentPick PM Agent. Read PM_AGENT.md for your instructions.
+claude --permission-mode bypassPermissions \
+  -p "You are the AgentPick PM. Your workspace is $(pwd).
 
-Current context:
-- Read QA_REPORT.md if it exists for current bugs
-- Check git log --oneline -20 for recent changes
-- The site is https://agentpick.dev
+INSTRUCTIONS:
+1. Read QA_REPORT.md if it exists
+2. Read git log --oneline -20 for recent changes  
+3. Check the live site https://agentpick.dev
+4. Write NEXT_VERSION.md with exactly 3 must-have features
 
-Analyze the current state and write NEXT_VERSION.md with 2-3 concrete features for the next iteration.
-Focus on the most impactful changes that can be done in 2-4 hours.
+FOCUS FOR THIS CYCLE:
+- Major UI upgrade — introduce modern design components (glassmorphism, animated cards, micro-interactions, gradient backgrounds, better typography)
+- Fix any P0/P1 bugs from QA
+- One new feature that increases developer adoption
 
-Write the output to NEXT_VERSION.md in the repo root." \
-  2>&1 | tail -20
+The goal: ship a visually impressive version every cycle. AgentPick should look like a premium product, not a hackathon project.
+
+Write NEXT_VERSION.md now. Be specific about UI components and design specs." \
+  --output-format text 2>&1 | tee "$LOGDIR/pm_${CYCLE}.log" | tail -5
 
 if [ ! -f NEXT_VERSION.md ]; then
-  echo "❌ PM failed to produce NEXT_VERSION.md"
-  tg "❌ PM Agent 失败，没有产出 NEXT_VERSION.md"
+  echo "❌ PM failed"
+  tg_raw "❌ Cycle $CYCLE: PM failed to produce NEXT_VERSION.md"
   exit 1
 fi
 
-tg "✅ PM Agent 完成: $(head -3 NEXT_VERSION.md)"
+echo "✅ PM done"
 
 # ═══════════════════════════════════════════
-# STEP 2: Orchestrator — break into tasks
+# STEP 2: Orchestrator — split tasks for parallel execution
 # ═══════════════════════════════════════════
-echo "🏗️ Step 2: Orchestrator breaking into tasks..."
+echo "🏗️ Step 2: Splitting tasks for Claude Code + Codex..."
 
-RAW_TASKS=$(claude --print --permission-mode bypassPermissions \
-  --model claude-opus-4-6 \
-  -p "You are the AgentPick Orchestrator. Read ORCHESTRATOR.md and NEXT_VERSION.md.
+claude --permission-mode bypassPermissions \
+  -p "You are the AgentPick task splitter. Read NEXT_VERSION.md.
 
-Break the NEXT_VERSION.md requirements into concrete coding tasks.
-For each task, specify:
-1. Branch name (feat/xxx)
-2. Files to modify
-3. Exact implementation spec (what to code)
-4. Assign to: claude-code or codex
+Split the work into exactly 2 task files, one for each coding agent:
 
-IMPORTANT: Output ONLY a JSON array, no markdown fences, no explanation:
-[{\"branch\": \"feat/xxx\", \"files\": [\"path/to/file\"], \"spec\": \"detailed spec\", \"agent\": \"claude-code\"}]" 2>&1)
+TASK_CLAUDE_CODE.md — The harder task (new features, complex UI components, API endpoints, database changes). Claude Code excels at multi-file architectural changes.
 
-# Extract JSON from response (handle markdown fences, extra text)
-TASKS=$(echo "$RAW_TASKS" | python3 -c "
-import sys, json, re
-text = sys.stdin.read()
-# Try to find JSON array in the text
-m = re.search(r'\[[\s\S]*\]', text)
-if m:
-    try:
-        tasks = json.loads(m.group())
-        print(json.dumps(tasks))
-    except:
-        # Fallback: single task from NEXT_VERSION.md
-        print(json.dumps([{
-            'branch': 'feat/next-version',
-            'files': [],
-            'spec': 'Implement the requirements in NEXT_VERSION.md. Read NEXT_VERSION.md first, then implement all Must Have features.',
-            'agent': 'claude-code'
-        }]))
-else:
-    print(json.dumps([{
-        'branch': 'feat/next-version',
-        'files': [],
-        'spec': 'Implement the requirements in NEXT_VERSION.md. Read NEXT_VERSION.md first, then implement all Must Have features.',
-        'agent': 'claude-code'
-    }]))
-" 2>/dev/null)
+TASK_CODEX.md — The simpler but important task (bug fixes, component styling, test writing, documentation, copy changes). Codex excels at focused single-file changes.
 
-echo "$TASKS" > /tmp/autopilot_tasks.json
-TASK_COUNT=$(echo "$TASKS" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
-tg "🏗️ Orchestrator 拆解了 ${TASK_COUNT} 个任务"
+RULES:
+- Tasks MUST NOT touch the same files (prevent merge conflicts)
+- Each task file must list EXACTLY which files to create/modify
+- Include full design specs (colors, spacing, animations in CSS/Tailwind)
+- Be extremely specific — the coding agent should not need to make design decisions
+
+Write both files now: TASK_CLAUDE_CODE.md and TASK_CODEX.md" \
+  --output-format text 2>&1 | tee "$LOGDIR/split_${CYCLE}.log" | tail -5
+
+echo "✅ Tasks split"
 
 # ═══════════════════════════════════════════
-# STEP 3: Execute tasks (Claude Code + Codex)
+# STEP 3: PARALLEL EXECUTION — Claude Code + Codex simultaneously
 # ═══════════════════════════════════════════
-echo "⚡ Step 3: Executing ${TASK_COUNT} tasks..."
+echo "⚡ Step 3: Running Claude Code + Codex in PARALLEL..."
+tg_raw "⚡ Cycle $CYCLE: Claude Code + Codex running in parallel"
 
-cat /tmp/autopilot_tasks.json | python3 -c "
-import sys, json, subprocess, os
+# Prepare branches
+git checkout main 2>/dev/null
+git pull --ff-only 2>/dev/null || true
 
-tasks = json.load(sys.stdin)
-repo = '$REPO'
-codex = '$CODEX'
+# Branch for Claude Code
+git checkout -b "feat/cycle-${CYCLE}-cc" 2>/dev/null || git checkout "feat/cycle-${CYCLE}-cc" 2>/dev/null
 
-for i, task in enumerate(tasks):
-    branch = task.get('branch', f'feat/task-{i}')
-    spec = task.get('spec', '')
-    agent = task.get('agent', 'claude-code')
-    files = ', '.join(task.get('files', []))
-    
-    print(f'\\n--- Task {i+1}/{len(tasks)}: {branch} ({agent}) ---')
-    
-    # Create branch
-    subprocess.run(['git', 'checkout', 'main'], cwd=repo, capture_output=True)
-    subprocess.run(['git', 'pull', '--ff-only'], cwd=repo, capture_output=True)
-    subprocess.run(['git', 'checkout', '-b', branch], cwd=repo, capture_output=True)
-    
-    prompt = f'Implement this task in the AgentPick codebase:\\n\\n{spec}\\n\\nFiles to modify: {files}\\n\\nMake the changes directly. Do not ask for confirmation. Commit when done with message: [{branch}] {spec[:60]}'
-    
-    if agent == 'codex':
-        # Use Codex CLI
-        result = subprocess.run(
-            [codex, 'exec', '-a', 'full-auto', '--quiet', prompt],
-            cwd=repo, capture_output=True, text=True, timeout=600
-        )
-        print(f'  Codex exit: {result.returncode}')
-    else:
-        # Use Claude Code
-        result = subprocess.run(
-            ['claude', '--print', '--permission-mode', 'bypassPermissions',
-             '-p', prompt],
-            cwd=repo, capture_output=True, text=True, timeout=600
-        )
-        print(f'  Claude Code exit: {result.returncode}')
-    
-    # Check if there are changes
-    status = subprocess.run(['git', 'status', '--porcelain'], cwd=repo, capture_output=True, text=True)
-    if status.stdout.strip():
-        subprocess.run(['git', 'add', '-A'], cwd=repo, capture_output=True)
-        subprocess.run(['git', 'commit', '-m', f'[{branch}] {spec[:80]}'], cwd=repo, capture_output=True)
-        print(f'  ✅ Committed changes')
-    else:
-        print(f'  ⚠ No changes detected')
-    
-    # Merge back to main
-    subprocess.run(['git', 'checkout', 'main'], cwd=repo, capture_output=True)
-    merge = subprocess.run(['git', 'merge', '--no-ff', branch, '-m', f'Merge {branch}'], 
-                          cwd=repo, capture_output=True, text=True)
-    if merge.returncode == 0:
-        print(f'  ✅ Merged to main')
-    else:
-        print(f'  ❌ Merge conflict: {merge.stderr[:100]}')
-        subprocess.run(['git', 'merge', '--abort'], cwd=repo, capture_output=True)
-" 2>&1
+# Run Claude Code in background
+(
+  cd "$REPO"
+  echo "[CC] Starting Claude Code task..."
+  claude --permission-mode bypassPermissions \
+    -p "You are a senior full-stack engineer working on AgentPick (agentpick.dev).
+Your workspace is $(pwd). Tech stack: Next.js 16 + Prisma + Tailwind + Vercel.
 
-tg "⚡ 代码任务执行完毕，推送中..."
+Read TASK_CLAUDE_CODE.md for your specific task.
 
-# Push to trigger Vercel deploy
+RULES:
+- Implement EVERYTHING in the task file
+- Make real file changes (create/edit files directly)
+- Use modern React patterns (server components, suspense, etc.)
+- Tailwind CSS only — no inline styles
+- Commit your work when done: git add -A && git commit -m '[autopilot] Claude Code: cycle $CYCLE'
+- If you encounter errors, fix them and continue
+- Do NOT ask questions — make reasonable decisions and keep going" \
+    --output-format text 2>&1 | tee "$LOGDIR/cc_${CYCLE}.log" | tail -3
+  
+  # Ensure committed
+  git add -A 2>/dev/null
+  git diff --cached --quiet || git commit -m "[autopilot] Claude Code: cycle $CYCLE" 2>/dev/null
+  echo "[CC] ✅ Done"
+) &
+CC_PID=$!
+
+# Branch for Codex  
+git checkout main 2>/dev/null
+git checkout -b "feat/cycle-${CYCLE}-codex" 2>/dev/null || git checkout "feat/cycle-${CYCLE}-codex" 2>/dev/null
+
+# Run Codex in background
+(
+  cd "$REPO"
+  TASK=$(cat TASK_CODEX.md 2>/dev/null || echo "Fix bugs and improve styling based on NEXT_VERSION.md")
+  echo "[CX] Starting Codex task..."
+  $CODEX exec \
+    -a full-auto \
+    --quiet \
+    "You are working on the AgentPick codebase at $(pwd). Tech stack: Next.js 16 + Prisma + Tailwind + Vercel.
+
+Your task:
+${TASK}
+
+RULES:
+- Make real file changes
+- Commit when done: git add -A && git commit -m '[autopilot] Codex: cycle $CYCLE'
+- Do NOT modify files listed in TASK_CLAUDE_CODE.md (those belong to Claude Code)
+- If a file doesn't exist yet, create it
+- Keep going until the task is complete" \
+    2>&1 | tee "$LOGDIR/codex_${CYCLE}.log" | tail -3
+  
+  git add -A 2>/dev/null
+  git diff --cached --quiet || git commit -m "[autopilot] Codex: cycle $CYCLE" 2>/dev/null
+  echo "[CX] ✅ Done"
+) &
+CX_PID=$!
+
+echo "  Claude Code PID: $CC_PID"
+echo "  Codex PID: $CX_PID"
+echo "  Waiting for both to finish..."
+
+# Wait for both with timeout (15 min each)
+TIMEOUT=900
+( sleep $TIMEOUT; kill $CC_PID 2>/dev/null; echo "⚠ Claude Code timed out" ) &
+TIMER1=$!
+( sleep $TIMEOUT; kill $CX_PID 2>/dev/null; echo "⚠ Codex timed out" ) &
+TIMER2=$!
+
+wait $CC_PID 2>/dev/null; CC_EXIT=$?
+wait $CX_PID 2>/dev/null; CX_EXIT=$?
+kill $TIMER1 $TIMER2 2>/dev/null
+
+echo "  Claude Code exit: $CC_EXIT"
+echo "  Codex exit: $CX_EXIT"
+
+# ═══════════════════════════════════════════
+# STEP 4: Merge both branches into main
+# ═══════════════════════════════════════════
+echo "🔀 Step 4: Merging..."
+
+git checkout main 2>/dev/null
+
+# Merge Claude Code
+git merge --no-ff "feat/cycle-${CYCLE}-cc" -m "Merge Claude Code cycle $CYCLE" 2>&1 || {
+  echo "⚠ CC merge conflict, auto-resolving..."
+  git checkout --theirs . 2>/dev/null
+  git add -A 2>/dev/null
+  git commit -m "Merge Claude Code cycle $CYCLE (auto-resolved)" 2>/dev/null
+}
+
+# Merge Codex
+git merge --no-ff "feat/cycle-${CYCLE}-codex" -m "Merge Codex cycle $CYCLE" 2>&1 || {
+  echo "⚠ Codex merge conflict, auto-resolving..."
+  git checkout --theirs . 2>/dev/null
+  git add -A 2>/dev/null
+  git commit -m "Merge Codex cycle $CYCLE (auto-resolved)" 2>/dev/null
+}
+
+# Push
 git push origin main 2>&1 || true
+tg_raw "🚀 Cycle $CYCLE: Code merged and pushed. Vercel deploying..."
 
-tg "🚀 已推送到 main，Vercel 正在部署..."
+# Clean up branches
+git branch -d "feat/cycle-${CYCLE}-cc" "feat/cycle-${CYCLE}-codex" 2>/dev/null
 
-# Wait for Vercel deploy
-echo "⏳ Waiting 60s for Vercel deploy..."
-sleep 60
+echo "✅ Merged and pushed"
 
 # ═══════════════════════════════════════════
-# STEP 4: QA Agent — test the deployment
+# STEP 5: Wait for deploy, then QA
 # ═══════════════════════════════════════════
-echo "🔍 Step 4: QA Agent testing..."
-tg "🔍 QA Agent 开始测试..."
+echo "⏳ Waiting 90s for Vercel deploy..."
+sleep 90
 
-QA_RESULT=$(claude --print --permission-mode bypassPermissions \
-  --model claude-opus-4-6 \
-  -p "You are the AgentPick QA Agent. Read QA_AGENT.md for your instructions.
+echo "🔍 Step 5: QA testing..."
+tg_raw "🔍 Cycle $CYCLE: QA testing live site..."
 
-Run comprehensive tests on https://agentpick.dev:
+claude --permission-mode bypassPermissions \
+  -p "You are the AgentPick QA Agent. Test https://agentpick.dev thoroughly.
+
 1. Run: python3 /Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py
-2. Test the paid user flow (register → search → dashboard)
-3. Check for P0 blockers
+2. Test paid user flow: register → search → check results
+3. Check all main pages load (/, /connect, /dashboard, /products/tavily)
+4. Check for visual regressions
+5. Test API: POST /api/v1/router/search with Bearer auth
 
-Write results to QA_REPORT.md.
-At the end, output either PASS or FAIL on a single line." 2>&1)
+Write results to QA_REPORT.md with:
+- Score: X/Y
+- P0 blockers (if any)
+- P1 issues (if any)
+- What looks good
 
-echo "$QA_RESULT" | tail -5
+End with exactly PASS or FAIL on the last line." \
+  --output-format text 2>&1 | tee "$LOGDIR/qa_${CYCLE}.log" | tail -10
 
-if echo "$QA_RESULT" | grep -q "PASS"; then
-  tg "✅ QA 通过！循环完成。PM Agent 将在下一轮产出新需求。"
-  echo "✅ Cycle complete — QA PASSED"
+QA_STATUS=$(tail -1 QA_REPORT.md 2>/dev/null || echo "UNKNOWN")
+SCORE=$(grep -o '[0-9]*/[0-9]*' QA_REPORT.md 2>/dev/null | head -1 || echo "?/?")
+
+if echo "$QA_STATUS" | grep -qi "PASS"; then
+  tg_raw "✅ Cycle $CYCLE 完成! QA: $SCORE PASS"
 else
-  tg "❌ QA 未通过。Bug 已记录在 QA_REPORT.md，Orchestrator 将在下一轮修复。"
-  echo "⚠ Cycle complete — QA FAILED (bugs logged)"
+  tg_raw "⚠️ Cycle $CYCLE 完成. QA: $SCORE — 有issue，下轮修复"
 fi
 
-echo "🏁 Autopilot cycle complete at $(date)"
-tg "🏁 Autopilot 循环完成: $(date '+%H:%M')"
+# ═══════════════════════════════════════════
+# STEP 6: Immediately start next cycle (zero idle)
+# ═══════════════════════════════════════════
+NEXT=$((CYCLE + 1))
+echo ""
+echo "🔄 Cycle $CYCLE complete. Starting cycle $NEXT immediately..."
+echo "================================================"
+
+# Recursive call — continuous development
+exec bash "$0" "$NEXT"

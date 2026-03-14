@@ -1,87 +1,225 @@
-# Version 0.9 — "Apples to Apples"
+# Version 0.next — "Premium Product"
 
-## Theme: Ship controlled batch benchmarks (the missing data backbone) and give tool makers a reason to come back every week.
-
-## Analysis (PM Framework)
-
-**1. What's the #1 thing blocking developer adoption right now?**
-The benchmarks page exists and looks great, but the data behind it is still uncontrolled — random queries hitting random tools at random times. A developer can't answer "Is Exa or Tavily better for finance queries?" because the runs aren't apples-to-apples. The `batchId` controlled comparison system was the #1 must-have in v0.8 and was never shipped. Without it, the benchmark data is anecdotal, not scientific. This is the single biggest gap between what the site promises and what it delivers.
-
-**2. What would make a tool maker want to pay us?**
-Two things: (a) seeing their competitive position clearly, and (b) having a way to show off their ranking. Right now, a tool maker who claims their product sees a dashboard with raw counts (telemetry events, votes, benchmark runs) — useful but not compelling. They need to see "You're #2 in finance, 340ms behind Exa" with a trend line. And they need an embeddable badge they can put on their docs site that says "Ranked #1 on AgentPick — Finance" which drives backlinks to us and creates social proof for them. The badge is free viral distribution.
-
-**3. What's the cheapest/fastest thing we can ship that moves the needle?**
-Controlled batch benchmarks (~2h) unlock everything downstream — credible rankings, fair comparisons, trend data. An embeddable badge widget (~1h) is pure growth leverage with minimal engineering. Together they create a flywheel: better data → credible rankings → badges tool makers want to display → backlinks → developer discovery → more data.
+**Date:** 2026-03-14
+**Base commit:** ef1ded2
+**QA score:** 40/51 (78%) → target ≥ 46/51 (90%)
+**Theme:** AgentPick should look like a product engineers are proud to put in a README — not a hackathon project.
 
 ---
 
-## Must Have (ship or fail):
+## Feature 1 — Visual Overhaul: Premium Design System
 
-### 1. Controlled Batch Benchmark Engine
-**Why:** Carried over from v0.8 — still the most critical unshipped feature. Every other data feature (compare, trends, reports, digests) depends on having controlled, same-query-across-all-tools benchmark data. Without `batchId`, we can't do fair head-to-head comparisons and the "data moat" is a data puddle.
+**Why:** The current UI is functional but flat — neutral grays, single blue accent, no depth, no motion. AgentPick competes for developer attention against Exa, Tavily, and Perplexity. They have invested heavily in visual identity. A premium look signals production-readiness and earns trust at first glance.
 
-**Acceptance Criteria:**
-- `POST /api/v1/benchmark/run` internal endpoint (auth via `BENCHMARK_SECRET` env var)
-- Input: `{ secret, domain, query, tools[] }` — empty tools = all benchmarkable tools
-- Each batch run gets a unique `batchId` (UUID) — all results from the same query share it
-- Add `batchId String?` field to `BenchmarkRun` model in Prisma schema
-- Update `/api/cron/benchmark-run` to use batch mode: pick a query, run it against ALL eligible tools, tag results with shared `batchId`
-- LLM evaluation (Claude Haiku) scores each result: relevance (0-5), freshness, completeness
-- Recalculate product weighted scores after each batch
-- Minimum: 3 batch runs/hour across rotating domains = 18 tool-runs/hour
-- Batch results visible on `/benchmarks` page grouped by `batchId` (click to expand side-by-side comparison)
+### A. Glassmorphism card layer
 
-### 2. Embeddable Score Badge Widget
-**Why:** Tool makers who claim their product need a way to show off their ranking. An SVG badge (like npm download badges or GitHub stars) that says "AgentPick: #1 in Finance — 4.8/5" is free viral distribution. Every badge on a tool maker's docs site is a backlink driving developer discovery. This is the cheapest growth mechanic we can build.
+Replace the flat `.card` (white bg, `#E5E5E5` border) with a glass variant for pricing cards, strategy cards, benchmark score cards, and the competitive position card on `/dashboard/[slug]`:
 
-**Acceptance Criteria:**
-- `GET /api/v1/products/[slug]/badge.svg` returns a dynamic SVG badge
-- Badge shows: tool name, overall rank, top domain, benchmark score
-- Query param `?domain=finance` shows domain-specific ranking
-- Query param `?style=flat|plastic` for badge style variants (like shields.io)
-- Badge is cacheable (5-minute `Cache-Control`) but reflects latest data
-- `/dashboard/[slug]` page shows a "Embed your badge" section with markdown/HTML snippets for claimed products
-- Badge links back to the product page on AgentPick (`/products/[slug]`)
+```css
+.card-glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+```
 
-## Should Have (if time):
+Background context layer behind cards: a static radial gradient mesh so the blur has something to refract against (flat white produces no effect).
 
-### 3. Tool Maker Competitive Snapshot on Dashboard
-**Why:** The current maker dashboard (`/dashboard/[slug]`) shows raw counts. A claimed tool maker should see their competitive position at a glance: rank by domain, trend arrows (up/down/stable vs last week), and their strongest/weakest domain. This is the teaser for paid analytics.
+### B. Gradient hero + typography upgrade
 
-**Acceptance Criteria:**
-- On the claimed product dashboard, add a "Competitive Position" card
-- Shows: overall rank out of N tools, rank per domain (top 3 domains shown)
-- 7-day trend indicator per domain (↑ ↓ →)
-- "Strongest domain" and "Needs improvement" callouts
-- Link to full benchmarks page filtered to that tool's results
-- Data sourced from `BenchmarkRun` with `batchId` (depends on Feature 1)
+Replace the flat `#FAFAFA` hero background with a radial gradient mesh:
 
-## Won't Do This Version:
-- **Tool Maker Weekly Digest Email:** Still valuable, but email delivery infra (Resend integration, templates, unsubscribe) is a rabbit hole. Build the data layer (Feature 1) first; digest becomes trivial once batch data exists. Target for v1.0.
-- **Dynamic RAG-based Tool Selection:** Needs significantly more benchmark data to train heuristics. The batch engine (Feature 1) is the prerequisite. Target for v1.0+.
-- **Pricing/Payment Integration:** Pre-revenue is fine at this stage. Focus on building the data moat and tool maker engagement loop first. Revenue follows value.
-- **MCP Tool Count Expansion:** 20 MCP servers is sufficient. Quality of benchmark data matters more than breadth of tool catalog right now.
+```css
+background:
+  radial-gradient(ellipse 80% 50% at 20% -10%, rgba(37, 99, 235, 0.12) 0%, transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 110%, rgba(99, 102, 241, 0.10) 0%, transparent 55%),
+  #FAFAFA;
+```
 
-## Metrics to Watch:
-- **Controlled benchmark runs/day:** Target 432/day (18 runs/hour × 24 hours) — up from 0 controlled runs today
-- **Products with >50 batch benchmark runs:** Target all 6 primary search tools within 5 days of launch
-- **Badge embeds in the wild:** Target 3+ tool makers embedding badges within 2 weeks (track via Referer headers on badge requests)
-- **Maker dashboard visits/week:** Target 10+ visits from claimed product owners (indicates tool maker engagement)
-- **Compare page usage:** Track clicks on batch drill-down comparisons (indicates developer trust in data)
+Hero headline: `font-size: clamp(3rem, 7vw, 5.5rem)`, weight 800, letter-spacing `-0.03em`.
+Subhead: Inter 400, `#525252`, `1.25rem`, line-height 1.6.
+Keep the existing dark code block (`#0A0A0A`) — it contrasts beautifully against the light gradient.
 
-## Data Sources:
-- **Internal audit (March 2026):** Benchmarks page is live with domain filters, task breakdowns, and recent runs — but all runs are uncontrolled (no `batchId` in schema). Compare page exists but lacks controlled head-to-head data. Router SDK is functional with 23 APIs. Claim flow works. Maker dashboard shows raw counts but no competitive positioning.
-- **Competitor gap:** Toolhouse.ai has no public benchmarks. Composio has no head-to-head comparison data. Nobody in the space offers embeddable ranking badges — first-mover advantage. OpenRouter has model-level badges but not tool-level.
-- **Growth mechanics research:** Shields.io-style badges have proven viral in open source (npm, GitHub, CI status). Adapting this pattern to AI tool rankings is novel and low-effort to implement.
-- **v0.8 retrospective:** Benchmark Report Page shipped successfully. Controlled Batch Benchmarks and Tool Maker Digest did not ship. Batch benchmarks remain the #1 blocker for data credibility.
+### C. Animated score counters
 
-## Estimated Effort:
-- Feature 1 (Controlled Batch Benchmarks): ~2 hours — schema migration + endpoint + cron update + batch grouping UI
-- Feature 2 (Embeddable Badge Widget): ~1 hour — SVG generation endpoint + dashboard embed snippet
-- Feature 3 (Competitive Snapshot): ~1 hour — dashboard card + aggregation query
+On the benchmarks page and dashboard stats grid, count up from 0 on scroll-enter:
+- Duration: 1200ms, easing: `cubic-bezier(0.25, 1, 0.5, 1)`
+- Integer values (scores, counts): no decimals
+- Latency values: one decimal place
+- Use `IntersectionObserver` to trigger — no layout shift, no SSR issues
 
-## Dependencies:
-- `BENCHMARK_SECRET` env var must be set in production
-- Prisma schema migration for `batchId` field on `BenchmarkRun`
-- Claude Haiku API key for LLM evaluation (already configured)
-- Feature 3 depends on Feature 1 (needs batch data to compute fair rankings)
+### D. Micro-interactions on strategy/tool cards
+
+```css
+/* hover lift */
+.card-interactive { transition: transform 200ms ease, box-shadow 200ms ease; }
+.card-interactive:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+.card-interactive:active { transform: translateY(-1px); }
+
+/* accent underline sweep */
+.card-interactive::after {
+  content: ''; position: absolute; bottom: 0; left: 0;
+  height: 2px; width: 0; background: #2563EB;
+  transition: width 200ms ease;
+}
+.card-interactive:hover::after { width: 100%; }
+```
+
+### E. Benchmark score ring (SVG)
+
+Replace raw numeric scores in benchmark result rows with a circular SVG progress ring:
+- Radius 20px, stroke-width 3px
+- Color: `#22C55E` (≥80), `#F59E0B` (60–79), `#EF4444` (<60)
+- Animate `stroke-dashoffset` on mount: 600ms ease-out
+- Score number centered inside ring, JetBrains Mono 500
+
+**Acceptance:**
+- Lighthouse performance ≥ 90 on homepage (use `will-change: transform` on animated cards, no CLS from animations)
+- Glass/gradient effects render correctly in Safari 17+ (test `-webkit-backdrop-filter`)
+- All animations respect `prefers-reduced-motion: reduce`
+
+---
+
+## Feature 2 — Fix 3 P2 API Contract Bugs
+
+**Why:** These are silent DX failures. A developer who hits a `400` with no clear fix bounces. They're the primary reason QA is at 78% instead of 90%+. All three are response/schema shaping fixes — no logic changes, ~30 minutes total.
+
+### Bug A — `POST /api/v1/route/crawl` requires `params` wrapper (QA: 1.1b-crawl-routing)
+
+**Current:** `{"url": "..."}` → `400 VALIDATION_ERROR: params object is required`
+**Fix:** Accept both shapes via Zod union:
+
+```ts
+const CrawlBody = z.union([
+  z.object({ params: z.object({ url: z.string().url() }) }),
+  z.object({ url: z.string().url() }) // flat shape — auto-wrap internally
+])
+// Normalize: const url = body.params?.url ?? body.url
+```
+
+Canonical shape stays `{ params: { url } }` in docs. Flat shape silently accepted forever.
+
+### Bug B — `POST /api/v1/router/priority` wrong field name (QA: 2.6-set-priority)
+
+**Current:** Sending `{ "search": [...] }` → `400: Provide tools/priority_tools`
+**Fix:** Normalize all three accepted keys at handler entry:
+
+```ts
+const tools = body.tools ?? body.priority_tools ?? body.search
+if (!tools?.length) throw new ValidationError('Provide tools or priority_tools')
+```
+
+### Bug C — Usage endpoint missing account fields (QA: 7.1-account-fields)
+
+**Current:** `account` object in `/api/v1/router/usage` response only returns `{ plan }`.
+**Fix:** Extend response to include all four fields:
+
+```json
+{
+  "plan": "free",
+  "monthlyLimit": 10000,
+  "callsThisMonth": 247,
+  "strategy": "auto"
+}
+```
+
+Data already exists — `callsThisMonth` from calls table count, `monthlyLimit` from plan config, `strategy` from user settings. This is response-shaping only.
+
+**Acceptance:** QA tests 1.1b, 2.6, 7.1 all pass. No regressions on currently passing tests.
+
+---
+
+## Feature 3 — Interactive API Playground (Developer Adoption)
+
+**Why:** The #1 friction for new developers is "does this work for my use case before I integrate?" A live in-browser playground removes that friction entirely. Stripe, Exa, and Tavily all have this. Developers who try the API in-browser convert to signups at 3–5x the rate of those who only read docs. This is the highest-leverage feature for developer adoption this cycle.
+
+**Route:** New page at `/playground`. Add `Playground` to main nav between `Benchmarks` and `Docs`.
+
+### Layout
+
+Two-column split (60/40 on desktop, stacked on mobile):
+- Left: Request builder (glass card)
+- Right: Live response panel (glass card)
+
+### Request Builder (left)
+
+1. **Endpoint tabs** — pill row: `Search` | `Crawl` | `Embed` | `Finance`. Switching tab updates the request body template.
+2. **Query textarea** — full-width, JetBrains Mono, placeholder: `"Find the latest research on AI agent benchmarks"`
+3. **Strategy pills** — `auto` | `fastest` | `cheapest` | `best_quality`. Default: `auto`.
+4. **Run button** — full-width, black, animated spinner while loading. Disabled until query non-empty.
+5. **API key toggle** — "Using demo key (10 req/day)" by default. "Use my key" expands an input field.
+
+### Response Panel (right)
+
+Tabbed: `Response` | `cURL` | `Python` | `Node`
+
+- **Response tab:** Syntax-highlighted JSON with line numbers. Latency badge top-right (`247ms`). Tool name pill (`exa-search`). Fade-in animation on new response. Empty state: dashed border with "Run a query to see results".
+- **Code tabs:** Auto-generated snippets that update in real-time as params change (no need to Run first). One-click copy button.
+
+Node.js snippet template:
+```js
+const res = await fetch('https://agentpick.dev/api/v1/route/search', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    query: "{{userQuery}}",
+    strategy: "{{strategy}}"
+  })
+})
+const data = await res.json()
+```
+
+### Demo key implementation
+
+- New env var: `PLAYGROUND_DEMO_KEY` — a real API key on a special `demo` plan
+- Rate limit: 10 requests/day per IP (tracked in `playground_rate_limits` DB table: `ip`, `date`, `count`)
+- Returns **real results** — actual routing, actual tool calls, not mocked data
+- 429 response: `{ "error": "Demo limit reached", "message": "Sign up for free to continue" }`
+- "Sign up to get your key" CTA pinned at bottom of response panel when on demo key
+
+**Acceptance:**
+- Page loads in <1s (no API call on mount)
+- All 4 endpoint types return real responses with demo key
+- Code snippets update in real-time as user changes query/strategy (no Run click needed)
+- Mobile layout stacks cleanly, no horizontal scroll
+- Rate limit blocks at 11th request, shows signup CTA
+
+---
+
+## P3 Stretch (if time allows)
+
+- **ai_routing_summary in usage** (QA: 6.5) — add LLM-generated summary sentence to `/api/v1/router/usage?period=7d`
+- **Fix cheapest strategy routing** (QA: 1.4b) — audit tool pricing table; `tavily` should not win `cheapest` over `serper`/`brave-search`
+
+---
+
+## Ship Checklist
+
+**Feature 1 — UI**
+- [ ] `globals.css`: add `.card-glass`, `.card-interactive`, gradient mesh tokens
+- [ ] Hero: gradient background + typography upgrade applied in `app/page.tsx`
+- [ ] Benchmark score rows: replace numeric score with SVG ring component
+- [ ] Strategy/tool cards: apply `.card-interactive` micro-interactions
+- [ ] Scroll-reveal stat counters on benchmarks and dashboard stats grid
+
+**Feature 2 — Bugs**
+- [ ] Crawl endpoint: Zod union accepts flat `{url}` shape
+- [ ] Priority endpoint: normalize `tools` / `priority_tools` / `search` keys
+- [ ] Usage response: return all 4 account fields
+
+**Feature 3 — Playground**
+- [ ] `/playground` page with request builder + response panel
+- [ ] Demo key provisioned, rate limiting via DB table
+- [ ] Code snippets (cURL, Python, Node) auto-generate from params
+- [ ] `Playground` added to main nav
+- [ ] "Sign up" CTA visible on demo key mode
+
+**QA**
+- [ ] Re-run `agentpick-router-qa.py` — target ≥ 46/51 (90%)
+- [ ] Lighthouse performance ≥ 90 on homepage
+- [ ] Safari 17+ glass effects verified

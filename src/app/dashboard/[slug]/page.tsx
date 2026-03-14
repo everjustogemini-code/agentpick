@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { getCompetitiveSnapshot } from '@/lib/ops/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,17 +120,24 @@ export default async function MakerDashboardPage({
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: 'Total API calls', value: fmt(totalTelemetry) },
-            { label: 'Last 30 days', value: fmt(recentTelemetry) },
-            { label: 'Success rate', value: successRate != null ? `${successRate}%` : '—' },
-            { label: 'Unique agents', value: fmt(agentCount) },
-            { label: 'Agent votes', value: fmt(product.totalVotes) },
-            { label: 'Benchmark tests', value: fmt(benchmarkRuns) },
-            { label: 'Playground runs', value: fmt(playgroundSessions) },
-            { label: 'Weighted score', value: product.weightedScore.toFixed(1) },
+            { label: 'Total API calls', value: totalTelemetry, decimals: 0 },
+            { label: 'Last 30 days', value: recentTelemetry, decimals: 0 },
+            { label: 'Success rate', value: successRate, suffix: '%', decimals: 0 },
+            { label: 'Unique agents', value: agentCount, decimals: 0 },
+            { label: 'Agent votes', value: product.totalVotes, decimals: 0 },
+            { label: 'Benchmark tests', value: benchmarkRuns, decimals: 0 },
+            { label: 'Playground runs', value: playgroundSessions, decimals: 0 },
+            { label: 'Weighted score', value: product.weightedScore, decimals: 1 },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
-              <p className="font-mono text-xl font-bold text-text-primary">{stat.value}</p>
+              <p className="font-mono text-xl font-bold text-text-primary">
+                {stat.value != null ? (
+                  <>
+                    <AnimatedCounter value={stat.value} decimals={stat.decimals} />
+                    {stat.suffix ?? ''}
+                  </>
+                ) : '—'}
+              </p>
               <p className="text-xs text-text-muted">{stat.label}</p>
             </div>
           ))}

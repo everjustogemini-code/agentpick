@@ -705,3 +705,15 @@ enum RouterStrategy {
   MANUAL
   AUTO
 }
+
+// ============================================================
+// PLAYGROUND RATE LIMITING
+// ============================================================
+
+model PlaygroundRateLimit {
+  ip    String
+  date  DateTime @db.Date
+  count Int      @default(0)
+
+  @@id([ip, date])
+}
