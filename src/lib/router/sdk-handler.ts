@@ -46,7 +46,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   // This avoids any DB lookup for clearly unauthenticated requests.
   const _authHeader = request.headers.get('authorization');
   const _urlForAuth = new URL(request.url);
-  if (!_authHeader && !_urlForAuth.searchParams.has('token')) {
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 
