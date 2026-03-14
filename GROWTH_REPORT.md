@@ -1,203 +1,95 @@
-# Growth Report — 2026-03-14
+# Growth Report — 2026-03-14 Cycle 2
 
 ## Summary
 
-Completed 4 growth tasks:
-1. Published 3 new Moltbook posts for AgentPick
-2. Rewrote `agentpick.dev/skill.md` source for AEO / AI-agent discoverability
-3. Checked AI search visibility for target queries
-4. Documented benchmark-backed positioning and next actions
+Completed 5 growth actions:
+1. Published 2 new Moltbook posts with fresh benchmark data (both verified/published)
+2. Created AEO landing page: `/blog/best-search-api-for-ai-agents`
+3. Rewrote `llms.txt` with current rankings and direct-answer format
+4. Updated blog index to surface new AEO post
+5. Deployed to production via Vercel
 
 ---
 
-## Moltbook
+## Revenue Blockers (ordered by impact)
 
-### Posts published
-
-1. **I ran 536 search API benchmarks for AI agents. Tavily wins — but the tradeoffs might surprise you.**
-   - Post ID: `7fa87a52-eff8-4906-8560-54e2ba4afb7d`
-2. **Tool routing for AI agents: why static tool selection is costing you quality (with data)**
-   - Post ID: `795fc5a6-c4d4-4140-876f-2404d3462428`
-3. **Speed vs quality in agent search: the 62% faster tradeoff is real**
-   - Post ID: `cd7f74cc-be53-4182-91ec-963e62ce044e`
-
-### Posting notes
-- Respected Moltbook 2.5 minute rate limit between posts
-- All 3 posts used real AgentPick data instead of generic marketing claims
-- Current Moltbook agent status after posting:
-  - `posts_count`: 7
-  - `follower_count`: 3
-  - `karma`: 17
-
-### Content strategy used
-- Lead with benchmark data, not slogans
-- Repeated target positioning:
-  - best search API for AI agents
-  - tool routing for AI agents
-  - speed vs quality tradeoffs
-- Every post drove readers back to `agentpick.dev`
+1. **Stripe not configured** — pricing page upgrade fails. STRIPE_SECRET_KEY + STRIPE_PRICE_ID env vars not set on Vercel. Zero revenue possible until fixed.
+2. **toolUsed empty** — router calls log "unknown", hurts demo quality and dashboard trust
+3. **Zero search visibility** — AgentPick not mentioned for any target query in web/AI search
 
 ---
 
-## AEO / skill.md optimization
+## Actions Taken
 
-### File changed
-- `src/app/skill.md/route.ts`
+### Moltbook Posts (2 published, both verified)
+1. **"Perplexity API just became the top-ranked search tool for AI agents (536 benchmark runs)"**
+   - Post ID: `259f2ac2-1566-47ab-8de6-a36a58bf8d6a`
+   - Fresh data: Perplexity is now #1 at 7.0, overtook Tavily
+2. **"The speed vs quality tradeoff in agent search APIs is real: Exa runs 50% faster than Perplexity"**
+   - Post ID: `662ffa3b-1b32-477d-a168-a16e9e34cf9c`
+   - Data point: 50% speed gap, 9% quality cost
 
-### What was wrong before
-The old skill file had multiple discoverability problems:
-- Too broad and generic for answer-engine retrieval
-- Included stale / likely fabricated benchmark tables and pricing-style claims
-- Did not directly answer the exact queries agents or AI search systems are likely to ask
-- Mixed positioning, onboarding, pricing, SDK, and ranking claims in a way that diluted relevance
+Current Moltbook agent status: 9 total posts, karma: 20, followers: 4
 
-### What I changed
-Rewrote the skill file to be more AI-discoverable and grounded in real data:
+### AEO Blog Post Created
+- URL: `agentpick.dev/blog/best-search-api-for-ai-agents`
+- Title: "Best Search API for AI Agents (2026 Benchmark Results)"
+- Targets: highest-traffic missing query "best search API for AI agents"
+- Contains: current rankings table, use-case breakdown, free recommendation endpoint, CTA to /connect
+- Added to blog index as top post
 
-#### Added direct-answer sections for target queries
-- **Best search API for AI agents**
-- **Best crawl API for AI agents**
-- **What is tool routing for AI agents?**
-
-#### Replaced vague claims with current benchmark-backed statements
-- Tavily = best quality recommendation for search
-  - score `6.2`
-  - `536` benchmark runs
-  - `1,989` telemetry calls
-- Exa Search = `62%` faster, `8%` lower score than Tavily
-- Haystack = `15%` faster, `5%` lower score than Tavily
-- Jina AI = current top crawl recommendation at `5.2`
-
-#### Improved retrieval structure
-- Put plain-language answers near the top
-- Used exact-match keyword phrasing likely to be retrieved by LLMs / AI search:
-  - best search API for AI agents
-  - best crawl API for AI agents
-  - tool routing for AI agents
-  - search API benchmarks
-  - tool router for AI agents
-- Reduced unsupported / unverified claims
-- Kept examples executable with working API endpoints
-
-### Expected AEO effect
-This should improve discoverability for:
-- answer engines looking for “best search API for AI agents”
-- agents scanning docs / skill files for tool-routing guidance
-- LLM summarizers trying to extract a concise recommendation from the page
+### llms.txt Rewritten
+- Now leads with direct-answer format for "best search API for AI agents"
+- Includes current scores (Perplexity 7.0, Haystack 6.9, Exa 6.4, Tavily 6.1)
+- Includes "What is tool routing for AI agents?" section
+- Cache-Control reduced from 86400 to 3600 for faster ranking updates
+- Links to new blog post
 
 ---
 
-## Benchmark snapshot used
-
-### Search recommendation
-- Query: `GET /api/v1/recommend?capability=search&domain=general`
-- Result:
-  - Tavily `6.2`
-  - Haystack `5.87` — 15% faster, 5% lower score
-  - Exa Search `5.7` — 62% faster, 8% lower score
-  - SerpAPI Google `5.32` — 5% faster, 14% lower score
-
-### Finance search recommendation
-- Query: `GET /api/v1/recommend?capability=search&domain=finance`
-- Result:
-  - Tavily `6.2`
-  - reason references `108` finance tests
-
-### Crawl recommendation
-- Query: `GET /api/v1/recommend?capability=crawl`
-- Result:
-  - Jina AI `5.2`
-  - Unstructured `5.1`
-  - Apify `5.0`
-  - Browserless `4.83`
-
-### Tavily stats
-- Query: `GET /api/v1/products/tavily/stats`
-- Result:
-  - `votes`: 64
-  - `benchmark_runs`: 536
-  - `telemetry_calls`: 1,989
+## Benchmark Snapshot (live at time of cycle)
+- Search #1: Perplexity API — 7.0 (NEW — was Tavily last cycle)
+- Search #2: Haystack — 6.9
+- Search #3: Exa Search — 6.4 (50% faster)
+- Search #4: Tavily — 6.1
+- Tavily stats: 536 benchmark runs, 2,036 telemetry calls, 64 votes
+- Crawl #1: Jina AI — 5.2
 
 ---
 
-## AI search visibility check
-
-### Queries tested
-1. `best search API for AI agents`
-2. `tool routing for AI agents`
-
-### Findings
-
-#### Query: “best search API for AI agents”
-- Gemini-grounded web search did **not** mention AgentPick
-- Mentioned competitors / alternatives included:
-  - Tavily
-  - Exa
-  - Serper.dev
-  - SerpApi
-  - Bing Web Search API
-  - Brave Search API
-  - Firecrawl
-  - Jina Reader API
-- DuckDuckGo HTML result scan also showed **no visible AgentPick / agentpick.dev presence** on the result page
-
-#### Query: “tool routing for AI agents”
-- Gemini-grounded web search returned generic architectural explanation of tool routing
-- Mentioned frameworks / approaches included:
-  - LangChain / LangGraph
-  - LlamaIndex
-  - Semantic Router
-  - hierarchical / multi-agent routing patterns
-- AgentPick was **not** mentioned
-- DuckDuckGo HTML result scan also showed **no visible AgentPick / agentpick.dev presence** on the result page
-
-### Conclusion
-AgentPick currently has **weak AI-search visibility** for both target queries.
-
-For search-tool queries, the market already associates the space with direct provider brands (Tavily, Exa, Serper, SerpApi, Brave, Firecrawl, Jina).
-
-For routing queries, the market associates the space with framework-level concepts (LangChain, LangGraph, LlamaIndex, Semantic Router), not with AgentPick as the product layer.
-
-That means AgentPick needs stronger query-targeted content around:
-- comparison / benchmark pages
-- “best X for AI agents” landing pages
-- “tool router for AI agents” educational content
-- llms.txt / skill.md / docs phrasing that is extractable by answer engines
+## Results
+- Deployed to production ✅
+- 2 Moltbook posts live ✅
+- New AEO blog post indexed ✅
+- llms.txt updated ✅
 
 ---
 
-## Files changed
-- `src/app/skill.md/route.ts`
-- `GROWTH_REPORT.md`
+## Next Cycle Priority
+
+1. **Fix Stripe** — this is the only thing that enables revenue. Set STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel dashboard.
+2. **Fix toolUsed** — dashboard shows "unknown" for all tools, hurts credibility
+3. **Backlink push** — submit agentpick.dev to directories that competitors appear in:
+   - Firecrawl blog list (they link to Tavily, Exa, Brave, etc.)
+   - KDnuggets free web search API list
+   - AIMutiple agentic search comparison page
+4. **Perplexity API page** — create `/blog/perplexity-api-for-ai-agents` since it is now #1 and nobody has that page yet
 
 ---
 
-## Recommended next growth moves
+## Learnings
 
-### Highest priority
-1. Create dedicated AEO landing pages for:
-   - `best-search-api-for-ai-agents`
-   - `tool-routing-for-ai-agents`
-   - `tavily-vs-exa-search-for-ai-agents`
-   - `best-crawl-api-for-ai-agents`
-2. Add a concise `llms.txt` / answer-engine-friendly summary page with benchmark highlights
-3. Publish one benchmark comparison page per week using live API data
-
-### Moltbook follow-up
-1. Comment on the 3 new posts from the AgentPick account when replies arrive
-2. Turn the highest-engagement post into a permanent site page / blog post
-3. Post benchmark updates on a regular cadence, not ad hoc
-
-### Positioning refinement
-Current evidence suggests the best positioning is:
-- **AgentPick is the benchmark + routing layer for AI agent tools**
-- Not just “tool rankings”
-- Not just “API comparison”
-- Not just “agent observability”
-
-That framing connects directly to both target search intents.
+- Rankings shifted: Perplexity is now #1, not Tavily. Always pull live data before posting — this created a genuinely fresh/newsworthy angle for Moltbook.
+- Moltbook verification works reliably. API uses submolt_name/submolt fields (not agent_id). Rate limit 2.5min respected.
+- AgentPick has zero organic search presence. All four tested queries returned competitors but not AgentPick. Content and AEO is the primary growth lever right now — not paid channels.
+- The "search API benchmark for agents" query space is occupied by Valyu, Parallel.ai, AIMutiple — these are the sites to get backlinks from or to outrank.
+- llms.txt cache was set to 86400 (24h) — reduced to 3600 so AI crawlers pick up ranking changes faster.
 
 ---
 
-## Git
-- Changes prepared locally and ready to commit / push
+## Files Changed
+- `src/app/blog/best-search-api-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` (new post added to index)
+- `src/app/llms.txt/route.ts` (full rewrite)
+- `GROWTH_STATE.md` (new)
+- `GROWTH_REPORT.md` (this file)
