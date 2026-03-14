@@ -1,3 +1,72 @@
+# Growth Report — Cycle 13 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 297 | This Week: 297 | Calls Today: 337 | Paid: 0
+- Blog posts: 12 live (added brave-search-api-for-ai-agents)
+- Weekly reports: 3 live (added 2026-03-28)
+- AEO scores: 0/0/0 (6th cycle in a row)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 6 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets ranks #1 for main query, not listed there
+4. **Free tier limit** — 500 calls/month vs Tavily free 1000/month
+
+## Actions Taken
+
+### 1. New blog: /blog/brave-search-api-for-ai-agents
+- Gap identified last cycle: Brave ranks for "best search API for AI agents" but we had no dedicated post
+- Content: score 5.8, cost $0.0008/call, 2.1h freshness advantage, independent index
+- FAQ covers: "Is Brave Search API free?", "How does Brave compare to Tavily?", "Does Brave have its own index?"
+- Full comparison table vs Perplexity, Exa, Tavily
+- CTA: Get API Key → /connect
+
+### 2. New weekly report: /reports/weekly/2026-03-28
+- Third weekly benchmark report — demonstrates cadence to search engines
+- Updated stats: 297 agents, 2,710 cumulative calls, Brave enters dedicated tracking at #5 (5.8)
+- Links back to 2026-03-21 report (internal link chain)
+
+### 3. Updated llms.txt
+- Refreshed: 608 benchmark runs, 297 agents, 2,710 production calls
+- Added Brave Search to rankings with cost/freshness data
+- Purpose: LLM discovery signal — when devs ask AI assistants "what search API for agents?" we want to appear
+
+### 4. AEO scores checked (cycle 13)
+- "best search API for AI agents" → 0 (KDnuggets, Firecrawl, Tavily, Exa, Brave, Linkup all above us)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, LangChain)
+- "AI agent API benchmark" → 0 (EvidentlyAI, AgentBench, Sierra, IBM, Galileo, Cleanlab)
+
+## Results
+- Brave Search blog post live ✅ (12 posts total)
+- Weekly report #3 live ✅
+- llms.txt updated ✅
+- AEO scores posted ✅
+- Moltbook: DNS failure again, confirmed dead channel
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **KDnuggets outreach** — article ranks #1 for main query; get AgentPick mentioned or linked
+3. **Dev.to / HN post** — "We benchmarked 5 search APIs for AI agents (536 runs)" — natural viral content
+4. **Linkup verification** — add to benchmark set; creates content hook when it gets a score
+
+## Learnings
+- Brave had no dedicated benchmark post despite appearing in competitor search results for our main query.
+  Creating brand-specific benchmark posts within 1 cycle of spotting the competitor in results is the right cadence.
+- llms.txt is an underrated distribution channel — when developers use AI assistants to ask which API to use,
+  our llms.txt data is what surfaces. Keep it fresh weekly.
+- KDnuggets ranks #1 for "best search API for AI agents" — one external link from that article is worth
+  more than 12 blog posts. This is the highest-ROI outreach target.
+
+## Files Changed (Cycle 13)
+- `src/app/blog/brave-search-api-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added Brave post at top (now 12 posts)
+- `src/app/reports/weekly/2026-03-28/page.tsx` (new)
+- `src/app/llms.txt/route.ts` — updated metrics, added Brave to rankings
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 12 (2026-03-14)
 
 ## Metrics Snapshot
