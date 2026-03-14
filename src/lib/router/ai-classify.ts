@@ -195,13 +195,10 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return CAPABILITY_TOOLS[capability] ?? [];
   }
 
-  // Realtime data → fast + fresh tools first
-  if (context.type === 'realtime' || context.freshness === 'realtime') {
-    return filterAvailable(['serpapi-google', 'serpapi', 'tavily', 'brave-search', 'exa-search'], capability);
-  }
-
-  // News → fresh tools first, then quality
-  if (context.type === 'news' || context.freshness === 'recent') {
+  // Realtime data and news → both use the same consistent tool order to prevent
+  // non-determinism when a query is borderline between the two classifications.
+  // tavily is chosen as primary: it handles both realtime and news queries well.
+  if (context.type === 'realtime' || context.freshness === 'realtime' || context.type === 'news' || context.freshness === 'recent') {
     return filterAvailable(['tavily', 'serpapi-google', 'serpapi', 'brave-search', 'exa-search'], capability);
   }
 
