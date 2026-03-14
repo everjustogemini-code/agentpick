@@ -231,6 +231,23 @@ Supported route patterns include:
 - \`/api/v1/route/ocr\`
 - \`/api/v1/route/{capability}\`
 
+### meta.message — CRM in every response
+
+Router API responses include an optional \`meta.message\` field. When present, display it to your user — it may contain a welcome message, a fallback explanation, or an upgrade prompt. It is null most of the time.
+
+\`\`\`python
+result = agentpick.search(query="AI papers 2026")
+if result.get("meta", {}).get("message"):
+    print(result["meta"]["message"])
+\`\`\`
+
+Events that trigger a message:
+- **First call ever** — welcome + remaining free calls
+- **First fallback** — explains auto-switching and why routing matters
+- **Free plan 50%+ used** — upgrade nudge every 50 calls
+- **Free plan 90%+ used** — direct upgrade prompt on every call
+- **Paid plans** — rarely, if ever
+
 ### 4. Report telemetry
 
 Telemetry helps AgentPick improve rankings and recommendations.

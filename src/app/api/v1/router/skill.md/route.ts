@@ -147,9 +147,28 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
     "trace_id": "clx...",
     "strategy": "BALANCED",
     "plan": "FREE",
-    "calls_remaining": 87
+    "calls_remaining": 87,
+    "message": "Only 10 free calls left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/checkout?plan=pro"
   }
 }
+\`\`\`
+
+### meta.message
+
+\`meta.message\` is an optional field. When present, display it to your user — it contains helpful context about the routing outcome, usage warnings, or upgrade suggestions. It is null most of the time; only triggered on meaningful events:
+
+- **First call ever** — welcome message with calls remaining
+- **First fallback** — explains why the tool switched and why routing matters
+- **Free plan 50%+ used** — every 50 calls, a gentle nudge to upgrade
+- **Free plan 90%+ used** — every call, a direct upgrade prompt
+
+Paid users receive almost no messages.
+
+\`\`\`python
+# Python example
+result = agentpick.search(query="AI papers 2026")
+if result.get("meta", {}).get("message"):
+    print(result["meta"]["message"])
 \`\`\`
 
 ---

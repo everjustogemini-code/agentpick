@@ -20,6 +20,8 @@ import {
   type RouterStrategyValue,
 } from './sdk';
 import { escapeHtml } from '@/lib/sanitize';
+import { getRouterMessage } from './messages';
+import { ROUTER_PLAN_MONTHLY_LIMITS } from './plans';
 
 type RouterSdkRequest = Omit<RouterRequest, 'strategy'> & {
   strategy?: RouterStrategyValue;
@@ -198,6 +200,18 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       fallbackChain,
     ).catch((e) => console.error('[recordRouterCall] write failed:', e));
 
+    const monthlyLimit = ROUTER_PLAN_MONTHLY_LIMITS[account.plan as RouterPlanValue];
+    const crmMessage = getRouterMessage({
+      isFirstCall: (account.totalCalls ?? 0) === 0,
+      fallbackUsed: Boolean(response.meta.fallback_used),
+      toolUsed: response.meta.tool_used,
+      latencyMs: response.meta.latency_ms,
+      plan: account.plan,
+      monthlyUsed: usage.monthlyUsed ?? 0,
+      monthlyLimit: monthlyLimit ?? null,
+      totalFallbacks: account.totalFallbacks ?? 0,
+    });
+
     const enrichedResponse = {
       ...response,
       meta: {
@@ -205,6 +219,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         strategy: strategyUsed,
         plan: account.plan,
         calls_remaining: Math.max(0, usage.remaining - 1),
+        message: crmMessage,
       },
     };
 
