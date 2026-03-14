@@ -46,6 +46,7 @@ export function middleware(request: NextRequest) {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
 
     // Standard API headers
     const requestId = generateRequestId();
@@ -86,6 +87,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'");
 
   response.headers.append('Link', '</api/v1/products>; rel="api"');
   response.headers.append('Link', '</.well-known/agentpick.json>; rel="agent-directory"');
