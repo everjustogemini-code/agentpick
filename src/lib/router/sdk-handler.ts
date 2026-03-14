@@ -85,6 +85,18 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       if (Array.isArray(rawPriority)) {
         parsed.priority_tools = rawPriority.filter((t: unknown) => typeof t === 'string');
       }
+      // Normalize flat body: { query/q/text/input/url/ticker/symbol } → { params: { ... } }
+      if (
+        !parsed.params &&
+        (parsed.query || parsed.q || parsed.text || parsed.input ||
+          parsed.url || parsed.ticker || parsed.symbol)
+      ) {
+        const { tool, tool_api_key, fallback, strategy: _s, priority_tools: _pt, priority: _p, priorityTools: _pT, ...rest } = parsed;
+        parsed.params = rest;
+        parsed.tool = tool;
+        parsed.tool_api_key = tool_api_key;
+        parsed.fallback = fallback;
+      }
       body = parsed;
     } catch {
       return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);

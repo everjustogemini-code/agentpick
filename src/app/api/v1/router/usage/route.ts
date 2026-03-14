@@ -17,7 +17,17 @@ export async function GET(request: NextRequest) {
 
   const account = await ensureDeveloperAccount(agent.id);
   const url = new URL(request.url);
-  const days = Math.min(parseInt(url.searchParams.get('days') ?? '7', 10), 90);
+  // Accept ?days=7 or ?period=7d (documented format used by QA and SDK clients)
+  const daysParam = url.searchParams.get('days');
+  const periodParam = url.searchParams.get('period');
+  let days = 7;
+  if (daysParam) {
+    days = parseInt(daysParam, 10);
+  } else if (periodParam) {
+    const m = periodParam.match(/^(\d+)d$/);
+    if (m) days = parseInt(m[1], 10);
+  }
+  days = Math.min(Math.max(days, 1), 90);
 
   const monthStart = new Date();
   monthStart.setUTCDate(1);

@@ -114,7 +114,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         parsed.strategy = resolved;
       }
 
-      if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input)) {
+      if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input || parsed.url || parsed.ticker || parsed.symbol)) {
         const { tool, tool_api_key, fallback, strategy: _s, priority_tools: _pt, priority: _p, priorityTools: _pT, ...rest } = parsed;
         parsed.params = rest;
         parsed.tool = tool;
