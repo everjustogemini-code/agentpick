@@ -62,7 +62,13 @@ export function apiError(
   const body: ApiError = {
     error: { code, message, ...extra },
   };
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    // Prevent proxies/CDNs from caching error responses, especially 401s.
+    // Without these headers a cached 200 (with no Vary: Authorization) could be
+    // served to unauthenticated requests that arrive after a valid one.
+    'Cache-Control': 'no-store',
+    'Vary': 'Authorization',
+  };
   // Include Retry-After header on 429 responses
   if (status === 429 && extra?.retry_after) {
     headers['Retry-After'] = String(extra.retry_after);
