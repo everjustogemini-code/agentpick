@@ -18,6 +18,9 @@ export async function GET(request: NextRequest) {
     if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
       return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
     }
+    if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
+      return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+    }
 
     let agent: Awaited<ReturnType<typeof authenticateAgent>>;
     try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
