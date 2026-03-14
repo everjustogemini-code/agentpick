@@ -53,13 +53,13 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   } catch {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
-  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
   // Reject non-Bearer auth schemes (e.g. "Token xyz", "APIKey xyz") immediately.
   // These cannot produce a valid ah_ token and would otherwise reach authenticateAgent
   // with a DB lookup, creating a narrow edge case window in edge deployments.
-  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.has('token')) {
+  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 
@@ -194,9 +194,13 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   const coreStrategy: Strategy = SDK_TO_CORE[strategyUsed.toUpperCase()] ?? 'balanced';
 
   // P1-3: Priority precedence: request-level priority_tools > account-level priorityTools > strategy
+  // For AUTO strategy, skip account-level priorityTools: AI routing must be free to select the
+  // best tool. Account priorityTools are set for MANUAL/BALANCED use cases and must not override
+  // AI classification results (which caused non-determinism when the account had stale priorityTools
+  // from a previous MANUAL/compare-strategies test cycle).
   const effectivePriority = body.priority_tools?.length
     ? body.priority_tools
-    : (account.priorityTools?.length ? account.priorityTools : undefined);
+    : (strategyUsed !== 'AUTO' && account.priorityTools?.length ? account.priorityTools : undefined);
 
   const routeBody: RouterRequest = {
     tool: body.tool,
