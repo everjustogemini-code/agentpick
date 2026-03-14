@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { getBillingPeriodStart } from '@/lib/router/billing';
 import {
   getRouterPlanLabel,
   isPlanAtLeast,
   normalizeUpgradePlan,
 } from '@/lib/router/plans';
-import { getAppBaseUrl, resolveRouterPlanFromStripePriceId } from '@/lib/stripe';
+import {
+  buildStripeCheckoutMetadata,
+  getAppBaseUrl,
+  getDeveloperAccountIdFromCheckoutSession,
+  resolveRouterPlanFromStripePriceId,
+} from '@/lib/stripe';
 
 const originalEnv = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -44,6 +50,39 @@ describe('router billing helpers', () => {
 });
 
 describe('stripe billing helpers', () => {
+  it('builds checkout metadata with the mapped router plan', () => {
+    expect(
+      buildStripeCheckoutMetadata({
+        developerAccountId: 'dev_123',
+        agentId: 'agent_123',
+        plan: 'pro',
+      }),
+    ).toEqual({
+      developerAccountId: 'dev_123',
+      agentId: 'agent_123',
+      requestedPlan: 'pro',
+      routerPlan: 'STARTER',
+    });
+  });
+
+  it('prefers metadata over client reference id when resolving checkout account ids', () => {
+    expect(
+      getDeveloperAccountIdFromCheckoutSession({
+        client_reference_id: 'dev_client_ref',
+        metadata: {
+          developerAccountId: 'dev_metadata',
+        },
+      } as never),
+    ).toBe('dev_metadata');
+
+    expect(
+      getDeveloperAccountIdFromCheckoutSession({
+        client_reference_id: 'dev_client_ref',
+        metadata: {},
+      } as never),
+    ).toBe('dev_client_ref');
+  });
+
   it('prefers configured app url for checkout redirects', () => {
     process.env.NEXT_PUBLIC_APP_URL = 'agentpick.dev/';
     process.env.APP_URL = '';
@@ -73,5 +112,18 @@ describe('stripe billing helpers', () => {
     expect(resolveRouterPlanFromStripePriceId('price_pro_123')).toBe('STARTER');
     expect(resolveRouterPlanFromStripePriceId('price_growth_456')).toBe('PRO');
     expect(resolveRouterPlanFromStripePriceId('price_unknown')).toBeNull();
+  });
+});
+
+describe('router billing period helpers', () => {
+  it('returns a valid billing period start when a stored date exists', () => {
+    const billingCycleStart = new Date('2026-03-10T12:30:00.000Z');
+    expect(getBillingPeriodStart(billingCycleStart)).toEqual(billingCycleStart);
+  });
+
+  it('falls back to the provided date when the stored billing date is missing', () => {
+    const fallback = new Date('2026-03-14T00:00:00.000Z');
+    expect(getBillingPeriodStart(null, fallback)).toEqual(fallback);
+    expect(getBillingPeriodStart('not-a-date', fallback)).toEqual(fallback);
   });
 });

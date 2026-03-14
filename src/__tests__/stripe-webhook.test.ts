@@ -124,4 +124,44 @@ describe('stripe webhook route', () => {
       },
     });
   });
+
+  it('downgrades paused subscriptions back to free', async () => {
+    const now = new Date('2026-03-14T10:00:00.000Z');
+    vi.setSystemTime(now);
+    mocks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.paused',
+      data: {
+        object: {
+          metadata: {
+            developerAccountId: 'dev_789',
+          },
+          status: 'paused',
+          items: {
+            data: [],
+          },
+        },
+      },
+    });
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const response = await POST(
+      new Request('https://agentpick.dev/api/webhooks/stripe', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'sig_test',
+        },
+        body: 'payload',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.updateMany).toHaveBeenCalledWith({
+      where: { id: 'dev_789' },
+      data: {
+        plan: 'FREE',
+        spentThisMonth: 0,
+        billingCycleStart: now,
+      },
+    });
+  });
 });

@@ -12,6 +12,14 @@ const db = prisma as any;
 
 export const runtime = 'nodejs';
 
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>(['active', 'trialing']);
+const INACTIVE_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>([
+  'canceled',
+  'incomplete_expired',
+  'paused',
+  'unpaid',
+]);
+
 async function updateDeveloperPlan(developerAccountId: string, plan: RouterPlanCode) {
   await db.developerAccount.updateMany({
     where: { id: developerAccountId },
@@ -58,6 +66,7 @@ export async function POST(request: Request) {
       }
 
       case 'customer.subscription.created':
+      case 'customer.subscription.resumed':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const developerAccountId = subscription.metadata?.developerAccountId;
@@ -65,16 +74,18 @@ export async function POST(request: Request) {
           getPlanFromMetadata(subscription.metadata) ??
           resolveRouterPlanFromStripePriceId(subscription.items.data[0]?.price?.id);
 
-        if (
-          developerAccountId &&
-          routerPlan &&
-          ['active', 'trialing'].includes(subscription.status)
-        ) {
+        if (developerAccountId && routerPlan && ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) {
           await updateDeveloperPlan(developerAccountId, routerPlan);
+        } else if (
+          developerAccountId &&
+          INACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)
+        ) {
+          await updateDeveloperPlan(developerAccountId, 'FREE');
         }
         break;
       }
 
+      case 'customer.subscription.paused':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const developerAccountId = subscription.metadata?.developerAccountId;
