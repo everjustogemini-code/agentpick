@@ -10,6 +10,8 @@ import {
 
 const db = prisma as any;
 
+export const runtime = 'nodejs';
+
 async function updateDeveloperPlan(developerAccountId: string, plan: RouterPlanCode) {
   await db.developerAccount.updateMany({
     where: { id: developerAccountId },

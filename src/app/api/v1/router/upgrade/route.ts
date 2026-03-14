@@ -15,6 +15,8 @@ import {
 } from '@/lib/stripe';
 import { apiError } from '@/types';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   const agent = await authenticateAgent(request);
   if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
