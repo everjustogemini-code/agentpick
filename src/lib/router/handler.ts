@@ -90,7 +90,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     // Reject invalid strategy names (accepts core names + SDK aliases)
     const resolvedStrategy = strategyParam ? resolveStrategy(strategyParam) : undefined;
     if (strategyParam && !resolvedStrategy) {
-      return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(strategyParam)}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate`, 400);
+      return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(strategyParam)}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate, custom, manual`, 400);
     }
 
     const priorityParam = url.searchParams.get('priority_tools') ?? url.searchParams.get('priority');
@@ -111,7 +111,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       if (strategy) {
         const resolved = resolveStrategy(strategy);
         if (!resolved) {
-          return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate`, 400);
+          return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate, custom, manual`, 400);
         }
         parsed.strategy = resolved;
       }

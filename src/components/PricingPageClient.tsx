@@ -130,26 +130,10 @@ export default function PricingPageClient() {
     }
     setCheckoutError('');
     setCheckoutPlan(plan);
-    try {
-      const res = await fetch('/api/v1/router/upgrade', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + key,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ plan }),
-      });
-      const data = await res.json();
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      } else {
-        setCheckoutError(data?.error?.message || 'Unable to start checkout.');
-      }
-    } catch {
-      setCheckoutError('Checkout failed. Please try again.');
-    } finally {
-      setCheckoutPlan(null);
-    }
+    // Save key and navigate to embedded checkout page
+    if (key) window.localStorage.setItem('agentpick_api_key', key);
+    window.location.href = '/checkout?plan=' + plan;
+    return;
   }, [apiKey]);
 
   const checkoutState = searchParams.get('checkout');

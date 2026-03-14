@@ -32,9 +32,9 @@ const ipMinuteBuckets = new Map<string, Bucket>();
 const ipDayBuckets = new Map<string, Bucket>();
 
 const RATE_LIMITS = {
-  free:   { perMin: 60,   perDay: 10000 },
-  pro:    { perMin: 200,  perDay: 10000 },
-  growth: { perMin: 1000, perDay: 100000 },
+  free:   { perMin: 200,  perDay: 50000 },
+  pro:    { perMin: 500,  perDay: 100000 },
+  growth: { perMin: 2000, perDay: 500000 },
   public: { perMin: 60,   perDay: 10000 },
 } as const;
 
