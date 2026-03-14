@@ -1,4 +1,4 @@
-import { runDueBenchmarkAgents } from '@/lib/ops/runner';
+import { runDueBenchmarkAgents, runBatchBenchmark } from '@/lib/ops/runner';
 
 export const maxDuration = 55; // Vercel cron has 60s timeout; keep under
 
@@ -18,19 +18,19 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Pick 5 due agents per invocation. At every-30-min schedule,
-    // all 50 agents cycle through within ~5 hours.
-    const agents = await runDueBenchmarkAgents(5);
+    // Primary: run one batch across all eligible tools for a rotating domain.
+    // Target: 3 batch runs per hour (cron every 20 min, 1 batch per invocation).
+    const batch = await runBatchBenchmark();
 
     return Response.json({
       ok: true,
-      triggered: agents.length,
-      agents: agents.map((a: any) => ({
-        id: a?.id,
-        displayName: a?.displayName,
-        lastRunAt: a?.lastRunAt,
-        lastRunSuccess: a?.lastRunSuccess,
-      })),
+      batch: {
+        batchId: batch.batchId,
+        domain: batch.domain,
+        query: batch.query,
+        toolsRun: batch.toolsRun,
+        results: batch.results,
+      },
     });
   } catch (error) {
     console.error('Benchmark cron failed:', error);
