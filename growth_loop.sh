@@ -7,6 +7,7 @@ WORKSPACE="/Users/pwclaw/.openclaw/workspace"
 BOT="8535747885:AAFZBbF7WsOfzKuJu_s7MxnbRXI8bO3NQDk"
 CHAT="5986849183"
 LOGDIR="/tmp/growth_agent"
+METRICS_FILE="$LOGDIR/metrics_last.json"
 mkdir -p "$LOGDIR"
 
 export ANTHROPIC_API_KEY=$(python3 -c "import json; from pathlib import Path; print(json.load(open(Path.home()/'.openclaw/agents/main/agent/auth-profiles.json'))['profiles']['anthropic:default']['key'])")
@@ -24,11 +25,93 @@ echo "🌱 Growth Loop cycle $CYCLE starting at $(date)"
 tg_raw "🌱 Growth Agent cycle $CYCLE starting"
 
 # ═══════════════════════════════════════════
+# METRICS SNAPSHOT — Fetch & compare with last cycle
+# ═══════════════════════════════════════════
+echo "📊 Fetching growth metrics..."
+METRICS_JSON=$(curl -s https://agentpick.dev/api/v1/admin/growth-metrics 2>/dev/null)
+METRICS_STATUS=$?
+
+if [ $METRICS_STATUS -eq 0 ] && [ -n "$METRICS_JSON" ] && echo "$METRICS_JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+  echo "$METRICS_JSON" > "$LOGDIR/metrics_cycle_${CYCLE}.json"
+
+  # Extract key numbers for logging
+  TOTAL_AGENTS=$(echo "$METRICS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['acquisition']['totalAgents'])" 2>/dev/null || echo "?")
+  AGENTS_WEEK=$(echo "$METRICS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['acquisition']['agentsThisWeek'])" 2>/dev/null || echo "?")
+  CALLS_TODAY=$(echo "$METRICS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['acquisition']['routerCallsToday'])" 2>/dev/null || echo "?")
+  PAID=$(echo "$METRICS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['conversion']['paidAccounts'])" 2>/dev/null || echo "?")
+  CONVERSION=$(echo "$METRICS_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['conversion']['conversionRate'])" 2>/dev/null || echo "?")
+
+  echo "📈 Metrics — Agents: $TOTAL_AGENTS total, $AGENTS_WEEK this week | Calls today: $CALLS_TODAY | Paid: $PAID ($CONVERSION% conversion)"
+  echo "Cycle $CYCLE metrics: agents=$TOTAL_AGENTS agents_week=$AGENTS_WEEK calls_today=$CALLS_TODAY paid=$PAID" >> "$LOGDIR/metrics_history.log"
+
+  # Stall detection: compare with last cycle
+  STALLED=false
+  if [ -f "$METRICS_FILE" ]; then
+    PREV_AGENTS=$(python3 -c "import json; d=json.load(open('$METRICS_FILE')); print(d['acquisition']['totalAgents'])" 2>/dev/null || echo "0")
+    PREV_CALLS=$(python3 -c "import json; d=json.load(open('$METRICS_FILE')); print(d['acquisition']['routerCallsToday'])" 2>/dev/null || echo "0")
+
+    if [ "$TOTAL_AGENTS" = "$PREV_AGENTS" ] && [ "$CALLS_TODAY" = "0" ] && [ "$PREV_CALLS" = "0" ]; then
+      STALLED=true
+      echo "⚠️  STALLED: No new agents or calls since last cycle. Need new strategy."
+      tg_raw "⚠️ Growth Agent cycle $CYCLE: STALLED — no new agents or calls. Triggering strategy review."
+    fi
+  fi
+
+  # Save current metrics as last
+  cp "$LOGDIR/metrics_cycle_${CYCLE}.json" "$METRICS_FILE"
+else
+  echo "⚠️  Could not fetch metrics from https://agentpick.dev/api/v1/admin/growth-metrics"
+  STALLED=false
+  TOTAL_AGENTS="unknown"
+  AGENTS_WEEK="unknown"
+  CALLS_TODAY="unknown"
+  PAID="unknown"
+  CONVERSION="unknown"
+fi
+
+# ═══════════════════════════════════════════
 # PHASE 1: REVIEW — What happened since last cycle?
 # ═══════════════════════════════════════════
+
+# Build AEO section — post scores after checking
+AEO_INSTRUCTIONS='## AEO Search Visibility Check:
+For each of these queries, search the web and check if agentpick.dev appears in results:
+1. "best search API for AI agents"
+2. "tool routing for AI agents"
+3. "AI agent API benchmark"
+
+For each query:
+- Search using a web search tool or curl a search API
+- Score: 0 = not in top 20, 50 = found on page 2 (positions 11-20), 100 = top 3
+- After checking, POST the score:
+  curl -s -X POST https://agentpick.dev/api/v1/admin/growth-metrics/aeo-score \
+    -H "Content-Type: application/json" \
+    -d '"'"'{"query": "QUERY_HERE", "score": SCORE, "notes": "NOTES_HERE"}'"'"'
+- Do this for ALL 3 queries'
+
+STALL_INSTRUCTIONS=""
+if [ "$STALLED" = "true" ]; then
+  STALL_INSTRUCTIONS='
+## ⚠️ STALL ALERT — HIGHEST PRIORITY
+The metrics show ZERO new agents and ZERO API calls since last cycle.
+This is an emergency. Before doing anything else:
+1. Identify why no one is registering (check /connect, /pricing, /api/v1/agents/register)
+2. Check if there are any error pages or broken flows
+3. Brainstorm 3 new distribution channels not yet tried
+4. Write these as immediate action items at the top of GROWTH_REPORT.md
+5. Execute the most promising one now'
+fi
+
 claude --permission-mode bypassPermissions \
   -p "You are the AgentPick Growth Agent. Your ONLY job is REVENUE GROWTH.
 Workspace: $(pwd)
+
+# CURRENT METRICS (Cycle $CYCLE)
+- Total Agents: $TOTAL_AGENTS
+- Agents This Week: $AGENTS_WEEK
+- Router Calls Today: $CALLS_TODAY
+- Paid Accounts: $PAID ($CONVERSION% conversion)
+$STALL_INSTRUCTIONS
 
 # PHASE 1: REVIEW
 
@@ -55,8 +138,7 @@ Based on your review, do 3-5 of these actions (pick the highest impact ones):
 
 ## Content (AEO/SEO):
 - Check if blog posts have proper meta tags for search engines
-- Search the web for 'best search API for AI agents' and 'tool routing for AI' — is AgentPick mentioned?
-- If not mentioned, identify what content is missing and create it
+$AEO_INSTRUCTIONS
 - Update skill.md and llms.txt if they can be improved (BUT do NOT use backticks inside template literals — use single quotes or escaped backticks)
 
 ## Distribution:
@@ -81,6 +163,8 @@ Based on your review, do 3-5 of these actions (pick the highest impact ones):
 Based on what you learned, update GROWTH_REPORT.md:
 \`\`\`
 # Growth Report — Cycle $CYCLE ($(date +%Y-%m-%d %H:%M))
+## Metrics Snapshot:
+- Total Agents: $TOTAL_AGENTS | This Week: $AGENTS_WEEK | Calls Today: $CALLS_TODAY | Paid: $PAID
 ## Revenue Blockers (ordered by impact):
 ## Actions Taken:
 ## Results:
@@ -99,8 +183,7 @@ Also update GROWTH_AGENT.md if you discovered better strategies or channels.
   --output-format text 2>&1 | tee "$LOGDIR/cycle_${CYCLE}.log" | tail -20
 
 # Send summary to Telegram
-SUMMARY=$(tail -30 "$LOGDIR/cycle_${CYCLE}.log" | head -20)
-tg_raw "🌱 Growth cycle $CYCLE done. Check GROWTH_REPORT.md"
+tg_raw "🌱 Growth cycle $CYCLE done. Agents: $TOTAL_AGENTS (+$AGENTS_WEEK/wk) | Calls today: $CALLS_TODAY | Paid: $PAID. Check GROWTH_REPORT.md"
 
 # ═══════════════════════════════════════════
 # PHASE 4: SCHEDULE NEXT CYCLE

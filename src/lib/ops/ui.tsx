@@ -32,6 +32,7 @@ export function OpsNav() {
     { href: "/admin/ops/runs", label: "Runs" },
     { href: "/admin/ops/schedule", label: "Schedule" },
     { href: "/admin/ops/openclaw", label: "OpenClaw" },
+    { href: "/admin/ops/growth", label: "Growth" },
   ];
 
   return (
