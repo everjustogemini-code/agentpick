@@ -39,7 +39,7 @@ const TASKS: { slug: string; label: string; task: string }[] = [
 ];
 
 export default async function BenchmarksPage() {
-  const [agentCount, queryCount, runCount, taskCounts, domainCounts, recentRuns] =
+  const [agentCount, queryCount, runCount, taskCounts, domainCounts, recentRuns, allBatchRuns] =
     await Promise.all([
       prisma.benchmarkAgent.count(),
       prisma.benchmarkQuery.count({ where: { isActive: true } }),
@@ -54,7 +54,45 @@ export default async function BenchmarksPage() {
           product: { select: { name: true, slug: true } },
         },
       }),
+      prisma.benchmarkRun.findMany({
+        where: { batchId: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+        select: {
+          id: true,
+          batchId: true,
+          domain: true,
+          query: true,
+          latencyMs: true,
+          resultCount: true,
+          relevanceScore: true,
+          freshnessScore: true,
+          completenessScore: true,
+          createdAt: true,
+          product: { select: { name: true, slug: true } },
+        },
+      }),
     ]);
+
+  // Group batch runs by batchId, keep 5 most recent batches
+  type BatchRun = (typeof allBatchRuns)[number];
+  const recentBatchMap = new Map<string, BatchRun[]>();
+  for (const run of allBatchRuns) {
+    const bid = run.batchId!;
+    if (!recentBatchMap.has(bid)) {
+      if (recentBatchMap.size >= 5) continue;
+      recentBatchMap.set(bid, []);
+    }
+    recentBatchMap.get(bid)!.push(run);
+  }
+  const recentBatches = [...recentBatchMap.entries()].map(([batchId, runs]) => ({
+    batchId,
+    domain: runs[0].domain,
+    query: runs[0].query,
+    toolCount: runs.length,
+    createdAt: runs[0].createdAt,
+    runs: [...runs].sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0)),
+  }));
 
   const taskCountMap = new Map(taskCounts.map((t) => [t.task, t._count]));
   const domainCountMap = new Map(domainCounts.map((d) => [d.domain, d._count]));
@@ -154,6 +192,109 @@ export default async function BenchmarksPage() {
             })}
           </div>
         </section>
+
+        {/* ── Recent Batch Comparisons ───────────── */}
+        {recentBatches.length > 0 && (
+          <section className="mt-10">
+            <h2 className="font-mono text-[10px] uppercase tracking-[1px] text-text-dim">
+              Recent Batch Comparisons
+            </h2>
+            <div className="mt-4 space-y-2">
+              {recentBatches.map((batch) => (
+                <details
+                  key={batch.batchId}
+                  className="rounded-xl border border-[#E2E8F0] bg-white"
+                >
+                  <summary className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-bg-muted">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[10px] text-text-dim">
+                        {batch.batchId.slice(0, 8)}…
+                      </span>
+                      <span className="rounded bg-bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase text-text-dim">
+                        {batch.domain}
+                      </span>
+                      <span className="max-w-[260px] truncate text-sm text-text-primary">
+                        {batch.query}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-mono text-[11px] text-text-dim">
+                        {batch.toolCount} tools
+                      </span>
+                      <span className="font-mono text-[11px] text-text-dim">
+                        {new Date(batch.createdAt).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <span className="text-xs text-text-dim">▼</span>
+                    </div>
+                  </summary>
+                  <div className="border-t border-border-default overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-bg-muted">
+                          <th className="px-4 py-2 text-left font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Tool
+                          </th>
+                          <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Relevance
+                          </th>
+                          <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Freshness
+                          </th>
+                          <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Completeness
+                          </th>
+                          <th className="px-3 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Latency
+                          </th>
+                          <th className="px-4 py-2 text-right font-mono text-[10px] uppercase tracking-wider text-text-dim">
+                            Results
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batch.runs.map((run) => (
+                          <tr
+                            key={run.id}
+                            className="border-t border-border-default"
+                          >
+                            <td className="px-4 py-2">
+                              <Link
+                                href={`/products/${run.product.slug}`}
+                                className="text-sm font-[650] text-text-primary hover:underline"
+                              >
+                                {run.product.name}
+                              </Link>
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-sm font-semibold text-text-primary">
+                              {run.relevanceScore != null ? `${run.relevanceScore.toFixed(1)}/5` : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-sm text-text-primary">
+                              {run.freshnessScore != null ? `${run.freshnessScore.toFixed(1)}/5` : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-sm text-text-primary">
+                              {run.completenessScore != null ? `${run.completenessScore.toFixed(1)}/5` : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-sm text-text-primary">
+                              {run.latencyMs}ms
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono text-sm text-text-dim">
+                              {run.resultCount ?? '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Recent Tests ───────────────────────── */}
         {recentRuns.length > 0 && (
