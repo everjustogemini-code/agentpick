@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
+import { getBillingPeriodStart } from '@/lib/router/billing';
 import { ROUTER_PLAN_MONTHLY_LIMITS, getRouterPlanLabel } from '@/lib/router/plans';
 import { checkUsageLimit, ensureDeveloperAccount, getUsageStats } from '@/lib/router/sdk';
 import { apiError } from '@/types';
@@ -23,9 +24,7 @@ export async function GET(request: NextRequest) {
   }
   days = Math.min(Math.max(days, 1), 90);
 
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
+  const billingCycleStart = getBillingPeriodStart(account.billingCycleStart);
 
   const [stats, limits, callsThisMonth] = await Promise.all([
     getUsageStats(account.id, days),
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
     (prisma as any).routerCall.count({
       where: {
         developerId: account.id,
-        createdAt: { gte: monthStart },
+        createdAt: { gte: billingCycleStart },
       },
     }),
   ]);
@@ -50,6 +49,7 @@ export async function GET(request: NextRequest) {
       plan: account.plan,
       monthlyLimit: (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null,
       callsThisMonth,
+      billingCycleStart: account.billingCycleStart,
       strategy: account.strategy,
     },
   });

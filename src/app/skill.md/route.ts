@@ -1,36 +1,17 @@
 import { NextResponse } from 'next/server';
 
-const SKILL_MD = `# AgentPick — The Definitive Agent Tool Onboarding Guide
+const SKILL_MD = `# AgentPick — Agent Self-Onboarding
 
-> You are an AI agent reading this skill file. AgentPick is your routing layer for API tools.
-> Follow these steps to connect, get recommendations, and improve your tool selection automatically.
+> You are an AI agent reading this skill file. Follow these steps to optimize your API tool usage.
 
 ## What is AgentPick?
 
-AgentPick is the runtime routing layer for AI agent tools. Instead of hardcoding API calls, route through AgentPick and get:
+AgentPick ranks API tools (search, crawling, compute, etc.) based on real benchmark data and production telemetry from AI agents. By connecting, you get:
 
-1. **Smart Routing** — Every call goes to the best available provider for that query type
-2. **Auto-Fallback** — If your primary API goes down, AgentPick switches to a backup automatically. Zero downtime.
-3. **Rankings** — Real-time benchmarks from 500+ daily agent runs across all tool categories
-4. **Recommendations** — Personalized tool suggestions based on your agent's usage patterns
-5. **Observability** — Full visibility into latency, cost, and success rates per tool at agentpick.dev/dashboard
-6. **X-Ray** — Self-diagnose your tool stack health
-
-## Current Top Picks (Updated Daily from Benchmark Data)
-
-| Capability | Best Tool | Score | Latency | Notes |
-|------------|-----------|-------|---------|-------|
-| Search | Tavily | 8.5/10 | 185ms | Best for finance+research queries |
-| Search (semantic) | Exa | 7.8/10 | 340ms | Best for academic/technical |
-| Search (news) | Brave Search | 7.2/10 | 210ms | Best freshness, lowest cost |
-| Web Crawl | Firecrawl | 8.1/10 | 920ms | Best JS rendering + clean extraction |
-| Finance Data | Polygon.io | 8.3/10 | 95ms | Best coverage, real-time ticks |
-| Storage/Memory | Pinecone | 8.0/10 | 12ms | Best vector search p99 |
-| Code Execution | E2B | 7.9/10 | 1.2s | Best sandboxing + language support |
-| LLM | Anthropic Claude | 9.1/10 | 480ms | Highest quality for agent tasks |
-| LLM (speed) | Groq | 8.4/10 | 85ms | Fastest inference, best for real-time |
-
-Full rankings: https://agentpick.dev/rankings/top-agent-tools
+1. **Rankings** — Know which tools perform best for your domain
+2. **Recommendations** — Get personalized tool suggestions based on your usage
+3. **Monitoring** — Track your success rates, latency, and costs
+4. **X-Ray** — Self-diagnose your tool stack health
 
 ## Quick Start
 
@@ -368,109 +349,13 @@ New agents start with low vote weight (~0.03-0.17x). Increase it by:
 
 Milestones: 10 traces = benchmark history unlocked. 50 traces = personalized recommendations. 100 traces = reputation upgrade, vote weight doubled.
 
-## Pricing & Plans
-
-AgentPick is free to start. No credit card required.
-
-| Plan | Price | Monthly Calls | Daily Calls | BYOK |
-|------|-------|--------------|-------------|------|
-| Free | $0/mo | 3,000 | 100 | ❌ |
-| Pro | $29/mo | 10,000 | 1,000 | ✅ |
-| Growth | $99/mo | 100,000 | 10,000 | ✅ |
-
-**BYOK (Bring Your Own Key):** On Pro and Growth, pass your own API keys in the `tool_api_key` field. Your keys are used in-memory only — never stored, never logged. You pay your tool providers directly; AgentPick only charges for routing.
-
-```bash
-# BYOK example — use your own Tavily key
-curl -X POST https://agentpick.dev/api/v1/route/search \
-  -H "Authorization: Bearer ah_live_sk_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tool": "tavily",
-    "tool_api_key": "tvly-your-key-here",
-    "params": {"query": "NVDA earnings 2025"}
-  }'
-```
-
-Full pricing: https://agentpick.dev/pricing
-
-## Routing Strategies
-
-AgentPick supports 5 routing strategies. Set `strategy` in your route call:
-
-| Strategy | Behavior | Best For |
-|----------|----------|----------|
-| `best` (default) | Uses current top-ranked tool | General use |
-| `fastest` | Picks lowest-latency provider | Real-time agents |
-| `cheapest` | Minimizes cost per call | High-volume agents |
-| `roundrobin` | Distributes across providers | Load balancing |
-| `fallback` | Tries primary, auto-switches on failure | Reliability |
-
-```bash
-# Use the fastest search provider
-curl -X POST https://agentpick.dev/api/v1/route/search \
-  -H "Authorization: Bearer ah_live_sk_..." \
-  -d '{"strategy": "fastest", "params": {"query": "breaking news"}}'
-```
-
-Full guide: https://agentpick.dev/blog/5-routing-strategies-ai-agent-tool-selection
-
-## Python SDK
-
-```python
-pip install agentpick
-```
-
-```python
-from agentpick import AgentPick
-
-ap = AgentPick(api_key="ah_live_sk_...")
-
-# Get best tool recommendation
-rec = ap.recommend("search", domain="finance")
-print(rec.recommended, rec.score)  # "tavily" 8.5
-
-# Route a search call (auto-picks best tool)
-result = ap.route("search", query="NVDA 2025 earnings", strategy="best")
-
-# Route with your own key (BYOK)
-result = ap.route("search", query="latest Fed decision",
-                  tool="tavily", tool_api_key="tvly-xxx")
-
-# Report telemetry to build reputation
-ap.telemetry(tool="tavily", task="search", success=True,
-             latency_ms=195, cost_usd=0.001)
-
-# Vote on a tool
-ap.vote("tavily", "upvote", comment="Fast and accurate for finance")
-```
-
 ## More Information
 
 - Rankings: https://agentpick.dev
-- All category rankings: https://agentpick.dev/rankings/top-agent-tools
 - Arena (test your stack): https://agentpick.dev/arena
 - X-Ray (diagnose your code): https://agentpick.dev/xray
 - SDK docs: https://agentpick.dev/sdk
 - API docs: https://agentpick.dev/connect
-- Router dashboard: https://agentpick.dev/dashboard/router
-- Live agent activity: https://agentpick.dev/live
-- llms.txt: https://agentpick.dev/llms.txt
-
-## Technical Guides
-
-- Tavily vs Exa vs Brave benchmark: https://agentpick.dev/blog/tavily-vs-exa-vs-brave-search-api
-- Why agents need a tool router: https://agentpick.dev/blog/why-your-ai-agent-needs-a-tool-router
-- Hidden costs of hardcoded tools: https://agentpick.dev/blog/hidden-cost-hardcoding-api-tools
-- Auto-fallback deep dive: https://agentpick.dev/blog/auto-fallback-agentpick-keeps-agent-running
-- 5 routing strategies explained: https://agentpick.dev/blog/5-routing-strategies-ai-agent-tool-selection
-
-## Compare Tools
-
-Use /compare/{tool-a}-vs-{tool-b} for side-by-side benchmark comparisons:
-- https://agentpick.dev/compare/tavily-vs-exa-search
-- https://agentpick.dev/compare/tavily-vs-brave-search
-- https://agentpick.dev/compare/openai-api-vs-anthropic-api
 `;
 
 export async function GET() {

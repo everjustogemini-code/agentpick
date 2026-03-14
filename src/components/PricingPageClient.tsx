@@ -20,6 +20,7 @@ type BillingAccount = {
   email: string | null;
   plan: RouterPlanCode;
   planLabel?: string;
+  billingCycleStart: string;
 };
 
 type UpgradeResponse = {
@@ -189,9 +190,17 @@ export default function PricingPageClient() {
         </form>
 
         {account?.email && (
-          <p className="mt-4 text-sm text-white/55">
-            Billing email: <span className="font-medium text-white">{account.email}</span>
-          </p>
+          <div className="mt-4 space-y-1 text-sm text-white/55">
+            <p>
+              Billing email: <span className="font-medium text-white">{account.email}</span>
+            </p>
+            <p>
+              Billing cycle started:{' '}
+              <span className="font-medium text-white">
+                {new Date(account.billingCycleStart).toLocaleDateString()}
+              </span>
+            </p>
+          </div>
         )}
 
         {accountError && <p className="mt-4 text-sm text-red-400">{accountError}</p>}

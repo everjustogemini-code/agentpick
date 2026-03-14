@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { isRouterPlanCode, type RouterPlanCode } from '@/lib/router/plans';
 import {
+  getDeveloperAccountIdFromCheckoutSession,
   getStripeClient,
   getStripeWebhookSecret,
   resolveRouterPlanFromStripePriceId,
@@ -14,6 +15,7 @@ async function updateDeveloperPlan(developerAccountId: string, plan: RouterPlanC
     where: { id: developerAccountId },
     data: {
       plan,
+      spentThisMonth: 0,
       billingCycleStart: new Date(),
     },
   });
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const developerAccountId = session.metadata?.developerAccountId;
+        const developerAccountId = getDeveloperAccountIdFromCheckoutSession(session);
         const routerPlan = getPlanFromMetadata(session.metadata);
 
         if (developerAccountId && routerPlan) {
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
         break;
       }
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const developerAccountId = subscription.metadata?.developerAccountId;

@@ -6,6 +6,7 @@ import {
   getRouterPlanLabel,
   getRouterPlanSlug,
 } from '@/lib/router/plans';
+import { getBillingPeriodStart } from '@/lib/router/billing';
 import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
@@ -17,13 +18,9 @@ export async function GET(request: NextRequest) {
 
   const account = await ensureDeveloperAccount(agent.id);
   const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? 3000;
-
-  // Count calls this calendar month (not all-time totalCalls)
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
+  const billingCycleStart = getBillingPeriodStart(account.billingCycleStart);
   const callsThisMonth = await db.routerCall.count({
-    where: { developerId: account.id, createdAt: { gte: monthStart } },
+    where: { developerId: account.id, createdAt: { gte: billingCycleStart } },
   });
 
   return Response.json({
@@ -43,6 +40,7 @@ export async function GET(request: NextRequest) {
       spentThisMonth: account.spentThisMonth,
       totalCalls: account.totalCalls,
       totalFallbacks: account.totalFallbacks,
+      billingCycleStart: account.billingCycleStart,
       usage: {
         monthlyLimit,
         monthlyUsed: callsThisMonth,

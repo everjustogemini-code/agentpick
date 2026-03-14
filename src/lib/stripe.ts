@@ -68,6 +68,18 @@ export function buildStripeCheckoutMetadata(input: {
   };
 }
 
+export function getDeveloperAccountIdFromCheckoutSession(
+  session: Pick<Stripe.Checkout.Session, 'client_reference_id' | 'metadata'>,
+): string | null {
+  const metadataId = session.metadata?.developerAccountId?.trim();
+  if (metadataId) {
+    return metadataId;
+  }
+
+  const clientReferenceId = session.client_reference_id?.trim();
+  return clientReferenceId || null;
+}
+
 export function getAppBaseUrl(request?: Request): string {
   const envUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
