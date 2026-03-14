@@ -678,6 +678,88 @@ export function summarizeAgentHealth(agent: AgentListItem) {
   };
 }
 
+export async function getCompetitiveSnapshot(productId: string) {
+  const product = await db.product.findUnique({
+    where: { id: productId },
+    select: { weightedScore: true },
+  });
+  if (!product) return null;
+
+  const [higherCount, totalCount] = await Promise.all([
+    db.product.count({ where: { weightedScore: { gt: product.weightedScore }, status: 'APPROVED' } }),
+    db.product.count({ where: { status: 'APPROVED' } }),
+  ]);
+
+  const overallRank = higherCount + 1;
+
+  // Load all batch runs (batchId not null) to compute per-domain rankings
+  const allBatchRuns = await db.benchmarkRun.findMany({
+    where: { batchId: { not: null } },
+    select: { productId: true, domain: true, relevanceScore: true, createdAt: true, batchId: true },
+  });
+
+  const myRuns: any[] = allBatchRuns.filter((r: any) => r.productId === productId);
+  const myDomains = [...new Set(myRuns.map((r: any) => r.domain as string))];
+
+  const now = Date.now();
+  const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+
+  const domainRankings = [];
+
+  for (const domain of myDomains) {
+    const domainRuns: any[] = allBatchRuns.filter((r: any) => r.domain === domain);
+
+    // Compute avg relevanceScore per product
+    const productAvgs = new Map<string, { sum: number; count: number }>();
+    for (const run of domainRuns) {
+      if (run.relevanceScore == null) continue;
+      const existing = productAvgs.get(run.productId) ?? { sum: 0, count: 0 };
+      productAvgs.set(run.productId, { sum: existing.sum + run.relevanceScore, count: existing.count + 1 });
+    }
+
+    const myData = productAvgs.get(productId);
+    if (!myData) continue;
+    const myScore = myData.sum / myData.count;
+
+    let higherInDomain = 0;
+    for (const [pid, data] of productAvgs) {
+      if (pid !== productId && data.sum / data.count > myScore) higherInDomain++;
+    }
+
+    const rank = higherInDomain + 1;
+    const total = productAvgs.size;
+
+    // 7-day trend
+    const myDomainRuns = domainRuns.filter((r: any) => r.productId === productId && r.relevanceScore != null);
+    const currentWeek = myDomainRuns.filter((r: any) => new Date(r.createdAt) >= sevenDaysAgo);
+    const priorWeek = myDomainRuns.filter(
+      (r: any) => new Date(r.createdAt) >= fourteenDaysAgo && new Date(r.createdAt) < sevenDaysAgo,
+    );
+
+    let trend: 'up' | 'down' | 'stable' = 'stable';
+    if (currentWeek.length > 0 && priorWeek.length > 0) {
+      const currentAvg = currentWeek.reduce((s: number, r: any) => s + r.relevanceScore, 0) / currentWeek.length;
+      const priorAvg = priorWeek.reduce((s: number, r: any) => s + r.relevanceScore, 0) / priorWeek.length;
+      const delta = currentAvg - priorAvg;
+      if (delta > 0.2) trend = 'up';
+      else if (delta < -0.2) trend = 'down';
+    }
+
+    // Count distinct batches for this product in this domain
+    const batchCount = new Set(myDomainRuns.map((r: any) => r.batchId)).size;
+
+    domainRankings.push({ domain, rank, total, trend, batchCount });
+  }
+
+  return {
+    overallRank,
+    totalProducts: totalCount,
+    domainRankings,
+    hasBatchData: myRuns.length > 0,
+  };
+}
+
 export async function buildSeedBlueprints(): Promise<SeedBlueprint[]> {
   const blueprints: SeedBlueprint[] = [];
   const modelCounts = new Map<string, number>();
