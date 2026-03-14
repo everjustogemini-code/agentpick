@@ -32,7 +32,7 @@ const ipMinuteBuckets = new Map<string, Bucket>();
 const ipDayBuckets = new Map<string, Bucket>();
 
 const RATE_LIMITS = {
-  free:   { perMin: 10,   perDay: 100 },
+  free:   { perMin: 30,   perDay: 100 },
   pro:    { perMin: 100,  perDay: 1000 },
   growth: { perMin: 1000, perDay: 10000 },
   public: { perMin: 30,   perDay: 5000 },
@@ -154,10 +154,8 @@ export function middleware(request: NextRequest) {
     const requestId = generateRequestId();
     response.headers.set('x-request-id', requestId);
 
-    // Cache headers for GET requests
-    if (request.method === 'GET') {
-      response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    }
+    // API responses must not be publicly cached — most are auth-gated and user-specific
+    response.headers.set('Cache-Control', 'no-store');
 
     return response;
   }
