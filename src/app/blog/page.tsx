@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'best-search-api-for-ai-agents',
+    title: 'Best Search API for AI Agents (2026 Benchmark Results)',
+    description:
+      'Perplexity API leads at 7.0, Exa is 50% faster. 536 benchmark runs, 2,036 production calls. Which search API should your agent use?',
+    date: '2026-03-14',
+    readTime: '6 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'tavily-vs-exa-vs-brave-search-api',
     title: 'Tavily vs Exa vs Brave Search: Which Search API Should Your Agent Use?',
     description:
