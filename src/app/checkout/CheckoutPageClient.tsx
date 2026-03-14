@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { normalizeUpgradePlan } from '@/lib/router/plans';
+import { UPGRADE_PLAN_CONFIG, normalizeUpgradePlan } from '@/lib/router/plans';
 import EmbeddedCheckout from '@/components/EmbeddedCheckout';
 
 const STORAGE_KEY = 'agentpick_api_key';
 
 export default function CheckoutPageClient() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const planParam = normalizeUpgradePlan(searchParams.get('plan'));
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
@@ -72,7 +71,7 @@ export default function CheckoutPageClient() {
           AgentPick Billing
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-white">
-          Upgrade to {planParam === 'pro' ? 'Pro' : planParam === 'growth' ? 'Growth' : 'Scale'}
+          Upgrade to {UPGRADE_PLAN_CONFIG[planParam].label}
         </h1>
       </div>
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4">
