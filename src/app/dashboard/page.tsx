@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
+import SiteHeader from '@/components/SiteHeader';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
 
@@ -114,6 +115,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.12),_transparent_24%),linear-gradient(180deg,_#f7f3ec_0%,_#f8fafc_42%,_#ffffff_100%)]">
+      <SiteHeader />
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10 sm:px-8 lg:px-10">
         <div className="max-w-3xl">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">

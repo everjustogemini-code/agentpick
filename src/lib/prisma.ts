@@ -1,14 +1,27 @@
 import { PrismaClient } from '@/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { neonConfig } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
+
+// Use WebSocket for Neon serverless driver (works in Node.js / Vercel Edge)
+// In browser/edge runtimes the native WebSocket is used automatically
+if (typeof WebSocket === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  neonConfig.webSocketConstructor = require('ws');
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  prismaCreatedAt: number | undefined;
 };
 
+/** Connection string for runtime queries — always use the pooler endpoint (DATABASE_URL).
+ *  DIRECT_URL is intentionally left for `prisma db push / migrate` only (set in Vercel env vars).
+ */
 function getConnectionString(): string {
-  // Prefer DIRECT_URL for the pg adapter (bypasses pgbouncer which doesn't support prepared statements)
-  const url = process.env.DIRECT_URL || process.env.DATABASE_URL!;
+  const url = process.env.DATABASE_URL!;
+
+  if (!url) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
 
   // For prisma+postgres:// URLs (Prisma local dev), extract the direct TCP URL
   if (url.startsWith('prisma+postgres://')) {
@@ -23,29 +36,50 @@ function getConnectionString(): string {
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: getConnectionString() });
+  const connectionString = getConnectionString();
+  const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });
 }
 
-// In dev, recreate the client every 5 minutes to avoid stale connections
-const MAX_AGE_MS = 5 * 60 * 1000;
-
 function getPrismaClient(): PrismaClient {
-  const now = Date.now();
-  if (
-    globalForPrisma.prisma &&
-    globalForPrisma.prismaCreatedAt &&
-    now - globalForPrisma.prismaCreatedAt < MAX_AGE_MS
-  ) {
+  if (globalForPrisma.prisma) {
     return globalForPrisma.prisma;
   }
-
   const client = createPrismaClient();
-  // Cache globally in ALL environments to reuse connections within a serverless instance
+  // Cache globally to reuse connections within a serverless instance lifetime
   globalForPrisma.prisma = client;
-  globalForPrisma.prismaCreatedAt = now;
   return client;
 }
+
+// ─── Retry Helper ────────────────────────────────────────────────────────────
+
+const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P2024']);
+
+function isRetryable(err: unknown): boolean {
+  if (err && typeof err === 'object' && 'code' in err) {
+    return RETRYABLE_CODES.has((err as { code: string }).code);
+  }
+  // Also retry on raw connection-refused / ECONNREFUSED errors
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('ECONNREFUSED') || msg.includes('connection timeout');
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryable(err) || i === attempts - 1) throw err;
+      const backoff = 200 * Math.pow(2, i); // 200 / 400 / 800 ms
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  throw lastErr;
+}
+
+// ─── Exported client proxy ───────────────────────────────────────────────────
 
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {

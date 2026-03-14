@@ -3,16 +3,33 @@ import { prisma } from '@/lib/prisma';
 
 const startTime = Date.now();
 
+// Track last successful query timestamp and latency
+let lastSuccessTs: number | null = null;
+let lastLatencyMs: number | null = null;
+
 export async function GET(_request: NextRequest) {
   const checks: Record<string, unknown> = {};
   let overallStatus = 'ok';
 
-  // DB check
+  // DB check with latency tracking
   try {
+    const t0 = Date.now();
     await (prisma as any).$queryRaw`SELECT 1`;
-    checks.db = { status: 'ok' };
+    const latency = Date.now() - t0;
+    lastSuccessTs = Date.now();
+    lastLatencyMs = latency;
+    checks.db = {
+      status: 'ok',
+      latency_ms: latency,
+      last_success: new Date(lastSuccessTs).toISOString(),
+    };
   } catch (err) {
-    checks.db = { status: 'error', message: err instanceof Error ? err.message : 'unknown' };
+    checks.db = {
+      status: 'error',
+      message: err instanceof Error ? err.message : 'unknown',
+      last_success: lastSuccessTs ? new Date(lastSuccessTs).toISOString() : null,
+      last_latency_ms: lastLatencyMs,
+    };
     overallStatus = 'degraded';
   }
 
