@@ -148,22 +148,34 @@ export default function PricingPageClient() {
           )}
         </div>
 
-        <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
-          <input
-            type="password"
-            value={draftKey}
-            onChange={(event) => setDraftKey(event.target.value)}
-            placeholder="ah_live_sk_..."
-            className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[#050507] px-4 py-3 text-sm font-mono text-white placeholder:text-white/20 focus:border-orange-500/45 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={accountLoading}
-            className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {accountLoading ? 'Loading account...' : 'Load account'}
-          </button>
-        </form>
+        {account ? (
+          <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center">
+            <a
+              href="/dashboard"
+              className="rounded-2xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-orange-400"
+            >
+              Go to Dashboard →
+            </a>
+            <span className="text-sm text-white/40">Account loaded. Choose a plan below or manage your dashboard.</span>
+          </div>
+        ) : (
+          <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
+            <input
+              type="password"
+              value={draftKey}
+              onChange={(event) => setDraftKey(event.target.value)}
+              placeholder="ah_live_sk_..."
+              className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[#050507] px-4 py-3 text-sm font-mono text-white placeholder:text-white/20 focus:border-orange-500/45 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={accountLoading}
+              className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {accountLoading ? 'Loading account...' : 'Load account'}
+            </button>
+          </form>
+        )}
 
         {!apiKey && !accountLoading && (
           <div className="mt-4 flex items-center gap-3">
