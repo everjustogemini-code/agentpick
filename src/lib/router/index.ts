@@ -150,9 +150,32 @@ async function callWithKey(
 }
 
 /**
+ * Move tools without a configured platform API key to the end of the list.
+ * Within each group (configured / unconfigured), the original order is preserved.
+ * This prevents strategies like 'cheapest' from routing to tools that will
+ * immediately throw "KEY not set" and waste a fallback slot.
+ */
+function deprioritizeUnconfiguredTools(tools: string[]): string[] {
+  const configured: string[] = [];
+  const unconfigured: string[] = [];
+  for (const slug of tools) {
+    const envVar = getByokEnvVarForService(slug);
+    // If no env var is needed for this tool, or the env var is set → configured
+    if (!envVar || Boolean(process.env[envVar]?.trim())) {
+      configured.push(slug);
+    } else {
+      unconfigured.push(slug);
+    }
+  }
+  return [...configured, ...unconfigured];
+}
+
+/**
  * Get ALL tools for a capability, ranked by strategy.
  * Returns a sorted list of slugs — first = best pick.
  * ONLY returns tools from CAPABILITY_TOOLS (tools with working adapters).
+ * Tools without a configured platform API key are moved to the end so that
+ * strategy-based selection (e.g. 'cheapest') picks the best AVAILABLE tool.
  */
 export function getRankedToolsForCapability(
   capability: string,
@@ -169,7 +192,7 @@ export function getRankedToolsForCapability(
   if (filtered.length === 0) return [];
 
   // Sort by strategy using hardcoded characteristics
-  return filtered.sort((a, b) => {
+  filtered.sort((a, b) => {
     const ca = TOOL_CHARACTERISTICS[a];
     const cb = TOOL_CHARACTERISTICS[b];
     if (!ca && !cb) return 0;
@@ -206,6 +229,10 @@ export function getRankedToolsForCapability(
       }
     }
   });
+
+  // Within the strategy-sorted list, move tools that lack a platform API key to the end.
+  // This preserves strategy order within each group (configured / unconfigured).
+  return deprioritizeUnconfiguredTools(filtered);
 }
 
 /**
@@ -338,7 +365,11 @@ export async function routeRequest(
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy);
-  const rankedTools = aiRankedTools ? rawRankedTools : applyCircuitBreaker(rawRankedTools);
+  const cbRankedTools = aiRankedTools ? rawRankedTools : applyCircuitBreaker(rawRankedTools);
+  // Apply key-availability filter to AI-ranked lists too: ensures realtime routing falls back
+  // to configured tools (e.g. exa-search) rather than unconfigured ones (e.g. serpapi-google).
+  // getRankedToolsForCapability already applies this filter for strategy-based lists.
+  const rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools) : cbRankedTools;
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }
