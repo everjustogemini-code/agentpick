@@ -14,9 +14,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const account = await ensureDeveloperAccount(agent.id);
-
-    const db = prisma as any;
-    const call = await db.routerCall.findFirst({
+    const call = await prisma.routerCall.findFirst({
       where: { developerId: account.id },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -24,6 +22,7 @@ export async function GET(request: NextRequest) {
         toolUsed: true,
         latencyMs: true,
         costUsd: true,
+        byokUsed: true,
         capability: true,
         aiClassification: true,
         strategyUsed: true,

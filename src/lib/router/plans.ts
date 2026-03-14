@@ -82,6 +82,7 @@ export const PRICING_CARD_PLANS = [
     features: [
       '3,000 routed calls each month',
       '100 calls per day',
+      'Bring your own tool API keys',
       'AI routing plus auto-fallback',
       'Usage dashboard and call history',
     ],
@@ -98,7 +99,7 @@ export const PRICING_CARD_PLANS = [
     features: [
       '10,000 routed calls each month',
       '1,000 calls per day',
-      'Bring your own tool API keys',
+      'Saved keys plus higher traffic limits',
       'Built for production workloads',
     ],
     ctaLabel: 'Upgrade to Pro',
@@ -114,7 +115,7 @@ export const PRICING_CARD_PLANS = [
     features: [
       '100,000 routed calls each month',
       '10,000 calls per day',
-      'Bring your own tool API keys',
+      'Saved keys plus higher traffic limits',
       'Headroom for multi-agent traffic',
     ],
     ctaLabel: 'Upgrade to Growth',

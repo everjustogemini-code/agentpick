@@ -642,6 +642,7 @@ model DeveloperAccount {
   fallbackEnabled   Boolean        @default(true)
   maxFallbacks      Int            @default(3)
   latencyBudgetMs   Int?
+  byokKeys          Json?
 
   totalCalls        Int            @default(0)
   totalFallbacks    Int            @default(0)

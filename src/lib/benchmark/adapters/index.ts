@@ -28,6 +28,10 @@ import { trackVaultUsage, vaultServiceForSlug } from '@/lib/ops/usage';
 
 export type { ToolCallResult };
 
+type CallToolApiOptions = {
+  trackUsage?: boolean;
+};
+
 // Maps product slugs (as stored in the Product table) to their API adapter functions.
 // Aliases are included so both DB slugs and vault/ops slugs resolve correctly.
 const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>) => Promise<ToolCallResult>> = {
@@ -159,6 +163,7 @@ export async function callToolAPI(
   slug: string,
   query: string,
   config?: Record<string, unknown>,
+  options?: CallToolApiOptions,
 ): Promise<ToolCallResult> {
   const adapter = ADAPTERS[slug];
   if (!adapter) {
@@ -175,7 +180,7 @@ export async function callToolAPI(
     const result = await adapter(query, config);
 
     // Fire-and-forget usage tracking — map slug to vault service name
-    if (result.statusCode >= 200 && result.statusCode < 500) {
+    if ((options?.trackUsage ?? true) && result.statusCode >= 200 && result.statusCode < 500) {
       const vaultService = vaultServiceForSlug(slug);
       if (vaultService) {
         trackVaultUsage(vaultService).catch(() => {});
