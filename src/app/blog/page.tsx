@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'jina-ai-for-ai-agents',
+    title: 'Jina AI for AI Agents: Benchmark Results & Reader API Guide (2026)',
+    description:
+      'Jina AI is #1 for crawl quality in AgentPick benchmarks at score 5.2. How its reader endpoint converts any URL to LLM-ready markdown, and when to use Jina vs Firecrawl, Apify, or Unstructured.',
+    date: '2026-05-09',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'firecrawl-for-ai-agents',
     title: 'Firecrawl for AI Agents: Benchmark vs Tavily, Exa, Perplexity (2026)',
     description:

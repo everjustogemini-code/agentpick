@@ -1,3 +1,83 @@
+# Growth Report — Cycle 11 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 305 | This Week: 305 | Calls Today: 314 | Paid: 0
+- Blog posts: 17 live (added jina-ai-for-ai-agents)
+- Weekly reports: 9 live (added 2026-05-09)
+- AEO scores: 0/0/0 (12th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 12 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed permanently dead
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-05-09
+- Ninth weekly benchmark report — extends 9-week cadence for search engine crawl signals
+- Updated stats: 305 agents, 4,400+ cumulative calls, 660+ benchmark runs
+- Added crawl rankings table (Jina AI #1 at 5.2) — first report to feature full crawl section
+- Valyu enters week 5, Parallel week 6, Firecrawl week 2 of evaluation
+- Forward nav added to 2026-05-02 report for internal link chain
+
+### 2. New blog post: /blog/jina-ai-for-ai-agents
+- Jina AI is the #1 crawl API in AgentPick rankings (score 5.2) but had no dedicated post
+- Targets: "jina ai for ai agents", "jina reader api", "best crawl api for ai agents"
+- Comparison table: Jina AI vs Firecrawl vs Unstructured vs Apify vs Browserless
+- Decision guide: when to use each (docs, SPAs, PDFs, full-site crawl)
+- Links to Firecrawl post and weekly report for internal linking
+- Added to blog index (now 17 posts)
+
+### 3. AEO scores checked (cycle 11)
+- "best search API for AI agents" → 0 (KDnuggets, Tavily, Firecrawl, Brave, Exa, Linkup, Medium/unicodeveloper, Buttondown/AgentNative, Parallel dominate)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, lamini-ai, Nivalabs, LangChain dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, philschmid, Sierra AI, AgentBench, o-mega.ai, IBM Research, Cleanlab, Galileo, Emergence dominate)
+
+### 4. Updated llms.txt
+- Refreshed: 660+ benchmark runs, 305 agents, 4,400+ production calls (May 2026)
+
+### 5. Updated skill.md
+- Updated benchmark data date to May 9, 2026
+- Refreshed: 660+ benchmark runs, 4,400+ production calls
+
+### 6. Moltbook: permanently skipped
+- Confirmed permanently dead. Will not retry.
+
+## Results
+- Weekly report #9 live at /reports/weekly/2026-05-09 ✅
+- 2026-05-02 report now has forward link to 2026-05-09 ✅
+- Jina AI blog post live at /blog/jina-ai-for-ai-agents ✅ (17 posts total)
+- Blog index updated to 17 posts ✅
+- llms.txt updated ✅
+- skill.md updated ✅
+- AEO scores posted ✅
+- All conversion pages returning 200 ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Valyu/Parallel confirmed scores** — both approaching 50-run threshold; confirmed scores unlock content update hook
+3. **KDnuggets/data4ai/aimultiple outreach** — rank #1–8 for primary query; one backlink outweighs 17 blog posts
+4. **Query 2 content gap** — "tool routing for AI agents" results are all about routing conversations/LLMs, not API tool routing. A more direct post targeting this exact framing could capture traffic.
+
+## Learnings
+- 9 weekly reports now live — crawl cadence well established. No SERP movement at 12 cycles.
+- Query 3 ("AI agent API benchmark") results are about benchmarking AI agent behavior, not benchmarking APIs. Our crawl/search benchmarks are a different thing. Post could be titled "How We Benchmark Search APIs for AI Agents" to capture the long tail.
+- Jina AI crawl rankings are referenced in other content but had no dedicated post — gap now filled.
+- Content strategy is yielding zero SERP movement so far. Outreach and backlinks (KDnuggets, aimultiple) remain higher-leverage than adding more content.
+
+## Files Changed (Cycle 11)
+- src/app/reports/weekly/2026-05-09/page.tsx (new)
+- src/app/reports/weekly/2026-05-02/page.tsx — added forward navigation link
+- src/app/blog/jina-ai-for-ai-agents/page.tsx (new)
+- src/app/blog/page.tsx — added Jina AI post at top (now 17 posts)
+- src/app/llms.txt/route.ts — updated metrics (305 agents, 660+ runs, 4,400+ calls)
+- src/app/skill.md/route.ts — updated date, metrics
+- GROWTH_STATE.md (updated)
+- GROWTH_REPORT.md (this file)
+
+---
+
 # Growth Report — Cycle 10 (2026-03-14)
 
 ## Metrics Snapshot
