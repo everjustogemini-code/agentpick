@@ -205,16 +205,43 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Router error';
-    // Return stable contract: always include tool_used and results fields
+    const failTraceId = `trace_fail_${Date.now()}`;
+    const failToolUsed = body?.tool ?? `${capability}-unavailable`;
+    // Record the failure for analytics — best-effort
+    if (preAccount) {
+      const strategyUsed = CORE_TO_SDK[body?.strategy ?? 'balanced'] ?? 'BALANCED';
+      const failResponse = {
+        data: null,
+        meta: {
+          tool_used: failToolUsed,
+          latency_ms: 0,
+          fallback_used: false as boolean,
+          trace_id: failTraceId,
+          cost_usd: 0,
+          result_count: 0,
+          byok_used: false as boolean,
+        },
+      };
+      recordRouterCall(
+        preAccount.id,
+        capability,
+        query,
+        body,
+        failResponse as Parameters<typeof recordRouterCall>[4],
+        strategyUsed as RouterStrategyValue,
+        false,
+        [],
+      ).catch((e) => console.error('Failed to record failed router call:', e));
+    }
     return new Response(JSON.stringify({
       error: 'ROUTER_ERROR',
       message,
       data: null,
       meta: {
-        tool_used: body?.tool ?? `${capability}-unavailable`,
+        tool_used: failToolUsed,
         latency_ms: 0,
         fallback_used: false,
-        trace_id: `trace_fail_${Date.now()}`,
+        trace_id: failTraceId,
       },
       results: [],
     }), {
