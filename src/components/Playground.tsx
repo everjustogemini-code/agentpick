@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 const REGISTER_CTA_THRESHOLD = 3;
 const LOCAL_STORAGE_KEY = 'agentpick-playground-uses';
+const MAX_QUERY_LENGTH = 2000;
+const MAX_URL_LENGTH = 2048;
 
 const CAPABILITIES = [
   {
@@ -45,6 +47,7 @@ type PlaygroundResponse = {
   results?: PlaygroundResult[];
   totalResults?: number;
   capped?: boolean;
+  retryAfterSeconds?: number;
   error?: string;
 };
 
@@ -130,6 +133,23 @@ export default function Playground() {
 
   const showRegisterCta = useCount >= REGISTER_CTA_THRESHOLD;
   const results = response?.results ?? [];
+  const queryLimit = capability === 'crawl' ? MAX_URL_LENGTH : MAX_QUERY_LENGTH;
+  const statCards = response
+    ? [
+        {
+          label: 'Tool selected',
+          value: response.tool ?? 'Unavailable',
+        },
+        {
+          label: 'Latency',
+          value: typeof response.latencyMs === 'number' ? `${response.latencyMs}ms` : 'Pending',
+        },
+        {
+          label: 'Trace ID',
+          value: response.traceId ?? 'Unavailable',
+        },
+      ]
+    : [];
 
   function recordUse() {
     setUseCount((current) => {
@@ -164,10 +184,40 @@ export default function Playground() {
       const res = await fetch('/api/v1/playground/route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
         body: JSON.stringify({ query: query.trim(), capability }),
       });
 
-      const data = (await res.json()) as PlaygroundResponse;
+      let data: PlaygroundResponse;
+      try {
+        data = (await res.json()) as PlaygroundResponse;
+      } catch {
+        data = {};
+      }
+
+      const retryAfterHeader = res.headers.get('retry-after');
+      const retryAfterSeconds =
+        data.retryAfterSeconds ??
+        (retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) || undefined : undefined);
+
+      if (!res.ok) {
+        data = {
+          ...data,
+          capability,
+          retryAfterSeconds,
+          error:
+            data.error ??
+            (res.status === 429
+              ? `Rate limit exceeded. Try again in ${retryAfterSeconds ?? 60}s.`
+              : `Request failed with status ${res.status}.`),
+        };
+      } else if (retryAfterSeconds !== undefined) {
+        data = {
+          ...data,
+          retryAfterSeconds,
+        };
+      }
+
       setResponse(data);
       setResultVersion((current) => current + 1);
       recordUse();
@@ -257,6 +307,7 @@ export default function Playground() {
             rows={capability === 'embed' ? 4 : 3}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            maxLength={queryLimit}
             onKeyDown={(event) => {
               if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
                 event.preventDefault();
@@ -270,7 +321,7 @@ export default function Playground() {
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-white/35">
-              Cmd/Ctrl + Enter routes the current request.
+              Cmd/Ctrl + Enter routes the current request. {query.length}/{queryLimit}
             </p>
 
             <button
@@ -287,7 +338,10 @@ export default function Playground() {
           </div>
         </div>
 
-        <div className="rounded-[24px] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+        <div
+          aria-live="polite"
+          className="rounded-[24px] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5"
+        >
           {!response && !loading && (
             <div className="rounded-[20px] border border-dashed border-white/[0.1] bg-black/20 px-4 py-10 text-center text-sm text-white/35">
               Route a request to inspect the selected tool, latency, trace ID, and capped output preview.
@@ -312,22 +366,20 @@ export default function Playground() {
 
           {response && !loading && (
             <div key={resultVersion} className="space-y-4" style={{ animation: 'fadeIn 220ms ease-out both' }}>
-              <div className="flex flex-wrap gap-2">
-                {response.tool && (
-                  <span className="rounded-full border border-orange-400/25 bg-orange-500/10 px-3 py-1 font-mono text-[11px] text-orange-200">
-                    {response.tool}
-                  </span>
-                )}
-                {typeof response.latencyMs === 'number' && (
-                  <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 font-mono text-[11px] text-emerald-200">
-                    {response.latencyMs}ms
-                  </span>
-                )}
-                {response.traceId && (
-                  <span className="rounded-full border border-white/[0.08] bg-black/20 px-3 py-1 font-mono text-[11px] text-white/55">
-                    {response.traceId}
-                  </span>
-                )}
+              <div className="grid gap-3 sm:grid-cols-3">
+                {statCards.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-[18px] border border-white/[0.08] bg-black/20 px-4 py-3"
+                  >
+                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/35">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 break-all font-mono text-[12px] text-white/75">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
               </div>
 
               {response.reasoning && (
@@ -339,6 +391,7 @@ export default function Playground() {
               {response.error && (
                 <div className="rounded-[20px] border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-200">
                   {response.error}
+                  {response.retryAfterSeconds ? ` Retry after ${response.retryAfterSeconds}s.` : ''}
                 </div>
               )}
 

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Why Your AI Agent Needs a Tool Router',
-    description: "Hardcoded API calls create fragile agents. Here's how to fix it.",
+    description: 'Hardcoded API calls create fragile agents. Here\'s how to fix it.',
   },
 };
 
@@ -65,8 +65,8 @@ export default function BlogPost() {
             <div className="space-y-4">
               {[
                 { num: '01', title: 'Selection', desc: 'Choose the best tool for the current query context — not just globally, but for this specific type of request right now.' },
-                { num: '02', title: 'Fallback', desc: "If the primary tool fails (error, timeout, rate limit), automatically retry with an alternative without surfacing the failure to your agent." },
-                { num: '03', title: 'Observability', desc: "Record every call — which tool, latency, success/fail, cost — so you can understand what's actually happening in production." },
+                { num: '02', title: 'Fallback', desc: 'If the primary tool fails (error, timeout, rate limit), automatically retry with an alternative without surfacing the failure to your agent.' },
+                { num: '03', title: 'Observability', desc: 'Record every call — which tool, latency, success/fail, cost — so you can understand what\'s actually happening in production.' },
                 { num: '04', title: 'Optimization', desc: 'Learn from historical performance to improve routing decisions over time. Your search router should know Tavily is faster on Mondays.' },
               ].map((item) => (
                 <div key={item.num} className="flex gap-4">
@@ -94,7 +94,7 @@ def research_agent(query: str) -> str:
 
 # What happens when:
 # - Tavily is down? → Agent crashes
-# - Tavily rate-limits you? → Agent crashes
+# - Tavily rate-limits you? → Agent crashes  
 # - A better search API launches? → Need to rewrite
 # - You want to know your search costs? → ???`}</code></pre>
           </div>
@@ -109,6 +109,7 @@ def research_agent(query: str) -> str:
           <div className="rounded-xl bg-[#0A0A0A] p-5">
             <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[#64748B]">Python — Simple tool router</div>
             <pre className="overflow-x-auto text-[13px] text-[#E2E8F0]"><code>{`import time
+import requests
 from typing import Optional
 
 class SearchRouter:
@@ -117,7 +118,7 @@ class SearchRouter:
         {"name": "brave",  "fn": "_search_brave",  "priority": 2},
         {"name": "exa",    "fn": "_search_exa",    "priority": 3},
     ]
-
+    
     def search(self, query: str) -> Optional[dict]:
         for provider in sorted(self.PROVIDERS, key=lambda p: p["priority"]):
             try:
@@ -130,10 +131,23 @@ class SearchRouter:
                 self._record(provider["name"], False, 0, str(e))
                 continue
         raise RuntimeError("All search providers failed")
-
+    
     def _record(self, tool, success, latency_ms, error=None):
-        print(f"[router] {tool}: success={success} latency={latency_ms}ms")`}</code></pre>
+        # Log to your telemetry system
+        print(f"[router] {tool}: success={success} latency={latency_ms}ms")
+    
+    def _search_tavily(self, query):
+        # ... tavily implementation
+        pass
+    
+    def _search_brave(self, query):
+        # ... brave implementation
+        pass`}</code></pre>
           </div>
+
+          <p>
+            This is better. You have fallback. But you&apos;re missing adaptive selection (the fallback order is static), production observability (print statements don&apos;t count), and knowledge of which tools are currently healthy.
+          </p>
 
           <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">Using AgentPick as Your Tool Router</h2>
           <p>
@@ -148,7 +162,7 @@ class SearchRouter:
     def __init__(self, ap_key: str):
         self.ap_key = ap_key
         self.base = "https://agentpick.dev/api/v1"
-
+    
     def search(self, query: str, domain: str = None) -> dict:
         """
         Routes to the best search API for the query.
@@ -158,15 +172,22 @@ class SearchRouter:
         response = requests.post(
             f"{self.base}/route/search",
             headers={"Authorization": f"Bearer {self.ap_key}"},
-            json={"params": {"query": query, "domain": domain}},
+            json={
+                "params": {"query": query, "domain": domain},
+                # Optional: bring your own key
+                # "tool": "tavily",
+                # "tool_api_key": "tvly-xxx"
+            },
             timeout=10
         )
         response.raise_for_status()
         result = response.json()
+        
         # result["_router"]["tool"] = which API was used
+        # result["_router"]["latency_ms"] = routing + API latency
         # result["_router"]["fallback"] = True if primary failed
         return result
-
+    
 router = SearchRouter(ap_key="ah_live_sk_...")
 results = router.search("SEC 10-K NVDA 2025", domain="finance")`}</code></pre>
           </div>
@@ -200,10 +221,16 @@ results = router.search("SEC 10-K NVDA 2025", domain="finance")`}</code></pre>
           </p>
 
           <div className="flex gap-3">
-            <Link href="/connect" className="rounded-lg bg-[#0A0A0A] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
+            <Link
+              href="/connect"
+              className="rounded-lg bg-[#0A0A0A] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            >
               Set up routing →
             </Link>
-            <Link href="/dashboard/router" className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-text-secondary hover:border-[#D4D4D4] transition-colors">
+            <Link
+              href="/dashboard/router"
+              className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-text-secondary hover:border-[#D4D4D4] transition-colors"
+            >
               See the dashboard →
             </Link>
           </div>
@@ -217,7 +244,10 @@ results = router.search("SEC 10-K NVDA 2025", domain="finance")`}</code></pre>
           <p className="mt-2 text-sm text-text-secondary">
             No infrastructure to maintain. Auto-fallback, smart routing, full observability out of the box.
           </p>
-          <Link href="/connect" className="mt-5 inline-block rounded-lg bg-[#0A0A0A] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
+          <Link
+            href="/connect"
+            className="mt-5 inline-block rounded-lg bg-[#0A0A0A] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
             Connect Your Agent →
           </Link>
         </div>
