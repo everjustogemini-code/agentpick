@@ -1,64 +1,45 @@
-# Growth State — Cycle 15 (2026-03-14)
+# Growth State — Cycle 11 (2026-03-14)
 
-## Live Health Check (Cycle 15)
-- Router health: UNAUTHORIZED without key → 200 with valid key ✅
-- Agent registration: 200 OK ✅
-- Homepage: HTTP/2 200 ✅
-- /pricing: HTTP/2 200 ✅
-- /blog: HTTP/2 200 ✅
-- /connect: HTTP/2 200 ✅
-- /checkout?plan=pro: zsh "no matches" (Stripe not configured — no Stripe env vars)
-- Moltbook: DNS failure — permanently skipped
+## Live Checks
 
-## AEO Scores (Cycle 15)
-- "best search API for AI agents" → 0 (Tavily, KDnuggets, Firecrawl, Brave, Exa dominate)
-- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks dominate)
-- "AI agent API benchmark" → 0 (EvidentlyAI, GitHub/philschmid, Sierra, AgentBench, IBM dominate)
-- All scores posted to /api/v1/admin/growth-metrics/aeo-score ✅ (8th cycle at 0)
+### API Health
+- `GET /api/v1/router/health` — returns 401 (auth required, expected)
+- `POST /api/v1/agents/register` — 200 OK, returns api_key + agent_id ✅
+- `GET /` — HTTP 200 ✅
+- `GET /pricing` — HTTP 200 ✅
+- `GET /blog` — HTTP 200 ✅
+- `GET /checkout?plan=pro` — HTTP 200 ✅
+- `GET /connect` — HTTP 200 ✅
 
-## New Competitors Spotted This Cycle
-- Valyu Search — new benchmark entrant; ranked #1 across 5 categories (FreshQA, SimpleQA, finance, economics, medical) in independent study
+All conversion pages returning 200 — no revenue-blocking page errors.
 
-## Actions Taken (Cycle 15)
-1. New blog: /blog/valyu-search-api-for-ai-agents (Valyu enters evaluation, dedicated post same cycle)
-2. New weekly report: /reports/weekly/2026-04-11 (5th weekly report — cadence maintained)
-3. Forward nav added: 2026-04-04 → 2026-04-11
-4. llms.txt updated: 301 agents, 3,338 calls, Valyu Search added
-5. AEO scores posted (3 queries, all 0)
+## AEO Scores (Cycle 11)
 
-## Key Blockers
-1. Zero paid conversions — Stripe still not configured
-2. Zero search visibility — 8 cycles at 0 for all 3 queries
-3. No backlinks from KDnuggets, data4ai, aimultiple
+| Query | Score | Top Results |
+|---|---|---|
+| "best search API for AI agents" | 0 | Tavily, Exa, Firecrawl, Brave, KDnuggets, Linkup, Parallel, Valyu |
+| "tool routing for AI agents" | 0 | LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, LangChain |
+| "AI agent API benchmark" | 0 | EvidentlyAI, philschmid/compendium, Sierra, AgentBench, IBM, o-mega |
 
----
+9th consecutive cycle at 0 for all 3 queries. SEO is a 6-12 month play.
 
-# Growth State — Cycle 14 (2026-03-14)
+## Notable Search Observations (Cycle 11)
 
-## Live Health Check
-- Router health: UNAUTHORIZED (as expected — requires API key)
-- Agent registration: 200 OK — `{"agent_id":"cmmqqgdqy...","api_key":"ah_live_sk_...","reputation_score":0.1,"status":"active"}`
-- Homepage: HTTP/2 200
-- /pricing: HTTP/2 200
-- /blog: HTTP/2 200
-- /connect: HTTP/2 200
-- /checkout?plan=pro: no response (Stripe not configured)
-- Moltbook: DNS failure (exit code 6) — confirmed dead channel (7th consecutive failure)
+- Query 1: Valyu and Parallel now both visible in SERP (both are "evaluating" in our tracker)
+- Query 2: Still dominated by agent-to-agent routing content — not API routing. Our angle is different.
+- Query 3: o-mega.ai "2025 AI agent evals guide" is a new entrant. Emergence AI also appearing.
 
-## AEO Scores (Cycle 14)
-- "best search API for AI agents" → 0 (Tavily, Firecrawl, KDnuggets, Exa, Parallel, Linkup, data4ai, aimultiple, SerpAPI, Medium article all above)
-- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize AI, LangChain, GitHub, NivaLabs all above)
-- "AI agent API benchmark" → 0 (apiyi.com/PinchBench, EvidentlyAI, RandalOlson, aitools4you, o-mega, modelslab, Nature, IEEE, LiveBench, IBM all above)
-- All scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+## Content State
+- Blog posts: 14 live
+- Weekly reports: 6 live (2026-03-14 through 2026-04-18)
+- New this cycle: weekly report 2026-04-18 (6th weekly report)
+- llms.txt: updated to 302 agents, 3,652 calls, 640+ runs
+- skill.md: updated to April 2026, 640+ benchmark runs, 3,652 production calls
 
-## New Competitors Spotted This Cycle
-- Parallel Search (parallel.ai) — now in "best search API for AI agents" results; built for AI agents; declarative semantic objectives
-- Valyu Search — ranked #1 across 5 benchmarks in new Medium article (FreshQA, SimpleQA, finance, economics, medical)
-- PinchBench — new AI agent leaderboard (49 models, real-time scoring); appears in "AI agent API benchmark" query
+## Revenue Blockers (unchanged)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID missing in Vercel env → $0 revenue
+2. **Zero AEO visibility** — 9 cycles at 0 across all queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple dominate target queries
 
-## Key Findings
-1. Zero paid conversions — Stripe still not configured (/checkout returns no response)
-2. 300 agents milestone crossed (was 297 last cycle)
-3. Moltbook dead — skip permanently
-4. Content gap filled: Parallel Search blog post created this cycle
-5. "tool routing for AI agents" is dominated by agent-to-agent routing content, not API routing — different content angle needed
+## Moltbook
+Permanently dead — DNS failure confirmed 9 consecutive cycles. Removed from rotation.

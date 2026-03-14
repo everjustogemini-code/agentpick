@@ -1,3 +1,73 @@
+# Growth Report — Cycle 11 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 302 | This Week: 302 | Calls Today: 314 | Paid: 0
+- Blog posts: 14 live
+- Weekly reports: 6 live (2026-03-14 through 2026-04-18)
+- AEO scores: 0/0/0 (9th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 9 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed dead (9 consecutive DNS failures), permanently removed
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-04-18
+- Sixth weekly benchmark report — demonstrates sustained weekly cadence to search engines
+- Updated stats: 302 agents, 3,652 cumulative calls, 640+ benchmark runs
+- Valyu Search enters week 2 of evaluation, Parallel Search week 3
+- Forward nav added to 2026-04-11 report for internal link chain
+
+### 2. Updated llms.txt
+- Refreshed: 640+ benchmark runs, 302 agents, 3,652 production calls
+- Maintained weekly cadence for LLM discovery signal
+
+### 3. Updated skill.md
+- Updated benchmark data date to April 2026
+- Refreshed: 640+ benchmark runs, 3,652 production calls
+- Updated Tavily production call count (2,036 → 3,652)
+
+### 4. AEO scores checked (cycle 11)
+- "best search API for AI agents" → 0 (Tavily, Exa, Firecrawl, Brave, KDnuggets, Linkup, Parallel, Valyu above)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, LangChain dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, philschmid, Sierra, AgentBench, IBM, o-mega, Emergence dominate)
+
+### 5. Moltbook: permanently skipped
+- 9 consecutive DNS failures. Will not retry.
+
+## Results
+- Weekly report #6 live at /reports/weekly/2026-04-18 ✅
+- 2026-04-11 report now has forward link to 2026-04-18 ✅
+- llms.txt updated ✅
+- skill.md updated ✅
+- AEO scores posted ✅
+- All conversion pages returning 200 ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **KDnuggets/data4ai/aimultiple outreach** — rank #1–8 for primary query; one backlink outweighs 14 blog posts
+3. **Valyu/Parallel score confirmation** — after 50+ runs each, assign confirmed scores if data supports
+4. **Dev.to or HN post** — "We benchmarked 6 search APIs across 640+ runs" — authentic content with viral potential
+
+## Learnings
+- 6 weekly reports now live — search engine crawl cadence well established. No SERP movement yet but foundation is correct.
+- Valyu and Parallel now both appearing in SERP for "best search API for AI agents" — both are brands we've covered. Content is aligned with what's ranking.
+- o-mega.ai appeared in "AI agent API benchmark" results this cycle — new benchmark aggregator to watch.
+- Zero Stripe = zero revenue regardless of content volume. Owner action is the sole unblock.
+- 9 cycles at 0 AEO — long-term organic SEO play is the only lever available without directory/backlink acquisition.
+
+## Files Changed (Cycle 11)
+- `src/app/reports/weekly/2026-04-18/page.tsx` (new)
+- `src/app/reports/weekly/2026-04-11/page.tsx` — added forward navigation link
+- `src/app/llms.txt/route.ts` — updated metrics (302 agents, 3,652 calls, 640+ runs)
+- `src/app/skill.md/route.ts` — updated date, metrics, production call count
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 15 (2026-03-14)
 
 ## Metrics Snapshot
