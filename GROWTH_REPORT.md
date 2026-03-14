@@ -1,3 +1,77 @@
+# Growth Report — Cycle 15 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 301 | This Week: 301 | Calls Today: 314 | Paid: 0
+- Blog posts: 14 live (added valyu-search-api-for-ai-agents)
+- Weekly reports: 5 live (added 2026-04-11)
+- AEO scores: 0/0/0 (8th cycle in a row)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 8 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed dead (8 consecutive DNS failures), permanently removed
+
+## Actions Taken
+
+### 1. New blog post: /blog/valyu-search-api-for-ai-agents
+- Valyu Search spotted in independent benchmark study this cycle (ranked #1 across 5 categories)
+- Created dedicated post same cycle — consistent pattern with Parallel Search last cycle
+- Content angle: #1 in external benchmarks vs production routing data — why independent and production benchmarks diverge
+- FAQ targeting: "What is Valyu Search API", "Valyu vs Perplexity", "Valyu vs Exa", "Is Valyu better than Tavily"
+- Comparison table vs Perplexity, Haystack, Exa, Tavily, Brave
+- CTA: Get API Key → /connect
+
+### 2. New weekly report: /reports/weekly/2026-04-11
+- Fifth weekly benchmark report — 5-week cadence established for search engine indexing signals
+- Updated stats: 301 agents, 3,338 cumulative calls, 620+ benchmark runs
+- Valyu Search enters evaluation at #6 (new entry), Parallel in second week of evaluation
+- Forward nav added to 2026-04-04 report for internal link chain
+
+### 3. Updated llms.txt
+- Refreshed: 620+ benchmark runs, 301 agents, 3,338 production calls
+- Added Valyu Search to rankings with "evaluating" status and description
+- Monthly cadence maintained for LLM discovery signal
+
+### 4. AEO scores checked (cycle 15)
+- "best search API for AI agents" → 0 (Tavily, KDnuggets, Firecrawl, Brave, Exa dominate)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, GitHub/philschmid, Sierra, AgentBench, IBM dominate)
+
+### 5. Moltbook: permanently skipped
+- 8 consecutive DNS failures. Removed from future cycles.
+
+## Results
+- Valyu Search blog post live ✅ (14 posts total)
+- Weekly report #5 live at /reports/weekly/2026-04-11 ✅
+- 2026-04-04 report now has forward link to 2026-04-11 ✅
+- llms.txt updated ✅
+- AEO scores posted ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **KDnuggets/data4ai/aimultiple outreach** — these rank #1–8 for primary query; one backlink outweighs 14 blog posts
+3. **Valyu score confirmation** — after 50+ benchmark runs, Valyu may earn confirmed score; if ≥7.0, update rankings blog post
+4. **"API selection for AI agents"** content angle — more precise than "tool routing" which is dominated by agent-to-agent content
+
+## Learnings
+- Same-cycle response pattern working: spot new entrant → create dedicated post same cycle. Done for Parallel (cycle 14) and Valyu (cycle 15).
+- 5 weekly reports now live — establishing crawl cadence. Need to watch for any SERP movement.
+- Valyu external benchmark #1 claim is a potential ranking threat if confirmed in production. Better to have a post ready now than after they rank.
+- Zero Stripe progress = zero revenue regardless of content volume. Operator action is the sole unblock.
+- 8 cycles at 0 AEO across all queries — need to either accept this is a long-game play (6-12 months for organic SEO) or pursue paid/directory channels more aggressively.
+
+## Files Changed (Cycle 15)
+- `src/app/blog/valyu-search-api-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added Valyu post at top (now 14 posts)
+- `src/app/reports/weekly/2026-04-11/page.tsx` (new)
+- `src/app/reports/weekly/2026-04-04/page.tsx` — added forward navigation link
+- `src/app/llms.txt/route.ts` — updated metrics, added Valyu Search
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 14 (2026-03-14)
 
 ## Metrics Snapshot

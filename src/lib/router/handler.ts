@@ -213,6 +213,12 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   }
 
   // 5. Route the request
+  // If the account has AUTO strategy and no explicit strategy was in the request body,
+  // apply it now so AI classification runs and ai_routing_summary gets populated.
+  // This aligns /api/v1/route/* behavior with /api/v1/router/* for AUTO accounts.
+  if (!body.strategy && preAccount?.strategy && (preAccount.strategy as string).toUpperCase() === 'AUTO') {
+    body = { ...body, strategy: 'auto' };
+  }
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body, {
       developerId: preAccount?.id,
