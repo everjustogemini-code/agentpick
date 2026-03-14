@@ -12,6 +12,10 @@ import {
 import { ensureDeveloperAccount } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
+const PRIVATE_NO_STORE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+};
+
 async function authenticateDeveloper(request: NextRequest) {
   const agent = await authenticateAgent(request);
   if (!agent) return null;
@@ -31,6 +35,8 @@ export async function GET(request: NextRequest) {
     keys,
     catalog: getByokCatalog(),
     summary,
+  }, {
+    headers: PRIVATE_NO_STORE_HEADERS,
   });
 }
 
@@ -60,7 +66,10 @@ export async function POST(request: NextRequest) {
     const key = listByokKeys(refreshed.byokKeys).find((item) => item.service === normalizedService) ?? null;
     const summary = await getByokSummary(refreshed.id, refreshed.byokKeys, 30);
 
-    return Response.json({ key, summary }, { status: 201 });
+    return Response.json({ key, summary }, {
+      status: 201,
+      headers: PRIVATE_NO_STORE_HEADERS,
+    });
   } catch (error) {
     return apiError('VALIDATION_ERROR', error instanceof Error ? error.message : 'Unable to save key.', 400);
   }
@@ -95,7 +104,9 @@ export async function PATCH(request: NextRequest) {
     const key = listByokKeys(refreshed.byokKeys).find((item) => item.service === normalizedService) ?? null;
     const summary = await getByokSummary(refreshed.id, refreshed.byokKeys, 30);
 
-    return Response.json({ key, summary });
+    return Response.json({ key, summary }, {
+      headers: PRIVATE_NO_STORE_HEADERS,
+    });
   } catch (error) {
     return apiError('VALIDATION_ERROR', error instanceof Error ? error.message : 'Unable to update key.', 400);
   }
@@ -121,7 +132,9 @@ export async function DELETE(request: NextRequest) {
     const refreshed = await ensureDeveloperAccount(context.agent.id);
     const summary = await getByokSummary(refreshed.id, refreshed.byokKeys, 30);
 
-    return Response.json({ deleted, summary });
+    return Response.json({ deleted, summary }, {
+      headers: PRIVATE_NO_STORE_HEADERS,
+    });
   } catch (error) {
     return apiError('VALIDATION_ERROR', error instanceof Error ? error.message : 'Unable to delete key.', 400);
   }
