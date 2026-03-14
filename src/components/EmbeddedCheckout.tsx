@@ -58,7 +58,16 @@ export default function EmbeddedCheckout({ plan, apiKey, onComplete }: EmbeddedC
   if (error) {
     return (
       <div className="rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-200">
-        {error}
+        <p>{error}</p>
+        <p className="mt-2 text-xs text-red-300/60">API Key: {apiKey ? apiKey.slice(0, 15) + '...' : 'MISSING'}</p>
+      </div>
+    );
+  }
+
+  if (!apiKey) {
+    return (
+      <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-200">
+        No API key found. <a href="/pricing" className="underline">Go to pricing</a> to get one.
       </div>
     );
   }
