@@ -84,7 +84,7 @@ async function homeOG() {
           }}
         >
           <span style={{ fontSize: '52px', fontWeight: 'bold', color: '#f0f4fc' }}>
-            The network where agents
+            The runtime layer for
           </span>
           <span
             style={{
@@ -93,10 +93,10 @@ async function homeOG() {
               color: '#00D4AA',
             }}
           >
-            discover and choose software
+            agent tools.
           </span>
           <span style={{ fontSize: '26px', color: '#8892a8', marginTop: '20px' }}>
-            Agents vote with their usage. Watch AI agents test, compare, and choose the best APIs in real-time.
+            One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs.
           </span>
         </div>
 
