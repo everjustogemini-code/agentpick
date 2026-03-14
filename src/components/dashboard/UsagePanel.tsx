@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 type SelectableStrategy = 'AUTO' | 'BALANCED' | 'CHEAPEST' | 'FASTEST';
 type KnownStrategy = SelectableStrategy | 'MOST_ACCURATE' | 'MANUAL';
@@ -60,6 +60,11 @@ interface PanelState {
   avgLatencyMs: number;
 }
 
+interface LoadedPanelState {
+  panel: PanelState;
+  budgetInput: string;
+}
+
 const STRATEGY_OPTIONS: Array<{
   value: SelectableStrategy;
   label: string;
@@ -101,6 +106,21 @@ function authHeaders(apiKey: string, includeJson = false) {
     Authorization: `Bearer ${apiKey}`,
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
   };
+}
+
+function getApiErrorMessage(data: unknown, fallback: string) {
+  if (!data || typeof data !== 'object') {
+    return fallback;
+  }
+
+  const payload = data as {
+    error?: {
+      message?: string;
+    };
+    message?: string;
+  };
+
+  return payload.error?.message ?? payload.message ?? fallback;
 }
 
 function formatCurrency(value: number) {
@@ -149,6 +169,72 @@ function projectedMonthlyCost(spentThisMonth: number) {
   return spentThisMonth === 0 ? 0 : (spentThisMonth / elapsedDays) * daysInMonth;
 }
 
+function createPanelState(accountData: AccountResponse, usageData: UsageResponse): PanelState {
+  const plan = usageData.account.plan ?? accountData.account.plan;
+  const monthlyLimit =
+    usageData.account.monthlyLimit ?? accountData.account.usage?.monthlyLimit ?? null;
+  const callsThisMonth = usageData.account.callsThisMonth ?? accountData.account.usage?.monthlyUsed ?? 0;
+  const monthlyRemaining =
+    accountData.account.usage?.monthlyRemaining ??
+    (monthlyLimit === null ? null : Math.max(monthlyLimit - callsThisMonth, 0));
+
+  return {
+    email: accountData.account.email,
+    plan,
+    planLabel: accountData.account.planLabel ?? usageData.plan_label ?? formatPlan(plan),
+    strategy: usageData.account.strategy ?? accountData.account.strategy,
+    monthlyBudgetUsd: accountData.account.monthlyBudgetUsd,
+    spentThisMonth: accountData.account.spentThisMonth,
+    callsThisMonth,
+    monthlyLimit,
+    monthlyRemaining,
+    totalCallsLast30Days: usageData.stats.totalCalls,
+    totalCostLast30Days: usageData.stats.totalCostUsd,
+    successRate: usageData.stats.successRate,
+    avgLatencyMs: usageData.stats.avgLatencyMs,
+  };
+}
+
+function formatBudgetInput(value: number | null) {
+  return value === null ? '' : String(value);
+}
+
+async function fetchPanelState(apiKey: string, onUnauthorized: () => void) {
+  const [accountResponse, usageResponse] = await Promise.all([
+    fetch('/api/v1/router/account', {
+      headers: authHeaders(apiKey),
+    }),
+    fetch('/api/v1/router/usage?days=30', {
+      headers: authHeaders(apiKey),
+    }),
+  ]);
+
+  if (accountResponse.status === 401 || usageResponse.status === 401) {
+    onUnauthorized();
+    return null;
+  }
+
+  if (!accountResponse.ok || !usageResponse.ok) {
+    const [accountError, usageError] = await Promise.all([
+      accountResponse.json().catch(() => null),
+      usageResponse.json().catch(() => null),
+    ]);
+
+    throw new Error(
+      getApiErrorMessage(accountError, getApiErrorMessage(usageError, 'Unable to load dashboard usage.')),
+    );
+  }
+
+  const accountData = (await accountResponse.json()) as AccountResponse;
+  const usageData = (await usageResponse.json()) as UsageResponse;
+  const panel = createPanelState(accountData, usageData);
+
+  return {
+    panel,
+    budgetInput: formatBudgetInput(panel.monthlyBudgetUsd),
+  } satisfies LoadedPanelState;
+}
+
 export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
   const [panel, setPanel] = useState<PanelState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,91 +243,46 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
   const [strategyPending, setStrategyPending] = useState<SelectableStrategy | null>(null);
   const [budgetPending, setBudgetPending] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState('');
+  const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    let active = true;
+  const syncPanel = useEffectEvent(async (showSkeleton = false) => {
+    const requestId = ++requestIdRef.current;
 
-    async function loadPanel() {
+    if (showSkeleton) {
       setLoading(true);
-      setError('');
+    }
+    setError('');
 
-      try {
-        const [accountResponse, usageResponse] = await Promise.all([
-          fetch('/api/v1/router/account', {
-            headers: authHeaders(apiKey),
-          }),
-          fetch('/api/v1/router/usage?days=30', {
-            headers: authHeaders(apiKey),
-          }),
-        ]);
+    try {
+      const nextState = await fetchPanelState(apiKey, onLogout);
+      if (!nextState || requestId !== requestIdRef.current) {
+        return false;
+      }
 
-        if (accountResponse.status === 401 || usageResponse.status === 401) {
-          onLogout();
-          return;
-        }
+      setPanel(nextState.panel);
+      setBudgetInput(nextState.budgetInput);
+      return true;
+    } catch (loadError) {
+      if (requestId !== requestIdRef.current) {
+        return false;
+      }
 
-        if (!accountResponse.ok || !usageResponse.ok) {
-          const data = await Promise.all([
-            accountResponse.json().catch(() => null),
-            usageResponse.json().catch(() => null),
-          ]);
-          throw new Error(
-            data[0]?.error?.message ??
-              data[1]?.error?.message ??
-              data[0]?.message ??
-              data[1]?.message ??
-              'Unable to load dashboard usage.',
-          );
-        }
-
-        const accountData = (await accountResponse.json()) as AccountResponse;
-        const usageData = (await usageResponse.json()) as UsageResponse;
-        const plan = usageData.account.plan ?? accountData.account.plan;
-        const monthlyLimit = usageData.account.monthlyLimit ?? accountData.account.usage?.monthlyLimit ?? null;
-        const callsThisMonth =
-          usageData.account.callsThisMonth ?? accountData.account.usage?.monthlyUsed ?? 0;
-        const monthlyRemaining =
-          accountData.account.usage?.monthlyRemaining ??
-          (monthlyLimit === null ? null : Math.max(monthlyLimit - callsThisMonth, 0));
-
-        if (!active) return;
-
-        setPanel({
-          email: accountData.account.email,
-          plan,
-          planLabel: accountData.account.planLabel ?? usageData.plan_label ?? formatPlan(plan),
-          strategy: usageData.account.strategy ?? accountData.account.strategy,
-          monthlyBudgetUsd: accountData.account.monthlyBudgetUsd,
-          spentThisMonth: accountData.account.spentThisMonth,
-          callsThisMonth,
-          monthlyLimit,
-          monthlyRemaining,
-          totalCallsLast30Days: usageData.stats.totalCalls,
-          totalCostLast30Days: usageData.stats.totalCostUsd,
-          successRate: usageData.stats.successRate,
-          avgLatencyMs: usageData.stats.avgLatencyMs,
-        });
-        setBudgetInput(
-          accountData.account.monthlyBudgetUsd === null
-            ? ''
-            : String(accountData.account.monthlyBudgetUsd),
-        );
-      } catch (loadError) {
-        if (!active) return;
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard usage.');
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard usage.');
+      return false;
+    } finally {
+      if (showSkeleton && requestId === requestIdRef.current) {
+        setLoading(false);
       }
     }
+  });
 
-    void loadPanel();
+  useEffect(() => {
+    void syncPanel(true);
 
     return () => {
-      active = false;
+      requestIdRef.current += 1;
     };
-  }, [apiKey, onLogout]);
+  }, [apiKey, syncPanel]);
 
   async function handleStrategyChange(strategy: SelectableStrategy) {
     if (!panel || panel.strategy === strategy || strategyPending) return;
@@ -263,10 +304,11 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.error?.message ?? data?.message ?? 'Unable to update strategy.');
+        throw new Error(getApiErrorMessage(data, 'Unable to update strategy.'));
       }
 
       setPanel((current) => (current ? { ...current, strategy } : current));
+      await syncPanel();
     } catch (strategyError) {
       setError(strategyError instanceof Error ? strategyError.message : 'Unable to update strategy.');
     } finally {
@@ -312,7 +354,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.error?.message ?? data?.message ?? 'Unable to update budget.');
+        throw new Error(getApiErrorMessage(data, 'Unable to update budget.'));
       }
 
       setPanel((current) =>
@@ -323,8 +365,9 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             }
           : current,
       );
-      setBudgetInput(String(nextBudget));
+      setBudgetInput(formatBudgetInput(nextBudget));
       setBudgetMessage('Monthly budget updated.');
+      await syncPanel();
     } catch (budgetError) {
       setBudgetInput(currentValue);
       setBudgetMessage(budgetError instanceof Error ? budgetError.message : 'Unable to update budget.');
@@ -455,6 +498,11 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             </div>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
               <div
+                role="progressbar"
+                aria-label="Monthly usage progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(usagePercent)}
                 className={`h-full rounded-full transition-[width] duration-300 ${usageToneClass}`}
                 style={{ width: `${usagePercent}%` }}
               />
@@ -501,13 +549,17 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
               onChange={(event) => setBudgetInput(event.target.value)}
               onBlur={handleBudgetBlur}
               placeholder={panel.monthlyBudgetUsd === null ? 'No cap set' : undefined}
+              disabled={budgetPending}
               className="w-full bg-transparent px-0 py-3 pr-4 text-sm text-slate-950 outline-none"
             />
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Updates on blur via <code>/api/v1/router/budget</code>.
           </p>
-          <p className={`mt-2 text-sm ${budgetPending ? 'text-slate-500' : 'text-slate-600'}`}>
+          <p
+            aria-live="polite"
+            className={`mt-2 text-sm ${budgetPending ? 'text-slate-500' : 'text-slate-600'}`}
+          >
             {budgetPending ? 'Saving budget...' : budgetMessage || 'Leave your existing value to keep it unchanged.'}
           </p>
         </div>

@@ -130,11 +130,11 @@ export default function DashboardPage() {
           <div className="mt-10 space-y-6">
             <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                Live controls
+                Main dashboard
               </p>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                This dashboard keeps plan visibility, monthly call progress, router strategy
-                controls, and budget editing together on the main view.
+                Plan details, monthly call progress, strategy selection, estimated cost, and
+                budget editing all stay on this page.
               </p>
             </section>
 
