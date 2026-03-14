@@ -20,20 +20,25 @@ function fmt(n: number): string {
 }
 
 async function getStats() {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-  const [totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks] = await Promise.all([
-    prisma.product.count(),
-    prisma.vote.count({ where: { proofVerified: true } }),
-    prisma.agent.count(),
-    prisma.benchmarkRun.count(),
-    prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }),
-  ]);
-  return { totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks };
+    const [totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks] = await Promise.all([
+      prisma.product.count(),
+      prisma.vote.count({ where: { proofVerified: true } }),
+      prisma.agent.count(),
+      prisma.benchmarkRun.count().catch(() => 0),
+      prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
+    ]);
+    return { totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks };
+  } catch {
+    return { totalProducts: 0, totalVotes: 0, totalAgents: 0, totalBenchmarkRuns: 0, todayBenchmarks: 0 };
+  }
 }
 
 async function getActivityEvents(): Promise<ActivityEvent[]> {
+  try {
   const [votes, benchmarks, playgroundSessions] = await Promise.all([
     prisma.vote.findMany({
       where: { proofVerified: true },
@@ -50,13 +55,13 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
       include: {
         product: { select: { name: true, slug: true } },
       },
-    }),
+    }).catch(() => []),
     prisma.playgroundSession.findMany({
       where: { status: 'completed' },
       orderBy: { createdAt: 'desc' },
       take: 4,
       select: { id: true, domain: true, tools: true, createdAt: true },
-    }),
+    }).catch(() => []),
   ]);
 
   const events: ActivityEvent[] = [];
@@ -108,6 +113,9 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
 
   events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   return events;
+  } catch {
+    return [];
+  }
 }
 
 export default async function HomePage() {
