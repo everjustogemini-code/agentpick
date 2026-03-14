@@ -270,13 +270,15 @@ export function getRankedToolsForCapability(
     }
   });
 
-  // For cheapest strategy: among configured tools (platform or BYOK) pick the cheapest,
-  // then fall back to unconfigured tools (also cost-sorted). deprioritizeUnconfiguredTools
-  // preserves the cost-sorted order within each group, so we route to the cheapest
-  // AVAILABLE tool rather than blindly trying brave-search/serper (which have no platform
-  // key and will always fail), burning fallback slots before reaching tavily.
+  // For cheapest strategy: return the pure cost-sorted list.
+  // brave-search ($0.0001) and serper ($0.0005) are cheaper than tavily ($0.001).
+  // Applying deprioritizeUnconfiguredTools here would put expensive configured tools
+  // (e.g. tavily) ahead of cheap unconfigured ones (e.g. brave-search), defeating the
+  // purpose of the cheapest strategy. If a cheap tool has no key it fails immediately
+  // and the fallback chain escalates to the next cheapest — that is the correct behaviour.
+  // BYOK keys for cheap tools are resolved at call time in callWithKey, not at rank time.
   if (strategy === 'cheapest') {
-    return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
+    return filtered;
   }
 
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
