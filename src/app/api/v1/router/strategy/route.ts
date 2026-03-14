@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const normalized = normalizeStrategy(body.strategy);
   if (!normalized) {
-    return apiError('VALIDATION_ERROR', 'strategy must be one of: balanced, fastest, cheapest, best_quality, auto, custom', 400);
+    return apiError('VALIDATION_ERROR', 'strategy must be one of: AUTO, BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL', 400);
   }
 
   try {

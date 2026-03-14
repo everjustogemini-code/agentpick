@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 type Endpoint = 'search' | 'crawl' | 'embed' | 'finance';
-type Strategy = 'auto' | 'fastest' | 'cheapest' | 'best_quality';
+type Strategy = 'auto' | 'fastest' | 'cheapest' | 'best_performance';
 
 interface Props {
   onResultChange: (
@@ -32,7 +32,7 @@ const STRATEGIES: { value: Strategy; label: string }[] = [
   { value: 'auto', label: 'auto' },
   { value: 'fastest', label: 'fastest' },
   { value: 'cheapest', label: 'cheapest' },
-  { value: 'best_quality', label: 'best_quality' },
+  { value: 'best_performance', label: 'best_performance' },
 ];
 
 export default function PlaygroundRequestBuilder({ onResultChange, onStateChange }: Props) {
