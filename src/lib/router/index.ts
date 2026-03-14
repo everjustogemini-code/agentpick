@@ -98,6 +98,7 @@ export interface RouterResponse {
   meta: {
     tool_used: string;
     latency_ms: number;
+    total_ms?: number;
     fallback_used: boolean;
     fallback_from?: string;
     trace_id: string;
@@ -394,6 +395,7 @@ export async function routeRequest(
   request: RouterRequest,
   options: RouteRequestOptions = {},
 ): Promise<{ response: RouterResponse; headers?: Record<string, string> }> {
+  const requestStartMs = Date.now();
   const query = extractQuery(request.params);
   const strategy = request.strategy ?? 'balanced';
 
@@ -539,6 +541,7 @@ export async function routeRequest(
       const meta: RouterResponse['meta'] = {
         tool_used: candidateSlug,
         latency_ms: result.latencyMs,
+        total_ms: Date.now() - requestStartMs,
         fallback_used: isFallbackAttempt,
         fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
         trace_id: traceId,
@@ -573,6 +576,7 @@ export async function routeRequest(
   const failureMeta: RouterResponse['meta'] = {
     tool_used: toolSlug,
     latency_ms: lastResult?.latencyMs ?? 0,
+    total_ms: Date.now() - requestStartMs,
     fallback_used: triedTools.length > 1,
     fallback_from: firstFailedTool,
     trace_id: traceId,
