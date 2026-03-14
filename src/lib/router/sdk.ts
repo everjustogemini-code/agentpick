@@ -181,7 +181,10 @@ export async function applyStrategy(
   // Only set a strategy-based tool if there are no priority_tools.
   // Priority tools take precedence and are handled by routeRequest().
   // AUTO strategy: skip pre-selection — let routeRequest's AI classifier pick the tool.
-  if (!modified.tool && !modified.priority_tools?.length && account.strategy !== 'AUTO') {
+  // CHEAPEST strategy: skip pre-selection — routeRequest handles it with BYOK-aware ranking
+  //   so users with BYOK keys for cheap tools (brave-search, serper) get correctly routed
+  //   rather than being forced to tavily (cheapest platform-configured tool).
+  if (!modified.tool && !modified.priority_tools?.length && account.strategy !== 'AUTO' && account.strategy !== 'CHEAPEST') {
     const best = getBestToolForStrategy(capability, account.strategy, account.excludedTools, account.latencyBudgetMs);
     if (best) {
       modified.tool = best;

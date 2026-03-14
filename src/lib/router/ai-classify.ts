@@ -58,14 +58,21 @@ export function fastClassify(query: string): QueryContext | null {
 
   // News signals — strong news indicators OR news + time/domain reference
   const newsTerms = /\b(latest|breaking|recent|new|announced|launched|funding|raised|acquired|ipo|merger|regulation|ruling)\b/i;
-  const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger|released|release|update|patch|vulnerability|incident|outage|breach|hacked|exploit|layoffs?|bankrupt)\b/i;
+  const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger|released|release|update|patch|vulnerability|incident|outage|breach|hacked|exploit|layoffs?|bankrupt|shortage|recall|settlement)\b/i;
   const yearPattern = /\b20(2[4-9]|3[0-9])\b/;
+  // Explicit recency signals — queries containing these are unambiguously time-sensitive
+  // and should always classify as 'news' without requiring an LLM call.
+  const explicitRecencySignal = /\b(today|right now|this week|this month|yesterday|just now|as of|currently|what happened|what's happening|latest news|recent news|breaking news|top news|news about|update on|status of|current events?|trending)\b/i;
   // Tech/AI company or product signal — combined with any newsTerms triggers a news classification
   // without requiring an explicit year, since product launches are clearly time-sensitive.
   const techCompanySignal = /\b(openai|anthropic|google|microsoft|apple|meta|nvidia|amazon|tesla|spacex|stripe|figma|vercel|mistral|gemini|claude|gpt|llama|sora|dall-e|chatgpt|copilot)\b/i;
+  // Explicit recency terms always trigger news classification — avoids LLM non-determinism
+  if (explicitRecencySignal.test(lower)) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
+  }
   const hasNewsWithDomain = newsTerms.test(lower) && (
     yearPattern.test(lower) ||
-    /\b(today|this week|this month|yesterday|recently|right now|just now|latest version|what happened|what's happening|update on|status of)\b/i.test(lower) ||
     (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower))
   );
   if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
