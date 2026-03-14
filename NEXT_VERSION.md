@@ -1,60 +1,81 @@
-# NEXT_VERSION.md — AgentPick v0.24 Plan
+# NEXT_VERSION.md — AgentPick Bugfix Cycle 24
 
 **Date:** 2026-03-14
-**QA Score entering this cycle:** 55/57 (Round 10)
+**QA Round:** 11
+**QA Score entering cycle:** 56/57
 **P0 blockers:** None
-**P1 bugs remaining:** 1 production, 1 test-script
+**Scope:** Bug fixes only. Zero new features.
 
 ---
 
-## Must-Have #1 — Fix deep-research routing misclassification (P1-1)
+## Fix #1 — Deep-research routing misclassification (QA Issue: P1-1, `6.1-deep-research`)
 
-**Bug:** Analytical/socioeconomic queries (e.g. "comprehensive analysis of global chip shortage causes and solutions with supply chain implications") are misclassified as `type=news, depth=shallow`, routing to `tavily` when `strategy: best_performance` is set. Purely technical queries (quantum computing, etc.) classify correctly. The classifier conflates "news-adjacent topic framing" with "news query type."
+**Symptom:** Query `"state of large language models 2025 comprehensive analysis"` with `best_performance` strategy
+(or `auto`) classifies as `type=news, depth=shallow` and routes to `tavily` instead of `exa-search` or `perplexity`.
+
+**Root cause:** `fastClassify` in `ai-classify.ts` checks `explicitRecencySignal` (which catches year patterns like
+`in 2024`) before `researchTerms`. Queries containing analytical keywords (`comprehensive`, `analysis`) alongside
+a bare year (`2025`) can fall into the news/recency path before the research path fires. Additionally, the
+`analyticalKeywords && multifactorDomains` guard that was added for supply-chain queries requires a narrow domain
+list (`supply chain`, `geopolit`, `policy`, etc.) that misses broader research framing like "state of [field]
+comprehensive analysis".
 
 **File:** `src/lib/router/ai-classify.ts`
 
-**Fix:**
-- Expand the classifier prompt to explicitly distinguish "analytical/policy/socioeconomic framing" from "news framing." Add keyword/pattern rule: if the query contains words like `"analysis"`, `"causes"`, `"implications"`, `"impact of"`, `"effects of"`, `"why did"` combined with multi-factor framing (supply chain, geopolitics, policy), bias classification toward `type=research, depth=deep` regardless of topic domain.
-- Do NOT change behavior for queries that are genuinely news-seeking ("what happened with chip shortage today").
-- Also fix QA script test `7.5-auth-missing` to explicitly clear the `_dev_key` global before testing the no-auth path, preventing the auto-inject false 200 that caused the QA regression.
+**What to change:**
+1. In `fastClassify`, broaden the analytical-research guard (currently lines 95–102) so that a query containing
+   `analyticalKeywords` (`analysis`, `causes`, `implications`, `impact of`, `effects of`, `why did`, `comprehensive`)
+   combined with ANY depth/quality signal (`state of`, `overview of`, `survey of`, `in-depth`, `deep dive`,
+   `comprehensive`) classifies as `type=research, depth=deep` — without requiring the narrow `multifactorDomains`
+   list. Only skip this rule when `genuineNewsSignals` are present (`today`, `right now`, `just happened`,
+   `breaking`, `latest`, `this week`, `yesterday`, `last night`).
+2. Add `"state of"` as a standalone analytical signal in `analyticalKeywords` regex (covers "state of the art",
+   "state of large language models", etc.).
+3. Confirm: `researchTerms` (line 115) already includes `comprehensive` and `analysis`; verify the regex fires
+   before `newsTerms`/`strongNewsTerms` for this query, or move the research check earlier in the function.
+4. Add the specific query as a regression test case in `CLASSIFY_SYSTEM` examples (line ~209):
+   `"state of large language models 2025 comprehensive analysis"` → `{"type":"research","domain":"tech","depth":"deep","freshness":"any"}`
 
-**Acceptance:**
-- Query `"comprehensive analysis of global chip shortage causes and solutions with supply chain implications"` + `strategy: best_performance` → `tool_used: exa-search` or `perplexity`, `type=research, depth=deep` in trace.
-- Existing `6.1-deep-research` test passes 5/5 consecutive runs.
-- All other routing tests remain green (no regressions).
-
----
-
-## Must-Have #2 — Major UI upgrade: glassmorphism design system
-
-**Goal:** Modernize the visual design to reduce bounce rate and increase trial signups from developer audiences (Hacker News, Product Hunt traffic).
-
-**Scope:**
-- **Hero section (`/`):** Replace flat card layout with frosted-glass cards (`backdrop-filter: blur(12px)`, semi-transparent borders). Add a subtle animated gradient mesh background (CSS keyframes, no JS dependency). Update typography to `Inter` variable font with tighter tracking on headings.
-- **Pricing cards:** Add hover lift animation (`transform: translateY(-4px)` + `box-shadow` transition, 200ms ease). Highlight the "Pro" tier with a gradient border (`border-image` or `outline` + pseudo-element).
-- **`/connect` playground:** Add syntax-highlighted code blocks (replace plain `<pre>` with Shiki or Prism). Add a copy-to-clipboard button on all code snippets.
-- **Nav:** Add blur-backdrop sticky nav (`backdrop-filter: blur(8px)`). Thin gradient underline on active nav item.
-- **Token sheet:** Define CSS custom properties (`--glass-bg`, `--glass-border`, `--accent-gradient`) for system-wide consistency.
+**Acceptance criteria:**
+- Query `"state of large language models 2025 comprehensive analysis"` + `strategy: auto` → `type=research,
+  depth=deep` in `ai_classification`, `tool_used: exa-search` or `perplexity-search`.
+- Existing passing tests (`6.2-realtime`, `6.3-simple`, `6.5-ai-insights`) remain green.
+- `6.1-deep-research` passes 5/5 consecutive runs (no Haiku non-determinism).
 
 ---
 
-## Must-Have #3 — SDK usage examples page (`/docs/examples`)
+## Fix #2 — Latency metadata inversion in `/router/search` response (QA Issue: P1-2, `6.4-latency`)
 
-**Goal:** Increase developer adoption by giving devs copy-paste ready code they can run in under 2 minutes — the most common request from the developer trial funnel.
+**Symptom:** Response meta contains `classification_ms=500` and `latency_ms=65`, which is logically impossible:
+classification cannot take longer than the total observed request latency. Dashboards and alerting built on these
+fields will produce incorrect measurements.
 
-**Spec:**
-- New route `/docs/examples` with tabbed layout: Python · Node.js · curl.
-- 6 examples covering the highest-traffic use cases: basic search, deep research, real-time news, embedding, finance data, multi-tool fallback.
-- Each example shows the full working flow (register → get key → call → parse response), not just the API call.
-- Link from homepage hero CTA ("See examples →") and from `/connect` sidebar.
-- Static-rendered page for SEO; `og:title` = "AgentPick API Examples — Python, Node.js, curl".
-- Each snippet has a copy-to-clipboard button (reuse the component from Must-Have #2).
+**Root cause:** `latency_ms` in the response (field `result.latencyMs`) reflects only the tool call latency, not
+the end-to-end request time. `classification_ms` reflects the Haiku classification attempt including the 500ms
+timeout. There is no `total_ms` field that represents true end-to-end time. When Haiku times out,
+`classification_ms ≈ 500` while `latency_ms` for a fast tool call can be 65ms — making `classification_ms >
+latency_ms` appear to violate causality.
 
----
+**Files:**
+- `src/lib/router/index.ts` — where the `meta` object is assembled and returned
+- `src/lib/router/index.ts:488` — `routeStartTime` is set after classification; move it before classification
+  call so `latency_ms` captures total routing time, OR add a separate `total_ms` field
 
-## Out of scope this version
+**What to change:**
+1. In `routeRequest` (`index.ts`), record `const requestStartTime = Date.now()` at the top of the function,
+   before the `if (strategy === 'auto')` classification block (currently ~line 400).
+2. In the success meta assembly (~line 539), add:
+   ```ts
+   total_ms: Date.now() - requestStartTime,
+   ```
+   so consumers have an unambiguous end-to-end latency field that always satisfies
+   `total_ms >= classification_ms` and `total_ms >= latency_ms`.
+3. Add `total_ms?: number` to the `RouterResponse['meta']` interface (~line 105 in `index.ts`).
+4. Do NOT rename or remove `latency_ms` (breaking change) — leave it as tool-call latency for backward compat
+   and document the distinction via the new `total_ms` field presence.
 
-- Benchmark runner internal endpoint (blocked — BENCHMARK_SECRET env config not confirmed)
-- Agent leaderboard redesign
-- Stripe billing changes
-- Any refactoring of passing, untouched code
+**Acceptance criteria:**
+- `total_ms >= classification_ms` always holds in the response.
+- `total_ms >= latency_ms` always holds.
+- When Haiku times out (500ms), `total_ms ≈ 500 + tool_latency`, not 65.
+- Existing tests that check `classification_ms` field exists continue to pass.

@@ -88,18 +88,8 @@ export function fastClassify(query: string): QueryContext | null {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
-  const hasNewsWithDomain = newsTerms.test(lower) && (
-    yearPattern.test(lower) ||
-    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower)) ||
-    genericTopicSignal.test(lower)  // "latest AI tools", "recent ML updates", "latest crypto news" etc.
-  );
-  if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
-    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
-    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
-  }
-
   // Analytical/policy/socioeconomic framing → always research/deep
-  // Must fire before the general research terms block because queries like
+  // Must fire BEFORE the strongNewsTerms block because queries like
   // "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
   // match strongNewsTerms ("shortage") and get mis-routed to news/tavily without this guard.
   const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
@@ -109,6 +99,16 @@ export function fastClassify(query: string): QueryContext | null {
   if (analyticalKeywords.test(query) && multifactorDomains.test(query) && !genuineNewsSignals.test(query)) {
     const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
+  }
+
+  const hasNewsWithDomain = newsTerms.test(lower) && (
+    yearPattern.test(lower) ||
+    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower)) ||
+    genericTopicSignal.test(lower)  // "latest AI tools", "recent ML updates", "latest crypto news" etc.
+  );
+  if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
 
   // Research signals — catches detailed/technical explanation requests (P1-4)
