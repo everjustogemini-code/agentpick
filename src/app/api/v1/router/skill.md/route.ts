@@ -91,6 +91,14 @@ GET https://agentpick.dev/api/v1/router/usage?days=7
 Authorization: Bearer YOUR_API_KEY
 \`\`\`
 
+### Analytics Dashboard Feed
+\`\`\`
+GET https://agentpick.dev/api/v1/router/analytics?range=24h
+Authorization: Bearer YOUR_API_KEY
+\`\`\`
+
+Supported ranges: \`24h\`, \`7d\`, \`30d\`
+
 ### Health Check
 \`\`\`
 GET https://agentpick.dev/api/v1/router/health
