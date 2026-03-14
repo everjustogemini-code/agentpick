@@ -1,219 +1,175 @@
 # TASK_CLAUDE_CODE.md
 **Agent:** Claude Code
 **Date:** 2026-03-14
-**Source:** NEXT_VERSION.md Must-Have #1 (P1/P2 bugs) + Must-Have #2 (backend verify)
+**Source:** NEXT_VERSION.md — Bugfix Cycle 5 (QA Round 7, score 37/49)
 
 ---
 
-## Files to modify (ONLY these — no others)
+## Files to Modify / Create
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/lib/router/handler.ts` |
-| MODIFY | `src/lib/router/index.ts` |
-| MODIFY | `src/app/api/v1/router/usage/route.ts` |
-| VERIFY (patch only if broken) | `src/app/api/v1/router/priority/route.ts` |
-| VERIFY (patch only if broken) | `src/app/api/v1/playground/route/route.ts` |
+| MODIFY | `src/lib/router/sdk-handler.ts` |
+| VERIFY / MODIFY | `prisma/schema.prisma` |
+| MODIFY | `src/middleware.ts` |
+| MODIFY | `next.config.ts` |
+| VERIFY / MODIFY | `src/lib/router/index.ts` |
+| VERIFY / MODIFY | `src/lib/router/sdk.ts` |
+| MODIFY (export) | `src/app/mcp/route.ts` |
+| CREATE | `src/app/api/v1/mcp/tools/list/route.ts` |
 
-**DO NOT TOUCH:** Any file in `src/app/connect/`, `src/app/dashboard/`, `src/components/`, `src/app/page.tsx`, or any other frontend file.
+**DO NOT TOUCH:** `src/components/**`, `src/app/dashboard/**`, `src/app/playground/**`, or any other frontend file.
 
 ---
 
-## Bug 1 — P1: Crawl endpoint rejects bare `{"url":"..."}` body
+## Bug P0-2 — `toolUsed` empty/unknown in `/api/v1/router/calls`
 
-**File:** `src/lib/router/handler.ts`  
-**Current broken line (~117):**
-```typescript
-if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input)) {
-```
+### Fix 1 — `src/lib/router/sdk-handler.ts:186` (and ~line 242)
 
-**Root cause:** The flat-body → `params` promotion logic does not include `url`. So `POST /api/v1/route/crawl {"url":"https://example.com"}` reaches the guard at line 135:
-```typescript
-if (!body.params || typeof body.params !== 'object') {
-  return apiError('VALIDATION_ERROR', 'params object is required.', 400);
-}
-```
-and fails.
+Both `.catch(() => {})` calls silently swallow DB write errors, causing records to be stored with default/empty `toolUsed`. Change both occurrences:
 
-**Fix:** Add `|| parsed.url` to the condition so `url` triggers auto-promotion:
 ```typescript
 // BEFORE:
-if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input)) {
+).catch(() => {});
 
 // AFTER:
-if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input || parsed.url)) {
+).catch((e) => console.error('[recordRouterCall] write failed:', e));
 ```
 
-No other changes needed. The `crawl/route.ts` already has belt-and-suspenders normalization via Zod but that path has edge cases (fails if URL format is invalid); the handler fix is the authoritative fix.
+### Fix 2 — `src/lib/router/sdk-handler.ts` error-path catch block (~line 220)
 
-**Test:** `POST /api/v1/route/crawl {"url":"https://example.com"}` → 200 or tool error, NOT `400 VALIDATION_ERROR: params object is required`.
+The inline `tool_used` computation uses hardcoded `'balanced'` instead of the actual `coreStrategy`. Replace the inline expression with a named variable:
+
+```typescript
+// BEFORE (line ~220):
+tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? `${capability}-unavailable`,
+
+// AFTER:
+// Add ABOVE the failureResponse object:
+const resolvedToolUsed =
+  modifiedRequest.tool ??
+  modifiedRequest.priority_tools?.[0] ??
+  getRankedToolsForCapability(capability, coreStrategy)[0] ??
+  capability;
+
+// In failureResponse.meta:
+tool_used: resolvedToolUsed,
+```
+
+### Fix 3 — `prisma/schema.prisma`
+
+Read the schema and verify `RouterCall.toolUsed` is `String` (non-nullable). If it is `String?` (nullable):
+1. Change to `String @default("")`
+2. Run: `npx prisma migrate dev --name fix-router-call-tool-used-nullable`
+3. Backfill: `UPDATE "RouterCall" SET "toolUsed" = '' WHERE "toolUsed" IS NULL;`
 
 ---
 
-## Bug 2 — P2: `cheapest` strategy routes to Tavily (wrong cost ranking)
+## Bug P0-3 — XSS risk: missing effective Content-Security-Policy
 
-**File:** `src/lib/router/index.ts`
+### Fix 1 — `src/middleware.ts:190`
 
-**Current state (TOOL_CHARACTERISTICS ~line 94):**
-```typescript
-serpapi: { quality: 3.0, cost: 0.0002, latency: 89, stability: 0.98 },
+Current value (page-route CSP):
+```
+"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'"
 ```
 
-**Root cause:** Per correct API pricing, Serper (mapped to `serpapi` slug) costs ~$0.0001/call, same tier as Brave. Current value of `0.0002` may cause it to rank unexpectedly in edge cases. The spec requires `cheapest` to resolve: `brave-search → serper → serpapi-google → tavily → exa-search`.
-
-Costs that produce this order:
-- `brave-search`: 0.0001 ✓ (already correct)
-- `serpapi`: 0.0001 ← **change from 0.0002**
-- `tavily`: 0.001 ✓
-- `exa-search`: 0.002 ✓
-
-**Fix:**
-```typescript
-// BEFORE:
-serpapi: { quality: 3.0, cost: 0.0002, latency: 89, stability: 0.98 },
-
-// AFTER:
-serpapi: { quality: 3.0, cost: 0.0001, latency: 89, stability: 0.98 },
+Replace with (remove `'unsafe-inline'` and `'unsafe-eval'` from `script-src`; tighten `frame-ancestors`):
+```
+"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'"
 ```
 
-Do NOT change any other field in TOOL_CHARACTERISTICS. Do NOT change routing logic.
+**Note:** Removing `'unsafe-eval'` may break Next.js hydration in dev mode. Test in staging. If it breaks production, fall back to `'unsafe-eval'` only and remove only `'unsafe-inline'`.
 
-**Test:** `getRankedToolsForCapability('search', 'cheapest')[0]` must be `brave-search` or `serpapi`, never `tavily`.
+### Fix 2 — `next.config.ts`
 
----
-
-## Bug 3 — P2: Priority endpoint field name mismatch (verify + harden)
-
-**File:** `src/app/api/v1/router/priority/route.ts`
-
-**Current state:** Line 23 already reads:
-```typescript
-const toolsValue = body.tools ?? body.priority_tools ?? body.search;
-```
-This should already accept `search` as an alias. **Read the file and verify this line exists unchanged.**
-
-If the line is present and correct, the only remaining fix is the error message at line 35. Update it to mention `search` as a valid alias:
-```typescript
-// BEFORE:
-return apiError('VALIDATION_ERROR', 'Provide tools/priority_tools (priority list) or excluded/excluded_tools (exclusion list).', 400);
-
-// AFTER:
-return apiError('VALIDATION_ERROR', 'Provide tools/priority_tools/search (priority list) or excluded/excluded_tools (exclusion list).', 400);
-```
-
-If the alias handling on line 23 is broken or missing, also fix it:
-```typescript
-const toolsValue = body.tools ?? body.priority_tools ?? body.search;
-```
-
-**Test:** `POST /api/v1/router/priority {"search":["exa-search"]}` → 200 JSON response.
-
----
-
-## Bug 4 — P2: Usage response missing `monthlyLimit`, `callsThisMonth`, `strategy` at top level
-
-**File:** `src/app/api/v1/router/usage/route.ts`
-
-**Current state:** These fields ARE returned but only nested under `account`. The response shape is:
-```json
-{
-  "plan": "FREE",
-  "daily_limit": ...,
-  "stats": {...},
-  "account": { "plan": "FREE", "monthlyLimit": 10000, "callsThisMonth": 42, "strategy": "AUTO" }
-}
-```
-
-Dashboard and SDK clients read top-level fields. They see `plan` but not `monthlyLimit`, `callsThisMonth`, or `strategy`.
-
-**Fix:** Also expose these three fields at the top level of the response (keep the `account` sub-object for backwards compat with any client already reading it):
+The file currently has an empty `nextConfig`. Add a `headers()` function:
 
 ```typescript
-// BEFORE (return statement):
-return Response.json({
-  plan: account.plan,
-  daily_limit: limits.limit,
-  daily_used: limits.used,
-  daily_remaining: limits.remaining,
-  stats,
-  account: {
-    plan: account.plan,
-    monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
-    callsThisMonth,
-    strategy: account.strategy,
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+        ],
+      },
+    ];
   },
-});
+};
 
-// AFTER:
-return Response.json({
-  plan: account.plan,
-  monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
-  callsThisMonth,
-  strategy: account.strategy,
-  daily_limit: limits.limit,
-  daily_used: limits.used,
-  daily_remaining: limits.remaining,
-  stats,
-  account: {
-    plan: account.plan,
-    monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
-    callsThisMonth,
-    strategy: account.strategy,
-  },
-});
+export default nextConfig;
 ```
-
-**Test:** `GET /api/v1/router/usage` response body must have `monthlyLimit`, `callsThisMonth`, `strategy` as direct top-level keys (not only nested under `account`).
 
 ---
 
-## Bug 5 — P2: `ai_routing_summary` never populated
+## Bug P1-1 — Strategy differentiation: auto/balanced/cheapest all pick same tool
 
-**File:** `src/lib/router/handler.ts`
+### Fix 1 — `src/lib/router/index.ts`
 
-**Root cause:** The field is documented but never emitted. The response currently includes `meta.ai_classification` (when strategy=auto) but no `ai_routing_summary` at the root level.
+Read the file and verify `TOOL_CHARACTERISTICS` (or equivalent cost/quality data) for `search` capability produces distinct rankings per strategy:
+- `cheapest` → `brave-search` first (cost ~0.0001)
+- `balanced` → `tavily` first (quality ≥ 4.0, best cost-efficiency)
+- `best_performance` → `exa-search` first (quality ~4.6)
 
-**Fix:** After the `routeRequest(...)` call in the POST handler, add `ai_routing_summary` to the response JSON when AI classification was used. Find the `Response.json(...)` call that returns the route result and augment it:
+If the rankings collapse to the same tool, inspect the scoring function. Add a temporary `console.log` in staging to trace `getRankedToolsForCapability('search', strategy)` output for each strategy. Fix the cost/quality values if incorrect.
+
+### Fix 2 — `src/lib/router/sdk.ts:150`
+
+Read the file and verify `applyStrategy()` receives the per-request `strategyUsed` value (already confirmed in `sdk-handler.ts:159` as `strategy: strategyUsed`). If `applyStrategy` internally re-reads `account.strategy` instead of the passed argument, fix it to use the argument.
+
+No code change needed if both routing through the argument correctly — add a staging log to confirm.
+
+---
+
+## Bug P1-3 — MCP endpoints 404 at `/api/v1/mcp/tools/list`
+
+`src/app/api/v1/mcp/route.ts` already re-exports `GET`/`POST` from `/mcp/route.ts` (manifest + JSON-RPC), so `/api/v1/mcp` is already resolved. Only `/tools/list` is missing.
+
+### Fix 1 — `src/app/mcp/route.ts`
+
+Read the file and verify `SERVER_INFO` is exported. If it is declared as `const SERVER_INFO = { ... }` without `export`, add the `export` keyword:
+```typescript
+// BEFORE:
+const SERVER_INFO = {
+// AFTER:
+export const SERVER_INFO = {
+```
+This is the **only** change allowed in this file.
+
+### Fix 2 — Create `src/app/api/v1/mcp/tools/list/route.ts`
 
 ```typescript
-// When result.response.meta.ai_classification exists, add to root of response:
-const responseBody: Record<string, unknown> = { ...result.response };
-if (result.response.meta.ai_classification) {
-  responseBody.ai_routing_summary = {
-    strategy_used: body.strategy ?? account.strategy ?? 'balanced',
-    tool_selected: result.response.meta.tool_used,
-    reasoning: result.response.meta.ai_classification.reasoning ?? null,
-    classification_ms: result.response.meta.classification_ms ?? null,
-  };
+/**
+ * GET /api/v1/mcp/tools/list — REST convenience route returning the MCP tools array.
+ * Actual MCP server lives at /mcp (JSON-RPC 2.0) and at /api/v1/mcp (re-exported).
+ */
+import { SERVER_INFO } from '@/app/mcp/route';
+
+export async function GET() {
+  return Response.json(
+    { tools: SERVER_INFO.tools },
+    {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
+    }
+  );
 }
-return Response.json(responseBody, { headers: responseHeaders });
 ```
 
-Replace the existing `return Response.json(result.response, ...)` call with this block. Do not create a new one.
-
-**Test:** `POST /api/v1/route/search {"query":"test","strategy":"auto"}` response body must contain `ai_routing_summary` with non-null `tool_selected`.
-
 ---
 
-## Must-Have #2 Backend — Verify playground/route endpoint
+## Verification Checklist
 
-**File:** `src/app/api/v1/playground/route/route.ts`
-
-This endpoint already exists and is substantially complete. **Read it and verify:**
-1. Rate limit is 5 req/min per IP (in-memory fallback + Upstash if configured) ✓
-2. `PLAYGROUND_KEY` env var is used as auth for upstream call ✓
-3. Results capped to 2 items ✓
-4. `_playground: true` in response ✓
-5. `traceId` included ✓
-
-If all 5 checks pass, make no changes. If any are broken, patch in-place.
-
----
-
-## Verification checklist
-
-- [ ] `POST /api/v1/route/crawl {"url":"https://example.com"}` → not 400
-- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → `tool_used` is `brave-search` or `serpapi`
-- [ ] `POST /api/v1/router/priority {"search":["exa-search"]}` → 200
-- [ ] `GET /api/v1/router/usage` top-level has `monthlyLimit`, `callsThisMonth`, `strategy`
-- [ ] `POST /api/v1/route/search {"strategy":"auto"}` response has `ai_routing_summary`
+- [ ] `GET /api/v1/router/calls` — every record has non-empty `toolUsed` (no empty string, no "unknown")
+- [ ] Any API response includes `X-Content-Type-Options: nosniff`
+- [ ] Page routes: CSP header does NOT contain `unsafe-eval`
+- [ ] `POST /api/v1/router/search {"strategy":"cheapest"}` picks a different tool than `{"strategy":"best_performance"}`
+- [ ] `GET /api/v1/mcp/tools/list` returns 200 with a `tools` array
