@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getCompetitiveSnapshot } from '@/lib/ops/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -65,6 +66,8 @@ export default async function MakerDashboardPage({
     }),
   ]);
 
+  const competitiveSnapshot = await getCompetitiveSnapshot(product.id);
+
   const successRate = totalTelemetry > 0 ? Math.round((successCount / totalTelemetry) * 100) : null;
   const badgeUrl = `https://agentpick.dev/badges/${slug}.svg`;
 
@@ -130,6 +133,103 @@ export default async function MakerDashboardPage({
               <p className="text-xs text-text-muted">{stat.label}</p>
             </div>
           ))}
+        </div>
+
+        {/* Competitive Position */}
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+          <h2 className="mb-4 font-mono text-[10px] uppercase tracking-wider text-text-dim">
+            Competitive Position
+          </h2>
+          {!competitiveSnapshot || !competitiveSnapshot.hasBatchData ? (
+            <p className="text-sm text-text-muted">
+              Competitive data available after controlled benchmarks run. Check back soon.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Overall rank */}
+              <p className="text-sm font-semibold text-text-primary">
+                Overall Rank:{' '}
+                <span className="font-mono text-indigo-600">
+                  #{competitiveSnapshot.overallRank} of {competitiveSnapshot.totalProducts} tools
+                </span>
+              </p>
+
+              {/* Top 3 domain pills */}
+              {competitiveSnapshot.domainRankings.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {competitiveSnapshot.domainRankings
+                    .slice()
+                    .sort((a, b) => a.rank - b.rank)
+                    .slice(0, 3)
+                    .map((d) => (
+                      <span
+                        key={d.domain}
+                        className="inline-flex items-center gap-1 rounded-full border border-[#E2E8F0] bg-bg-muted px-3 py-1 font-mono text-[11px] text-text-secondary"
+                      >
+                        {d.domain}: #{d.rank}
+                        {d.trend === 'up' ? ' ↑' : d.trend === 'down' ? ' ↓' : ' →'}
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              {/* Strongest / Needs improvement */}
+              {(() => {
+                const ranked = competitiveSnapshot.domainRankings.slice().sort((a, b) => a.rank - b.rank);
+                const strongest = ranked[0];
+                const needsImprovement = ranked
+                  .slice()
+                  .reverse()
+                  .find((d) => d.batchCount >= 3);
+                return (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                    {strongest && (
+                      <div className="flex-1 rounded-lg bg-green-50 px-4 py-3">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-green-600">
+                          Strongest domain
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                          {strongest.domain}{' '}
+                          <span className="font-mono text-[11px] text-text-dim">
+                            #{strongest.rank} of {strongest.total}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    {needsImprovement && needsImprovement.domain !== strongest?.domain && (
+                      <div className="flex-1 rounded-lg bg-amber-50 px-4 py-3">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-amber-600">
+                          Needs improvement
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                          {needsImprovement.domain}{' '}
+                          <span className="font-mono text-[11px] text-text-dim">
+                            #{needsImprovement.rank} of {needsImprovement.total}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Link to full benchmarks */}
+              {(() => {
+                const strongest = competitiveSnapshot.domainRankings
+                  .slice()
+                  .sort((a, b) => a.rank - b.rank)[0];
+                if (!strongest) return null;
+                return (
+                  <Link
+                    href={`/benchmarks/${strongest.domain}?product=${slug}`}
+                    className="text-[13px] font-medium text-indigo-600 hover:underline"
+                  >
+                    View full benchmarks →
+                  </Link>
+                );
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Top agents using your product */}
