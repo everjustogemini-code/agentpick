@@ -211,7 +211,14 @@ export function getRankedToolsForCapability(
         return ca.cost - cb.cost;
       case 'balanced':
       default: {
-        // Best bang for buck: quality / (cost * latency), but avoid div by zero
+        // Prefer quality-tier tools (≥4.0) first, then sort by cost-efficiency within each tier.
+        // This ensures balanced picks a high-quality tool (e.g. tavily) rather than the cheapest.
+        const QUALITY_FLOOR = 4.0;
+        const aMeetsFloor = ca.quality >= QUALITY_FLOOR;
+        const bMeetsFloor = cb.quality >= QUALITY_FLOOR;
+        if (aMeetsFloor && !bMeetsFloor) return -1;
+        if (bMeetsFloor && !aMeetsFloor) return 1;
+        // Within the same quality tier: best bang for buck
         const scoreA = ca.quality / (Math.max(ca.cost, 0.0001) * Math.max(ca.latency, 1));
         const scoreB = cb.quality / (Math.max(cb.cost, 0.0001) * Math.max(cb.latency, 1));
         return scoreB - scoreA;
