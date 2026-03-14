@@ -249,12 +249,12 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     context.type === 'news' ||
     context.freshness === 'recent'
   ) {
-    return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
+    return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi'], capability);
   }
 
   // Deep research → quality tools first
   if (context.depth === 'deep' || context.type === 'research') {
-    return filterAvailable(['exa-search', 'perplexity-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
+    return filterAvailable(['exa-search', 'perplexity-search', 'tavily', 'serpapi'], capability);
   }
 
   // Finance domain search → domain-aware tools
@@ -268,7 +268,7 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
   // configured group, causing non-deterministic tool selection when Haiku misclassifies
   // a news/realtime query as 'simple'. Putting tavily first makes auto-strategy routing
   // deterministic regardless of which cheap tools are configured.
-  return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
+  return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi'], capability);
 }
 
 /**
