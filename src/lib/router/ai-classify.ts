@@ -111,6 +111,15 @@ export function fastClassify(query: string): QueryContext | null {
     return { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
   }
 
+  // "current X" (not a simple definition): "current AI tools", "current state of crypto"
+  // Haiku can misclassify these as 'simple', causing non-deterministic tool selection.
+  // Treat as 'news' so quality-first routing applies regardless of Haiku classification.
+  const currentSignal = /\bcurrent\s+\w/i;
+  if (currentSignal.test(lower) && !simpleTerms.test(lower)) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
+  }
+
   return null; // Uncertain — use LLM
 }
 
@@ -253,9 +262,13 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
-  // Default: for simple queries, prefer cheap/fast tools first; tavily before serpapi-google
-  // since tavily has higher quality (4.0 vs 3.2) and serpapi-google is not meaningfully cheaper.
-  return filterAvailable(['brave-search', 'serper', 'serpapi', 'tavily', 'exa-search', 'serpapi-google'], capability);
+  // Default: for simple queries, use quality-first ordering (same as news/realtime).
+  // Cheap tools (brave-search, serper) are often unconfigured on the platform; the
+  // deprioritizeUnconfiguredTools pass then places serpapi ahead of tavily in the
+  // configured group, causing non-deterministic tool selection when Haiku misclassifies
+  // a news/realtime query as 'simple'. Putting tavily first makes auto-strategy routing
+  // deterministic regardless of which cheap tools are configured.
+  return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
 }
 
 /**

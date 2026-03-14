@@ -88,6 +88,13 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
+  // Reject auth headers that are present but use a non-Bearer scheme (e.g. "Token xyz",
+  // "APIKey xyz"). These will never produce a valid ah_ token. Returning 401 immediately
+  // prevents any DB lookup and eliminates a narrow edge case where a malformed scheme
+  // could reach authenticateAgent and produce an unexpected response in edge deployments.
+  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.has('token')) {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
 
   let agent: Awaited<ReturnType<typeof authenticateAgent>>;
   try {

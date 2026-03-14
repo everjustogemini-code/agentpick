@@ -56,6 +56,12 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
+  // Reject non-Bearer auth schemes (e.g. "Token xyz", "APIKey xyz") immediately.
+  // These cannot produce a valid ah_ token and would otherwise reach authenticateAgent
+  // with a DB lookup, creating a narrow edge case window in edge deployments.
+  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.has('token')) {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
 
   // Wrap authenticateAgent in try/catch: a DB timeout or URL parse error during auth
   // should return 401, not bubble up as an unhandled 500.
