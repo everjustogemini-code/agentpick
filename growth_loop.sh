@@ -193,5 +193,5 @@ echo "🔄 Growth cycle $CYCLE complete. Next cycle $NEXT in 2 hours."
 echo "================================================"
 
 # Sleep 2 hours then run again
-sleep 7200
+sleep 1800
 exec bash "$0" "$NEXT"
