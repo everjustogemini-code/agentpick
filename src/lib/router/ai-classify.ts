@@ -43,6 +43,9 @@ export function fastClassify(query: string): QueryContext | null {
   // Realtime / finance signals
   const financeTerms = /\b(stock|price|ticker|share|market cap|earnings|dividend|p\/e|pe ratio|pe\b|eps|revenue|margin|valuation|ratio|roi|ebitda|cash flow|balance sheet|income statement|quarterly|annual report|sec filing|crypto|bitcoin|btc|eth|ethereum|forex|exchange rate|trading)\b/i;
   const realtimeTerms = /\b(today|right now|current|live|real.?time|latest price|price now)\b/i;
+  // Standalone realtime/live signals that don't require finance context:
+  // "live coverage", "live updates", "real-time feed", "realtime data" etc.
+  const standaloneRealtimeSignal = /\b(live (coverage|updates?|feed|stream|blog|scores?|results?|data)|real.?time (updates?|feed|data|coverage|alerts?|stream)|live\s+\w+\s+(updates?|coverage|feed))\b/i;
 
   // Ticker-like patterns: 1-5 uppercase letters followed by finance terms
   const tickerPattern = /\b[A-Z]{1,5}\b/;
@@ -50,6 +53,12 @@ export function fastClassify(query: string): QueryContext | null {
 
   if (financeTerms.test(lower) && realtimeTerms.test(lower)) {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
+  }
+  // Non-finance realtime signals: "live coverage", "live updates", "real-time feed" etc.
+  // These are unambiguously real-time regardless of domain, so bypass Haiku entirely.
+  if (standaloneRealtimeSignal.test(lower)) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'realtime', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'realtime' };
   }
   if (financeTerms.test(lower) && /\b(price|stock|ticker|market cap|crypto)\b/i.test(lower)) {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
