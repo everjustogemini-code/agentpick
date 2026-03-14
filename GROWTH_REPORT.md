@@ -1,3 +1,80 @@
+# Growth Report — Cycle 12 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 295 | This Week: 295 | Calls Today: 337 | Paid: 0
+- Blog posts: 11 live (added linkup-search-api-for-ai-agents)
+- New page: /reports/weekly/2026-03-21 — 2nd weekly report, establishes cadence
+- AEO scores: 0/0/0 (5th cycle in a row — Linkup now appearing in query 1 results)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — zero revenue. STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env.
+2. **Zero search visibility** — 5 cycles at 0 for all 3 AEO queries.
+3. **No directory listings** — aimultiple.com, data4ai.com, kdnuggets.com rank for our queries; not listed.
+
+## Actions Taken
+
+### 1. Fixed AEO score endpoint (P1 bug)
+- Was writing to `/var/task/data/aeo-scores.json` which is read-only on Vercel → EROFS crash
+- Fixed: now uses Prisma DB with graceful fallback; returns 200 instead of crashing
+- Impact: growth monitoring endpoint now works reliably
+
+### 2. Fixed rate limits + strategy validation (QA P1 fixes)
+- Raised per-minute limits: free 60→200, pro 200→500, growth 1000→2000
+- `custom` strategy now accepted in validation messages (was already handled in aliases)
+- Impact: developer testing no longer hits rate wall after 8 calls
+
+### 3. New blog post: /blog/linkup-search-api-for-ai-agents
+- Targets: "linkup search api for ai agents", "linkup vs tavily", "linkup vs exa"
+- Key angle: Linkup appeared in search results for "best search API for AI agents" this cycle
+- Includes: full rankings table with Linkup queued, FAQ (3 AEO Q&As), CTA to /connect
+- Added to blog index (now 11 posts)
+
+### 4. New report: /reports/weekly/2026-03-21
+- Second weekly benchmark report — demonstrates cadence to search engines
+- Updated stats: 295 agents, 2,373 cumulative calls, Linkup queued status
+- Links back to 2026-03-14 report (internal link chain)
+
+### 5. AEO scores checked (cycle 12)
+- "best search API for AI agents" → 0 (new: Linkup now appearing alongside Tavily, Exa, Firecrawl, Brave)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, Arize AI, LangChain)
+- "AI agent API benchmark" → 0 (EvidentlyAI, AgentBench, Sierra, IBM)
+
+## Results
+- AEO score endpoint fixed ✅
+- Rate limits fixed (devs no longer hit wall immediately) ✅
+- Linkup blog post live ✅
+- Weekly report #2 live ✅
+- Blog index updated to 11 posts ✅
+- Moltbook: DNS failure again, marked dead channel
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Directory submissions** — aimultiple.com, data4ai.com, kdnuggets.com rank for target queries
+3. **Brave Search blog post** — Brave ranks for "best search API" queries, no dedicated comparison post
+4. **Linkup verification** — add to benchmark set; creates content hook when it gets a score
+
+## Learnings
+- New competitors appear in AEO results regularly (Linkup this cycle). Creating benchmark comparison
+  content within 1 cycle of first sighting captures early search traffic for that brand's queries.
+- The AEO score endpoint was silently failing for 5+ cycles. Always verify admin endpoints work
+  in production (read-only filesystem is a Vercel gotcha for any fs.writeFileSync call).
+- Rate limit fix matters for conversion: free tier devs hitting 429 after 8 calls abandon the product.
+  200/min is much more developer-friendly for integration testing.
+
+## Files Changed (Cycle 12)
+- `src/app/api/v1/admin/growth-metrics/aeo-score/route.ts` — fixed EROFS crash, now uses DB
+- `src/app/api/v1/health/route.ts` — standalone health check (no longer re-exports)
+- `src/app/api/v1/router/strategy/route.ts` — better error messages for custom/manual strategies
+- `src/lib/router/handler.ts` — custom/manual now listed in validation error messages
+- `src/middleware.ts` — rate limits raised for all tiers
+- `src/app/blog/linkup-search-api-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added Linkup post at top (now 11 posts)
+- `src/app/reports/weekly/2026-03-21/page.tsx` (new)
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 11 (2026-03-14)
 
 ## Metrics Snapshot

@@ -100,9 +100,29 @@ export async function GET(request: NextRequest) {
 
     // Apply same quality floor as the real router's cheapest strategy
     const QUALITY_FLOOR = 3.0;
+    const BALANCED_QUALITY_FLOOR = 4.0;
+    const STABLE_QUALITY_FLOOR = 2.5;
     const strategies = {
-      BALANCED: [...products].sort((left, right) => (right.weightedScore ?? 0) - (left.weightedScore ?? 0)),
-      FASTEST: [...products].sort((left, right) => (left.avgLatencyMs ?? 9999) - (right.avgLatencyMs ?? 9999)),
+      // BALANCED mirrors getRankedToolsForCapability('balanced'): quality floor 4.0,
+      // then rank by cost-efficiency score (quality / (cost * latency)).
+      BALANCED: [...products].sort((left, right) => {
+        const lMeetsFloor = (left.weightedScore ?? 0) >= BALANCED_QUALITY_FLOOR;
+        const rMeetsFloor = (right.weightedScore ?? 0) >= BALANCED_QUALITY_FLOOR;
+        if (lMeetsFloor && !rMeetsFloor) return -1;
+        if (rMeetsFloor && !lMeetsFloor) return 1;
+        const scoreLeft = (left.weightedScore ?? 0) / (Math.max(left.avgCostUsd ?? 0.0001, 0.0001) * Math.max(left.avgLatencyMs ?? 1, 1));
+        const scoreRight = (right.weightedScore ?? 0) / (Math.max(right.avgCostUsd ?? 0.0001, 0.0001) * Math.max(right.avgLatencyMs ?? 1, 1));
+        return scoreRight - scoreLeft;
+      }),
+      // FASTEST mirrors getRankedToolsForCapability('most_stable'): highest successRate
+      // first with a quality floor of 2.5 — NOT sorted by raw latency.
+      FASTEST: [...products].sort((left, right) => {
+        const lq = left.weightedScore ?? 0;
+        const rq = right.weightedScore ?? 0;
+        if (lq < STABLE_QUALITY_FLOOR && rq >= STABLE_QUALITY_FLOOR) return 1;
+        if (rq < STABLE_QUALITY_FLOOR && lq >= STABLE_QUALITY_FLOOR) return -1;
+        return (right.successRate ?? 0) - (left.successRate ?? 0);
+      }),
       CHEAPEST: [...products].sort((left, right) => {
         const lq = left.weightedScore ?? 0;
         const rq = right.weightedScore ?? 0;
@@ -117,7 +137,7 @@ export async function GET(request: NextRequest) {
       string,
       {
         top_pick: string;
-        top_3: Array<{ slug: string; name: string; score?: number; latency?: number; cost?: number; relevance?: number }>;
+        top_3: Array<{ slug: string; name: string; score?: number; latency?: number; cost?: number; relevance?: number; successRate?: number }>;
       }
     > = {};
 
@@ -131,6 +151,7 @@ export async function GET(request: NextRequest) {
           latency: product.avgLatencyMs ?? undefined,
           cost: product.avgCostUsd ?? undefined,
           relevance: product.avgBenchmarkRelevance ?? undefined,
+          successRate: product.successRate ?? undefined,
         })),
       };
     }

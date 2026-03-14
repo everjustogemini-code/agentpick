@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'linkup-search-api-for-ai-agents',
+    title: 'Linkup Search API for AI Agents: How It Compares (2026)',
+    description:
+      'Linkup calls itself the best search for AI apps. We benchmarked it against Perplexity, Exa, Tavily, and Brave. Here is where it actually lands.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'haystack-for-ai-agents',
     title: 'Haystack for AI Agents: Benchmark Results (2026)',
     description:

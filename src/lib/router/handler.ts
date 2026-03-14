@@ -135,7 +135,11 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   }
 
   if (!body.params || typeof body.params !== 'object') {
-    return apiError('VALIDATION_ERROR', 'params object is required.', 400);
+    const hasPriority = Array.isArray((body as unknown as Record<string, unknown>).priority_tools) || Array.isArray((body as unknown as Record<string, unknown>).priority);
+    const hint = hasPriority
+      ? ' When using priority/priority_tools, also include your query: {"query":"...", "priority":["tool-a","tool-b"]}.'
+      : ' Pass params directly: {"params":{"query":"..."}} or use flat body: {"query":"..."}.';
+    return apiError('VALIDATION_ERROR', `params object is required.${hint}`, 400);
   }
 
   // Validate empty queries before routing
