@@ -1,46 +1,4 @@
 import { NextRequest } from 'next/server';
-<<<<<<< HEAD
-import { authenticateAgent, generateApiKey, hashApiKey } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { apiError } from '@/types';
-
-const db = prisma as any;
-
-/**
- * GET /api/v1/router/keys — Return masked API key info for the authenticated agent.
- */
-export async function GET(request: NextRequest) {
-  const agent = await authenticateAgent(request);
-  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
-
-  return Response.json({
-    keyPrefix: agent.apiKeyHash ? 'ap_***' : null,
-    createdAt: agent.createdAt ?? null,
-    message: 'Use POST /api/v1/router/keys to rotate your API key.',
-  });
-}
-
-/**
- * POST /api/v1/router/keys — Rotate the API key for the authenticated agent.
- * Returns the new plaintext key (only shown once).
- */
-export async function POST(request: NextRequest) {
-  const agent = await authenticateAgent(request);
-  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
-
-  const newKey = generateApiKey();
-  const newHash = hashApiKey(newKey);
-
-  await db.agent.update({
-    where: { id: agent.id },
-    data: { apiKeyHash: newHash },
-  });
-
-  return Response.json({
-    apiKey: newKey,
-    message: 'API key rotated. Store this key securely — it will not be shown again.',
-  }, { status: 200 });
-=======
 import { authenticateAgent } from '@/lib/auth';
 import {
   deleteByokKey,
@@ -66,8 +24,8 @@ export async function GET(request: NextRequest) {
   const context = await authenticateDeveloper(request);
   if (!context) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
-  const keys = listByokKeys(context.account.byokKeys);
-  const summary = await getByokSummary(context.account.id, context.account.byokKeys, 30);
+  const keys = listByokKeys((context.account as any).byokKeys);
+  const summary = await getByokSummary(context.account.id, (context.account as any).byokKeys, 30);
 
   return Response.json({
     keys,
@@ -93,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const normalizedService = normalizeByokService(body.service) ?? body.service;
-    await saveByokKey(context.account.id, context.account.byokKeys, {
+    await saveByokKey(context.account.id, (context.account as any).byokKeys, {
       service: body.service,
       apiKey: body.api_key,
       status: body.status,
@@ -128,7 +86,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const normalizedService = normalizeByokService(body.service) ?? body.service;
-    await updateByokKey(context.account.id, context.account.byokKeys, {
+    await updateByokKey(context.account.id, (context.account as any).byokKeys, {
       service: body.service,
       apiKey: body.api_key,
       status: body.status,
@@ -159,7 +117,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const deleted = await deleteByokKey(context.account.id, context.account.byokKeys, body.service);
+    const deleted = await deleteByokKey(context.account.id, (context.account as any).byokKeys, body.service);
     const refreshed = await ensureDeveloperAccount(context.agent.id);
     const summary = await getByokSummary(refreshed.id, refreshed.byokKeys, 30);
 
@@ -167,5 +125,4 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     return apiError('VALIDATION_ERROR', error instanceof Error ? error.message : 'Unable to delete key.', 400);
   }
->>>>>>> feature/cycle-4
 }

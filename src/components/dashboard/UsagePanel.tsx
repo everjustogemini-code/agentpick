@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type SelectableStrategy = 'AUTO' | 'BALANCED' | 'CHEAPEST' | 'FASTEST';
 type KnownStrategy = SelectableStrategy | 'MOST_ACCURATE' | 'MANUAL';
@@ -243,9 +243,14 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
   const [strategyPending, setStrategyPending] = useState<SelectableStrategy | null>(null);
   const [budgetPending, setBudgetPending] = useState(false);
   const [budgetMessage, setBudgetMessage] = useState('');
+  const onLogoutRef = useRef(onLogout);
   const requestIdRef = useRef(0);
 
-  const syncPanel = useEffectEvent(async (showSkeleton = false) => {
+  useEffect(() => {
+    onLogoutRef.current = onLogout;
+  }, [onLogout]);
+
+  const syncPanel = useCallback(async (showSkeleton = false) => {
     const requestId = ++requestIdRef.current;
 
     if (showSkeleton) {
@@ -254,7 +259,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
     setError('');
 
     try {
-      const nextState = await fetchPanelState(apiKey, onLogout);
+      const nextState = await fetchPanelState(apiKey, onLogoutRef.current);
       if (!nextState || requestId !== requestIdRef.current) {
         return false;
       }
@@ -274,7 +279,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
         setLoading(false);
       }
     }
-  });
+  }, [apiKey]);
 
   useEffect(() => {
     void syncPanel(true);
@@ -282,7 +287,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
     return () => {
       requestIdRef.current += 1;
     };
-  }, [apiKey, syncPanel]);
+  }, [syncPanel]);
 
   async function handleStrategyChange(strategy: SelectableStrategy) {
     if (!panel || panel.strategy === strategy || strategyPending) return;
