@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const successUrl = `${getAppBaseUrl(request)}/pricing?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${getAppBaseUrl(request)}/dashboard?upgraded=${plan}`;
     const cancelUrl = `${getAppBaseUrl(request)}/pricing?checkout=cancelled&plan=${plan}`;
 
     try {

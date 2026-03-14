@@ -2,7 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState, useMemo } from 'react';
+// useSearchParams removed — read from window.location instead
 import SiteHeader from '@/components/SiteHeader';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
@@ -40,6 +41,15 @@ function isFreePlan(plan: string) {
 }
 
 export default function DashboardPage() {
+  const [upgradedPlan, setUpgradedPlan] = useState<string | null>(null);
+  const [dismissUpgrade, setDismissUpgrade] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get('upgraded');
+    if (plan) setUpgradedPlan(plan);
+  }, []);
+
   const [apiKey, setApiKey] = useState('');
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState('');
@@ -218,6 +228,17 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.12),_transparent_24%),linear-gradient(180deg,_#f7f3ec_0%,_#f8fafc_42%,_#ffffff_100%)]">
       <SiteHeader />
+      {upgradedPlan && !dismissUpgrade && (
+        <div className="mx-auto max-w-6xl px-6 pt-4">
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-4">
+            <div>
+              <p className="text-lg font-semibold text-emerald-400">🎉 Welcome to {upgradedPlan === 'pro' ? 'Pro' : upgradedPlan === 'growth' ? 'Growth' : 'Scale'}!</p>
+              <p className="mt-1 text-sm text-emerald-300/70">Your plan is now active. Start routing — your agent has {upgradedPlan === 'pro' ? '5,000' : upgradedPlan === 'growth' ? '25,000' : '100,000'} calls this month.</p>
+            </div>
+            <button onClick={() => setDismissUpgrade(true)} className="text-emerald-400/50 hover:text-emerald-400 text-xl">×</button>
+          </div>
+        </div>
+      )}
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10 sm:px-8 lg:px-10">
         <div className="max-w-3xl">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
