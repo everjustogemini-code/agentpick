@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Stripe embedded checkout session error:', error);
     const message =
-      error instanceof Error && error.message.includes('STRIPE_')
-        ? 'Stripe billing is not configured yet.'
+      error instanceof Error
+        ? `Checkout error: ${error.message}`
         : 'Unable to create a Stripe checkout session.';
 
     return apiError('INTERNAL_ERROR', message, 500);

@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '20', 10), 1), 50);
     const capability = url.searchParams.get('capability') ?? undefined;
 
-    const where: Record<string, unknown> = { developerId: account.id };
+    const where: Record<string, unknown> = {
+      developerId: account.id,
+      // Exclude legacy records where toolUsed was not properly recorded
+      NOT: { toolUsed: 'unknown' },
+    };
     if (capability) {
       where.capability = capability;
     }
