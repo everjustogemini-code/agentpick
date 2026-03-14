@@ -18,13 +18,25 @@ export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-bg-primary/90 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-50 border-b border-border"
+      style={{
+        background: 'rgba(250,250,250,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+    >
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-3">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-[#0A0A0A] font-mono text-sm font-bold text-white">
             &#x2B21;
           </div>
           <span className="text-[17px] font-bold tracking-tight text-text-primary">agentpick</span>
+          {/* Live pulse dot */}
+          <span className="relative flex h-[7px] w-[7px]">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-70" />
+            <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-green-500" />
+          </span>
         </Link>
 
         {/* Desktop nav */}
@@ -35,7 +47,7 @@ export default function SiteHeader() {
               <Link
                 key={item.key}
                 href={item.href}
-                className={`text-[13px] font-medium transition-colors ${
+                className={`relative text-[13px] font-medium transition-colors ${
                   item.accent
                     ? isActive
                       ? 'text-accent'
@@ -46,6 +58,13 @@ export default function SiteHeader() {
                 }`}
               >
                 {item.label}
+                {/* Active bottom accent line */}
+                {isActive && (
+                  <span
+                    className="absolute bottom-[-14px] left-0 right-0 h-[2px] rounded-full"
+                    style={{ background: item.accent ? 'var(--accent)' : 'var(--text-primary)' }}
+                  />
+                )}
               </Link>
             );
           })}
@@ -54,19 +73,29 @@ export default function SiteHeader() {
           </Link>
         </nav>
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger with rotation animation */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary md:hidden"
+          style={{ transition: 'transform 0.3s ease' }}
           aria-label="Menu"
         >
-          {menuOpen ? '\u2715' : '\u2630'}
+          <span
+            style={{
+              display: 'inline-block',
+              transition: 'transform 0.3s ease',
+              transform: menuOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+              fontSize: '16px',
+            }}
+          >
+            {menuOpen ? '\u2715' : '\u2630'}
+          </span>
         </button>
       </div>
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="border-t border-border bg-bg-primary px-6 py-3 md:hidden">
+        <div className="border-t border-border bg-bg-primary/95 px-6 py-3 md:hidden" style={{ backdropFilter: 'blur(12px)' }}>
           <nav className="flex flex-col gap-2">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname.startsWith(item.href);

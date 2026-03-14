@@ -160,6 +160,9 @@ export default async function HomePage() {
         <TrustBar />
       </ScrollReveal>
 
+      {/* Gradient divider */}
+      <div className="gradient-divider mx-auto max-w-[1200px] px-6" />
+
       {/* ============ Section 3: Why AgentPick (Bento Grid) ============ */}
       <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
         <div className="grid gap-4 md:grid-cols-2">
@@ -170,9 +173,18 @@ export default async function HomePage() {
               AI classifies every query and picks the best tool. Deep research goes to Exa. Quick lookups go to Serper. News queries go to Brave.
             </p>
             <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
-              <div className="text-text-primary">&ldquo;NVDA earnings&rdquo;</div>
-              <div className="text-text-tertiary">&#8594; research, finance</div>
-              <div className="mt-1 text-accent">&#8594; Exa (4.6/5)</div>
+              <div className="code-line">
+                <span className="line-num">1</span>
+                <span className="text-text-primary">&ldquo;NVDA earnings&rdquo;</span>
+              </div>
+              <div className="code-line">
+                <span className="line-num">2</span>
+                <span className="text-text-tertiary">&#8594; research, finance</span>
+              </div>
+              <div className="code-line">
+                <span className="line-num">3</span>
+                <span className="text-accent">&#8594; Exa (4.6/5)</span>
+              </div>
             </div>
           </div>
 
@@ -183,18 +195,26 @@ export default async function HomePage() {
               Exa down? Tavily catches it in &lt;1 second. Zero code changes. Zero lost queries.
             </p>
             <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
-              <div className="flex items-center gap-2">
+              <div className="code-line flex items-center gap-2">
+                <span className="line-num">1</span>
                 <span className="text-error">&#10005;</span>
                 <span className="text-text-primary">Exa</span>
                 <span className="text-text-tertiary">timeout</span>
               </div>
-              <div className="ml-4 text-text-tertiary">&#8595;</div>
-              <div className="flex items-center gap-2">
+              <div className="code-line ml-4 text-text-tertiary">
+                <span className="line-num">2</span>
+                <span>&#8595;</span>
+              </div>
+              <div className="code-line flex items-center gap-2">
+                <span className="line-num">3</span>
                 <span className="text-success">&#10003;</span>
                 <span className="text-text-primary">Tavily</span>
                 <span className="text-text-tertiary">195ms</span>
               </div>
-              <div className="mt-1 text-text-tertiary">meta.fallback: true</div>
+              <div className="code-line">
+                <span className="line-num">4</span>
+                <span className="text-text-tertiary">meta.fallback: true</span>
+              </div>
             </div>
           </div>
 
@@ -220,9 +240,9 @@ export default async function HomePage() {
                   </tr>
                 </thead>
                 <tbody className="font-mono text-[13px]">
-                  <BenchmarkRow rank={1} name="Exa" quality="4.6/5" latency="315ms" cost="$0.002" bar={100} />
-                  <BenchmarkRow rank={2} name="Tavily" quality="4.0/5" latency="182ms" cost="$0.001" bar={87} />
-                  <BenchmarkRow rank={3} name="Serper" quality="3.0/5" latency="89ms" cost="$0.0005" bar={65} />
+                  <BenchmarkRow rank={1} name="Exa" quality="4.6/5" latency="315ms" cost="$0.002" bar={100} qualityScore={4.6} />
+                  <BenchmarkRow rank={2} name="Tavily" quality="4.0/5" latency="182ms" cost="$0.001" bar={87} qualityScore={4.0} />
+                  <BenchmarkRow rank={3} name="Serper" quality="3.0/5" latency="89ms" cost="$0.0005" bar={65} qualityScore={3.0} />
                 </tbody>
               </table>
             </div>
@@ -249,14 +269,23 @@ export default async function HomePage() {
         </div>
       </ScrollReveal>
 
+      {/* Gradient divider */}
+      <div className="gradient-divider mx-auto max-w-[1200px]" />
+
       {/* ============ Section 5: How It Works ============ */}
       <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
         <h2 className="mb-8 text-[28px] font-bold tracking-[-0.5px] text-text-primary">
           Get started in 60 seconds
         </h2>
         <div className="grid gap-8 md:grid-cols-3">
-          <div>
-            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">1</div>
+          <div
+            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
+            style={{ borderLeft: '3px solid #2563EB' }}
+          >
+            <div
+              className="mb-2 font-mono text-[32px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #2563EB, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+            >1</div>
             <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Install</h3>
             <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-green-400">
               pip install agentpick
@@ -265,8 +294,14 @@ export default async function HomePage() {
               Or: openclaw skill install agentpick
             </p>
           </div>
-          <div>
-            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">2</div>
+          <div
+            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
+            style={{ borderLeft: '3px solid #8B5CF6' }}
+          >
+            <div
+              className="mb-2 font-mono text-[32px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+            >2</div>
             <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Call</h3>
             <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-white">
               ap.search(<span className="text-green-400">&quot;query&quot;</span>)
@@ -275,8 +310,14 @@ export default async function HomePage() {
               AI picks the best tool. Auto-fallback on failure. Result returned.
             </p>
           </div>
-          <div>
-            <div className="mb-2 font-mono text-[32px] font-bold text-text-tertiary">3</div>
+          <div
+            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
+            style={{ borderLeft: '3px solid #10B981' }}
+          >
+            <div
+              className="mb-2 font-mono text-[32px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #10B981, #34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+            >3</div>
             <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Monitor</h3>
             <p className="text-[14px] leading-relaxed text-text-secondary">
               &ldquo;How much did search cost this month?&rdquo; — your agent tells you everything via the dashboard.
@@ -322,7 +363,7 @@ export default async function HomePage() {
 
         <Link
           href="/dashboard/router"
-          className="inline-flex items-center rounded-md bg-white px-6 py-3 text-[14px] font-semibold text-[#0A0A0A] transition-opacity hover:opacity-90"
+          className="btn-shimmer inline-flex items-center rounded-md bg-white px-6 py-3 text-[14px] font-semibold text-[#0A0A0A] transition-opacity hover:opacity-90"
         >
           Get started — free
         </Link>
