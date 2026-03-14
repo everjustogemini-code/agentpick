@@ -1,68 +1,298 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import PlaygroundRequestBuilder from './PlaygroundRequestBuilder';
-import PlaygroundResponsePanel from './PlaygroundResponsePanel';
+import { useState } from 'react'
 
-type Endpoint = 'search' | 'crawl' | 'embed' | 'finance';
-type Strategy = 'auto' | 'fastest' | 'cheapest' | 'best_quality';
+type Endpoint = 'search' | 'crawl' | 'embed' | 'finance'
+type Strategy = 'auto' | 'fastest' | 'cheapest' | 'best_quality'
 
 export default function PlaygroundShell() {
-  const [result, setResult] = useState<object | null>(null);
-  const [latency, setLatency] = useState<number | null>(null);
-  const [toolUsed, setToolUsed] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [endpoint, setEndpoint] = useState<Endpoint>('search')
+  const [query, setQuery] = useState('')
+  const [strategy, setStrategy] = useState<Strategy>('auto')
+  const [apiKey, setApiKey] = useState('')
+  const [showKeyInput, setShowKeyInput] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<object | null>(null)
+  const [latency, setLatency] = useState<number | null>(null)
+  const [toolUsed, setToolUsed] = useState<string | null>(null)
+  const [error429, setError429] = useState(false)
+  const [activeTab, setActiveTab] = useState<'response' | 'curl' | 'python' | 'node'>('response')
+  const [copied, setCopied] = useState(false)
 
-  // Mirror request state so ResponsePanel can build code snippets in real-time
-  const [endpoint, setEndpoint] = useState<Endpoint>('search');
-  const [query, setQuery] = useState('');
-  const [strategy, setStrategy] = useState<Strategy>('auto');
-  const [useOwnKey, setUseOwnKey] = useState(false);
-  const [ownKey, setOwnKey] = useState('');
-
-  function handleResultChange(
-    r: object | null,
-    l: number | null,
-    t: string | null,
-    e: string | null,
-  ) {
-    setResult(r);
-    setLatency(l);
-    setToolUsed(t);
-    setError(e);
+  async function handleRun() {
+    if (!query.trim() || loading) return
+    setLoading(true)
+    setError429(false)
+    const t0 = Date.now()
+    try {
+      const res = await fetch('/api/v1/playground/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint,
+          query,
+          strategy,
+          apiKey: apiKey || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (res.status === 429) {
+        setError429(true)
+        setResult(null)
+      } else {
+        setResult(data)
+        setLatency(data.latency_ms ?? data.latency ?? Date.now() - t0)
+        setToolUsed(data.tool_used ?? data.tool ?? null)
+        setActiveTab('response')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  function handleStateChange(state: {
-    endpoint: Endpoint;
-    query: string;
-    strategy: Strategy;
-    useOwnKey: boolean;
-    ownKey: string;
-  }) {
-    setEndpoint(state.endpoint);
-    setQuery(state.query);
-    setStrategy(state.strategy);
-    setUseOwnKey(state.useOwnKey);
-    setOwnKey(state.ownKey);
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
+
+  const effectiveKey = apiKey || 'demo_key'
+
+  const curlSnippet = `curl -X POST https://agentpick.dev/api/v1/route/${endpoint} \\
+  -H "Authorization: Bearer ${effectiveKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"query": "${query || 'your query here'}", "strategy": "${strategy}"}'`
+
+  const pythonSnippet = `import requests
+
+res = requests.post(
+    "https://agentpick.dev/api/v1/route/${endpoint}",
+    headers={"Authorization": "Bearer ${effectiveKey}"},
+    json={"query": "${query || 'your query here'}", "strategy": "${strategy}"}
+)
+print(res.json()["tool"], res.json()["latency"])`
+
+  const nodeSnippet = `const res = await fetch('https://agentpick.dev/api/v1/route/${endpoint}', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ${effectiveKey}',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ query: "${query || 'your query here'}", strategy: "${strategy}" })
+})
+const data = await res.json()
+console.log(data.tool, data.latency + 'ms')`
+
+  const endpointOptions: { value: Endpoint; label: string }[] = [
+    { value: 'search', label: 'Search' },
+    { value: 'crawl', label: 'Crawl' },
+    { value: 'embed', label: 'Embed' },
+    { value: 'finance', label: 'Finance' },
+  ]
+
+  const strategyOptions: { value: Strategy; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'fastest', label: 'Fastest' },
+    { value: 'cheapest', label: 'Cheapest' },
+    { value: 'best_quality', label: 'Best Quality' },
+  ]
+
+  const panelClass = 'bg-white/5 border border-white/10 backdrop-blur-md rounded-xl p-6'
+  const pillBase = 'px-4 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-colors'
+  const pillActive = 'bg-cyan-500 text-white'
+  const pillInactive = 'bg-white/10 text-gray-400 hover:bg-white/20'
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
-      <PlaygroundRequestBuilder
-        onResultChange={handleResultChange}
-        onStateChange={handleStateChange}
-      />
-      <PlaygroundResponsePanel
-        result={result}
-        latency={latency}
-        toolUsed={toolUsed}
-        error={error}
-        endpoint={endpoint}
-        query={query}
-        strategy={strategy}
-        useOwnKey={useOwnKey}
-        ownKey={ownKey}
-      />
+    <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
+      {/* LEFT: Request Builder */}
+      <div className={panelClass}>
+        {/* Endpoint tabs */}
+        <div className="flex gap-2 mb-5 flex-wrap">
+          {endpointOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setEndpoint(opt.value)}
+              className={`${pillBase} ${endpoint === opt.value ? pillActive : pillInactive}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Query textarea */}
+        <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Query</label>
+        <textarea
+          rows={3}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Find the latest research on LLM benchmarks"
+          className="w-full font-mono text-sm bg-black/30 border border-white/10 rounded-lg px-3 py-2
+                     text-gray-100 placeholder:text-gray-600 resize-none focus:outline-none
+                     focus:border-cyan-500/50 transition-colors"
+        />
+
+        {/* Strategy pills */}
+        <p className="text-xs text-gray-500 uppercase tracking-widest mt-4 mb-2">Strategy</p>
+        <div className="flex gap-2 flex-wrap">
+          {strategyOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setStrategy(opt.value)}
+              className={`${pillBase} ${strategy === opt.value ? pillActive : pillInactive}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* API key row */}
+        {!showKeyInput ? (
+          <div className="flex items-center gap-3 mt-4">
+            <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">
+              Using demo key (10 req/day)
+            </span>
+            <button onClick={() => setShowKeyInput(true)}
+              className="text-xs text-cyan-400 hover:text-cyan-300">
+              Use my own key →
+            </button>
+          </div>
+        ) : (
+          <input
+            type="text"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="mt-4 w-full font-mono text-sm bg-black/30 border border-white/10 rounded-lg
+                       px-3 py-2 text-gray-100 placeholder:text-gray-600 focus:outline-none
+                       focus:border-cyan-500/50 transition-colors"
+          />
+        )}
+
+        {/* Run button */}
+        <button
+          onClick={handleRun}
+          disabled={!query.trim() || loading}
+          className="mt-5 w-full py-3 rounded-lg font-semibold text-white
+                     bg-gradient-to-r from-cyan-600 to-blue-600
+                     hover:from-cyan-500 hover:to-blue-500
+                     transition-all disabled:opacity-40 disabled:cursor-not-allowed
+                     flex items-center justify-center gap-2"
+        >
+          {loading
+            ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : '▶ Run Query'}
+        </button>
+      </div>
+
+      {/* RIGHT: Response Panel */}
+      <div className={panelClass}>
+        {/* Tab row */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {(['response', 'curl', 'python', 'node'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                activeTab === tab
+                  ? 'bg-cyan-500 text-white'
+                  : 'bg-white/10 text-gray-400 hover:bg-white/20'
+              }`}>
+              {tab === 'curl' ? 'cURL' : tab === 'node' ? 'Node' : tab === 'python' ? 'Python' : 'Response'}
+            </button>
+          ))}
+        </div>
+
+        {/* 429 error banner */}
+        {error429 && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-500/30 text-red-400 text-sm">
+            Demo limit reached.{' '}
+            <a href="/connect" className="underline underline-offset-2">Sign up free to continue</a>
+          </div>
+        )}
+
+        {/* Response tab */}
+        {activeTab === 'response' && (
+          result === null ? (
+            <div className="border border-dashed border-white/20 rounded-lg h-48 flex items-center
+                            justify-center text-gray-500 text-sm">
+              Run a query to see live routing
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="flex gap-2 mb-2">
+                {latency && (
+                  <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono">
+                    {latency}ms
+                  </span>
+                )}
+                {toolUsed && (
+                  <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-mono">
+                    {toolUsed}
+                  </span>
+                )}
+              </div>
+              <pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-100 overflow-auto max-h-80
+                              transition-opacity duration-300">
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </div>
+          )
+        )}
+
+        {/* Code tabs */}
+        {activeTab === 'curl' && (
+          <div className="relative">
+            <button
+              onClick={() => copyToClipboard(curlSnippet)}
+              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs text-gray-400 px-2 py-1 rounded transition-colors"
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+            <pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-300 overflow-auto max-h-80 pt-8">
+              {curlSnippet}
+            </pre>
+          </div>
+        )}
+
+        {activeTab === 'python' && (
+          <div className="relative">
+            <button
+              onClick={() => copyToClipboard(pythonSnippet)}
+              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs text-gray-400 px-2 py-1 rounded transition-colors"
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+            <pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-300 overflow-auto max-h-80 pt-8">
+              {pythonSnippet}
+            </pre>
+          </div>
+        )}
+
+        {activeTab === 'node' && (
+          <div className="relative">
+            <button
+              onClick={() => copyToClipboard(nodeSnippet)}
+              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs text-gray-400 px-2 py-1 rounded transition-colors"
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+            <pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-300 overflow-auto max-h-80 pt-8">
+              {nodeSnippet}
+            </pre>
+          </div>
+        )}
+
+        {/* CTA banner (demo key only) */}
+        {!apiKey && (
+          <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-cyan-900/40 to-blue-900/40
+                          border border-cyan-500/20 text-sm text-center">
+            <span className="text-gray-300">Get your free API key →</span>{' '}
+            <a href="/connect"
+               className="text-cyan-400 font-semibold hover:text-cyan-300 underline underline-offset-2">
+              Sign up free
+            </a>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }

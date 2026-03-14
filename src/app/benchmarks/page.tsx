@@ -326,7 +326,7 @@ export default async function BenchmarksPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {run.relevanceScore != null && (
-                      <ScoreRing score={Math.round(run.relevanceScore * 20)} />
+                      <ScoreRing score={run.relevanceScore * 2} size={48} />
                     )}
                     <span className="font-mono text-[11px] text-text-dim">
                       {run.latencyMs}ms

@@ -711,9 +711,11 @@ enum RouterStrategy {
 // ============================================================
 
 model PlaygroundRateLimit {
+  id    Int      @id @default(autoincrement())
   ip    String
   date  DateTime @db.Date
-  count Int      @default(0)
+  count Int      @default(1)
 
-  @@id([ip, date])
+  @@unique([ip, date])
+  @@map("playground_rate_limits")
 }

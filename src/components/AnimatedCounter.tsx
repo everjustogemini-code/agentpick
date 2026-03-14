@@ -1,69 +1,64 @@
-'use client';
+"use client"
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
-  value: number;
-  decimals?: number;
+  value: number
+  decimals?: number
+  duration?: number
 }
 
-function easeOut(t: number): number {
-  // cubic-bezier(0.25, 1, 0.5, 1) approximation
-  return 1 - Math.pow(1 - t, 3);
-}
+export default function AnimatedCounter({ value, decimals = 0, duration = 1200 }: Props) {
+  const [display, setDisplay] = useState(decimals === 1 ? '0.0' : '0')
+  const ref = useRef<HTMLSpanElement>(null)
+  const started = useRef(false)
 
-function format(n: number, decimals: number): string {
-  if (decimals === 0) return String(Math.round(n));
-  return n.toFixed(decimals);
-}
-
-export default function AnimatedCounter({ value, decimals = 0 }: Props) {
-  const [displayed, setDisplayed] = useState(format(0, decimals));
-  const hasAnimated = useRef(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  // SSR-safe initial render shows 0
   useEffect(() => {
-    // Check for reduced motion preference
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      setDisplayed(format(value, decimals));
-      hasAnimated.current = true;
-      return;
-    }
+    if (typeof window === 'undefined') return
 
-    const el = ref.current;
-    if (!el) return;
+    const el = ref.current
+    if (!el) return
 
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasAnimated.current) {
-          hasAnimated.current = true;
-          observer.disconnect();
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true
+          observer.disconnect()
 
-          const duration = 1200;
-          const start = performance.now();
-
-          function step(now: number) {
-            const elapsed = now - start;
-            const progress = Math.min(elapsed / duration, 1);
-            const easedProgress = easeOut(progress);
-            const current = easedProgress * value;
-            setDisplayed(format(current, decimals));
-            if (progress < 1) {
-              requestAnimationFrame(step);
-            }
+          // Check prefers-reduced-motion
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDisplay(decimals === 1 ? value.toFixed(1) : Math.round(value).toLocaleString())
+            return
           }
 
-          requestAnimationFrame(step);
+          const start = performance.now()
+          function tick(now: number) {
+            const elapsed = now - start
+            const t = Math.min(elapsed / duration, 1)
+            // ease-out cubic
+            const progress = 1 - Math.pow(1 - t, 3)
+            const current = value * progress
+            setDisplay(
+              decimals === 1
+                ? current.toFixed(1)
+                : Math.round(current).toLocaleString()
+            )
+            if (t < 1) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
         }
       },
-      { threshold: 0.1 },
-    );
+      { threshold: 0.3 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [value, decimals, duration])
 
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [value, decimals]);
-
-  return <span ref={ref}>{displayed}</span>;
+  return (
+    <span ref={ref} style={{ display: 'inline-block', minWidth: 'max-content' }}>
+      <span aria-hidden>{display}</span>
+      {/* Hidden clone prevents layout shift */}
+      <span className="sr-only">{decimals === 1 ? value.toFixed(1) : Math.round(value).toLocaleString()}</span>
+    </span>
+  )
 }
