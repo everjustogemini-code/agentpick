@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'serpapi-for-ai-agents',
+    title: 'SerpAPI for AI Agents: Benchmark vs Tavily, Exa, Perplexity (2026)',
+    description:
+      'SerpAPI covers 40+ search engines and is the go-to for SERP scraping. How does it compare to AI-native search APIs for AI agent workloads? Real benchmark data.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'valyu-search-api-for-ai-agents',
     title: 'Valyu Search API for AI Agents: Benchmark Results (2026)',
     description:

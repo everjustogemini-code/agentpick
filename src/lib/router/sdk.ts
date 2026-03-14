@@ -418,18 +418,23 @@ export async function getUsageStats(developerId: string, days = 7) {
 
   // AI classification summary (for all calls that went through AI classification)
   const aiCalls = calls.filter((call: { aiClassification: unknown; strategyUsed: string | null }) => call.aiClassification !== null);
-  const aiRouting = {
-    totalAiRoutedCalls: aiCalls.length,
-    byType: {} as Record<string, number>,
-    byDomain: {} as Record<string, number>,
-  };
-  for (const call of aiCalls) {
-    const classification = call.aiClassification as { type?: string; domain?: string } | null;
-    if (classification?.type) {
-      aiRouting.byType[classification.type] = (aiRouting.byType[classification.type] ?? 0) + 1;
-    }
-    if (classification?.domain) {
-      aiRouting.byDomain[classification.domain] = (aiRouting.byDomain[classification.domain] ?? 0) + 1;
+  // Return null when no AI-routed calls have been made so callers can distinguish
+  // "auto strategy not yet used" from an empty summary.
+  const aiRouting: { totalAiRoutedCalls: number; byType: Record<string, number>; byDomain: Record<string, number> } | null =
+    aiCalls.length === 0 ? null : {
+      totalAiRoutedCalls: aiCalls.length,
+      byType: {} as Record<string, number>,
+      byDomain: {} as Record<string, number>,
+    };
+  if (aiRouting) {
+    for (const call of aiCalls) {
+      const classification = call.aiClassification as { type?: string; domain?: string } | null;
+      if (classification?.type) {
+        aiRouting.byType[classification.type] = (aiRouting.byType[classification.type] ?? 0) + 1;
+      }
+      if (classification?.domain) {
+        aiRouting.byDomain[classification.domain] = (aiRouting.byDomain[classification.domain] ?? 0) + 1;
+      }
     }
   }
 

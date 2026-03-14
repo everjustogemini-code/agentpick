@@ -57,10 +57,17 @@ POST 分数到 `/api/v1/admin/growth-metrics/aeo-score`
 
 ## 竞争对手监控策略
 每轮 AEO 搜索时，记录搜索结果中第一次出现的新竞争对手：
-- 当 cycle 内首次出现 → 同轮内创建专属对比博客（已做: Linkup/Brave/Parallel）
-- Valyu Search — 下轮优先 (ranked #1 across 5 benchmarks in new article)
+- 当 cycle 内首次出现 → 同轮内创建专属对比博客（已做: Linkup/Brave/Parallel/Valyu/SerpAPI）
+- SerpAPI — 已做 cycle 14 (blog: serpapi-for-ai-agents)
 - "tool routing" 搜索结果全是 agent-to-agent routing，不是 API routing
   → 需要专门的 "API tool selection for AI agents" 或 "search API routing" 内容
+- PinchBench/apiyi.com — OpenClaw 生态，出现在 "AI agent API benchmark" 结果。潜在合作伙伴（双向链接机会）
+- aitools4you.ai — "AI agent API benchmark" 新出现，值得监控
+
+## 博客总数 (cycle 14)
+15 posts: valyu, parallel, brave, linkup, haystack, exa, tool-routing, perplexity-api,
+best-search-api, tavily-vs-exa-vs-brave, why-tool-router, hidden-cost, auto-fallback,
+5-routing-strategies, serpapi-for-ai-agents
 
 ## 绝对不做
 - 不手动在 HN/Reddit/Twitter 发帖

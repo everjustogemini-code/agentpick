@@ -270,9 +270,17 @@ export function getRankedToolsForCapability(
     }
   });
 
+  // For cheapest strategy: preserve pure cost-sorted order without deprioritizing
+  // unconfigured tools. Callers choosing cheapest prefer lowest cost over reliability;
+  // the fallback chain handles tools that fail due to missing API keys, cascading from
+  // the cheapest option (brave-search $0.0001, serper $0.0005) up to platform-configured
+  // tools (tavily $0.001). BYOK keys are still resolved per-call in callWithKey.
+  if (strategy === 'cheapest') {
+    return filtered;
+  }
+
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
   // This preserves strategy order within each group (configured / unconfigured).
-  // Pass storedByokKeys so cheapest strategy can prefer BYOK-configured cheap tools.
   return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
 }
 
@@ -405,10 +413,9 @@ export async function routeRequest(
   // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
-  // For cheapest strategy: pass storedByokKeys so BYOK-configured cheap tools (e.g. brave-search,
-  // serper) are treated as "available" and ranked above pricier platform-configured tools (e.g. tavily).
-  const byokKeysForRanking = strategy === 'cheapest' ? options.storedByokKeys : undefined;
-  const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, byokKeysForRanking);
+  // For cheapest: getRankedToolsForCapability returns pure cost-sorted order (no deprioritization).
+  // BYOK keys are resolved at call time, not at ranking time.
+  const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys);
   const cbRankedTools = aiRankedTools ? rawRankedTools : applyCircuitBreaker(rawRankedTools);
   // Apply key-availability filter to AI-ranked lists too: ensures realtime routing falls back
   // to configured tools (e.g. exa-search) rather than unconfigured ones (e.g. serpapi-google).

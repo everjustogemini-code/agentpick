@@ -277,6 +277,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     const failToolUsed =
       body?.tool ??
       getRankedToolsForCapability(capability, body?.strategy ?? 'balanced')[0] ??
+      CAPABILITY_TOOLS[capability]?.[0] ??
       capability;
     // Record the failure for analytics — best-effort
     if (preAccount) {
