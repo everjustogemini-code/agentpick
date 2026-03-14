@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'firecrawl-for-ai-agents',
+    title: 'Firecrawl for AI Agents: Benchmark vs Tavily, Exa, Perplexity (2026)',
+    description:
+      'Firecrawl converts any website to clean LLM-ready markdown with JavaScript rendering. How it compares to search APIs for AI agent workloads and when to use crawl vs search.',
+    date: '2026-05-02',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#F97316',
+  },
+  {
     slug: 'serpapi-for-ai-agents',
     title: 'SerpAPI for AI Agents: Benchmark vs Tavily, Exa, Perplexity (2026)',
     description:

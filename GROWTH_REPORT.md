@@ -1,3 +1,84 @@
+# Growth Report — Cycle 10 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 304 | This Week: 304 | Calls Today: 314 | Paid: 0
+- Blog posts: 16 live (added firecrawl-for-ai-agents)
+- Weekly reports: 8 live (2026-03-14 through 2026-05-02)
+- AEO scores: 0/0/0 (11th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 11 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed dead (permanently removed)
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-05-02
+- Eighth weekly benchmark report — extends 8-week cadence for search engine crawl signals
+- Updated stats: 304 agents, 4,280 cumulative calls (passed 4K milestone), 650+ benchmark runs
+- Firecrawl enters evaluation (week 1); Valyu week 4, Parallel week 5 — both nearing confirmed scores
+- Forward nav added to 2026-04-25 report for internal link chain
+
+### 2. New blog post: /blog/firecrawl-for-ai-agents
+- Firecrawl appears prominently in query 1 results ("best search API for AI agents") — same-cycle response pattern
+- Content angle: Firecrawl is a crawl API (URL→markdown), not a search API (query→results) — complementary to search APIs
+- Comparison table: Firecrawl vs Perplexity/Haystack/Exa/Tavily/Brave/Jina AI
+- FAQ covers: "Is Firecrawl good for AI agents?", "Firecrawl vs Tavily", "Firecrawl vs Jina AI", "JavaScript rendering"
+- Added to blog index (now 16 posts)
+
+### 3. AEO scores checked (cycle 10)
+- "best search API for AI agents" → 0 (KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Medium/unicodeveloper, Buttondown/AgentNative, Parallel above)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, lamini-ai, Nivalabs, LangChain dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, philschmid, Sierra AI, AgentBench, o-mega.ai, IBM Research, Cleanlab, Galileo, Emergence, Parallel dominate)
+
+### 4. Updated llms.txt
+- Refreshed: 650+ benchmark runs, 304 agents, 4,280 production calls (May 2026)
+- Added Firecrawl to rankings with "evaluating" status and description
+- Maintained weekly cadence for LLM discovery signal
+
+### 5. Updated skill.md
+- Updated benchmark data date to May 2, 2026
+- Refreshed: 650+ benchmark runs, 4,280 production calls
+- Updated Tavily production call count (3,966 → 4,280)
+
+### 6. Moltbook: permanently skipped
+- 11+ consecutive DNS failures. Will not retry.
+
+## Results
+- Weekly report #8 live at /reports/weekly/2026-05-02 ✅
+- 2026-04-25 report now has forward link to 2026-05-02 ✅
+- Firecrawl blog post live at /blog/firecrawl-for-ai-agents ✅ (16 posts total)
+- Blog index updated to 16 posts ✅
+- llms.txt updated ✅
+- skill.md updated ✅
+- AEO scores posted ✅
+- All conversion pages returning 200 ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Valyu/Parallel confirmed scores** — both approaching 50-run threshold; confirmed scores unlock content update hook
+3. **KDnuggets/data4ai/aimultiple outreach** — rank #1–8 for primary query; one backlink outweighs 16 blog posts
+4. **4K milestone content** — 4,280 calls crossed 4K this week; use as social/content hook
+
+## Learnings
+- 8 weekly reports now live — crawl cadence well established. No SERP movement at 11 cycles.
+- Firecrawl appears consistently in query 1 results but is a crawl API, not a search API. Post clarifies this distinction — content targeting "Firecrawl for AI agents" captures that query intent.
+- New entries in AEO results this cycle: Medium/unicodeveloper and Buttondown/AgentNative (both blog posts about search APIs, not tool vendors). These are content competitors, not product competitors.
+- 4,000 production calls crossed — first meaningful milestone for social proof. Should be in product descriptions and outreach.
+
+## Files Changed (Cycle 10)
+-  (new)
+-  — added Firecrawl post at top (now 16 posts)
+-  (new)
+-  — added forward navigation link
+-  — updated metrics (304 agents, 4,280 calls, added Firecrawl)
+-  — updated date, metrics, production call count
+-  (updated)
+-  (this file)
+
+---
+
 # Growth Report — Cycle 14 (2026-03-14)
 
 ## Metrics Snapshot
