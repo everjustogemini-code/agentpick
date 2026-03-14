@@ -9,6 +9,7 @@ import StrategyCards from '@/components/StrategyCards';
 import PricingSection from '@/components/PricingSection';
 import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +20,17 @@ function fmt(n: number): string {
 }
 
 async function getStats() {
-  const [totalProducts, totalVotes, totalAgents] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks] = await Promise.all([
     prisma.product.count(),
     prisma.vote.count({ where: { proofVerified: true } }),
     prisma.agent.count(),
+    prisma.benchmarkRun.count(),
+    prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }),
   ]);
-  return { totalProducts, totalVotes, totalAgents };
+  return { totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks };
 }
 
 async function getActivityEvents(): Promise<ActivityEvent[]> {
@@ -114,118 +120,118 @@ export default async function HomePage() {
     <div className="min-h-screen bg-bg-primary">
       <SiteHeader />
 
-      {/* ============ Section 1: Hero ============ */}
+      {/* ============ Hero ============ */}
       <div className="hero-mesh relative overflow-hidden">
-        <section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20 relative z-10">
-        <h1
-          className="mb-4 text-[40px] font-extrabold leading-[1.1] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400 md:text-[56px]"
-        >
-          The runtime layer for agent tools.
-        </h1>
-        <p className="mb-6 max-w-[520px] text-[18px] leading-relaxed text-white/60 md:text-[20px]">
-          One API. Every tool. AI routing. Auto-fallback.
-        </p>
+        <section className="mx-auto max-w-[1200px] px-6 pb-8 pt-16 md:pt-24 relative z-10">
 
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <Link href="/dashboard/router" className="btn-primary">
-            Get API key
-          </Link>
-          <Link href="/connect" className="btn-secondary">
-            Try the router
-          </Link>
-        </div>
-        <p className="mb-8 text-[14px] text-text-tertiary">
-          Free tier — 3,000 routed calls/month, no credit card.
-        </p>
-
-        {/* Code block */}
-        <HeroCodeBlock />
-
-        {/* Live routing example */}
-        <LiveRoutingExample />
-
-        {/* OpenClaw one-liner */}
-        <div className="mt-6 flex items-center gap-3">
-          <span className="text-[13px] text-text-tertiary">Or send this to your OpenClaw agent:</span>
-          <div className="inline-flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-1.5 font-mono text-[13px] text-text-primary">
-            <span>openclaw skill install agentpick</span>
-            <CopyButton text="openclaw skill install agentpick" />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-bg-card px-3 py-1">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+            <span className="font-mono text-[11px] uppercase tracking-widest text-text-tertiary">
+              Runtime layer for agent tools
+            </span>
           </div>
-        </div>
+
+          <h1
+            className="mb-5 font-extrabold leading-[1.05] tracking-tight text-text-primary"
+            style={{ fontSize: 'clamp(38px, 5vw, 56px)', maxWidth: 700 }}
+          >
+            Your agent is picking tools blindly.{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-purple">
+              We fix that.
+            </span>
+          </h1>
+
+          <p className="mb-6 max-w-[480px] text-[16px] leading-relaxed text-text-secondary">
+            Stop hardcoding Tavily. Stop guessing which API handles finance vs legal vs news.
+            AgentPick routes every query to the right tool — and falls back when it breaks.
+          </p>
+
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <Link href="/dashboard/router" className="btn-primary btn-shimmer">
+              Get API key
+            </Link>
+            <Link href="/connect" className="btn-secondary">
+              Try the router
+            </Link>
+          </div>
+
+          <p className="mb-8 text-[13px] text-text-tertiary">
+            Free tier — 3,000 routed calls/month, no credit card.
+          </p>
+
+          {/* Social proof */}
+          <div className="mb-10 flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+              <span className="text-[13px] text-text-secondary">
+                <span className="font-semibold text-text-primary">
+                  <AnimatedCounter value={stats.totalAgents} />
+                </span>{' '}
+                agents testing right now
+              </span>
+            </div>
+            <div className="hidden sm:block text-text-tertiary select-none">·</div>
+            <div className="text-[13px] text-text-secondary">
+              <span className="font-semibold text-text-primary">
+                <AnimatedCounter value={stats.todayBenchmarks} />
+              </span>{' '}
+              benchmark tests run today
+            </div>
+          </div>
+
+          <HeroCodeBlock />
+          <LiveRoutingExample />
+
+          {/* OpenClaw one-liner */}
+          <div className="mt-6 flex items-center gap-3">
+            <span className="text-[13px] text-text-tertiary">Or send this to your OpenClaw agent:</span>
+            <div className="inline-flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-1.5 font-mono text-[13px] text-text-primary">
+              <span>openclaw skill install agentpick</span>
+              <CopyButton text="openclaw skill install agentpick" />
+            </div>
+          </div>
         </section>
       </div>
 
-      {/* ============ Section 2: Trust Bar ============ */}
+      {/* ============ Trust Bar ============ */}
       <ScrollReveal>
         <TrustBar />
       </ScrollReveal>
 
-      {/* Gradient divider */}
-      <div className="gradient-divider mx-auto max-w-[1200px] px-6" />
+      {/* ============ Broken Grid: Features ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 pt-8 pb-12">
+        <p className="mb-6 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">What it does</p>
 
-      {/* ============ Section 3: Why AgentPick (Bento Grid) ============ */}
-      <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Card 1: AI-powered routing */}
-          <div className="card p-6">
-            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">AI-powered routing</h3>
-            <p className="mb-4 text-[14px] leading-relaxed text-text-secondary">
-              AI classifies every query and picks the best tool. Deep research goes to Exa. Quick lookups go to Serper. News queries go to Brave.
-            </p>
-            <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
-              <div className="code-line">
-                <span className="line-num">1</span>
-                <span className="text-text-primary">&ldquo;NVDA earnings&rdquo;</span>
+        <div className="flex flex-col gap-4">
+          {/* Card 1: Full-width leaderboard with personality */}
+          <div className="card gradient-border-card p-6">
+            <div className="mb-3 flex items-start justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="text-[22px] font-bold tracking-tight text-text-primary">
+                  Benchmarked by real agents, not marketing
+                </h3>
+                <p className="mt-1 text-[13px] text-text-tertiary">
+                  <AnimatedCounter value={stats.totalAgents} /> agents continuously test every API we route through. Rankings based on verified usage.
+                </p>
               </div>
-              <div className="code-line">
-                <span className="line-num">2</span>
-                <span className="text-text-tertiary">&#8594; research, finance</span>
-              </div>
-              <div className="code-line">
-                <span className="line-num">3</span>
-                <span className="text-accent">&#8594; Exa (4.6/5)</span>
+              <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1.5 shrink-0">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                <span className="font-mono text-[11px] text-success">tested 2 min ago</span>
               </div>
             </div>
-          </div>
 
-          {/* Card 2: Auto-fallback */}
-          <div className="card p-6">
-            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">Auto-fallback</h3>
-            <p className="mb-4 text-[14px] leading-relaxed text-text-secondary">
-              Exa down? Tavily catches it in &lt;1 second. Zero code changes. Zero lost queries.
-            </p>
-            <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
-              <div className="code-line flex items-center gap-2">
-                <span className="line-num">1</span>
-                <span className="text-error">&#10005;</span>
-                <span className="text-text-primary">Exa</span>
-                <span className="text-text-tertiary">timeout</span>
-              </div>
-              <div className="code-line ml-4 text-text-tertiary">
-                <span className="line-num">2</span>
-                <span>&#8595;</span>
-              </div>
-              <div className="code-line flex items-center gap-2">
-                <span className="line-num">3</span>
-                <span className="text-success">&#10003;</span>
-                <span className="text-text-primary">Tavily</span>
-                <span className="text-text-tertiary">195ms</span>
-              </div>
-              <div className="code-line">
-                <span className="line-num">4</span>
-                <span className="text-text-tertiary">meta.fallback: true</span>
-              </div>
+            {/* Commentary tags */}
+            <div className="mb-5 flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-md bg-accent-subtle px-3 py-1 text-[12px] font-medium text-accent">
+                Exa dominates deep research
+              </span>
+              <span className="inline-flex items-center rounded-md bg-bg-secondary px-3 py-1 text-[12px] font-medium text-text-secondary">
+                Tavily wins on speed
+              </span>
+              <span className="inline-flex items-center rounded-md bg-bg-secondary px-3 py-1 text-[12px] font-medium text-text-secondary">
+                Serper cheapest for bulk
+              </span>
             </div>
-          </div>
-
-          {/* Card 3: Benchmarked by real agents — full width */}
-          <div className="card p-6 md:col-span-2">
-            <h3 className="mb-2 text-[18px] font-semibold text-text-primary">
-              Benchmarked by real agents, not marketing
-            </h3>
-            <p className="mb-5 text-[14px] leading-relaxed text-text-secondary">
-              {fmt(stats.totalAgents)} agents continuously test every API we route through. Rankings based on verified usage, not vendor claims.
-            </p>
 
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left">
@@ -236,118 +242,141 @@ export default async function HomePage() {
                     <th className="px-4 py-2.5">Quality</th>
                     <th className="px-4 py-2.5">Latency</th>
                     <th className="px-4 py-2.5">Cost</th>
-                    <th className="px-4 py-2.5 hidden sm:table-cell" style={{ minWidth: 120 }}>Score</th>
+                    <th className="px-4 py-2.5 hidden sm:table-cell" style={{ minWidth: 140 }}>Score</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono text-[13px]">
-                  <BenchmarkRow rank={1} name="Exa" quality="4.6/5" latency="315ms" cost="$0.002" bar={100} qualityScore={4.6} />
-                  <BenchmarkRow rank={2} name="Tavily" quality="4.0/5" latency="182ms" cost="$0.001" bar={87} qualityScore={4.0} />
-                  <BenchmarkRow rank={3} name="Serper" quality="3.0/5" latency="89ms" cost="$0.0005" bar={65} qualityScore={3.0} />
+                  <BenchmarkRow rank={1} name="Exa" quality="4.6/5" latency="315ms" cost="$0.002" bar={100} note="best for research" />
+                  <BenchmarkRow rank={2} name="Tavily" quality="4.0/5" latency="182ms" cost="$0.001" bar={87} note="fastest" />
+                  <BenchmarkRow rank={3} name="Serper" quality="3.0/5" latency="89ms" cost="$0.0005" bar={65} note="cheapest" />
                 </tbody>
               </table>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
               <Link href="/rankings/top-agent-tools" className="text-[13px] font-medium text-accent hover:underline">
-                View all benchmarks &#8594;
+                View all benchmarks →
               </Link>
+              <span className="font-mono text-[11px] text-text-tertiary">
+                <AnimatedCounter value={stats.totalBenchmarkRuns} /> total runs
+              </span>
+            </div>
+          </div>
+
+          {/* Cards 2+3: Asymmetric side-by-side */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Card 2: AI routing — taller, more content */}
+            <div className="card p-6">
+              <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">routing</p>
+              <h3 className="mb-3 text-[20px] font-bold tracking-tight text-text-primary leading-tight">
+                Query intent → right tool, automatically.
+              </h3>
+              <p className="mb-5 text-[14px] leading-relaxed text-text-secondary">
+                You shouldn't have to know that Exa is better for deep research or that Brave beats Serper on news.
+                AgentPick classifies the query and routes it. Your agent calls one endpoint.
+              </p>
+              <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
+                <div className="code-line">
+                  <span className="line-num">1</span>
+                  <span className="text-text-tertiary">// incoming query</span>
+                </div>
+                <div className="code-line">
+                  <span className="line-num">2</span>
+                  <span className="text-text-primary">&quot;NVDA Q4 earnings analysis&quot;</span>
+                </div>
+                <div className="code-line">
+                  <span className="line-num">3</span>
+                  <span className="text-text-tertiary">→ intent: <span className="text-warning">research, finance</span></span>
+                </div>
+                <div className="code-line">
+                  <span className="line-num">4</span>
+                  <span className="text-accent font-semibold">→ routed: Exa (score 4.6/5)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Auto-fallback — punchier, no min-height */}
+            <div className="card p-6" style={{ alignSelf: 'start' }}>
+              <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">resilience</p>
+              <h3 className="mb-3 text-[20px] font-bold tracking-tight text-text-primary leading-tight">
+                APIs fail.<br />Your agent shouldn&apos;t.
+              </h3>
+              <p className="mb-5 text-[14px] leading-relaxed text-text-secondary">
+                Exa down? Tavily catches it in under a second.
+                No retries. No error handling. No lost queries.
+              </p>
+              <div className="rounded-lg border border-border bg-bg-secondary p-4 font-mono text-[13px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-error">✕</span>
+                  <span className="text-text-primary">Exa</span>
+                  <span className="text-text-tertiary">timeout after 2s</span>
+                </div>
+                <div className="ml-4 text-text-tertiary mb-1">↓ fallback</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-success">✓</span>
+                  <span className="text-text-primary">Tavily</span>
+                  <span className="text-success font-semibold">195ms</span>
+                </div>
+                <div className="mt-2 text-[11px] text-text-tertiary">meta.fallback: true · zero code changes</div>
+              </div>
             </div>
           </div>
         </div>
       </ScrollReveal>
 
-      {/* ============ Section 4: Live Agent Activity ============ */}
+      {/* ============ Live Activity ============ */}
       <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-8">
         <div className="rounded-xl bg-bg-secondary p-6">
           <div className="mb-4 flex items-center gap-2">
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
             <span className="text-[14px] font-medium text-text-primary">
-              Live — {fmt(stats.totalAgents)} agents testing APIs right now
+              Live — <AnimatedCounter value={stats.totalAgents} /> agents testing APIs right now
             </span>
           </div>
           <AgentActivityWall initialEvents={events} maxItems={5} />
         </div>
       </ScrollReveal>
 
-      {/* Gradient divider */}
-      <div className="gradient-divider mx-auto max-w-[1200px]" />
-
-      {/* ============ Section 5: How It Works ============ */}
+      {/* ============ Terminal Demo (replaces 1-2-3 steps) ============ */}
       <ScrollReveal className="mx-auto max-w-[1200px] px-6 py-12">
-        <h2 className="mb-8 text-[28px] font-bold tracking-[-0.5px] text-text-primary">
-          Get started in 60 seconds
+        <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">Real conversation</p>
+        <h2
+          className="mb-6 text-[28px] font-bold text-text-primary"
+          style={{ letterSpacing: '-0.02em', maxWidth: 560 }}
+        >
+          What actually happens when your agent calls us
         </h2>
-        <div className="grid gap-8 md:grid-cols-3">
-          <div
-            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
-            style={{ borderLeft: '3px solid #2563EB' }}
-          >
-            <div
-              className="mb-2 font-mono text-[32px] font-bold"
-              style={{ background: 'linear-gradient(135deg, #2563EB, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
-            >1</div>
-            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Install</h3>
-            <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-green-400">
-              pip install agentpick
-            </div>
-            <p className="mt-2 text-[13px] text-text-tertiary">
-              Or: openclaw skill install agentpick
-            </p>
-          </div>
-          <div
-            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
-            style={{ borderLeft: '3px solid #8B5CF6' }}
-          >
-            <div
-              className="mb-2 font-mono text-[32px] font-bold"
-              style={{ background: 'linear-gradient(135deg, #8B5CF6, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
-            >2</div>
-            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Call</h3>
-            <div className="rounded-lg bg-bg-code px-4 py-3 font-mono text-[13px] text-white">
-              ap.search(<span className="text-green-400">&quot;query&quot;</span>)
-            </div>
-            <p className="mt-2 text-[13px] text-text-tertiary">
-              AI picks the best tool. Auto-fallback on failure. Result returned.
-            </p>
-          </div>
-          <div
-            className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] hover:border hover:border-border hover:shadow-md"
-            style={{ borderLeft: '3px solid #10B981' }}
-          >
-            <div
-              className="mb-2 font-mono text-[32px] font-bold"
-              style={{ background: 'linear-gradient(135deg, #10B981, #34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
-            >3</div>
-            <h3 className="mb-2 text-[16px] font-semibold text-text-primary">Monitor</h3>
-            <p className="text-[14px] leading-relaxed text-text-secondary">
-              &ldquo;How much did search cost this month?&rdquo; — your agent tells you everything via the dashboard.
-            </p>
-          </div>
-        </div>
-        <div className="mt-8">
-          <Link href="/dashboard/router" className="btn-primary">
-            Get API key — free &#8594;
+        <TerminalDemo />
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/dashboard/router" className="btn-primary btn-shimmer">
+            Get API key — free →
+          </Link>
+          <Link href="/connect" className="btn-secondary">
+            See full docs
           </Link>
         </div>
       </ScrollReveal>
 
-      {/* ============ Section 6: Strategies ============ */}
-      <ScrollReveal className="mx-auto max-w-[1200px] px-6">
+      {/* ============ Strategies ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 pt-12">
         <StrategyCards />
       </ScrollReveal>
 
-      {/* ============ Section 7: Pricing ============ */}
+      {/* ============ Pricing ============ */}
       <ScrollReveal className="mx-auto max-w-[1200px] px-6">
         <PricingSection />
       </ScrollReveal>
 
-      {/* ============ Section 8: CTA Footer ============ */}
-      <section className="mt-12 bg-bg-code px-6 py-16 text-center">
+      {/* ============ CTA Footer ============ */}
+      <section className="mt-20 bg-bg-code px-6 py-16 text-center">
+        <p className="mb-3 font-mono text-[11px] uppercase tracking-widest text-gray-500">
+          Ready to stop guessing?
+        </p>
         <h2
-          className="mb-8 text-[28px] font-bold text-white md:text-[36px]"
+          className="mb-8 text-[32px] font-bold text-white md:text-[40px]"
           style={{ letterSpacing: '-0.02em' }}
         >
-          Stop losing queries to API failures.
+          Route your first query in 60 seconds.
         </h2>
 
         <div className="mx-auto mb-6 inline-flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[14px] text-green-400">
@@ -392,7 +421,80 @@ export default async function HomePage() {
   );
 }
 
-/* Mini benchmark row component */
+/* ── Terminal session demo ── */
+function TerminalDemo() {
+  return (
+    <div className="rounded-xl border border-border bg-bg-code overflow-hidden max-w-[720px]">
+      {/* Window chrome */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-black/30">
+        <span className="h-3 w-3 rounded-full bg-red-500/70" />
+        <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
+        <span className="h-3 w-3 rounded-full bg-green-500/70" />
+        <span className="ml-3 font-mono text-[11px] text-white/25">agent session · agentpick router</span>
+      </div>
+
+      {/* Terminal body */}
+      <div className="p-6 font-mono text-[13px] leading-7 space-y-0.5 overflow-x-auto">
+        <p>
+          <span className="text-white/25 select-none">$ </span>
+          <span className="text-green-400">agent</span>
+          <span className="text-white/60"> → ap.search(</span>
+          <span className="text-yellow-300">&quot;NVDA Q4 earnings analysis&quot;</span>
+          <span className="text-white/60">)</span>
+        </p>
+        <p className="pl-4 text-white/30">classifying intent...</p>
+        <p className="pl-4">
+          <span className="text-blue-400">intent: </span>
+          <span className="text-yellow-300">research, finance</span>
+        </p>
+        <p className="pl-4">
+          <span className="text-blue-400">routing to: </span>
+          <span className="text-green-400">Exa</span>
+          <span className="text-white/30"> (score 4.6/5 for finance research)</span>
+        </p>
+        <p className="pt-1 pl-4">
+          <span className="text-red-400">✕ Exa </span>
+          <span className="text-white/30">timeout (2012ms — above threshold)</span>
+        </p>
+        <p className="pl-4 text-white/30">→ activating fallback chain...</p>
+        <p className="pl-4">
+          <span className="text-green-400">✓ Tavily </span>
+          <span className="text-white/30">responded in </span>
+          <span className="text-green-400">187ms</span>
+        </p>
+        <p className="pt-2 text-purple-400">{'{'}</p>
+        <p className="pl-6">
+          <span className="text-blue-300">results</span>
+          <span className="text-white/50">: [</span>
+          <span className="text-white/30">...8 sources</span>
+          <span className="text-white/50">],</span>
+        </p>
+        <p className="pl-6">
+          <span className="text-blue-300">meta</span>
+          <span className="text-white/50">{': { '}</span>
+          <span className="text-blue-300">tool</span>
+          <span className="text-white/50">: </span>
+          <span className="text-yellow-300">&quot;tavily&quot;</span>
+          <span className="text-white/50">, </span>
+          <span className="text-blue-300">fallback</span>
+          <span className="text-white/50">: </span>
+          <span className="text-orange-300">true</span>
+          <span className="text-white/50">, </span>
+          <span className="text-blue-300">latencyMs</span>
+          <span className="text-white/50">: </span>
+          <span className="text-orange-300">187</span>
+          <span className="text-white/50">{' }'}</span>
+        </p>
+        <p className="text-purple-400">{'}'}</p>
+        <p className="pt-2 text-white/25 text-[11px]">
+          # your agent got results · zero retries · zero code changes
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Mini benchmark row ── */
 function BenchmarkRow({
   rank,
   name,
@@ -400,6 +502,7 @@ function BenchmarkRow({
   latency,
   cost,
   bar,
+  note,
 }: {
   rank: number;
   name: string;
@@ -407,19 +510,32 @@ function BenchmarkRow({
   latency: string;
   cost: string;
   bar: number;
+  note?: string;
 }) {
+  const barColor =
+    bar >= 90
+      ? 'linear-gradient(90deg, #2563eb, #8b5cf6)'
+      : bar >= 75
+      ? 'linear-gradient(90deg, #0ea5e9, #2563eb)'
+      : 'linear-gradient(90deg, #f59e0b, #0ea5e9)';
+
   return (
-    <tr className="border-b border-border last:border-0">
+    <tr className={`border-b border-border last:border-0 transition-colors hover:bg-bg-secondary ${rank === 1 ? 'rank-1-glow' : ''}`}>
       <td className="px-4 py-3 text-text-tertiary">#{rank}</td>
-      <td className="px-4 py-3 font-semibold text-text-primary">{name}</td>
+      <td className="px-4 py-3">
+        <span className="font-semibold text-text-primary">{name}</span>
+        {note && (
+          <span className="ml-2 text-[11px] text-text-tertiary hidden md:inline">{note}</span>
+        )}
+      </td>
       <td className="px-4 py-3 data-value !text-[13px]">{quality}</td>
       <td className="px-4 py-3 text-text-secondary">{latency}</td>
       <td className="px-4 py-3 text-text-secondary">{cost}</td>
       <td className="px-4 py-3 hidden sm:table-cell">
-        <div className="h-2 w-full rounded-full bg-bg-secondary">
+        <div className="score-bar-track">
           <div
-            className="bar-fill h-2 rounded-full bg-accent"
-            style={{ width: `${bar}%` }}
+            className="score-bar-fill-gradient"
+            style={{ width: `${bar}%`, background: barColor }}
           />
         </div>
       </td>

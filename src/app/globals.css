@@ -512,3 +512,24 @@ body {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
+
+/* === Gradient border card (first feature card) === */
+.gradient-border-card {
+  position: relative;
+  border-color: transparent !important;
+  background-clip: padding-box;
+}
+.gradient-border-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 9px;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.3) 0%,
+    rgba(139, 92, 246, 0.2) 40%,
+    rgba(229, 229, 229, 0.6) 100%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
