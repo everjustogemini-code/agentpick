@@ -25,6 +25,10 @@ type PlaygroundResult = {
   meta?: string[];
 };
 
+export function __resetPlaygroundRateLimit() {
+  rateStore.clear();
+}
+
 function jsonNoStore(body: unknown, init?: ResponseInit) {
   const headers = new Headers(init?.headers);
   headers.set('Cache-Control', 'no-store');
@@ -32,6 +36,10 @@ function jsonNoStore(body: unknown, init?: ResponseInit) {
     ...init,
     headers,
   });
+}
+
+function createPlaygroundTraceId() {
+  return `trace_playground_${Date.now()}`;
 }
 
 function getClientIp(request: NextRequest): string {
@@ -439,6 +447,11 @@ export async function POST(request: NextRequest) {
 
     return jsonNoStore(
       {
+        capability,
+        tool: null,
+        latencyMs: 0,
+        traceId: createPlaygroundTraceId(),
+        results: [],
         error: message,
       },
       { status: 502 },

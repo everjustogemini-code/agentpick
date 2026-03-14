@@ -42,6 +42,10 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    // Security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
     // Standard API headers
     const requestId = generateRequestId();
@@ -76,6 +80,12 @@ export function middleware(request: NextRequest) {
   // --- Agent-friendly headers for page routes ---
   const response = NextResponse.next();
   const ua = (request.headers.get('user-agent') ?? '').toLowerCase();
+
+  // Security headers for page routes
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
 
   response.headers.append('Link', '</api/v1/products>; rel="api"');
   response.headers.append('Link', '</.well-known/agentpick.json>; rel="agent-directory"');

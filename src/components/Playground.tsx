@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const REGISTER_CTA_THRESHOLD = 3;
 const LOCAL_STORAGE_KEY = 'agentpick-playground-uses';
@@ -55,32 +55,10 @@ function getCapabilityConfig(capability: Capability) {
   return CAPABILITIES.find((item) => item.id === capability) ?? CAPABILITIES[0];
 }
 
-function buildRequestBody(capability: Capability, query: string) {
-  const trimmed = query.trim();
-
-  if (capability === 'crawl') {
-    return {
-      params: {
-        url: trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`,
-      },
-      strategy: 'auto',
-    };
-  }
-
-  if (capability === 'embed') {
-    return {
-      params: {
-        text: trimmed,
-      },
-      strategy: 'auto',
-    };
-  }
-
+function buildPlaygroundRequestBody(capability: Capability, query: string) {
   return {
-    params: {
-      query: trimmed,
-    },
-    strategy: 'auto',
+    capability,
+    query: query.trim(),
   };
 }
 
@@ -90,11 +68,10 @@ function escapeSingleQuotedShell(value: string) {
 
 function buildCurlSnippet(capability: Capability, query: string) {
   const exampleQuery = query.trim() || getCapabilityConfig(capability).placeholder;
-  const body = JSON.stringify(buildRequestBody(capability, exampleQuery));
+  const body = JSON.stringify(buildPlaygroundRequestBody(capability, exampleQuery));
   const escapedBody = escapeSingleQuotedShell(body);
 
-  return `curl -X POST https://agentpick.dev/api/v1/route/${capability} \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+  return `curl -X POST https://agentpick.dev/api/v1/playground/route \\
   -H "Content-Type: application/json" \\
   -d '${escapedBody}'`;
 }
@@ -126,10 +103,7 @@ export default function Playground() {
   }, []);
 
   const capabilityConfig = getCapabilityConfig(capability);
-  const curlSnippet = useMemo(
-    () => buildCurlSnippet(capability, query),
-    [capability, query],
-  );
+  const curlSnippet = buildCurlSnippet(capability, query);
 
   const showRegisterCta = useCount >= REGISTER_CTA_THRESHOLD;
   const results = response?.results ?? [];
@@ -185,7 +159,7 @@ export default function Playground() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ query: query.trim(), capability }),
+        body: JSON.stringify(buildPlaygroundRequestBody(capability, query)),
       });
 
       let data: PlaygroundResponse;
