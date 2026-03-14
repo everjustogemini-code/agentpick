@@ -330,6 +330,8 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         'Content-Type': 'application/json',
         'X-AgentPick-Plan': account.plan,
         'X-AgentPick-Remaining': String(Math.max(0, usage.remaining - 1)),
+        'Cache-Control': 'no-store',
+        'Vary': 'Authorization',
       },
     });
   }

@@ -425,16 +425,18 @@ export async function routeRequest(
   // Pass storedByokKeys so BYOK-configured tools (e.g. user's own tavily key) are not
   // deprioritized when the platform key isn't set — fixes determinism for BYOK-heavy users.
   let rankedTools: string[];
-  if (
-    aiRankedTools &&
-    (aiClassificationResult?.type === 'realtime' ||
-      aiClassificationResult?.freshness === 'realtime')
-  ) {
-    // Pin the AI-chosen primary tool; only reorder fallbacks (index >= 1).
+  if (aiRankedTools) {
+    // For all AI-classified routes: pin the AI-chosen primary tool and only reorder
+    // fallbacks (index >= 1) by configuration state. The AI ranking is authoritative
+    // for primary tool selection — applying deprioritizeUnconfiguredTools to the full
+    // list defeats AI routing and causes non-determinism across serverless instances
+    // (e.g. for type=news queries, tavily moves to the back when the platform key is
+    // absent on one instance but present on another, yielding different tool selections
+    // run-to-run for the same query).
     const [primary, ...rest] = cbRankedTools;
     rankedTools = [primary, ...deprioritizeUnconfiguredTools(rest, options.storedByokKeys)];
   } else {
-    rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools, options.storedByokKeys) : cbRankedTools;
+    rankedTools = cbRankedTools;
   }
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
