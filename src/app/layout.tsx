@@ -32,13 +32,13 @@ export const metadata: Metadata = {
     description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
     type: 'website',
     url: 'https://agentpick.dev',
-    images: [{ url: '/api/og', width: 1200, height: 630 }],
+    images: [{ url: '/api/og?v=2', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'AgentPick — The runtime layer for agent tools',
     description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
-    images: ['/api/og'],
+    images: ['/api/og?v=2'],
   },
 };
 
