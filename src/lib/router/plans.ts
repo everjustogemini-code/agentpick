@@ -1,5 +1,5 @@
 export type RouterPlanCode = 'FREE' | 'STARTER' | 'PRO' | 'SCALE' | 'ENTERPRISE';
-export type UpgradePlanSlug = 'pro' | 'growth' | 'scale';
+export type UpgradePlanSlug = 'pro' | 'growth';
 
 type UpgradePlanConfig = {
   slug: UpgradePlanSlug;
@@ -9,7 +9,7 @@ type UpgradePlanConfig = {
   monthlyCalls: number;
   dailyCalls: number;
   description: string;
-  priceEnvKey: 'STRIPE_PRICE_PRO_MONTHLY' | 'STRIPE_PRICE_GROWTH_MONTHLY' | 'STRIPE_PRICE_SCALE_MONTHLY';
+  priceEnvKey: 'STRIPE_PRICE_PRO_MONTHLY' | 'STRIPE_PRICE_GROWTH_MONTHLY';
   overagePerCall: number | null;
 };
 
@@ -66,7 +66,7 @@ export const UPGRADE_PLAN_CONFIG: Record<UpgradePlanSlug, UpgradePlanConfig> = {
     slug: 'pro',
     label: 'Pro',
     routerPlan: 'STARTER',
-    monthlyPriceUsd: 9,
+    monthlyPriceUsd: 29,
     monthlyCalls: 5000,
     dailyCalls: 1000,
     description: 'For solo builders routing real production traffic.',
@@ -77,23 +77,12 @@ export const UPGRADE_PLAN_CONFIG: Record<UpgradePlanSlug, UpgradePlanConfig> = {
     slug: 'growth',
     label: 'Growth',
     routerPlan: 'PRO',
-    monthlyPriceUsd: 29,
+    monthlyPriceUsd: 99,
     monthlyCalls: 25000,
     dailyCalls: 5000,
-    description: 'For teams that need headroom before they hit scale pain.',
+    description: 'For teams running multi-agent traffic with room to grow.',
     priceEnvKey: 'STRIPE_PRICE_GROWTH_MONTHLY',
     overagePerCall: 0.001,
-  },
-  scale: {
-    slug: 'scale',
-    label: 'Scale',
-    routerPlan: 'SCALE',
-    monthlyPriceUsd: 79,
-    monthlyCalls: 100000,
-    dailyCalls: 20000,
-    description: 'For high-volume agents and multi-team deployments.',
-    priceEnvKey: 'STRIPE_PRICE_SCALE_MONTHLY',
-    overagePerCall: 0.0008,
   },
 };
 
@@ -127,6 +116,7 @@ export const PRICING_CARD_PLANS = [
     overagePerCall: UPGRADE_PLAN_CONFIG.pro.overagePerCall,
     features: [
       '5,000 included calls/mo',
+      '$29/mo base subscription',
       'then $0.002/call overage',
       '1,000 calls per day',
       'Saved keys plus higher traffic limits',
@@ -145,30 +135,13 @@ export const PRICING_CARD_PLANS = [
     overagePerCall: UPGRADE_PLAN_CONFIG.growth.overagePerCall,
     features: [
       '25,000 included calls/mo',
+      '$99/mo base subscription',
       'then $0.001/call overage',
       '5,000 calls per day',
       'Saved keys plus higher traffic limits',
       'Headroom for multi-agent traffic',
     ],
     ctaLabel: 'Upgrade to Growth',
-  },
-  {
-    slug: 'scale',
-    label: 'Scale',
-    routerPlan: UPGRADE_PLAN_CONFIG.scale.routerPlan,
-    monthlyPriceUsd: UPGRADE_PLAN_CONFIG.scale.monthlyPriceUsd,
-    monthlyCalls: UPGRADE_PLAN_CONFIG.scale.monthlyCalls,
-    dailyCalls: UPGRADE_PLAN_CONFIG.scale.dailyCalls,
-    description: UPGRADE_PLAN_CONFIG.scale.description,
-    overagePerCall: UPGRADE_PLAN_CONFIG.scale.overagePerCall,
-    features: [
-      '100,000 included calls/mo',
-      'then $0.0008/call overage',
-      '20,000 calls per day',
-      'Best per-call rate for high volume',
-      'Multi-team agent deployments',
-    ],
-    ctaLabel: 'Upgrade to Scale',
   },
 ] as const;
 
@@ -184,9 +157,7 @@ export function isRouterPlanCode(value: unknown): value is RouterPlanCode {
 
 export function normalizeUpgradePlan(value: unknown): UpgradePlanSlug | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  return normalized === 'pro' || normalized === 'growth' || normalized === 'scale'
-    ? normalized
-    : null;
+  return normalized === 'pro' || normalized === 'growth' ? normalized : null;
 }
 
 export function getRouterPlanLabel(plan: string): string {

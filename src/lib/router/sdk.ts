@@ -90,15 +90,20 @@ export async function ensureDeveloperAccount(agentId: string) {
  * Check daily usage against plan limits.
  * Returns { allowed: boolean, remaining: number, limit: number }.
  */
-export async function checkUsageLimit(developerId: string, plan: RouterPlanValue) {
+export async function checkUsageLimit(developerId: string, plan: RouterPlanValue, billingCycleStart?: Date) {
   const dailyLimit = ROUTER_PLAN_DAILY_LIMITS[plan];
   const monthlyLimit = ROUTER_PLAN_MONTHLY_LIMITS[plan];
   const overagePerCall = ROUTER_PLAN_OVERAGE_PER_CALL[plan];
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  // Use account's billing cycle start when provided; fall back to calendar month start.
+  // This ensures enforcement matches what the usage API shows as callsThisMonth.
+  const monthStart = billingCycleStart ?? (() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
 
   const [todayCount, monthCount] = await Promise.all([
     db.routerCall.count({

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const [stats, limits, callsThisMonth] = await Promise.all([
       getUsageStats(account.id, days),
-      checkUsageLimit(account.id, account.plan),
+      checkUsageLimit(account.id, account.plan, account.billingCycleStart),
       (prisma as any).routerCall.count({
         where: {
           developerId: account.id,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { normalizeUpgradePlan } from '@/lib/router/plans';
+import { UPGRADE_PLAN_CONFIG, normalizeUpgradePlan } from '@/lib/router/plans';
 
 type SessionStatus = 'loading' | 'complete' | 'open' | 'expired' | 'error';
 
@@ -12,6 +12,7 @@ export default function CheckoutReturnClient() {
   const sessionId = searchParams.get('session_id');
   const plan = normalizeUpgradePlan(searchParams.get('plan'));
   const [status, setStatus] = useState<SessionStatus>('loading');
+  const planLabel = plan ? UPGRADE_PLAN_CONFIG[plan].label : 'selected';
 
   useEffect(() => {
     if (!sessionId) {
@@ -43,8 +44,8 @@ export default function CheckoutReturnClient() {
           <div className="mb-4 text-4xl">✅</div>
           <h1 className="text-2xl font-bold text-white">You're all set!</h1>
           <p className="mt-3 text-sm text-white/55">
-            Your {plan === 'pro' ? 'Pro' : plan === 'growth' ? 'Growth' : 'Scale'} plan is now active. The webhook will sync your
-            account within a few seconds.
+            Your {planLabel} plan is now active. The webhook will sync your account within a few
+            seconds.
           </p>
           <div className="mt-6 flex flex-col gap-3">
             <Link

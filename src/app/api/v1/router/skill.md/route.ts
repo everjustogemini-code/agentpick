@@ -130,10 +130,9 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
 
 | Plan | Monthly Included | Daily Limit | Overage | BYOK | Features |
 |------|-----------------|-------------|---------|------|----------|
-| FREE | 500 (hard cap) | 100 calls | None | No | Basic routing + fallback |
+| FREE | 500 (hard cap) | 200 calls | None | No | Basic routing + fallback |
 | STARTER (Pro) | 5,000 | 1,000 calls | $0.002/call | Yes | Strategy config |
 | PRO (Growth) | 25,000 | 5,000 calls | $0.001/call | Yes | Priority routing + analytics |
-| SCALE | 100,000 | 20,000 calls | $0.0008/call | Yes | High-volume + multi-team |
 | ENTERPRISE | Unlimited | Unlimited | Custom | Yes | SLA + dedicated support |
 
 ## Response Format
@@ -148,7 +147,7 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
     "strategy": "BALANCED",
     "plan": "FREE",
     "calls_remaining": 87,
-    "message": "Only 10 free calls left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro"
+    "message": "Only 10 free calls left this month. Upgrade to Pro ($29/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro"
   }
 }
 \`\`\`
@@ -176,7 +175,7 @@ if result.get("meta", {}).get("message"):
 ## Payments
 
 ### Upgrade via Web (Hosted Checkout)
-Navigate the user to: \`https://agentpick.dev/pricing?plan=pro\`, \`?plan=growth\`, or \`?plan=scale\`
+Navigate the user to: \`https://agentpick.dev/pricing?plan=pro\` or \`?plan=growth\`
 AgentPick will create a Stripe hosted checkout session and redirect the user to \`checkout.stripe.com\`.
 
 ### Upgrade via Telegram (In-Chat Payment)
@@ -199,9 +198,8 @@ Telegram will display a payment card in the chat. The user taps "Pay" and comple
 **Plans:**
 | plan | Label | Price | Included | Overage |
 |------|-------|-------|----------|---------|
-| \`pro\` | Pro | $9/month | 5,000 calls | $0.002/call |
-| \`growth\` | Growth | $29/month | 25,000 calls | $0.001/call |
-| \`scale\` | Scale | $79/month | 100,000 calls | $0.0008/call |
+| \`pro\` | Pro | $29/month | 5,000 calls | $0.002/call |
+| \`growth\` | Growth | $99/month | 25,000 calls | $0.001/call |
 
 **Response:**
 \`\`\`json

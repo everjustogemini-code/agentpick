@@ -53,7 +53,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   }
 
   const account = await ensureDeveloperAccount(agent.id);
-  const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue);
+  const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue, account.billingCycleStart);
   if (!usage.allowed) {
     const isMonthly = usage.hardCapped;
     const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;

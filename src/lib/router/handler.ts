@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
+import { checkRateLimit, routerSdkLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import { routeRequest, CAPABILITY_TOOLS, getRankedToolsForCapability } from './index';
 import type { RouterRequest, Strategy } from './index';
@@ -69,7 +69,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   }
 
   // 2. Rate limit (reuse telemetry limiter)
-  const { limited, retryAfter } = await checkRateLimit(telemetryLimiter, agent.id);
+  const { limited, retryAfter } = await checkRateLimit(routerSdkLimiter, agent.id);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many requests. Slow down.', 429, { retry_after: retryAfter });
   }
@@ -167,7 +167,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       });
     }
     // Enforce plan daily/monthly limits (same as /router/* surface)
-    const usage = await checkUsageLimit(preAccount.id, preAccount.plan as RouterPlanValue);
+    const usage = await checkUsageLimit(preAccount.id, preAccount.plan as RouterPlanValue, preAccount.billingCycleStart);
     if (!usage.allowed) {
       const isMonthly = usage.hardCapped;
       const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;

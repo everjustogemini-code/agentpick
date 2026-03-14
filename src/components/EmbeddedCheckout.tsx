@@ -15,7 +15,7 @@ const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_live_51T
 const stripePromise = loadStripe(STRIPE_PK);
 
 type EmbeddedCheckoutProps = {
-  plan: 'pro' | 'growth' | 'scale';
+  plan: 'pro' | 'growth';
   apiKey: string;
   onComplete?: () => void;
 };

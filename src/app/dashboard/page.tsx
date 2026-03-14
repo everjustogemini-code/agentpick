@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
+import { UPGRADE_PLAN_CONFIG, normalizeUpgradePlan, type UpgradePlanSlug } from '@/lib/router/plans';
 
 const RouterAnalyticsDashboard = dynamic(
   () =>
@@ -40,12 +41,12 @@ function isFreePlan(plan: string) {
 }
 
 export default function DashboardPage() {
-  const [upgradedPlan, setUpgradedPlan] = useState<string | null>(null);
+  const [upgradedPlan, setUpgradedPlan] = useState<UpgradePlanSlug | null>(null);
   const [dismissUpgrade, setDismissUpgrade] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const plan = params.get('upgraded');
+    const plan = normalizeUpgradePlan(params.get('upgraded'));
     if (plan) setUpgradedPlan(plan);
   }, []);
 
@@ -231,8 +232,14 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-6xl px-6 pt-4">
           <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-4">
             <div>
-              <p className="text-lg font-semibold text-emerald-400">🎉 Welcome to {upgradedPlan === 'pro' ? 'Pro' : upgradedPlan === 'growth' ? 'Growth' : 'Scale'}!</p>
-              <p className="mt-1 text-sm text-emerald-300/70">Your plan is now active. Start routing — your agent has {upgradedPlan === 'pro' ? '5,000' : upgradedPlan === 'growth' ? '25,000' : '100,000'} calls this month.</p>
+              <p className="text-lg font-semibold text-emerald-400">
+                Welcome to {UPGRADE_PLAN_CONFIG[upgradedPlan].label}.
+              </p>
+              <p className="mt-1 text-sm text-emerald-300/70">
+                Your plan is now active. Start routing. Your agent has{' '}
+                {UPGRADE_PLAN_CONFIG[upgradedPlan].monthlyCalls.toLocaleString()} included calls this
+                month.
+              </p>
             </div>
             <button onClick={() => setDismissUpgrade(true)} className="text-emerald-400/50 hover:text-emerald-400 text-xl">×</button>
           </div>
