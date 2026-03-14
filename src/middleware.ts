@@ -32,10 +32,10 @@ const ipMinuteBuckets = new Map<string, Bucket>();
 const ipDayBuckets = new Map<string, Bucket>();
 
 const RATE_LIMITS = {
-  free:   { perMin: 30,   perDay: 100 },
-  pro:    { perMin: 100,  perDay: 1000 },
-  growth: { perMin: 1000, perDay: 10000 },
-  public: { perMin: 30,   perDay: 5000 },
+  free:   { perMin: 60,   perDay: 10000 },
+  pro:    { perMin: 200,  perDay: 10000 },
+  growth: { perMin: 1000, perDay: 100000 },
+  public: { perMin: 60,   perDay: 10000 },
 } as const;
 
 function getIp(request: NextRequest): string {

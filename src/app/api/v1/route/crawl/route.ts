@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { handleRouteRequest } from '@/lib/router/handler';
+import { apiError } from '@/types';
 import { z } from 'zod';
 
 const CrawlBody = z.union([
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     });
     return handleRouteRequest(newReq, 'crawl');
   } catch {
-    return handleRouteRequest(request, 'crawl');
+    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
   }
 }
 

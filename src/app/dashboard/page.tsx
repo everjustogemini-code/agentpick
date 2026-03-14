@@ -249,12 +249,26 @@ export default function DashboardPage() {
                 <p className="mt-3 text-xs text-slate-500">
                   Free plan · 500 calls/mo{' '}
                   <span className="mx-1 text-slate-300">→</span>
-                  <Link
-                    href="/pricing?plan=pro"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const key = window.localStorage.getItem('agentpick_api_key') || apiKey;
+                      if (!key) { window.location.href = '/pricing'; return; }
+                      try {
+                        const res = await fetch('/api/v1/router/upgrade', {
+                          method: 'POST',
+                          headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ plan: 'pro' }),
+                        });
+                        const data = await res.json();
+                        if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                        else window.location.href = '/pricing?plan=pro';
+                      } catch { window.location.href = '/pricing?plan=pro'; }
+                    }}
                     className="font-medium text-orange-500 hover:text-orange-600 transition-colors"
                   >
                     Upgrade to Pro for 10K calls →
-                  </Link>
+                  </button>
                 </p>
               )}
             </section>
