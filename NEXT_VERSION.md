@@ -1,175 +1,127 @@
-# NEXT_VERSION.md — Bugfix Cycle 5
-**Date:** 2026-03-14
-**QA Round:** 7 — Score 37/49 (~76%) FAIL
-**Scope:** Bug fixes ONLY. Zero new features. Every item below maps 1:1 to a QA issue number.
+# NEXT_VERSION.md — v0.3.0 "Benchmarks Live"
+
+**Date:** 2026-03-14  
+**PM Cycle:** 15  
+**Theme:** Become the live benchmark data product that developers and AI agents naturally reference — the Knock.app of agent tools.
 
 ---
 
-## P0 — Blockers
+## Context Snapshot
 
-### [QA P0-1] Stripe payment broken — "Stripe billing is not configured yet"
+| Metric | Value |
+|--------|-------|
+| Registered agents | 297 (+51 today — healthy) |
+| Total API calls | 578 (337 today) |
+| Activation rate | 9.8% (29/297 made ≥1 call) |
+| Paid accounts | 0 (Stripe env vars — owner action pending) |
+| AEO visibility | 0/3 queries (6 cycles at zero) |
+| Site health | ✅ OK, DB 5ms latency |
+| P0 bugs | None |
 
-**Symptom:** `/pricing` upgrade click returns "Stripe billing is not configured yet". `/dashboard/billing` returned 404 (may be stale deployment).
-
-**Root cause:** `src/lib/stripe.ts:8` — `getRequiredEnv()` throws when `STRIPE_SECRET_KEY` or price ID env vars are absent. The catch block in `src/app/api/v1/router/upgrade/route.ts:95` surfaces this as "Stripe billing is not configured yet."
-
-**Fixes:**
-1. **Vercel env vars** — Add to production environment (no code change needed for the logic, which is already correct):
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_PRICE_ID_PRO` (matches `UPGRADE_PLAN_CONFIG[pro].priceEnvKey`)
-   - `STRIPE_PRICE_ID_GROWTH` (matches `UPGRADE_PLAN_CONFIG[growth].priceEnvKey`)
-   - `STRIPE_WEBHOOK_SECRET`
-2. **`/dashboard/billing` 404** — `src/app/dashboard/billing/page.tsx` exists in the repo. Verify it is committed and included in the Vercel build. No code changes needed if it is already tracked in git.
-
----
-
-### [QA P0-2] `toolUsed` empty/unknown in `/api/v1/router/calls`
-
-**Symptom:** `GET /api/v1/router/calls` returns `toolUsed: ""` or `toolUsed: "unknown"` for all records.
-
-**Root cause:** In `src/lib/router/sdk-handler.ts`, the error-path `failureResponse` (catch block ~line 215) computes `meta.tool_used` as:
-```
-modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? `${capability}-unavailable`
-```
-When strategy is AUTO and no explicit tool is set, `modifiedRequest.tool` and `priority_tools` are both undefined, so the value falls to the ranked-tool list. This should return a real slug. The actual empty/unknown writes are likely caused by `.catch(() => {})` at line 186 silently swallowing DB write failures — a write error means the call is recorded with a default/empty value in Postgres.
-
-**Fixes:**
-1. `src/lib/router/sdk-handler.ts:186` — Change the silent swallow to a logged error:
-   ```typescript
-   // Before:
-   ).catch(() => {});
-   // After:
-   ).catch((e) => console.error('[recordRouterCall] write failed:', e));
-   ```
-2. `src/lib/router/sdk-handler.ts` (error path catch block) — Ensure `resolvedToolUsed` is always a non-empty string before passing to `recordRouterCall`:
-   ```typescript
-   const resolvedToolUsed =
-     modifiedRequest.tool ??
-     modifiedRequest.priority_tools?.[0] ??
-     getRankedToolsForCapability(capability, coreStrategy)[0] ??
-     capability;
-   // use resolvedToolUsed in failureResponse.meta.tool_used
-   ```
-3. `prisma/schema.prisma` — Verify `RouterCall.toolUsed` is `String` (non-nullable). If it is nullable, existing NULL rows explain the blank display. Add a migration to set `DEFAULT ''` and backfill NULLs if needed.
+**Key insight:** We have 297 registered developers but 0 revenue because Stripe is misconfigured (owner action). 
+Meanwhile 6 cycles at AEO=0 means we're invisible. The fastest path to discovery is becoming a **reference data product** — 
+something benchmark-hungry developers and AI assistants quote, link, and embed. That's the Knock.app play.
 
 ---
 
-### [QA P0-3] XSS injection risk — missing effective Content-Security-Policy
+## Must-Have #1 — NEW FEATURE: Live Benchmark Data Product
 
-**Symptom:** Injected `<script>alert(1)</script>` in query returns 200 with content reflected. QA flags missing `X-Content-Type-Options` and `Content-Security-Policy`.
+**Why:** This is the entire strategic bet. Right now "AI agent API benchmark" in any AI search returns EvidentlyAI, AgentBench, IBM — none of them have *live* data. We have 578 real routing calls from 29 active agents. That's actual production telemetry. No one else has this.
 
-**Root cause:** `src/middleware.ts:190` — Security headers ARE set for page routes, but the CSP contains `'unsafe-inline'` and `'unsafe-eval'` in `script-src`, which does not block inline script execution. The API route CSP (`default-src 'none'`) is correct. The page route CSP is the gap.
+Knock.app publishes live email delivery benchmark data at `/email-api-benchmarks`. Every email developer bookmarks it. Every AI assistant cites it. We do the same for agent tools.
 
-**Fixes:**
-1. `src/middleware.ts:190` — Remove `'unsafe-inline'` and `'unsafe-eval'` from `script-src` in the page-route CSP:
-   ```typescript
-   // Change:
-   "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'"
-   // To:
-   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'"
-   ```
-   Note: removing `'unsafe-eval'` may require verifying Next.js production build does not need eval. Test in staging first.
-2. `next.config.ts` — Add a `headers()` config as a belt-and-suspenders fallback for static assets that bypass middleware:
-   ```typescript
-   async headers() {
-     return [{
-       source: '/(.*)',
-       headers: [
-         { key: 'X-Content-Type-Options', value: 'nosniff' },
-         { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-         { key: 'X-XSS-Protection', value: '1; mode=block' },
-       ],
-     }];
-   }
-   ```
+**What to build:**
+- `/benchmarks` — index page: live leaderboard table with P50/P90/P99 latency + error rate + calls (last 30d)
+- `/benchmarks/[provider]` — detail page per provider: latency trend chart, error rate history, capability breakdown, head-to-head CTA
+- `/benchmarks/compare?a=tavily&b=exa` — side-by-side view: latency, cost, error rate, best use cases
+- `/benchmarks/methodology` — how data is collected (from live RouterCall table, not synthetic tests)
+- Data aggregated live from `RouterCall` table, refreshed every 5 min (ISR or API-backed)
+
+**Acceptance criteria:**
+- `/benchmarks` returns 200 with live latency data for ≥5 providers
+- Each provider detail page shows P50/P90/P99 from real calls
+- Methodology page explains data source (live production routing, not lab tests)
+- Pages are indexable (no auth wall), OG tags set, structured data for search
+- "Last updated: X minutes ago" timestamp visible — signals live data
+- `/benchmarks/compare` renders for any two active providers
 
 ---
 
-## P1 — High Priority
+## Must-Have #2 — INFRASTRUCTURE: RouterCall Table Scale Prep
 
-### [QA P1-1] Strategy differentiation weak — auto/balanced/cheapest all pick same tool
+**Why:** We're at 578 calls total. One HN post or one popular framework integration pushes this to 100K calls/day. The `RouterCall` table will have no indexes optimized for the benchmark queries. DB will fall over. Benchmark pages will timeout. That's the worst moment to go down — exactly when developers are evaluating us.
 
-**Symptom:** `auto`, `balanced`, and `cheapest` all route to `brave-search`. Only `best_performance` and `most_stable` pick different tools.
+Checklist from PM_AGENT.md:
+- ✅ Health endpoint is up
+- ❓ P99 < 2s at 100 concurrent? — **Not validated**
+- ❓ DB connection pool sized? — **Unknown (Neon serverless, needs verification)**
+- ❓ RouterCall indexed for benchmark aggregations? — **Almost certainly not**
+- ❓ Rate limiting holds under burst? — Known issue (P1-3: devs hit 429 after 8 calls)
 
-**Root cause:** In `src/lib/router/sdk.ts:150`, `applyStrategy()` pre-selects a tool via `getBestToolForStrategy()`. For CHEAPEST, `sdkToRouterStrategy('CHEAPEST')` → `'cheapest'` → `getRankedToolsForCapability('search', 'cheapest')` should return `brave-search` (cost 0.0001). For BALANCED, it should return `tavily` (quality ≥ 4.0, best cost-efficiency score). If all three land on the same tool, the most likely cause is:
-- The adapters for `tavily` and `exa-search` are throwing (missing API keys), causing fallback to cascade until all strategies land on the same working adapter (`brave-search`)
-- OR `account.strategy` stored in DB for all dev accounts defaults to a single value
+**What to build:**
+- Add DB indexes: `RouterCall(toolUsed, createdAt)`, `RouterCall(capability, createdAt)`, `RouterCall(latencyMs)` — needed for benchmark aggregation queries
+- Validate Neon connection pool config — verify max connections vs Vercel function concurrency
+- Run 100 QPS load test against `/api/v1/router/search` and `/benchmarks` — record P99 baseline
+- Fix per-minute rate limit burst (P1-3 from QA): raise free tier per-minute cap so developers can run integration tests without hitting 429 after 8 calls (was fixed in cycle 12 but QA Round 8 still flags it — needs re-verification)
+- Add `/api/v1/health` alias route (P1-1 from QA): currently returns 500, should 200 — important for external monitoring integrations
 
-**Fixes:**
-1. `src/lib/router/index.ts` — Confirm the cost/quality data in `TOOL_CHARACTERISTICS` produces distinct top picks per strategy. For `search` capability:
-   - `cheapest` → should rank: `brave-search` (0.0001) → `serpapi` (0.0005) → `tavily` (0.001)
-   - `balanced` → should rank: `tavily` first (quality 4.0, score ~22.0) → `exa-search`
-   - `best_performance` → should rank: `exa-search` first (quality 4.6)
-   No code change needed if data is correct — verify with a log or test.
-2. **Vercel env vars** — Ensure all three primary tool API keys are set so fallback doesn't obscure the strategy selection:
-   - `BRAVE_SEARCH_API_KEY` (cheapest)
-   - `TAVILY_API_KEY` (balanced)
-   - `EXA_API_KEY` (best_performance)
-3. `src/lib/router/sdk.ts:150` — If the issue is that `applyStrategy` is not being called with the request-level strategy (only the account default), verify that `sdk-handler.ts:159` passes `strategy: strategyUsed` (the per-request value) not `strategy: account.strategy` (the account default) to `applyStrategy`.
-
----
-
-### [QA P1-2] Playground broken — `/playground/scenarios` 404, run returns 500
-
-**Symptom:** `/playground/scenarios` returns 404. Running a query in the playground returns 500.
-
-**Root cause:**
-- **404 on `/playground/scenarios`:** `src/app/playground/scenarios/page.tsx` exists in the repo. This is a deployment artifact — the file was not included in the last Vercel build or is being blocked by a middleware redirect.
-- **500 on run:** `src/app/playground/page.tsx` renders `<PlaygroundShell />` from `src/components/PlaygroundShell.tsx`. The 500 is most likely the playground's demo API key missing from Vercel env vars (`NEXT_PUBLIC_DEMO_API_KEY`), causing all router calls to return 401, which `PlaygroundShell` may surface as a generic error.
-
-**Fixes:**
-1. `src/components/PlaygroundShell.tsx` — Read the file and audit: (a) where the demo API key comes from, (b) how errors from the router API are handled and displayed. If it swallows 401 as a generic "500" message, fix the error display to show the actual status.
-2. **Vercel env vars** — Add `NEXT_PUBLIC_DEMO_API_KEY` with a valid registered API key for the playground demo account.
-3. Confirm `src/app/playground/scenarios/page.tsx` is tracked in git (`git ls-files src/app/playground/scenarios/page.tsx`) and rebuild/redeploy.
+**Acceptance criteria:**
+- `EXPLAIN ANALYZE` on benchmark aggregation query shows index scan, not seq scan
+- Load test: `/api/v1/router/search` P99 < 2s at 100 concurrent requests
+- `/api/v1/health` returns 200 (alias for `/api/health`)
+- Free tier developer can make 50 sequential calls without hitting 429
 
 ---
 
-### [QA P1-3] MCP endpoints return 404 at `/api/v1/mcp`
+## Must-Have #3 — NEW FEATURE: Permissionless API Submit Portal
 
-**Symptom:** `GET /api/v1/mcp/tools/list` returns 404. `POST /api/v1/mcp/discover_tools` returns 404.
+**Why:** We currently manually curate 26 APIs. The supply expansion ceiling is our BD bandwidth. Knock.app doesn't manually onboard every email provider — providers submit themselves because benchmark rankings are valuable advertising. We need the same flywheel.
 
-**Root cause:** The MCP server is at `src/app/mcp/route.ts`, which serves at `/mcp` — not `/api/v1/mcp`. The server uses JSON-RPC 2.0 via POST (not REST GET). QA is testing REST-style paths that do not exist. The existing `/mcp` endpoint works correctly per JSON-RPC spec.
+This is also the **strategic moat**: once 50+ API providers are actively submitting and competing on benchmark scores, the data gets richer, the product gets stickier, and no competitor can replicate our live dataset.
 
-**Fix — add REST convenience routes (do not move or modify `/mcp`):**
-1. Create `src/app/api/v1/mcp/route.ts` — a GET handler that returns the MCP server manifest (tools list):
-   ```typescript
-   // GET /api/v1/mcp → returns { tools: [...], name, version }
-   ```
-   Re-export or call the same `SERVER_INFO` from `src/app/mcp/route.ts`. Do not duplicate the tool handler logic.
-2. Create `src/app/api/v1/mcp/tools/list/route.ts` — a GET handler returning just the tools array:
-   ```typescript
-   // GET /api/v1/mcp/tools/list → returns { tools: [...] }
-   ```
-3. The existing `src/app/mcp/route.ts` remains unchanged. Existing MCP clients pointing at `/mcp` continue to work.
+**What to build:**
+- `/submit-api` — public form: API name, endpoint URL, auth type (Bearer/API key), capability (search/crawl/embed/etc), free tier quota offered
+- Sandbox validator: run 10 standardized queries against submitted endpoint → check response format, latency, error handling
+- Shadow routing phase: route 1% of live traffic to validated API for 24h → gather real performance data
+- If P50 < 3s and error rate < 5% → auto-publish to benchmarks + product directory
+- Email confirmation to submitter with benchmark score and ranking position
+- Submitters incentivized: "Your benchmark ranking is your ad on AgentPick"
 
----
-
-## Verification
-
-After fixes are deployed, QA should confirm:
-
-| Issue | Pass condition |
-|-------|---------------|
-| P0-1 | `POST /api/v1/router/upgrade` body `{"plan":"pro"}` → `{"checkoutUrl":"https://checkout.stripe.com/..."}`. `/dashboard/billing` loads with plan info. |
-| P0-2 | After 5+ router calls: `GET /api/v1/router/calls` → every record has non-empty `toolUsed` (no empty string, no "unknown"). |
-| P0-3 | Response to any API request includes `X-Content-Type-Options: nosniff`. Page routes include CSP without `unsafe-eval`. |
-| P1-1 | `POST /api/v1/router/search` with `{"strategy":"cheapest","params":{"query":"test"}}` picks a different tool than `{"strategy":"best_performance",...}`. |
-| P1-2 | `/playground/scenarios` returns 200. Playground run with demo key returns tool result, not 500. |
-| P1-3 | `GET /api/v1/mcp/tools/list` returns 200 with tools array. |
+**Acceptance criteria:**
+- `/submit-api` form live and submits to DB
+- Sandbox validator runs 10 test queries and returns pass/fail + latency score
+- Submitted APIs that pass sandbox appear in a "Pending" state on `/benchmarks` within 24h
+- At least 3 new APIs submitted via portal within first week of launch (measure at next PM cycle)
+- No human review required for sandbox-passing submissions
 
 ---
 
-## Infra: Env Vars to Add on Vercel
+## What's Explicitly NOT in This Version
 
-These are not code changes — add them to the Vercel project environment:
+- Blog posts / AEO content (Growth Agent handles this in parallel, no dev needed)
+- Stripe fix (owner action — STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel)
+- New capabilities (STT/TTS, image gen) — Phase 4, not yet
+- LangChain/CrewAI integration — after benchmark data product is live
 
-| Variable | Required for |
-|----------|-------------|
-| `STRIPE_SECRET_KEY` | P0-1: Stripe checkout |
-| `STRIPE_PRICE_ID_PRO` | P0-1: Pro plan price |
-| `STRIPE_PRICE_ID_GROWTH` | P0-1: Growth plan price |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification |
-| `NEXT_PUBLIC_DEMO_API_KEY` | P1-2: Playground demo |
-| `BRAVE_SEARCH_API_KEY` | P1-1: cheapest strategy |
-| `TAVILY_API_KEY` | P1-1: balanced strategy |
-| `EXA_API_KEY` | P1-1: best_performance strategy |
+---
+
+## Metrics to Watch
+
+| Metric | Current | Target (next cycle) |
+|--------|---------|---------------------|
+| `/benchmarks` page views | 0 | 500+ |
+| Benchmark pages indexed by Google | 0 | 5+ |
+| AEO score "AI agent API benchmark" | 0 | >0 (first citation) |
+| RouterCall P99 at 100 QPS | Unknown | < 2s |
+| APIs submitted via portal | N/A | ≥3 |
+| Paid conversion | 0 | >0 (unblocked by Stripe owner action) |
+
+---
+
+## Why This Wins
+
+The benchmark data product is the thing that makes developers bookmark agentpick.dev, AI assistants cite it in answers, and API providers actively list themselves. It's the difference between "another API directory" and "the reference standard."
+
+We have real production data no one else has. We just need to surface it as a product.
+
+This is the version where AgentPick becomes a **data company**, not just a routing layer.

@@ -191,7 +191,11 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     // Record the call for analytics
     try {
       const account = preAccount ?? await ensureDeveloperAccount(agent.id);
-      const strategyUsed = CORE_TO_SDK[body.strategy ?? 'balanced'] ?? 'BALANCED';
+      // Use body strategy → account default strategy → fallback 'balanced'
+      // This ensures AUTO-strategy accounts' calls are recorded correctly for ai_routing_summary
+      const accountDefaultStrategy = account.strategy ? (account.strategy as string).toLowerCase() : 'balanced';
+      const effectiveStrategy = body.strategy ?? (CORE_TO_SDK[accountDefaultStrategy] ? accountDefaultStrategy : 'balanced');
+      const strategyUsed = CORE_TO_SDK[effectiveStrategy] ?? 'BALANCED';
       await recordRouterCall(
         account.id,
         capability,
@@ -227,7 +231,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       capability;
     // Record the failure for analytics — best-effort
     if (preAccount) {
-      const strategyUsed = CORE_TO_SDK[body?.strategy ?? 'balanced'] ?? 'BALANCED';
+      const failAccountDefault = preAccount.strategy ? (preAccount.strategy as string).toLowerCase() : 'balanced';
+      const failEffective = body?.strategy ?? (CORE_TO_SDK[failAccountDefault] ? failAccountDefault : 'balanced');
+      const strategyUsed = CORE_TO_SDK[failEffective] ?? 'BALANCED';
       const failResponse = {
         data: null,
         meta: {

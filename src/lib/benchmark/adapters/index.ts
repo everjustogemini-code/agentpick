@@ -44,7 +44,7 @@ const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>)
   // === Search ===
   tavily: callTavily,
   'exa-search': callExa,
-  serpapi: callSerper,
+  serpapi: callSerpApi,
   'jina-ai': callJina,
   firecrawl: callFirecrawl,
   'perplexity-search': callPerplexity,

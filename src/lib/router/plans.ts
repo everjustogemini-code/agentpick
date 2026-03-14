@@ -14,7 +14,7 @@ type UpgradePlanConfig = {
 };
 
 export const ROUTER_PLAN_DAILY_LIMITS: Record<RouterPlanCode, number> = {
-  FREE: 100,
+  FREE: 200,
   STARTER: 1000,
   PRO: 5000,
   SCALE: 20000,
@@ -104,12 +104,12 @@ export const PRICING_CARD_PLANS = [
     routerPlan: 'FREE' as RouterPlanCode,
     monthlyPriceUsd: 0,
     monthlyCalls: 500,
-    dailyCalls: 100,
+    dailyCalls: 200,
     description: 'Try the router with one key and the full dashboard.',
     overagePerCall: null as number | null,
     features: [
       '500 calls/mo · hard cap',
-      '100 calls per day',
+      '200 calls per day',
       'Bring your own tool API keys',
       'AI routing plus auto-fallback',
       'Usage dashboard and call history',
