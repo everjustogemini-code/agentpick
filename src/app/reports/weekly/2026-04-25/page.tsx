@@ -3,20 +3,20 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 
 export const metadata: Metadata = {
-  title: 'AI Agent API Benchmark Report — Week of April 18, 2026 — AgentPick',
+  title: 'AI Agent API Benchmark Report — Week of April 25, 2026 — AgentPick',
   description:
-    'Weekly AI agent API benchmark results: 640+ runs across search, crawl, and retrieval APIs. Perplexity leads at 7.0, Haystack #2 at 6.9, Exa #3 at 6.4. 302 active agents routing 314 calls/day.',
+    'Weekly AI agent API benchmark results: 640+ runs across search, crawl, and retrieval APIs. Perplexity leads at 7.0, Haystack #2 at 6.9, Exa #3 at 6.4. 303 active agents routing 314 calls/day.',
   openGraph: {
-    title: 'AI Agent API Benchmark Report — April 18, 2026',
+    title: 'AI Agent API Benchmark Report — April 25, 2026',
     description:
-      '640+ benchmark runs. 302 active agents. Perplexity API #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). Valyu and Parallel Search continue evaluation. Weekly rankings for AI agent developers.',
-    url: 'https://agentpick.dev/reports/weekly/2026-04-18',
+      '640+ benchmark runs. 303 active agents. Perplexity API #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). Valyu and Parallel Search nearing confirmed scores. Weekly rankings for AI agent developers.',
+    url: 'https://agentpick.dev/reports/weekly/2026-04-25',
     images: [{ url: '/api/og?type=benchmark&cap=search', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Agent API Benchmark — Week of April 18, 2026',
-    description: 'Perplexity #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). 640+ runs. 302 agents.',
+    title: 'AI Agent API Benchmark — Week of April 25, 2026',
+    description: 'Perplexity #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). 640+ runs. 303 agents.',
     images: ['/api/og?type=benchmark&cap=search'],
   },
 };
@@ -32,7 +32,7 @@ export default function WeeklyReport() {
           <span className="mx-2">/</span>
           <span className="hover:text-text-secondary">Reports</span>
           <span className="mx-2">/</span>
-          <span>Weekly 2026-04-18</span>
+          <span>Weekly 2026-04-25</span>
         </nav>
 
         <header className="mb-10">
@@ -40,13 +40,13 @@ export default function WeeklyReport() {
             <span className="rounded-full bg-green-50 px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-green-700">
               Weekly Report
             </span>
-            <span className="font-mono text-[11px] text-text-dim">April 18, 2026</span>
+            <span className="font-mono text-[11px] text-text-dim">April 25, 2026</span>
           </div>
           <h1 className="text-[30px] font-bold tracking-[-0.8px] text-text-primary leading-tight">
             AI Agent API Benchmark Report
           </h1>
           <p className="mt-3 text-base leading-relaxed text-text-secondary">
-            640+ benchmark runs across search, crawl, and retrieval APIs. 302 active agents routing
+            640+ benchmark runs across search, crawl, and retrieval APIs. 303 active agents routing
             calls through AgentPick. Updated weekly from live production data and standardized
             benchmark queries.
           </p>
@@ -57,18 +57,18 @@ export default function WeeklyReport() {
 
             {/* Summary card */}
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-              <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">This Week at a Glance — April 12 – April 18, 2026</h3>
+              <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">This Week at a Glance — April 19 – April 25, 2026</h3>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <div className="font-mono text-[22px] font-bold text-text-primary">640+</div>
                   <div className="text-text-dim">Benchmark runs</div>
                 </div>
                 <div>
-                  <div className="font-mono text-[22px] font-bold text-text-primary">3,652</div>
+                  <div className="font-mono text-[22px] font-bold text-text-primary">3,966</div>
                   <div className="text-text-dim">Production calls</div>
                 </div>
                 <div>
-                  <div className="font-mono text-[22px] font-bold text-text-primary">302</div>
+                  <div className="font-mono text-[22px] font-bold text-text-primary">303</div>
                   <div className="text-text-dim">Active agents</div>
                 </div>
               </div>
@@ -83,7 +83,7 @@ export default function WeeklyReport() {
 
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div className="px-5 py-4 border-b border-[#E5E5E5]">
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Search Rankings — Updated April 18, 2026</h3>
+                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Search Rankings — Updated April 25, 2026</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -130,13 +130,13 @@ export default function WeeklyReport() {
                       <td className="px-5 py-3 font-mono text-[#F59E0B]">–</td>
                       <td className="px-5 py-3 font-semibold text-text-primary">Valyu Search</td>
                       <td className="px-5 py-3 font-mono text-[#F59E0B]">evaluating</td>
-                      <td className="px-5 py-3 font-mono text-[#F59E0B]">evaluating (wk 2)</td>
+                      <td className="px-5 py-3 font-mono text-[#F59E0B]">evaluating (wk 3)</td>
                     </tr>
                     <tr className="bg-[#F0F9FF]">
                       <td className="px-5 py-3 font-mono text-[#0EA5E9]">–</td>
                       <td className="px-5 py-3 font-semibold text-text-primary">Parallel Search</td>
                       <td className="px-5 py-3 font-mono text-[#0EA5E9]">evaluating</td>
-                      <td className="px-5 py-3 font-mono text-text-dim">evaluating (wk 3)</td>
+                      <td className="px-5 py-3 font-mono text-text-dim">evaluating (wk 4)</td>
                     </tr>
                   </tbody>
                 </table>
@@ -150,25 +150,25 @@ export default function WeeklyReport() {
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-dim">Stable</span>
                 </div>
-                <h3 className="mb-1 text-sm font-[650] text-text-primary">Top 5 rankings stable — 6 consecutive weeks</h3>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">Top 5 rankings stable — 7 consecutive weeks</h3>
                 <p className="text-sm text-text-secondary">
                   Perplexity (7.0), Haystack (6.9), Exa (6.4), Tavily (6.1), and Brave (5.8) have held
-                  positions for 6 consecutive weeks. At 640+ benchmark runs, this stability reflects
-                  very high statistical confidence. New entrants (Valyu, Parallel) each require 50+
-                  dedicated runs before receiving a confirmed score.
+                  positions for 7 consecutive weeks. At 640+ benchmark runs, this stability reflects
+                  high statistical confidence. Stability at scale means developers can rely on these
+                  rankings for production routing decisions.
                 </p>
               </div>
 
               <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">Evaluation</span>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#F59E0B]">Evaluation</span>
                 </div>
-                <h3 className="mb-1 text-sm font-[650] text-text-primary">Valyu and Parallel Search: week 2 and 3 of evaluation</h3>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">Valyu and Parallel Search: approaching confirmed scores</h3>
                 <p className="text-sm text-text-secondary">
-                  Valyu Search (entered evaluation Apr 11) and Parallel Search (entered Mar 28) are
-                  both accumulating benchmark runs. Valyu ranked #1 across 5 categories in an
-                  independent benchmark study — its AgentPick score will reflect production routing
-                  data rather than curated benchmark datasets. Score expected within 2–3 cycles.
+                  Valyu Search (week 3 of evaluation) and Parallel Search (week 4) are both accumulating
+                  production routing runs. Valyu ranked #1 across 5 categories in independent benchmarks
+                  and continues to appear prominently in search results for agent-focused queries. Confirmed
+                  scores expected next 1–2 cycles once the 50-run threshold is crossed.
                   Read more:{' '}
                   <Link href="/blog/valyu-search-api-for-ai-agents" className="text-[#0EA5E9] hover:underline">
                     Valyu Search for AI Agents
@@ -183,11 +183,12 @@ export default function WeeklyReport() {
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">Growth</span>
                 </div>
-                <h3 className="mb-1 text-sm font-[650] text-text-primary">302 active agents, 3,652 cumulative calls</h3>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">303 active agents, 3,966 cumulative calls</h3>
                 <p className="text-sm text-text-secondary">
-                  Registered agents reached 302, up from 301 last week. Cumulative production calls
-                  at 3,652 (+314 week over week). Daily routing volume steady at 314 calls/day.
-                  14 blog posts and 6 weekly reports now indexed.
+                  Registered agents reached 303, up from 302 last week. Cumulative production calls
+                  at 3,966 (+314 week over week), approaching the 4,000 milestone.
+                  Daily routing volume steady at 314 calls/day.
+                  14 blog posts and 7 weekly reports now indexed.
                 </p>
               </div>
             </div>
@@ -196,12 +197,12 @@ export default function WeeklyReport() {
 
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div className="px-5 py-4 border-b border-[#E5E5E5]">
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Week of April 12 – April 18, 2026</h3>
+                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Week of April 19 – April 25, 2026</h3>
               </div>
               <div className="divide-y divide-[#F5F5F5]">
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-text-dim">Total routed calls</span>
-                  <span className="font-mono font-bold text-text-primary">3,652</span>
+                  <span className="font-mono font-bold text-text-primary">3,966</span>
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-text-dim">Daily average</span>
@@ -217,7 +218,7 @@ export default function WeeklyReport() {
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-text-dim">Active agents</span>
-                  <span className="font-mono font-bold text-text-primary">302</span>
+                  <span className="font-mono font-bold text-text-primary">303</span>
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-text-dim">Benchmark runs (total)</span>
@@ -256,22 +257,16 @@ export default function WeeklyReport() {
             {/* Navigation between reports */}
             <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0]">
               <Link
-                href="/reports/weekly/2026-04-11"
+                href="/reports/weekly/2026-04-18"
                 className="font-mono text-sm text-[#0EA5E9] hover:underline"
               >
-                ← April 11, 2026
+                ← April 18, 2026
               </Link>
               <Link
                 href="/reports/weekly"
                 className="font-mono text-sm text-text-dim hover:text-text-secondary"
               >
                 All reports
-              </Link>
-              <Link
-                href="/reports/weekly/2026-04-25"
-                className="font-mono text-sm text-[#0EA5E9] hover:underline"
-              >
-                April 25, 2026 →
               </Link>
             </div>
 

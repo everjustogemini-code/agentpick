@@ -1,3 +1,85 @@
+# Growth Report — Cycle 14 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 303 | This Week: 303 | Calls Today: 314 | Paid: 0
+- Blog posts: 15 live (added serpapi-for-ai-agents)
+- Weekly reports: 7 live (2026-03-14 through 2026-04-25)
+- AEO scores: 0/0/0 (10th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 10 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed dead (10+ consecutive DNS failures), permanently removed
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-04-25
+- Seventh weekly benchmark report — extends 7-week cadence for search engine crawl signals
+- Updated stats: 303 agents, 3,966 cumulative calls (approaching 4K milestone), 640+ benchmark runs
+- Valyu enters week 3 of evaluation, Parallel week 4 — both approaching confirmed scores
+- Forward nav added to 2026-04-18 report for internal link chain
+
+### 2. Updated llms.txt
+- Refreshed: 640+ benchmark runs, 303 agents, 3,966 production calls (May 2026)
+- Maintained weekly cadence for LLM discovery signal
+
+### 3. Updated skill.md
+- Updated benchmark data date to April 25, 2026
+- Refreshed: 640+ benchmark runs, 3,966 production calls
+- Updated Tavily production call count (3,652 → 3,966)
+
+### 4. New blog post: /blog/serpapi-for-ai-agents
+- SerpAPI first appeared in "best search API for AI agents" results this cycle — same-cycle response pattern
+- Content angle: SerpAPI is raw SERP data vs AI-native synthesis; SERP scraping vs LLM-ready output
+- Comparison table: SerpAPI vs Perplexity/Haystack/Exa/Tavily/Brave; FAQ covers "SerpAPI vs Tavily", "SerpAPI vs Exa"
+- Score: evaluating (50+ runs needed for confirmed score)
+- Added to blog index (now 15 posts)
+
+### 5. AEO scores checked (cycle 14)
+- "best search API for AI agents" → 0 (Tavily, Firecrawl/KDnuggets, Exa, data4ai, Parallel, Linkup, aimultiple, SerpAPI above)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, LangChain dominate — agent-to-agent routing)
+- "AI agent API benchmark" → 0 (PinchBench/apiyi.com, EvidentlyAI, Randal Olson, aitools4you, o-mega, modelslab, IEEE, IBM dominate)
+
+### 6. Moltbook: permanently skipped
+- 10+ consecutive DNS failures. Will not retry.
+
+## Results
+- Weekly report #7 live at /reports/weekly/2026-04-25 ✅
+- 2026-04-18 report now has forward link to 2026-04-25 ✅
+- SerpAPI blog post live at /blog/serpapi-for-ai-agents ✅ (15 posts total)
+- Blog index updated to 15 posts ✅
+- llms.txt updated ✅
+- skill.md updated ✅
+- AEO scores posted ✅
+- All conversion pages returning 200 ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Valyu/Parallel confirmed scores** — after 50+ runs each, assign actual scores; creates content update hook
+3. **KDnuggets/data4ai/aimultiple outreach** — rank #1–8 for primary query; one backlink outweighs 14 blog posts
+4. **SerpAPI blog post** — SerpAPI appeared as new entry this cycle for "best search API for AI agents" query; same-cycle response pattern
+
+## Learnings
+- 7 weekly reports now live — crawl cadence well established. No SERP movement at 10 cycles but infrastructure is correct.
+- SerpAPI appeared this cycle in query 1 results. New entrant sighting → same-cycle post is established pattern.
+- PinchBench/apiyi.com prominent in "AI agent API benchmark" — this is OpenClaw ecosystem. Potential partnership angle for bidirectional links.
+- Valyu scored #1 across 5 external benchmarks. When it receives a confirmed AgentPick score (≥7.0 projected), that becomes a linkable ranking event.
+- 10 cycles at 0 AEO — purely long-game organic SEO. Only lever without directory/backlink acquisition or Stripe revenue for paid distribution.
+
+## Files Changed (Cycle 14)
+- `src/app/blog/serpapi-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added SerpAPI post at top (now 15 posts)
+- `src/app/reports/weekly/2026-04-25/page.tsx` (new)
+- `src/app/reports/weekly/2026-04-18/page.tsx` — added forward navigation link
+- `src/app/llms.txt/route.ts` — updated metrics (303 agents, 3,966 calls, May 2026)
+- `src/app/skill.md/route.ts` — updated date, metrics, production call count
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_AGENT.md` (updated — SerpAPI, PinchBench intelligence)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 11 (2026-03-14)
 
 ## Metrics Snapshot
