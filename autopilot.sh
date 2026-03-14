@@ -247,16 +247,16 @@ echo "  Live: cycle=$LIVE_CYCLE hash=$LIVE_HASH"
 
 if [ "$LIVE_CYCLE" = "$CYCLE" ] || [ "$LIVE_HASH" = "$GHASH" ]; then
   echo "  ✅ Deploy verified!"
-  tg_raw "✅ Cycle $CYCLE 部署已验证上线 ($GHASH)"
+  tg_raw "✅ Cycle $CYCLE 部署已验证上线 $GHASH"
 else
   echo "  ⚠ Deploy NOT verified — may still be building"
-  tg_raw "⚠️ Cycle $CYCLE: 代码已push但部署未确认 (expected $GHASH, got $LIVE_HASH). 等待中..."
+  tg_raw "⚠️ Cycle $CYCLE: 代码已push但部署未确认 expected $GHASH got $LIVE_HASH. 等待中..."
   # Wait another 60s and retry
   sleep 60
   LIVE_VERSION=$(curl -s "https://agentpick.dev/api/version" 2>/dev/null)
   LIVE_HASH=$(echo "$LIVE_VERSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',{}).get('gitHash','none'))" 2>/dev/null || echo "error")
   if [ "$LIVE_HASH" = "$GHASH" ]; then
-    tg_raw "✅ Cycle $CYCLE 延迟部署已确认 ($GHASH)"
+    tg_raw "✅ Cycle $CYCLE 延迟部署已确认 $GHASH"
   else
     tg_raw "❌ Cycle $CYCLE 部署失败! Live=$LIVE_HASH Expected=$GHASH"
   fi
