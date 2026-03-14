@@ -281,6 +281,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       modifiedRequest.tool ??
       modifiedRequest.priority_tools?.[0] ??
       getRankedToolsForCapability(capability, coreStrategy)[0] ??
+      CAPABILITY_TOOLS[capability]?.[0] ??
       capability;
     const failureResponse = {
       error: 'ROUTER_ERROR',
