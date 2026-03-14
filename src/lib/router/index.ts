@@ -270,13 +270,13 @@ export function getRankedToolsForCapability(
     }
   });
 
-  // For cheapest strategy: preserve pure cost-sorted order without deprioritizing
-  // unconfigured tools. Callers choosing cheapest prefer lowest cost over reliability;
-  // the fallback chain handles tools that fail due to missing API keys, cascading from
-  // the cheapest option (brave-search $0.0001, serper $0.0005) up to platform-configured
-  // tools (tavily $0.001). BYOK keys are still resolved per-call in callWithKey.
+  // For cheapest strategy: among configured tools (platform or BYOK) pick the cheapest,
+  // then fall back to unconfigured tools (also cost-sorted). deprioritizeUnconfiguredTools
+  // preserves the cost-sorted order within each group, so we route to the cheapest
+  // AVAILABLE tool rather than blindly trying brave-search/serper (which have no platform
+  // key and will always fail), burning fallback slots before reaching tavily.
   if (strategy === 'cheapest') {
-    return filtered;
+    return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
   }
 
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
@@ -413,7 +413,8 @@ export async function routeRequest(
   // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
-  // For cheapest: getRankedToolsForCapability returns pure cost-sorted order (no deprioritization).
+  // For cheapest: getRankedToolsForCapability applies deprioritizeUnconfiguredTools so the
+  // list is configured tools by ascending cost, then unconfigured tools by ascending cost.
   // BYOK keys are resolved at call time, not at ranking time.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys);
   const cbRankedTools = aiRankedTools ? rawRankedTools : applyCircuitBreaker(rawRankedTools);

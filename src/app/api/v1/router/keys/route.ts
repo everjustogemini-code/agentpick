@@ -17,7 +17,13 @@ const PRIVATE_NO_STORE_HEADERS = {
 };
 
 async function authenticateDeveloper(request: NextRequest) {
-  const agent = await authenticateAgent(request);
+  const _authHeader = request.headers.get('authorization');
+  let _urlForAuth: URL;
+  try { _urlForAuth = new URL(request.url); } catch { return null; }
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) return null;
+  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) return null;
+  let agent: Awaited<ReturnType<typeof authenticateAgent>>;
+  try { agent = await authenticateAgent(request); } catch { return null; }
   if (!agent) return null;
 
   const account = await ensureDeveloperAccount(agent.id);
