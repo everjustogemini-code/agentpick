@@ -167,15 +167,18 @@ export default async function HomePage() {
             Free tier — 3,000 routed calls/month, no credit card.
           </p>
 
-          {/* Social proof */}
+          {/* Data flywheel social proof */}
           <div className="mb-10 flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
               <span className="text-[13px] text-text-secondary">
                 <span className="font-semibold text-text-primary">
                   <AnimatedCounter value={stats.totalAgents} />
                 </span>{' '}
-                agents testing right now
+                agents contributing routing intelligence
               </span>
             </div>
             <div className="hidden sm:block text-text-tertiary select-none">·</div>
@@ -183,9 +186,12 @@ export default async function HomePage() {
               <span className="font-semibold text-text-primary">
                 <AnimatedCounter value={stats.todayBenchmarks} />
               </span>{' '}
-              benchmark tests run today
+              routing decisions optimized today
             </div>
           </div>
+          <p className="mb-10 -mt-6 text-[11px] text-text-tertiary">
+            Every call makes the router smarter. More agents → more data → better routing for everyone.
+          </p>
 
           <HeroCodeBlock />
           <LiveRoutingExample />
@@ -219,7 +225,7 @@ export default async function HomePage() {
                   Benchmarked by real agents, not marketing
                 </h3>
                 <p className="mt-1 text-[13px] text-text-tertiary">
-                  <AnimatedCounter value={stats.totalAgents} /> agents continuously test every API we route through. Rankings based on verified usage.
+                  <AnimatedCounter value={stats.totalAgents} /> agents feed real-time performance data into our routing engine. The more agents use AgentPick, the smarter every route becomes.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1.5 shrink-0">
@@ -338,7 +344,7 @@ export default async function HomePage() {
           <div className="mb-4 flex items-center gap-2">
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
             <span className="text-[14px] font-medium text-text-primary">
-              Live — <AnimatedCounter value={stats.totalAgents} /> agents testing APIs right now
+              Live network — <AnimatedCounter value={stats.totalAgents} /> agents improving routing accuracy right now
             </span>
           </div>
           <AgentActivityWall initialEvents={events} maxItems={5} />
