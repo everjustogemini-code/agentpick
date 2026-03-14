@@ -68,6 +68,19 @@ export function fastClassify(query: string): QueryContext | null {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'recent' };
   }
 
+  // Broad analytical/research framing — fires BEFORE recency check so bare years like "2025"
+  // don't short-circuit queries like "state of large language models 2025 comprehensive analysis".
+  // Must also fire before strongNewsTerms to prevent mis-routing analytical queries to news/tavily.
+  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause|state of|survey of|overview of)\b/i;
+  // Depth/quality signal: any of these combined with an analytical keyword → research/deep
+  const depthSignals = /\b(comprehensive|in.?depth|deep dive|detailed|state of|survey of|overview of|supply chain|geopolit|policy|socioeconomic|chip shortage|semiconductor|trade war|regulation|inflation|macro|systemic)\b/i;
+  const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
+
+  if (analyticalKeywords.test(query) && depthSignals.test(query) && !genuineNewsSignals.test(query)) {
+    const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software|llm|language model|neural|transformer)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
+  }
+
   // News signals — strong news indicators OR news + time/domain reference
   const newsTerms = /\b(latest|breaking|recent|new|announced|launched|funding|raised|acquired|ipo|merger|regulation|ruling)\b/i;
   const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger|released|release|update|patch|vulnerability|incident|outage|breach|hacked|exploit|layoffs?|bankrupt|shortage|recall|settlement)\b/i;
@@ -87,18 +100,6 @@ export function fastClassify(query: string): QueryContext | null {
   if (explicitRecencySignal.test(lower)) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
-  }
-  // Analytical/policy/socioeconomic framing → always research/deep
-  // Must fire BEFORE the strongNewsTerms block because queries like
-  // "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
-  // match strongNewsTerms ("shortage") and get mis-routed to news/tavily without this guard.
-  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
-  const multifactorDomains = /\b(supply chain|geopolit|policy|socioeconomic|chip shortage|semiconductor|trade war|regulation|inflation|macro|systemic)\b/i;
-  const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
-
-  if (analyticalKeywords.test(query) && multifactorDomains.test(query) && !genuineNewsSignals.test(query)) {
-    const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
-    return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
 
   const hasNewsWithDomain = newsTerms.test(lower) && (
@@ -208,6 +209,10 @@ Examples:
 "Y Combinator W26 batch companies" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
 "comprehensive analysis of global chip shortage causes and solutions with supply chain implications" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 "what happened with chip shortage today" → {"type":"news","domain":"general","depth":"shallow","freshness":"recent"}
+"state of large language models 2025 comprehensive analysis" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"what's happening with LLMs today" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
+"survey of transformer architectures in 2024" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"overview of AI agent frameworks comprehensive guide" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 
 No explanation. JSON only.`;
 
