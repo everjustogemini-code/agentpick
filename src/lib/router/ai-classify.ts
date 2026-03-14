@@ -196,31 +196,31 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
 
   // Realtime data → fast + fresh tools first
   if (context.type === 'realtime' || context.freshness === 'realtime') {
-    return filterAvailable(['serpapi', 'tavily', 'brave-search', 'exa-search'], capability);
+    return filterAvailable(['serpapi-google', 'serpapi', 'tavily', 'brave-search', 'exa-search'], capability);
   }
 
   // News → fresh tools first, then quality
   if (context.type === 'news' || context.freshness === 'recent') {
-    return filterAvailable(['tavily', 'serpapi', 'brave-search', 'exa-search'], capability);
+    return filterAvailable(['tavily', 'serpapi-google', 'serpapi', 'brave-search', 'exa-search'], capability);
   }
 
   // Deep research → quality tools first
   if (context.depth === 'deep' || context.type === 'research') {
-    return filterAvailable(['exa-search', 'perplexity-search', 'tavily', 'serpapi'], capability);
+    return filterAvailable(['exa-search', 'perplexity-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
   // Finance domain search → domain-aware tools
   if (context.domain === 'finance') {
-    return filterAvailable(['exa-search', 'tavily', 'serpapi'], capability);
+    return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
   // Simple/shallow → cheapest that works
   if (context.type === 'simple') {
-    return filterAvailable(['serpapi', 'brave-search', 'tavily'], capability);
+    return filterAvailable(['brave-search', 'serpapi-google', 'serpapi', 'tavily'], capability);
   }
 
   // Default balanced
-  return filterAvailable(['tavily', 'exa-search', 'serpapi'], capability);
+  return filterAvailable(['tavily', 'exa-search', 'serpapi-google', 'serpapi'], capability);
 }
 
 /**

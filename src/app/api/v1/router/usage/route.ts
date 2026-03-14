@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     daily_used: limits.used,
     daily_remaining: limits.remaining,
     stats,
+    ai_routing_summary: stats.aiRouting,
     account: {
       plan: account.plan,
       monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
