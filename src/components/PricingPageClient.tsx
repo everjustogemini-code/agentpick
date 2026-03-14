@@ -92,9 +92,28 @@ export default function PricingPageClient() {
   }
 
   async function handleCheckout(plan: UpgradePlanSlug) {
-    if (!apiKey || !account) {
-      setCheckoutError('Load your AgentPick API key before starting checkout.');
-      return;
+    let key = apiKey;
+    if (!key) {
+      // Auto-register if no key
+      try {
+        const res = await fetch('/api/v1/agents/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'checkout-' + Date.now() }),
+        });
+        const data = await res.json();
+        if (data.api_key) {
+          key = data.api_key;
+          setApiKey(key);
+          window.localStorage.setItem('agentpick_api_key', key);
+        } else {
+          setCheckoutError('Unable to create account. Try again.');
+          return;
+        }
+      } catch {
+        setCheckoutError('Unable to create account. Try again.');
+        return;
+      }
     }
     setCheckoutError('');
     setCheckoutPlan(plan);
@@ -102,7 +121,7 @@ export default function PricingPageClient() {
       const res = await fetch('/api/v1/router/upgrade', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + apiKey,
+          'Authorization': 'Bearer ' + key,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ plan }),
@@ -342,7 +361,7 @@ export default function PricingPageClient() {
                       void handleCheckout(upgradePlan);
                     }
                   }}
-                  disabled={isBusy || !account || exactMatch || higherPlan}
+                  disabled={isBusy || exactMatch || higherPlan}
                   className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isBusy && 'Opening checkout…'}
