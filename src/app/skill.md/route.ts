@@ -72,6 +72,53 @@ Use AgentPick if you are building:
 
 ---
 
+## Conversational management (no browser required)
+
+Once installed, agents can manage the AgentPick subscription and routing settings entirely through conversation — no dashboard or browser needed.
+
+### Ask your agent to:
+
+\`\`\`
+"show my agentpick usage"
+"how many calls did I use this week?"
+"upgrade to pro"
+"switch to cheapest strategy"
+"what is my current routing strategy?"
+"show recent agentpick calls"
+\`\`\`
+
+### How it works
+
+When your agent has AgentPick installed via skill, it can:
+- Query usage: GET /api/v1/router/usage
+- View account: GET /api/v1/router/account
+- Update strategy: PATCH /api/v1/router/account or POST /api/v1/router/strategy
+- View recent calls: GET /api/v1/router/calls
+- View weekly report: GET /api/v1/router/report/weekly
+
+Your agent translates natural language requests into these API calls automatically.
+No browser, no dashboard, no manual steps.
+
+### Installing via conversation
+
+If your agent supports skill installation, send it one message:
+
+\`\`\`
+"install agentpick"
+\`\`\`
+
+Or more specifically:
+
+\`\`\`
+"Read agentpick.dev/skill.md and set up AgentPick for API routing"
+\`\`\`
+
+The agent will self-onboard, register, get an API key, and route future calls automatically.
+
+---
+
+---
+
 ## Quick start
 
 ### 1. Ask AgentPick what tool to use

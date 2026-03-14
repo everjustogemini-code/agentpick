@@ -38,6 +38,50 @@ export default function ConnectPage() {
           <Playground />
         </section>
 
+        {/* Two Ways to Start */}
+        <div className="mb-8 rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm">
+          <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-white/30">
+            Two ways to start
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Conversational */}
+            <div className="rounded-lg border border-orange-500/20 bg-orange-500/[0.04] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[18px]">💬</span>
+                <span className="font-semibold text-white">Conversational</span>
+                <span className="rounded-full bg-orange-500/20 px-2 py-0.5 font-mono text-[10px] text-orange-400">New ✨</span>
+              </div>
+              <p className="mb-3 text-[12px] text-white/50 leading-relaxed">
+                Send one message to your AI agent. No code, no dashboard, no browser.
+              </p>
+              <div className="rounded-md bg-black/30 p-3 font-mono text-[12px] text-green-400">
+                <div className="text-white/30 mb-1">Tell your agent:</div>
+                <div>&ldquo;install agentpick&rdquo;</div>
+              </div>
+              <p className="mt-3 text-[11px] text-white/30">
+                Works with OpenClaw, Claude, any agent with skill support.<br />
+                Install + use + monitor + upgrade — all in chat.
+              </p>
+            </div>
+            {/* Developer */}
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[18px]">💻</span>
+                <span className="font-semibold text-white">Developer</span>
+              </div>
+              <p className="mb-3 text-[12px] text-white/50 leading-relaxed">
+                Standard SaaS flow. Get an API key and start routing in 60 seconds.
+              </p>
+              <div className="rounded-md bg-black/30 p-3 font-mono text-[12px] text-green-400">
+                pip install agentpick
+              </div>
+              <p className="mt-3 text-[11px] text-white/30">
+                Full dashboard, analytics, BYOK support.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Start */}
         <div className="mb-8 rounded-xl border-2 border-orange-500/20 bg-orange-500/[0.05] p-6" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
           <div className="mb-1 font-mono text-[10px] uppercase tracking-[1.5px] text-orange-400">
@@ -152,24 +196,36 @@ Also available: /route/crawl, /route/embed, /route/finance`}</pre>
 
         {/* Two ways to manage */}
         <div className="mb-8 rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm">
-          <div className="mb-1 font-mono text-[10px] uppercase tracking-[1.5px] text-white/30">
+          <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-white/30">
             Two ways to manage
           </div>
-          <div className="mt-3 space-y-3 text-[13px] text-white/50">
-            <div className="flex items-start gap-3">
-              <span className="font-mono font-bold text-orange-400">1.</span>
-              <div>
-                <strong>Web dashboard:</strong>{' '}
-                <Link href="/dashboard/router" className="text-orange-400 underline underline-offset-2">
-                  agentpick.dev/dashboard/router
-                </Link>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span>💬</span>
+                <span className="font-semibold text-white text-[14px]">In your chat</span>
               </div>
+              <div className="space-y-1 font-mono text-[12px] text-white/50 mb-3">
+                <div>&ldquo;show my agentpick usage&rdquo;</div>
+                <div>&ldquo;upgrade to pro&rdquo;</div>
+                <div>&ldquo;switch to cheapest strategy&rdquo;</div>
+              </div>
+              <p className="text-[12px] text-white/30">Your agent handles it — no browser needed.</p>
             </div>
-            <div className="flex items-start gap-3">
-              <span className="font-mono font-bold text-orange-400">2.</span>
-              <div>
-                <strong>Ask your agent:</strong> &quot;How much did search cost this week?&quot;
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span>💻</span>
+                <span className="font-semibold text-white text-[14px]">On the web</span>
               </div>
+              <p className="mb-3 text-[12px] text-white/50 leading-relaxed">
+                Full dashboard with analytics, strategy selector, billing, and API key management.
+              </p>
+              <Link
+                href="/dashboard/router"
+                className="inline-block rounded-lg bg-orange-500 px-4 py-2 text-[12px] font-bold text-white hover:bg-orange-600 transition-colors"
+              >
+                Open Dashboard →
+              </Link>
             </div>
           </div>
         </div>

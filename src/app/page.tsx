@@ -525,15 +525,26 @@ export default async function HomePage() {
           Route your first query in 60 seconds.
         </h2>
 
-        <div className="mx-auto mb-6 inline-flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[14px] text-green-400">
-          <span>pip install agentpick</span>
-          <CopyButton text="pip install agentpick" dark />
-        </div>
+        <div className="mx-auto mb-6 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          {/* Conversational CTA */}
+          <div className="flex flex-col items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-gray-500">💬 Tell your agent:</span>
+            <div className="inline-flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[14px] text-green-400">
+              <span>install agentpick</span>
+              <CopyButton text="install agentpick" dark />
+            </div>
+          </div>
 
-        <p className="mb-4 text-[14px] text-gray-400">Or tell your agent:</p>
-        <div className="mx-auto mb-8 max-w-[560px] rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[13px] leading-relaxed text-gray-300">
-          <span>&ldquo;Read agentpick.dev/skill.md and route all API calls through AgentPick.&rdquo;</span>
-          <CopyButton text='Read agentpick.dev/skill.md and route all API calls through AgentPick.' dark />
+          <div className="hidden sm:block text-gray-600 text-[20px] select-none">or</div>
+
+          {/* Developer CTA */}
+          <div className="flex flex-col items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-gray-500">💻 Run in terminal:</span>
+            <div className="inline-flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-5 py-3 font-mono text-[14px] text-green-400">
+              <span>pip install agentpick</span>
+              <CopyButton text="pip install agentpick" dark />
+            </div>
+          </div>
         </div>
 
         <Link
