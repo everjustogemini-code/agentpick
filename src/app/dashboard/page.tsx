@@ -80,7 +80,11 @@ export default function DashboardPage() {
           fetch('/api/v1/router/usage?days=30', { headers: authHeaders(apiKey) }),
         ]);
 
-        if (!accountRes.ok || !usageRes.ok) return;
+        if (!accountRes.ok && !usageRes.ok) {
+          // Both failed — assume Free plan so upgrade CTAs still show
+          setAccountPlan('FREE');
+          return;
+        }
 
         const accountData = await accountRes.json();
         const usageData = await usageRes.json();

@@ -183,7 +183,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       strategyUsed,
       Boolean(response.meta.byok_used),
       fallbackChain,
-    ).catch(() => {});
+    ).catch((e) => console.error('[recordRouterCall] write failed:', e));
 
     const enrichedResponse = {
       ...response,
@@ -212,12 +212,17 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     // Record the failure
     const query = extractQueryFromParams(routeBody.params);
     const message = error instanceof Error ? error.message : 'Router error';
+    const resolvedToolUsed =
+      modifiedRequest.tool ??
+      modifiedRequest.priority_tools?.[0] ??
+      getRankedToolsForCapability(capability, coreStrategy)[0] ??
+      capability;
     const failureResponse = {
       error: 'ROUTER_ERROR',
       message,
       data: null,
       meta: {
-        tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? `${capability}-unavailable`,
+        tool_used: resolvedToolUsed,
         latency_ms: 0,
         fallback_used: false,
         trace_id: `trace_fail_${Date.now()}`,
