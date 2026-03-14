@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import PricingPageClient from '@/components/PricingPageClient';
@@ -12,7 +13,9 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <SiteHeader />
-      <PricingPageClient />
+      <Suspense fallback={<div className="mx-auto max-w-6xl px-6 py-12 text-sm text-white/45">Loading pricing...</div>}>
+        <PricingPageClient />
+      </Suspense>
     </div>
   );
 }
