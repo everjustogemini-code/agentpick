@@ -151,7 +151,7 @@ export function middleware(request: NextRequest) {
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-    response.headers.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    response.headers.set('Content-Security-Policy', "default-src 'none'; frame-src 'self' https://js.stripe.com https://checkout.stripe.com; frame-ancestors 'none'");
 
     // Standard API headers
     const requestId = generateRequestId();
@@ -188,7 +188,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'");
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'self' https://js.stripe.com https://checkout.stripe.com; frame-ancestors 'none'");
 
   response.headers.append('Link', '</api/v1/products>; rel="api"');
   response.headers.append('Link', '</.well-known/agentpick.json>; rel="agent-directory"');
