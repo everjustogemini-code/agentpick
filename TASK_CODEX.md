@@ -1,206 +1,245 @@
-# TASK_CODEX.md — Cycle 4
-
-> Agent: Codex | Date: 2026-03-14 | Difficulty: Medium
-> Features: Homepage hero animation (F1E) + Fix 4 P1 API bugs (F2)
+# TASK_CODEX.md
+**Agent:** Codex
+**Date:** 2026-03-14
+**Source:** NEXT_VERSION.md Must-Have #2 (Playground frontend) + Must-Have #3 (Dashboard panel)
 
 ---
 
-## Files to Modify
+## Files to create / modify (ONLY these — no others)
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/app/page.tsx` |
-| MODIFY | `src/app/api/v1/route/crawl/route.ts` |
-| MODIFY | `src/app/api/v1/router/priority/route.ts` |
-| MODIFY | `src/lib/router/handler.ts` *(or wherever the cost table lives — see Task 3)* |
-| MODIFY | `src/app/api/v1/router/usage/route.ts` |
+| CREATE | `src/components/Playground.tsx` |
+| MODIFY | `src/app/connect/page.tsx` |
+| MODIFY | `src/app/dashboard/router/page.tsx` |
 
-**DO NOT touch:** `src/app/globals.css`, `src/app/dashboard/router/page.tsx`, `src/app/connect/page.tsx`, `src/components/` (any file)
+**DO NOT TOUCH:** `src/lib/router/**`, `src/app/api/**`, `src/app/page.tsx`, `src/components/PlaygroundClient.tsx`, `src/components/PlaygroundShell.tsx`, or any other file not listed above.
 
 ---
 
-## Task 1 — Homepage Hero: Animated Gradient Mesh (`src/app/page.tsx`)
+## Feature 1 — MH#2: Create `src/components/Playground.tsx` (new file)
 
-Read the file. Find the `<Hero>` component or the outermost hero section element (a `<section>` or `<div>` that contains the main headline and CTA buttons).
+A self-contained "Try It" panel that lets visitors run a live search/embed/finance query without an API key. Uses `POST /api/v1/playground/route` (already implemented by Claude Code).
 
-### 1A. Add `hero-mesh` class to hero background
+### Component interface
 
-The `hero-mesh` CSS class is defined in `globals.css` by Claude Code (cycle 4). It provides the animated radial gradient + grid texture.
+```typescript
+'use client';
+// No props — fully self-contained
+export default function Playground() { ... }
+```
 
-Find the hero background element. It likely has classes like `bg-gradient-to-b from-orange-50` or a dark/light background. Replace the background classes with:
+### Behavior
+
+1. **Input row:** Text input for the query + 3 pill buttons to select type: `Search`, `Embed`, `Finance`. Default selected: `Search`.
+
+2. **"Route it →" button:** Disabled when input is empty. On click, `POST /api/v1/playground/route` with `{ query, type }`. Show a spinner during the request.
+
+3. **Trial counter:** Track usage in `localStorage` under key `pg_trial_count` (integer, default 0). After each successful call, increment. When count reaches 3, show an inline upsell banner below the result:
+   > *"Get 3,000 free calls/month →"* linking to `/dashboard/router`
+   The banner does NOT block further usage — it's informational only.
+
+4. **Result panel:** Animate in with `opacity-0 → opacity-100` + `translateY(8px → 0)` transition over 300ms. Show:
+   - **Tool used:** e.g. `exa-search` in an orange pill badge
+   - **Latency:** e.g. `243ms` in monospace
+   - **AI reasoning** (if `classification_reason` present): italic text
+   - **Up to 2 result snippets:** render `title` + `url` from the `results` array; truncate `url` to 50 chars
+   - **Copy-to-curl button:** copies the equivalent authenticated curl command to clipboard:
+     ```
+     curl -X POST https://agentpick.dev/api/v1/route/{type} \
+       -H "Authorization: Bearer YOUR_KEY" \
+       -d '{"params":{"query":"<query>"},"strategy":"auto"}'
+     ```
+
+5. **Error handling:** If the API returns an error or the fetch throws, show an inline error message inside the result panel (red text). Do NOT crash or show a blank panel.
+
+6. **Rate limit:** If API returns 429, show: *"Slow down — 5 requests/min limit. Try again in a moment."*
+
+### Styling
+
+Follow the existing design system (already in `globals.css`):
+- Panel: `rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 backdrop-blur-sm` (matches dashboard dark cards)
+- Input: `rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm font-mono text-white placeholder-white/20 focus:border-orange-500/60 focus:outline-none`
+- Primary button: `rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50`
+- Type pills (inactive): `rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-white/50`
+- Type pills (active): `rounded-lg border border-orange-500/50 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-400`
+
+The panel sits on a dark (`#0a0a0f`) background (same as the rest of `/connect`).
+
+### Result animation
+
+Use Tailwind's `transition-all duration-300` with a controlled class toggle. Start hidden (`opacity-0 translate-y-2`) and toggle to visible (`opacity-100 translate-y-0`) after the response arrives using a `useState` + `useEffect` pattern.
+
+---
+
+## Feature 2 — MH#2: Embed Playground in `/connect` page
+
+**File:** `src/app/connect/page.tsx`
+
+**Change:** Import and render `<Playground />` directly after the hero section (after the `<h1>` and `<p>` description, before the "Quick Start" block).
 
 ```tsx
-className="hero-mesh relative overflow-hidden ..."
-// keep all existing positioning, padding, min-h classes intact
-// only replace background-related classes (bg-*, from-*, to-*, gradient-*)
+import Playground from '@/components/Playground';
+
+// In ConnectPage JSX, after:
+// <p className="mb-6 text-sm text-white/40">One key. Every tool...</p>
+// Insert:
+<section className="mb-10">
+  <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/40 mb-4">
+    Live demo — no signup required
+  </p>
+  <Playground />
+</section>
 ```
 
-If the hero currently has an inline `style={{ background: '...' }}`, remove it and rely on the CSS class instead.
+No other changes to `connect/page.tsx`.
 
-### 1B. Style the `<h1>` headline
+---
 
-Find the hero `<h1>`. Replace its text color/gradient classes with:
+## Feature 3 — MH#3: Dashboard usage progress bar + budget input
+
+**File:** `src/app/dashboard/router/page.tsx`
+
+Claude Code is fixing the backend so `GET /api/v1/router/usage` now returns top-level `monthlyLimit`, `callsThisMonth`, `strategy`. Your job is to wire the dashboard UI.
+
+### 3A. Update `UsageStats` TypeScript interface (top of file)
+
+Add the new top-level fields to the interface:
+
+```typescript
+interface UsageStats {
+  plan: string;
+  monthlyLimit: number | null;      // ← ADD
+  callsThisMonth: number;           // ← ADD
+  strategy: string;                 // ← ADD
+  daily_limit: number;
+  daily_used: number;
+  daily_remaining: number;
+  stats: {
+    period: { days: number; since: string };
+    totalCalls: number;
+    successRate: number;
+    fallbackRate: number;
+    avgLatencyMs: number;
+    totalCostUsd: number;
+    byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }>;
+    byTool: Record<string, { calls: number; avgLatency: number }>;
+  };
+}
+```
+
+### 3B. Add monthly usage progress bar
+
+Find the **Stats Cards** section (the `grid grid-cols-2 gap-4 sm:grid-cols-4` div). Insert a new full-width panel **above** this grid that shows monthly usage:
 
 ```tsx
-className="font-extrabold tracking-tight text-transparent bg-clip-text
-           bg-gradient-to-br from-white via-gray-100 to-gray-400
-           [your existing text-size classes, e.g. text-4xl sm:text-6xl]"
+{usage && (
+  <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+    <div className="mb-3 flex items-center justify-between">
+      <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">
+        MONTHLY USAGE
+      </h2>
+      <span className="font-mono text-xs text-white/40">
+        {usage.callsThisMonth.toLocaleString()} / {usage.monthlyLimit?.toLocaleString() ?? '∞'} calls
+      </span>
+    </div>
+    <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-700"
+        style={{
+          width: usage.monthlyLimit
+            ? `${Math.min((usage.callsThisMonth / usage.monthlyLimit) * 100, 100)}%`
+            : '0%',
+        }}
+      />
+    </div>
+    {usage.monthlyLimit && usage.callsThisMonth / usage.monthlyLimit > 0.8 && (
+      <p className="mt-2 text-[11px] text-amber-400">
+        Over 80% of monthly quota used.
+      </p>
+    )}
+  </div>
+)}
 ```
 
-Keep all existing `text-*` size classes. Only change the color/gradient classes.
+### 3C. Add budget input to Settings panel
 
-### 1C. Reduced-motion safety
+Find the **Settings** panel (the `rounded-2xl` div with `h2` text "SETTINGS"). Add a budget input at the end of the `space-y-3` block, after the existing rows:
 
-The `hero-mesh` animation is already guarded in CSS (`@media (prefers-reduced-motion: reduce)`). No additional JS changes needed here.
-
----
-
-## Task 2 — Fix: Crawl flat body → 400 (`src/app/api/v1/route/crawl/route.ts`)
-
-**Bug:** `POST /api/v1/route/crawl {"url": "https://example.com"}` returns 400 because the
-current schema requires `{ params: { url } }`.
-
-**Fix:** Accept both shapes and normalize to `url` before processing.
-
-Read the file. Find the Zod schema that validates the request body. Replace it with a union:
-
-```ts
-import { z } from 'zod'
-
-// Replace the existing body schema with:
-const CrawlBody = z.union([
-  z.object({ params: z.object({ url: z.string().url() }) }),
-  z.object({ url: z.string().url() }),
-])
-
-// After parsing:
-const parsed = CrawlBody.parse(body)
-const url = 'params' in parsed ? parsed.params.url : parsed.url
+```tsx
+<BudgetInput apiKey={apiKey} currentBudget={account.monthlyBudgetUsd} />
 ```
 
-Then use `url` everywhere the parsed URL was previously used (replace `parsed.params.url` or `body.params.url` references with the normalized `url` variable).
+Create this sub-component inside the same file (at the bottom, before the closing brace):
 
-The canonical shape `{ params: { url } }` is kept in docs. The flat `{ url }` shape is now accepted permanently (non-breaking).
+```typescript
+function BudgetInput({
+  apiKey,
+  currentBudget,
+}: {
+  apiKey: string;
+  currentBudget: number | null;
+}) {
+  const [value, setValue] = useState(currentBudget?.toString() ?? '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
----
+  const handleBlur = async () => {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || parsed === currentBudget) return;
+    setSaving(true);
+    try {
+      await fetch('/api/v1/router/budget', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ budget: parsed }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-## Task 3 — Fix: Priority field name mismatch → 400 (`src/app/api/v1/router/priority/route.ts`)
-
-**Bug:** `POST /api/v1/router/priority {"search": ["exa-search"]}` returns 400 with "Provide tools/priority_tools".
-
-**Fix:** Normalize the field name before validation. Read the file, then find where `tools` or `priority_tools` is extracted from `body`. Replace that line with:
-
-```ts
-const tools = body.tools ?? body.priority_tools ?? body.search
-if (!tools?.length) {
-  return NextResponse.json(
-    { error: 'Provide tools or priority_tools' },
-    { status: 400 }
-  )
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-white/40">Monthly budget ($)</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="Unlimited"
+          className="w-24 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-right font-mono text-xs text-orange-400 placeholder-white/20 focus:border-orange-500/60 focus:outline-none"
+        />
+        {saving && <span className="text-[10px] text-white/30">saving…</span>}
+        {saved && <span className="text-[10px] text-green-400">saved ✓</span>}
+      </div>
+    </div>
+  );
 }
 ```
 
-Then use `tools` for the rest of the handler (replacing any `body.tools` or `body.priority_tools` references with the normalized `tools` variable).
+No other changes to `dashboard/router/page.tsx`. The strategy selector already works — do NOT touch it.
 
 ---
 
-## Task 4 — Fix: `cheapest` strategy routes to Tavily
+## Verification checklist
 
-**Bug:** `POST /api/v1/route/search {"strategy": "cheapest"}` returns `toolUsed: "tavily"` instead of `serper` or `brave-search`. Tavily is more expensive per call but ranked too low in the cost sort.
-
-**Find the cost table.** Search for the word `cheapest` or a cost/price ranking object in:
-- `src/lib/router/handler.ts`
-- `src/lib/router/index.ts`
-- `src/lib/router/sdk-handler.ts`
-
-Look for an object or array like:
-```ts
-const TOOL_COSTS = {
-  tavily: 0.001,
-  serper: 0.002,
-  'brave-search': 0.003,
-  ...
-}
-```
-or a sorted array of tools by cost.
-
-**Fix:** Ensure `tavily`'s cost value is **higher** than `serper` and `brave-search`. The `cheapest` sort picks the lowest cost, so serper/brave must be cheaper (lower number) than tavily.
-
-Correct relative ordering (lower = cheaper):
-```
-serper          ~= 0.001   (cheapest)
-brave-search    ~= 0.002
-tavily          ~= 0.005   (more expensive — must be HIGHER than serper/brave)
-exa             ~= 0.010
-perplexity      ~= 0.010
-```
-
-Do not change any other routing logic — only fix the cost values so the sort order is correct.
-
----
-
-## Task 5 — Fix: Usage response missing account fields (`src/app/api/v1/router/usage/route.ts`)
-
-**Bug:** `GET /api/v1/router/usage` returns `{ "account": { "plan": "free" } }` — missing `monthlyLimit`, `callsThisMonth`, `strategy`.
-
-**Expected shape:**
-```json
-{
-  "account": {
-    "plan": "free",
-    "monthlyLimit": 10000,
-    "callsThisMonth": 247,
-    "strategy": "auto"
-  }
-}
-```
-
-Read the file. Find where `account` is assembled in the response. Extend it:
-
-```ts
-// monthlyLimit: derive from plan config. Use a simple map:
-const PLAN_LIMITS: Record<string, number> = {
-  free:       10_000,
-  pro:        100_000,
-  enterprise: 1_000_000,
-}
-const monthlyLimit = PLAN_LIMITS[user.plan ?? 'free'] ?? 10_000
-
-// callsThisMonth: count RouterCall rows for this user in the current calendar month
-const now = new Date()
-const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-const callsThisMonth = await prisma.routerCall.count({
-  where: {
-    userId: user.id,
-    createdAt: { gte: startOfMonth },
-  },
-})
-
-// strategy: read from user row (field may be named defaultStrategy, strategy, or routerStrategy)
-const strategy = user.strategy ?? user.defaultStrategy ?? 'auto'
-
-// Assemble response:
-return NextResponse.json({
-  account: {
-    plan: user.plan ?? 'free',
-    monthlyLimit,
-    callsThisMonth,
-    strategy,
-  },
-  // ... rest of existing response fields
-})
-```
-
-**Note:** If `RouterCall` is not the correct Prisma model name, check `prisma/schema.prisma` for the model that stores API call history and use that model name. The count query pattern stays the same.
-
----
-
-## Acceptance Checklist
-
-- [ ] `POST /api/v1/route/crawl {"url": "https://example.com"}` → HTTP 200 (not 400)
-- [ ] `POST /api/v1/router/priority {"search": ["exa-search"]}` → HTTP 200 (not 400)
-- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → `toolUsed` is `serper` or `brave-search` (not `tavily`)
-- [ ] `GET /api/v1/router/usage` returns `monthlyLimit`, `callsThisMonth`, `strategy` in `account` object
-- [ ] Homepage hero section has `hero-mesh` class applied (animated gradient mesh visible)
-- [ ] Hero `<h1>` uses `text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400`
-- [ ] No other files touched outside the 5 listed above
+- [ ] `/connect` page shows `<Playground />` panel above "Quick Start"
+- [ ] Playground: empty input → "Route it →" button is disabled
+- [ ] Playground: submit query → spinner → result animates in with opacity/translateY transition
+- [ ] Playground: result shows tool badge, latency, and up to 2 result snippets
+- [ ] Playground: copy-to-curl button copies correct curl string to clipboard
+- [ ] Playground: after 3 successful calls, upsell banner appears (check localStorage `pg_trial_count`)
+- [ ] Playground: 429 response → correct rate limit message shown
+- [ ] Dashboard: monthly usage progress bar appears above stats cards when `usage` is loaded
+- [ ] Dashboard: progress bar width reflects `callsThisMonth / monthlyLimit` ratio
+- [ ] Dashboard: budget input in Settings panel; blur triggers `POST /api/v1/router/budget`
+- [ ] No changes made to any file outside the 3 listed above
