@@ -5,8 +5,8 @@ describe('aiRoute — tool ordering by classification', () => {
   it('routes realtime finance to fast tools', () => {
     const ctx: QueryContext = { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
     const tools = aiRoute(ctx, 'search');
-    // Realtime should prefer serpapi (fast) first
-    expect(tools[0]).toBe('serpapi');
+    // Realtime should prefer serpapi-google (fast) first
+    expect(tools[0]).toBe('serpapi-google');
     expect(tools.length).toBeGreaterThan(0);
   });
 
@@ -28,7 +28,7 @@ describe('aiRoute — tool ordering by classification', () => {
   it('routes simple to cheap tools', () => {
     const ctx: QueryContext = { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
-    expect(tools[0]).toBe('serpapi'); // Cheapest
+    expect(tools[0]).toBe('brave-search'); // Cheapest
     expect(tools.length).toBeGreaterThan(0);
   });
 
@@ -42,8 +42,8 @@ describe('aiRoute — tool ordering by classification', () => {
   it('always includes all capability tools as fallbacks', () => {
     const ctx: QueryContext = { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
-    // Should include all 8 search tools
-    expect(tools.length).toBe(8);
+    // Should include all 9 search tools
+    expect(tools.length).toBe(9);
   });
 });
 

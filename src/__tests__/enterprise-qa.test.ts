@@ -82,7 +82,7 @@ describe('P0-2: Invalid capability returns 404 (via getRankedToolsForCapability)
 describe('P1-3: Priority tools affect fallback chain', () => {
   it('returns tools in strategy order by default', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced');
-    expect(ranked.length).toBe(8);
+    expect(ranked.length).toBe(9);
     // Balanced = quality/(cost*latency), should have a reasonable first pick
     expect(ranked[0]).toBeDefined();
   });
@@ -91,7 +91,7 @@ describe('P1-3: Priority tools affect fallback chain', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced', ['serpapi', 'tavily']);
     expect(ranked).not.toContain('serpapi');
     expect(ranked).not.toContain('tavily');
-    expect(ranked.length).toBe(6);
+    expect(ranked.length).toBe(7);
   });
 
   it('all strategies produce non-empty results for valid capabilities', () => {
@@ -122,7 +122,7 @@ describe('P1-4: Deep research AI classification', () => {
     const ctx: QueryContext = { type: 'research', domain: 'tech', depth: 'deep', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
     expect(tools[0]).toBe('exa-search');
-    expect(tools.length).toBe(8); // All search tools as fallbacks
+    expect(tools.length).toBe(9); // All search tools as fallbacks
   });
 
   it('does NOT classify research queries as simple', () => {
@@ -164,7 +164,7 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
   it('cheapest returns tools for search', () => {
     const ranked = getRankedToolsForCapability('search', 'cheapest');
     expect(ranked.length).toBeGreaterThan(0);
-    expect(ranked[0]).toBe('serpapi'); // Lowest cost
+    expect(ranked[0]).toBe('brave-search'); // Lowest cost (0.0001)
   });
 
   it('fastest returns tools for search', () => {
