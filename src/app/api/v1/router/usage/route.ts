@@ -70,6 +70,11 @@ export async function GET(request: NextRequest) {
         billingCycleStart: account.billingCycleStart,
         strategy: account.strategy,
       },
+    }, {
+      headers: {
+        'Cache-Control': 'no-store',
+        'Vary': 'Authorization',
+      },
     });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
