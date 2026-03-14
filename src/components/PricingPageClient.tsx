@@ -23,9 +23,8 @@ type BillingAccount = {
   billingCycleStart: string;
 };
 
-type UpgradeResponse = {
-  checkoutUrl: string;
-};
+// Unused: kept for reference (old hosted checkout)
+// type UpgradeResponse = { checkoutUrl: string; };
 
 export default function PricingPageClient() {
   const searchParams = useSearchParams();
@@ -89,36 +88,13 @@ export default function PricingPageClient() {
     await loadAccount(draftKey.trim(), true);
   }
 
-  async function handleCheckout(plan: UpgradePlanSlug) {
+  function handleCheckout(plan: UpgradePlanSlug) {
     if (!apiKey || !account) {
       setCheckoutError('Load your AgentPick API key before starting checkout.');
       return;
     }
-
-    setCheckoutPlan(plan);
-    setCheckoutError('');
-
-    try {
-      const response = await fetch('/api/v1/router/upgrade', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ plan }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: { message: 'Checkout failed.' } }));
-        throw new Error(data.error?.message ?? 'Checkout failed.');
-      }
-
-      const data = (await response.json()) as UpgradeResponse;
-      window.location.assign(data.checkoutUrl);
-    } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : 'Checkout failed.');
-      setCheckoutPlan(null);
-    }
+    // Navigate to the embedded checkout page (stays on agentpick.dev)
+    window.location.assign(`/checkout?plan=${plan}`);
   }
 
   const checkoutState = searchParams.get('checkout');
@@ -278,7 +254,7 @@ export default function PricingPageClient() {
                   disabled={isBusy || !account || exactMatch || higherPlan}
                   className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isBusy && 'Redirecting to Stripe...'}
+                  {isBusy && 'Opening checkout…'}
                   {!isBusy && exactMatch && 'Current plan'}
                   {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
                   {!isBusy && !exactMatch && !higherPlan && !account && 'Load API key to upgrade'}

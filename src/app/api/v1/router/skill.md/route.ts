@@ -150,6 +150,55 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
   }
 }
 \`\`\`
+
+---
+
+## Payments
+
+### Upgrade via Web (Embedded Checkout)
+Navigate the user to: \`https://agentpick.dev/checkout?plan=pro\` or \`?plan=growth\`
+The user pays without leaving agentpick.dev using Stripe Embedded Checkout.
+
+### Upgrade via Telegram (In-Chat Payment)
+
+Send a native Telegram invoice so the user can upgrade without leaving the chat:
+
+\`\`\`
+POST https://agentpick.dev/api/v1/payments/telegram-invoice
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "plan": "pro",
+  "telegram_chat_id": "123456789"
+}
+\`\`\`
+
+Telegram will display a payment card in the chat. The user taps "Pay" and completes the Stripe payment inside Telegram. No browser redirect required.
+
+**Plans:**
+| plan | Label | Price |
+|------|-------|-------|
+| \`pro\` | Pro | $29/month |
+| \`growth\` | Growth | $99/month |
+
+**Response:**
+\`\`\`json
+{
+  "ok": true,
+  "message_id": 42,
+  "plan": "pro",
+  "planLabel": "Pro",
+  "chatId": "123456789"
+}
+\`\`\`
+
+### Telegram Webhook (internal)
+Register your bot webhook to: \`https://agentpick.dev/api/v1/payments/telegram-webhook\`
+This handles \`pre_checkout_query\` (auto-approves) and \`successful_payment\` (upgrades plan).
+\`\`\`
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://agentpick.dev/api/v1/payments/telegram-webhook
+\`\`\`
 `;
 
 export async function GET() {
