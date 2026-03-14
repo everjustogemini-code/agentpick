@@ -244,7 +244,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       strategyUsed,
       Boolean(failureResponse.meta.byok_used),
       [],
-    ).catch(() => {});
+    ).catch((e) => console.error('[recordRouterCall] write failed:', e));
     // Return stable contract: always include tool_used and results fields
     return new Response(JSON.stringify(failureResponse), {
       status: 502,

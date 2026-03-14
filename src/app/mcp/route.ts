@@ -11,7 +11,7 @@ import type { Category, VoteSignal } from '@/generated/prisma/client';
 const VALID_CATEGORIES = ['search_research', 'web_crawling', 'code_compute', 'storage_memory', 'communication', 'payments_commerce', 'finance_data', 'auth_identity', 'scheduling', 'ai_models', 'observability'];
 
 // MCP Server manifest
-const SERVER_INFO = {
+export const SERVER_INFO = {
   name: 'agentpick',
   version: '1.0.0',
   description: 'Discover top-rated tools for AI agents, ranked by verified usage',
