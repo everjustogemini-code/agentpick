@@ -9,7 +9,7 @@ import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import { routeRequest, CAPABILITY_TOOLS, getRankedToolsForCapability } from './index';
 import type { RouterRequest, Strategy } from './index';
-import { ensureDeveloperAccount, recordRouterCall, type RouterStrategyValue } from './sdk';
+import { checkUsageLimit, ensureDeveloperAccount, recordRouterCall, type RouterPlanValue, type RouterStrategyValue } from './sdk';
 import { escapeHtml } from '@/lib/sanitize';
 
 const VALID_CAPABILITIES = Object.keys(CAPABILITY_TOOLS);
@@ -149,7 +149,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
   }
 
-  // 4. Budget enforcement — block routing before dispatch (same as sdk-handler)
+  // 4. Budget and plan-limit enforcement — block routing before dispatch
   let preAccount;
   try {
     preAccount = await ensureDeveloperAccount(agent.id);
@@ -160,6 +160,17 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     ) {
       return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
         details: { budget: preAccount.monthlyBudgetUsd, spent: preAccount.spentThisMonth },
+      });
+    }
+    // Enforce plan daily/monthly limits (same as /router/* surface)
+    const usage = await checkUsageLimit(preAccount.id, preAccount.plan as RouterPlanValue);
+    if (!usage.allowed) {
+      const isMonthly = usage.hardCapped;
+      const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;
+      const usedCount = isMonthly ? usage.monthlyUsed : usage.used;
+      const limitLabel = isMonthly ? 'Monthly' : 'Daily';
+      return apiError('USAGE_LIMIT', `${limitLabel} call limit reached (${limitCount} calls). Upgrade plan for more.`, 429, {
+        details: { plan: preAccount.plan, limit: limitCount, used: usedCount, period: isMonthly ? 'monthly' : 'daily' },
       });
     }
   } catch {
