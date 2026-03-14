@@ -6,6 +6,20 @@ export const maxDuration = 60;
 
 const PLAYGROUND_AGENT_TOKEN = 'ah_internal_playground_demo';
 
+// In-memory rate limit fallback (used when DB table is unavailable)
+const memRateStore = new Map<string, { count: number; resetAt: number }>();
+function checkMemRateLimit(ip: string, limit = 10, windowMs = 86_400_000): boolean {
+  const now = Date.now();
+  const entry = memRateStore.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    memRateStore.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
 async function getPlaygroundAgent() {
   const apiKeyHash = hashApiKey(PLAYGROUND_AGENT_TOKEN);
   return prisma.agent.upsert({
@@ -48,26 +62,31 @@ export async function POST(request: NextRequest) {
   const isDemo = !apiKey || apiKey === demoKey;
 
   if (isDemo) {
-    // Rate limit by IP
+    // Rate limit by IP — try DB-backed rate limit, fall back to in-memory
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
       request.headers.get('x-real-ip') ??
       '127.0.0.1';
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    let limitExceeded = false;
+    try {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
 
-    const db = prisma as any;
+      const db = prisma as any;
+      const record = await db.playgroundRateLimit.upsert({
+        where: { ip_date: { ip, date: today } },
+        create: { ip, date: today, count: 1 },
+        update: { count: { increment: 1 } },
+        select: { count: true },
+      });
+      limitExceeded = record.count > 10;
+    } catch {
+      // DB rate limiting unavailable — fall back to in-memory (per process, per day)
+      limitExceeded = !checkMemRateLimit(ip);
+    }
 
-    // Atomic upsert: increment count, get new value
-    const record = await db.playgroundRateLimit.upsert({
-      where: { ip_date: { ip, date: today } },
-      create: { ip, date: today, count: 1 },
-      update: { count: { increment: 1 } },
-      select: { count: true },
-    });
-
-    if (record.count > 10) {
+    if (limitExceeded) {
       return Response.json(
         { error: 'Demo limit reached', cta: 'Sign up free to continue' },
         { status: 429 },

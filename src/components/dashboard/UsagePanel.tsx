@@ -610,7 +610,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             ) : null}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="flex flex-wrap gap-2">
             {STRATEGY_OPTIONS.map((option) => {
               const active = panel.strategy === option.value;
               const pending = strategyPending === option.value;
@@ -621,27 +621,14 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
                   type="button"
                   onClick={() => handleStrategyChange(option.value)}
                   disabled={Boolean(strategyPending)}
-                  className={`rounded-[24px] border px-4 py-4 text-left transition ${
+                  title={option.description}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                     active
-                      ? 'border-slate-950 bg-slate-950 text-white shadow-[0_18px_40px_rgba(15,23,42,0.16)]'
-                      : 'border-slate-200 bg-white text-slate-950 hover:border-slate-300 hover:bg-slate-50'
-                  } ${strategyPending ? 'cursor-not-allowed' : ''}`}
+                      ? 'border-slate-950 bg-slate-950 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900'
+                  } ${strategyPending && !pending ? 'opacity-50' : ''} ${strategyPending ? 'cursor-wait' : 'cursor-pointer'}`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold tracking-[-0.02em]">
-                      {pending ? 'Updating...' : option.label}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] ${
-                        active ? 'bg-white/10 text-slate-200' : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {option.value}
-                    </span>
-                  </div>
-                  <p className={`mt-3 text-sm leading-6 ${active ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {option.description}
-                  </p>
+                  {pending ? '...' : option.label}
                 </button>
               );
             })}

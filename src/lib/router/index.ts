@@ -60,7 +60,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'perplexity-search':      { quality: 4.2, cost: 0.005,   latency: 500,  stability: 0.90 },
   'you-search':             { quality: 3.0, cost: 0.001,   latency: 200,  stability: 0.92 },
   'jina-ai':                { quality: 3.5, cost: 0.001,   latency: 250,  stability: 0.94 },
-  'serpapi-google':          { quality: 3.2, cost: 0.01,    latency: 120,  stability: 0.96 },
+  'serpapi-google':          { quality: 3.2, cost: 0.00075, latency: 120,  stability: 0.96 },
   'bing-web-search':         { quality: 3.0, cost: 0.005,   latency: 180,  stability: 0.94 },
   firecrawl:                { quality: 4.0, cost: 0.003,   latency: 1200, stability: 0.93 },
   apify:                    { quality: 3.5, cost: 0.005,   latency: 2000, stability: 0.90 },
