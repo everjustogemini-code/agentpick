@@ -274,6 +274,8 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       'Content-Type': 'application/json',
       'X-AgentPick-Plan': account.plan,
       'X-AgentPick-Remaining': String(callsRemaining),
+      'Cache-Control': 'no-store',
+      'Vary': 'Authorization',
     };
     if (extraHeaders) {
       Object.assign(responseHeaders, extraHeaders);

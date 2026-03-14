@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
       { call: call ?? null },
       {
         headers: {
-          'Cache-Control': 'private, max-age=5',
+          'Cache-Control': 'private, no-store, max-age=0',
+          'Vary': 'Authorization',
         },
       },
     );
