@@ -67,6 +67,9 @@ export default function PricingPageClient() {
       if (persist) {
         window.localStorage.setItem(STORAGE_KEY, key);
       }
+
+      // Auto-redirect to dashboard after loading account
+      window.location.href = '/dashboard';
     } catch (error) {
       setAccount(null);
       setApiKey('');
