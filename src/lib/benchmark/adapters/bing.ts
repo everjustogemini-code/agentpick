@@ -17,7 +17,7 @@ export async function callBing(query: string, config?: Record<string, unknown>):
       'Ocp-Apim-Subscription-Key': apiKey,
       Accept: 'application/json',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

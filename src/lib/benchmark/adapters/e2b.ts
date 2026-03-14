@@ -23,7 +23,7 @@ export async function callE2B(query: string, config?: Record<string, unknown>): 
       'X-API-Key': apiKey,
     },
     body: JSON.stringify({ template: language === 'python' ? 'Python3' : 'Node' }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
 
   if (!sandboxRes.ok) {
@@ -50,7 +50,7 @@ export async function callE2B(query: string, config?: Record<string, unknown>): 
         'X-API-Key': apiKey,
       },
       body: JSON.stringify({ code }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(8000),
     });
 
     const latencyMs = Math.round(performance.now() - start);

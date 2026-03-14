@@ -97,7 +97,7 @@ export function middleware(request: NextRequest) {
       return new NextResponse(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': request.headers.get('origin') || 'https://agentpick.dev',
           'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Authorization, Content-Type',
           'Access-Control-Max-Age': '86400',
@@ -141,7 +141,7 @@ export function middleware(request: NextRequest) {
 
     const response = NextResponse.next();
     // CORS
-    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || 'https://agentpick.dev');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 

@@ -26,7 +26,7 @@ export async function callApify(query: string, config?: Record<string, unknown>)
           return { url: request.url, title, text };
         }`,
       }),
-      signal: AbortSignal.timeout(60000), // Apify runs can be slow
+      signal: AbortSignal.timeout(8000), // Apify runs can be slow
     },
   );
   const latencyMs = Math.round(performance.now() - start);

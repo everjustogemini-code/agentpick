@@ -26,7 +26,7 @@ export async function callResend(query: string, config?: Record<string, unknown>
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

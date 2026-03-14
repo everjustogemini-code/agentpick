@@ -15,7 +15,7 @@ export async function callSerper(query: string, config?: Record<string, unknown>
       q: query,
       num: (config?.num as number) || 10,
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

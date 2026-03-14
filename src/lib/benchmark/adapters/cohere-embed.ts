@@ -21,7 +21,7 @@ export async function callCohereEmbed(query: string, config?: Record<string, unk
       input_type: inputType,
       truncate: 'END',
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

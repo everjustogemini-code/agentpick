@@ -19,7 +19,7 @@ export async function callPerplexity(query: string, config?: Record<string, unkn
       max_tokens: 512,
       return_citations: true,
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

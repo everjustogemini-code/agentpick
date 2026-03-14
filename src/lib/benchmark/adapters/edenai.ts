@@ -19,7 +19,7 @@ async function callEdenAI(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({ ...payload, response_as_dict: true, show_original_response: false }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

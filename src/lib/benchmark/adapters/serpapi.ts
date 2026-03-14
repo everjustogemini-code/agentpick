@@ -16,7 +16,7 @@ export async function callSerpApi(query: string, config?: Record<string, unknown
   const start = performance.now();
   const response = await fetch(`https://serpapi.com/search.json?${params}`, {
     headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

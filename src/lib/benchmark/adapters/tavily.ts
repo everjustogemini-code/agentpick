@@ -19,7 +19,7 @@ export async function callTavily(query: string, config?: Record<string, unknown>
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(8000),
     });
   } catch (fetchError) {
     console.error('[Tavily] Fetch error:', fetchError);

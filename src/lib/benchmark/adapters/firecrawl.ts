@@ -16,7 +16,7 @@ export async function callFirecrawl(query: string, config?: Record<string, unkno
       limit: (config?.limit as number) || 5,
       scrapeOptions: { formats: ['markdown'] },
     }),
-    signal: AbortSignal.timeout(60000), // Firecrawl can be slow
+    signal: AbortSignal.timeout(8000), // Firecrawl can be slow
   });
   const latencyMs = Math.round(performance.now() - start);
 

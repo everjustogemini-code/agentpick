@@ -18,7 +18,7 @@ export async function callExa(query: string, config?: Record<string, unknown>): 
       useAutoprompt: true,
       contents: { text: { maxCharacters: 1000 } },
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

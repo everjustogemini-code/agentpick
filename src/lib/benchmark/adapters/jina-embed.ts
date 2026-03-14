@@ -19,7 +19,7 @@ export async function callJinaEmbed(query: string, config?: Record<string, unkno
       input,
       task: 'text-matching',
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

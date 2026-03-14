@@ -11,7 +11,7 @@ export async function callJina(query: string, config?: Record<string, unknown>):
       Authorization: `Bearer ${apiKey}`,
       'X-Return-Format': 'text',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

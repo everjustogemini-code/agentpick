@@ -21,7 +21,7 @@ export async function callBrowserbase(query: string, config?: Record<string, unk
       projectId,
       browserSettings: { blockAds: true },
     }),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(8000),
   });
 
   if (!sessionRes.ok) {
@@ -50,7 +50,7 @@ export async function callBrowserbase(query: string, config?: Record<string, unk
       url,
       wait: (config?.waitMs as number) || 3000,
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 

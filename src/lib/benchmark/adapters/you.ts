@@ -16,7 +16,7 @@ export async function callYou(query: string, config?: Record<string, unknown>): 
       'X-API-Key': apiKey,
       Accept: 'application/json',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(8000),
   });
   const latencyMs = Math.round(performance.now() - start);
 
