@@ -71,7 +71,7 @@ describe('BYOK helpers', () => {
       },
     };
 
-    expect(resolveStoredByokKeyForSlug(raw, 'serpapi')).toEqual({
+    expect(resolveStoredByokKeyForSlug(raw, 'serper-api')).toEqual({
       service: 'serper',
       apiKey: 'serper-secret-key',
       keyPreview: 'serp...-key',
