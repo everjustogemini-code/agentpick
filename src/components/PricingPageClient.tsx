@@ -91,13 +91,33 @@ export default function PricingPageClient() {
     await loadAccount(draftKey.trim(), true);
   }
 
-  function handleCheckout(plan: UpgradePlanSlug) {
+  async function handleCheckout(plan: UpgradePlanSlug) {
     if (!apiKey || !account) {
       setCheckoutError('Load your AgentPick API key before starting checkout.');
       return;
     }
-    // Navigate to the embedded checkout page (stays on agentpick.dev)
-    window.location.assign(`/checkout?plan=${plan}`);
+    setCheckoutError('');
+    setCheckoutPlan(plan);
+    try {
+      const res = await fetch('/api/v1/router/upgrade', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        setCheckoutError(data?.error?.message || 'Unable to start checkout.');
+      }
+    } catch {
+      setCheckoutError('Checkout failed. Please try again.');
+    } finally {
+      setCheckoutPlan(null);
+    }
   }
 
   const checkoutState = searchParams.get('checkout');

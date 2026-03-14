@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const plan = normalizeUpgradePlan(body.plan);
     if (!plan) {
-      return apiError('VALIDATION_ERROR', 'plan must be "pro" or "growth".', 400);
+      return apiError('VALIDATION_ERROR', 'plan must be "pro", "growth", or "scale".', 400);
     }
 
     const targetPlan = UPGRADE_PLAN_CONFIG[plan];
