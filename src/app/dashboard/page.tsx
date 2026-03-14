@@ -118,16 +118,26 @@ export default function DashboardPage() {
             Dashboard
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
-            Account and usage in one place.
+            Account, usage, and routing on one screen.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Track your plan, monthly call volume, routing strategy, projected spend, and budget cap
-            from the main dashboard without bouncing into a separate router console.
+            Track your plan, monthly usage progress, current routing strategy, estimated cost, and
+            budget cap from the main dashboard without bouncing into a separate router console.
           </p>
         </div>
 
         {apiKey ? (
           <div className="mt-10 space-y-6">
+            <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                Live controls
+              </p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                This dashboard keeps plan visibility, monthly call progress, router strategy
+                controls, and budget editing together on the main view.
+              </p>
+            </section>
+
             {newKey ? (
               <section className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -10,17 +10,26 @@ interface UsagePanelProps {
   onLogout: () => void;
 }
 
+interface AccountUsageSummary {
+  monthlyLimit: number | null;
+  monthlyUsed: number;
+  monthlyRemaining: number | null;
+}
+
 interface AccountResponse {
   account: {
     email: string | null;
     plan: string;
+    planLabel?: string;
     strategy: KnownStrategy;
     monthlyBudgetUsd: number | null;
     spentThisMonth: number;
+    usage?: AccountUsageSummary;
   };
 }
 
 interface UsageResponse {
+  plan_label?: string;
   account: {
     plan: string;
     monthlyLimit: number | null;
@@ -38,11 +47,13 @@ interface UsageResponse {
 interface PanelState {
   email: string | null;
   plan: string;
+  planLabel: string;
   strategy: KnownStrategy;
   monthlyBudgetUsd: number | null;
   spentThisMonth: number;
   callsThisMonth: number;
   monthlyLimit: number | null;
+  monthlyRemaining: number | null;
   totalCallsLast30Days: number;
   totalCostLast30Days: number;
   successRate: number;
@@ -113,6 +124,18 @@ function formatUsageLabel(callsThisMonth: number, monthlyLimit: number | null) {
   return `${callsThisMonth.toLocaleString()} / ${monthlyLimit.toLocaleString()} calls`;
 }
 
+function formatUsageContext(callsThisMonth: number, monthlyLimit: number | null, monthlyRemaining: number | null) {
+  if (monthlyLimit === null) {
+    return 'No monthly cap on this account.';
+  }
+
+  if (monthlyRemaining !== null) {
+    return `${monthlyRemaining.toLocaleString()} calls remaining this month.`;
+  }
+
+  return `${Math.max(monthlyLimit - callsThisMonth, 0).toLocaleString()} calls remaining this month.`;
+}
+
 function maskApiKey(apiKey: string) {
   if (apiKey.length <= 12) return apiKey;
   return `${apiKey.slice(0, 12)}...${apiKey.slice(-4)}`;
@@ -173,17 +196,26 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
 
         const accountData = (await accountResponse.json()) as AccountResponse;
         const usageData = (await usageResponse.json()) as UsageResponse;
+        const plan = usageData.account.plan ?? accountData.account.plan;
+        const monthlyLimit = usageData.account.monthlyLimit ?? accountData.account.usage?.monthlyLimit ?? null;
+        const callsThisMonth =
+          usageData.account.callsThisMonth ?? accountData.account.usage?.monthlyUsed ?? 0;
+        const monthlyRemaining =
+          accountData.account.usage?.monthlyRemaining ??
+          (monthlyLimit === null ? null : Math.max(monthlyLimit - callsThisMonth, 0));
 
         if (!active) return;
 
         setPanel({
           email: accountData.account.email,
-          plan: usageData.account.plan ?? accountData.account.plan,
+          plan,
+          planLabel: accountData.account.planLabel ?? usageData.plan_label ?? formatPlan(plan),
           strategy: usageData.account.strategy ?? accountData.account.strategy,
           monthlyBudgetUsd: accountData.account.monthlyBudgetUsd,
           spentThisMonth: accountData.account.spentThisMonth,
-          callsThisMonth: usageData.account.callsThisMonth,
-          monthlyLimit: usageData.account.monthlyLimit,
+          callsThisMonth,
+          monthlyLimit,
+          monthlyRemaining,
           totalCallsLast30Days: usageData.stats.totalCalls,
           totalCostLast30Days: usageData.stats.totalCostUsd,
           successRate: usageData.stats.successRate,
@@ -346,6 +378,12 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
       ? 100
       : Math.min((panel.callsThisMonth / panel.monthlyLimit) * 100, 100);
   const projectedCost = projectedMonthlyCost(panel.spentThisMonth);
+  const usageToneClass =
+    panel.monthlyLimit !== null && usagePercent >= 90
+      ? 'bg-[linear-gradient(90deg,_#fb7185_0%,_#f97316_100%)]'
+      : panel.monthlyLimit !== null && usagePercent >= 75
+        ? 'bg-[linear-gradient(90deg,_#f59e0b_0%,_#fb7185_100%)]'
+        : 'bg-[linear-gradient(90deg,_#22d3ee_0%,_#818cf8_45%,_#f472b6_100%)]';
 
   return (
     <section className="rounded-[32px] border border-white/70 bg-white/88 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
@@ -355,7 +393,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             Account & usage
           </p>
           <h2 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
-            {formatPlan(panel.plan)} plan
+            {panel.planLabel} plan
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
             {panel.email
@@ -379,7 +417,22 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+      <div className="mt-8 grid gap-4 xl:grid-cols-[0.82fr_1.2fr_0.82fr_0.92fr]">
+        <div className="rounded-[28px] border border-slate-200 bg-slate-50/90 p-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">Plan</p>
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
+            {panel.planLabel}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {panel.monthlyLimit === null
+              ? 'Custom monthly volume with no published cap.'
+              : `${panel.monthlyLimit.toLocaleString()} routed calls included each month.`}
+          </p>
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">
+            {panel.plan}
+          </p>
+        </div>
+
         <div className="rounded-[28px] bg-slate-950 p-6 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -398,14 +451,17 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
           <div className="mt-6">
             <div className="flex items-center justify-between text-xs text-slate-300">
               <span>{formatUsageLabel(panel.callsThisMonth, panel.monthlyLimit)}</span>
-              <span>{panel.monthlyLimit === null ? 'Unlimited' : `${usagePercent.toFixed(0)}% used`}</span>
+              <span>{panel.monthlyLimit === null ? 'No cap' : `${usagePercent.toFixed(0)}% used`}</span>
             </div>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,_#22d3ee_0%,_#818cf8_45%,_#f472b6_100%)] transition-[width] duration-300"
+                className={`h-full rounded-full transition-[width] duration-300 ${usageToneClass}`}
                 style={{ width: `${usagePercent}%` }}
               />
             </div>
+            <p className="mt-3 text-sm text-slate-300">
+              {formatUsageContext(panel.callsThisMonth, panel.monthlyLimit, panel.monthlyRemaining)}
+            </p>
           </div>
         </div>
 
@@ -419,6 +475,11 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Projected monthly spend from {formatCurrency(panel.spentThisMonth)} spent so far this
             month.
+          </p>
+          <p className="mt-3 text-sm text-slate-500">
+            {panel.monthlyBudgetUsd === null
+              ? 'No budget cap is set.'
+              : `${formatCurrency(panel.monthlyBudgetUsd)} budget cap configured.`}
           </p>
         </div>
 
