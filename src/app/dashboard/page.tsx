@@ -303,7 +303,11 @@ export default function DashboardPage() {
 
             <UsagePanel apiKey={apiKey} onLogout={handleLogout} />
 
-            <RouterAnalyticsDashboard />
+            <RouterAnalyticsDashboard
+              embedded
+              apiKeyOverride={apiKey}
+              onDisconnect={handleLogout}
+            />
 
             {showFreeCtas && (
               <div className="rounded-2xl border border-slate-200 px-5 py-3 text-xs text-slate-400">

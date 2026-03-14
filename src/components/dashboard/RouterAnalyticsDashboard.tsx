@@ -45,6 +45,12 @@ interface RegisterResponse {
   apiKey: string;
 }
 
+interface RouterAnalyticsDashboardProps {
+  apiKeyOverride?: string;
+  embedded?: boolean;
+  onDisconnect?: () => void;
+}
+
 function authHeaders(apiKey: string, includeJson = false) {
   return {
     Authorization: `Bearer ${apiKey}`,
@@ -157,9 +163,13 @@ function EmptyChart({
   );
 }
 
-export function RouterAnalyticsDashboard() {
-  const [apiKey, setApiKey] = useState('');
-  const [inputKey, setInputKey] = useState('');
+export function RouterAnalyticsDashboard({
+  apiKeyOverride,
+  embedded = false,
+  onDisconnect,
+}: RouterAnalyticsDashboardProps = {}) {
+  const [apiKey, setApiKey] = useState(apiKeyOverride ?? '');
+  const [inputKey, setInputKey] = useState(apiKeyOverride ?? '');
   const [range, setRange] = useState<RouterAnalyticsRange>('24h');
 
   const [account, setAccount] = useState<AccountResponse['account'] | null>(null);
@@ -176,12 +186,18 @@ export function RouterAnalyticsDashboard() {
   const [newKey, setNewKey] = useState('');
 
   useEffect(() => {
+    if (typeof apiKeyOverride === 'string') {
+      setApiKey(apiKeyOverride);
+      setInputKey(apiKeyOverride);
+      return;
+    }
+
     const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
     if (!saved) return;
 
     setApiKey(saved);
     setInputKey(saved);
-  }, []);
+  }, [apiKeyOverride]);
 
   function persistApiKey(value: string) {
     setApiKey(value);
@@ -189,7 +205,7 @@ export function RouterAnalyticsDashboard() {
     localStorage.setItem(API_KEY_STORAGE_KEY, value);
   }
 
-  function clearApiKey(message?: string) {
+  const clearApiKey = useCallback((message?: string) => {
     setApiKey('');
     setInputKey('');
     setAccount(null);
@@ -197,10 +213,11 @@ export function RouterAnalyticsDashboard() {
     setLastUpdated(null);
     setNewKey('');
     localStorage.removeItem(API_KEY_STORAGE_KEY);
+    onDisconnect?.();
     if (message) {
       setError(message);
     }
-  }
+  }, [onDisconnect]);
 
   const loadDashboard = useCallback(
     async (key: string, nextRange: RouterAnalyticsRange, silent = false) => {
@@ -250,7 +267,7 @@ export function RouterAnalyticsDashboard() {
         setRefreshing(false);
       }
     },
-    [],
+    [clearApiKey],
   );
 
   useEffect(() => {
@@ -325,50 +342,91 @@ export function RouterAnalyticsDashboard() {
   }
 
   const hasTraffic = (analytics?.summary.totalCalls ?? 0) > 0;
+  const RootTag = embedded ? 'section' : 'main';
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(249,115,22,0.14),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#fff7ed_38%,_#ffffff_100%)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-10 sm:px-8 lg:px-10">
-        <section className="rounded-[36px] border border-white/70 bg-white/75 p-8 shadow-[0_28px_100px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
-                Agent Analytics
-              </p>
-              <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-slate-950 sm:text-5xl">
-                Watch router traffic, fallbacks, latency, and spend live.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                This dashboard polls every 30 seconds and turns raw RouterCall records into live
-                routing visibility for tool usage, strategy mix, latency percentiles, fallback rate,
-                and cost movement.
-              </p>
-            </div>
+    <RootTag
+      className={
+        embedded
+          ? 'space-y-8'
+          : 'min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(249,115,22,0.14),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#fff7ed_38%,_#ffffff_100%)]'
+      }
+    >
+      <div className={embedded ? 'space-y-8' : 'mx-auto flex min-h-screen w-full max-w-7xl flex-col px-6 py-10 sm:px-8 lg:px-10'}>
+        {embedded ? (
+          <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                  Router analytics
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+                  Live traffic, latency, fallback, and spend.
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Real-time charts refresh every 30 seconds and summarize RouterCall activity in the
+                  selected time window.
+                </p>
+              </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_50px_rgba(15,23,42,0.2)]">
-              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-cyan-300/80">
-                Live feed
-              </p>
-              <p className="mt-3 text-sm text-slate-300">
-                Auto-refresh every 30s. Manual refresh is available after you connect.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Link
-                  href="/dashboard"
-                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:border-white/30 hover:bg-white/8"
+                  href="/dashboard/router"
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50"
                 >
-                  Billing and settings
+                  Open standalone analytics
                 </Link>
                 <Link
                   href="/connect"
-                  className="rounded-full border border-cyan-300/20 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:border-cyan-200/40 hover:bg-cyan-300/10"
+                  className="rounded-full border border-slate-200 bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
                 >
                   API docs
                 </Link>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className="rounded-[36px] border border-white/70 bg-white/75 p-8 shadow-[0_28px_100px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+                  Agent Analytics
+                </p>
+                <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-slate-950 sm:text-5xl">
+                  Watch router traffic, fallbacks, latency, and spend live.
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                  This dashboard polls every 30 seconds and turns raw RouterCall records into live
+                  routing visibility for tool usage, strategy mix, latency percentiles, fallback rate,
+                  and cost movement.
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_50px_rgba(15,23,42,0.2)]">
+                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-cyan-300/80">
+                  Live feed
+                </p>
+                <p className="mt-3 text-sm text-slate-300">
+                  Auto-refresh every 30s. Manual refresh is available after you connect.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href="/dashboard"
+                    className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:border-white/30 hover:bg-white/8"
+                  >
+                    Billing and settings
+                  </Link>
+                  <Link
+                    href="/connect"
+                    className="rounded-full border border-cyan-300/20 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:border-cyan-200/40 hover:bg-cyan-300/10"
+                  >
+                    API docs
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {!apiKey ? (
           <div className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -898,6 +956,6 @@ export function RouterAnalyticsDashboard() {
           </>
         )}
       </div>
-    </main>
+    </RootTag>
   );
 }
