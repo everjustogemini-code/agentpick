@@ -24,9 +24,6 @@ type BillingAccount = {
   billingCycleStart: string;
 };
 
-// Unused: kept for reference (old hosted checkout)
-// type UpgradeResponse = { checkoutUrl: string; };
-
 export default function PricingPageClient() {
   const searchParams = useSearchParams();
   const [draftKey, setDraftKey] = useState('');
@@ -100,7 +97,7 @@ export default function PricingPageClient() {
         const res = await fetch('/api/v1/agents/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'checkout-' + Date.now() }),
+          body: JSON.stringify({ name: `checkout-${Date.now()}` }),
         });
         const data = await res.json();
         if (data.api_key) {
@@ -145,10 +142,10 @@ export default function PricingPageClient() {
 
   const checkoutState = searchParams.get('checkout');
   const checkoutPlanFromUrl = normalizeUpgradePlan(searchParams.get('plan'));
-  const currentPlanLabel = account?.planLabel ?? (account ? getRouterPlanLabel(account.plan) : null);
   const checkoutPlanLabelFromUrl = checkoutPlanFromUrl
     ? UPGRADE_PLAN_CONFIG[checkoutPlanFromUrl].label
     : null;
+  const currentPlanLabel = account?.planLabel ?? (account ? getRouterPlanLabel(account.plan) : null);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -161,7 +158,7 @@ export default function PricingPageClient() {
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base">
           Billing is tied to your AgentPick router API key. Load the key you use in the dashboard,
-          then send that account through Stripe Checkout.
+          then send that account through hosted Stripe Checkout.
         </p>
       </div>
 
@@ -192,13 +189,15 @@ export default function PricingPageClient() {
 
         {account ? (
           <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center">
-            <a
+            <Link
               href="/dashboard"
               className="rounded-2xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-orange-400"
             >
               Go to Dashboard →
-            </a>
-            <span className="text-sm text-white/40">Account loaded. Choose a plan below or manage your dashboard.</span>
+            </Link>
+            <span className="text-sm text-white/40">
+              Account loaded. Choose a plan below or manage your dashboard.
+            </span>
           </div>
         ) : (
           <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
@@ -221,7 +220,7 @@ export default function PricingPageClient() {
 
         {!apiKey && !accountLoading && (
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-sm text-white/40">Don't have a key?</span>
+            <span className="text-sm text-white/40">Don&apos;t have a key?</span>
             <button
               type="button"
               onClick={async () => {
@@ -236,8 +235,9 @@ export default function PricingPageClient() {
                   const data = await res.json();
                   if (data.api_key) {
                     setDraftKey(data.api_key);
-                    // Copy key to clipboard
-                    try { await navigator.clipboard.writeText(data.api_key); } catch {}
+                    try {
+                      await navigator.clipboard.writeText(data.api_key);
+                    } catch {}
                     await loadAccount(data.api_key);
                   } else {
                     setAccountError('Registration failed. Try again.');
@@ -257,11 +257,15 @@ export default function PricingPageClient() {
 
         {apiKey && account && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-            <span className="text-sm text-emerald-400">✓ Key active</span>
-            <code className="flex-1 truncate font-mono text-xs text-white/60">{apiKey.slice(0, 20)}...{apiKey.slice(-6)}</code>
+            <span className="text-sm text-emerald-400">Active key</span>
+            <code className="flex-1 truncate font-mono text-xs text-white/60">
+              {apiKey.slice(0, 20)}...{apiKey.slice(-6)}
+            </code>
             <button
               type="button"
-              onClick={() => { navigator.clipboard.writeText(apiKey); }}
+              onClick={() => {
+                void navigator.clipboard.writeText(apiKey);
+              }}
               className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/5 hover:text-white/80"
             >
               Copy
@@ -332,7 +336,7 @@ export default function PricingPageClient() {
                 {plan.overagePerCall !== null ? (
                   <div className="mt-1 text-orange-300/80">then ${plan.overagePerCall}/call overage</div>
                 ) : (
-                  <div className="mt-1 text-white/35">hard cap — no overage</div>
+                  <div className="mt-1 text-white/35">hard cap - no overage</div>
                 )}
               </div>
 
@@ -363,7 +367,7 @@ export default function PricingPageClient() {
                   disabled={isBusy || exactMatch || higherPlan}
                   className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isBusy && 'Opening checkout…'}
+                  {isBusy && 'Opening checkout...'}
                   {!isBusy && exactMatch && 'Current plan'}
                   {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
                   {!isBusy && !exactMatch && !higherPlan && !account && 'Continue to checkout'}
