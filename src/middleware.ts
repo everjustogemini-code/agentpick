@@ -157,8 +157,13 @@ export function middleware(request: NextRequest) {
     const requestId = generateRequestId();
     response.headers.set('x-request-id', requestId);
 
-    // API responses must not be publicly cached — most are auth-gated and user-specific
+    // API responses must not be publicly cached — most are auth-gated and user-specific.
+    // Vary: Authorization prevents any caching layer from serving an auth'd response
+    // to an unauthenticated request (belt-and-suspenders with no-store).
     response.headers.set('Cache-Control', 'no-store');
+    if (isRouterApi) {
+      response.headers.set('Vary', 'Authorization');
+    }
 
     return response;
   }
