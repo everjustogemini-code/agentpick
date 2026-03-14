@@ -6,7 +6,16 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const agent = await authenticateAgent(request);
+    // Reject missing/whitespace auth early to avoid unnecessary DB lookup
+    const _authHeader = request.headers.get('authorization');
+    let _urlForAuth: URL;
+    try { _urlForAuth = new URL(request.url); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
+    if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
+      return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+    }
+
+    let agent: Awaited<ReturnType<typeof authenticateAgent>>;
+    try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
     const account = await ensureDeveloperAccount(agent.id);
