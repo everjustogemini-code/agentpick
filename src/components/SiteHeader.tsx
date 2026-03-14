@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/live', label: 'Live', key: 'live' },
   { href: '/benchmarks', label: 'Benchmarks', key: 'benchmarks' },
+  { href: '/playground', label: 'Playground', key: 'playground' },
   { href: '/rankings/top-agent-tools', label: 'Rankings', key: 'rankings' },
   { href: '/agents', label: 'Agents', key: 'agents' },
   { href: '/connect', label: 'Router', key: 'router', accent: true },

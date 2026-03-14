@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
+import ScoreRing from '@/components/ScoreRing';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,16 +119,20 @@ export default async function BenchmarksPage() {
           </h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-              <div className="font-mono text-2xl font-bold text-text-primary">{agentCount}</div>
+              <div className="font-mono text-2xl font-bold text-text-primary">
+                <AnimatedCounter value={agentCount} decimals={0} />
+              </div>
               <div className="mt-1 text-xs text-text-muted">Benchmark agents across {DOMAINS.length} domains</div>
             </div>
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
-              <div className="font-mono text-2xl font-bold text-text-primary">{queryCount}</div>
+              <div className="font-mono text-2xl font-bold text-text-primary">
+                <AnimatedCounter value={queryCount} decimals={0} />
+              </div>
               <div className="mt-1 text-xs text-text-muted">Standardized queries (simple → complex)</div>
             </div>
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-4">
               <div className="font-mono text-2xl font-bold text-text-primary">
-                {runCount.toLocaleString()}
+                <AnimatedCounter value={runCount} decimals={0} />
               </div>
               <div className="mt-1 text-xs text-text-muted">Total benchmark tests run</div>
             </div>
@@ -320,9 +326,7 @@ export default async function BenchmarksPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {run.relevanceScore != null && (
-                      <span className="font-mono text-[11px] font-semibold text-text-primary">
-                        {run.relevanceScore.toFixed(1)}/5
-                      </span>
+                      <ScoreRing score={Math.round(run.relevanceScore * 20)} />
                     )}
                     <span className="font-mono text-[11px] text-text-dim">
                       {run.latencyMs}ms

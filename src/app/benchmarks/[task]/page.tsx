@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import ScoreRing from '@/components/ScoreRing';
 
 export const dynamic = 'force-dynamic';
 
@@ -400,8 +401,10 @@ async function DomainBenchmarkPage({
                         </Link>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-sm font-semibold text-text-primary">
-                      {r.avgRelevance.toFixed(1)}/5
+                    <td className="px-3 py-3 text-right">
+                      <div className="flex justify-end">
+                        <ScoreRing score={Math.round(r.avgRelevance * 20)} />
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-sm text-text-primary">
                       {r.avgFreshness.toFixed(1)}/5
@@ -697,8 +700,14 @@ async function TaskBenchmarkPage({
                     <td className="px-3 py-3 text-right font-mono text-sm text-text-primary">
                       {row.avgCost}
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-sm font-bold text-text-primary">
-                      {row.agentScore}
+                    <td className="px-3 py-3 text-right">
+                      {row.agentScore !== '—' ? (
+                        <div className="flex justify-end">
+                          <ScoreRing score={Math.round(parseFloat(row.agentScore) * 20)} />
+                        </div>
+                      ) : (
+                        <span className="font-mono text-sm text-text-primary">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right font-mono text-xs text-text-dim">
                       {fmt(row.count)}
