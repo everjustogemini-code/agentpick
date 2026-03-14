@@ -263,6 +263,10 @@ export function buildRouterAnalytics(
     if (call.createdAt < since || call.createdAt > now) {
       continue;
     }
+    // Skip legacy DB records where toolUsed was not properly recorded
+    if (!call.toolUsed || call.toolUsed === 'unknown') {
+      continue;
+    }
 
     const bucketIndex = clamp(
       Math.floor((call.createdAt.getTime() - since.getTime()) / config.bucketSizeMs),

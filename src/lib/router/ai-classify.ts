@@ -214,12 +214,7 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
-  // Simple/shallow → cheapest that works
-  if (context.type === 'simple') {
-    return filterAvailable(['brave-search', 'serpapi-google', 'serpapi', 'tavily'], capability);
-  }
-
-  // Default balanced
+  // Default balanced (covers simple queries too — AUTO should be >= BALANCED quality)
   return filterAvailable(['tavily', 'exa-search', 'serpapi-google', 'serpapi'], capability);
 }
 

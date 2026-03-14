@@ -337,6 +337,7 @@ export async function getUsageStats(developerId: string, days = 7) {
   const byTool: Record<string, { calls: number; avgLatency: number }> = {};
   const toolGroups = new Map<string, typeof calls>();
   for (const call of calls) {
+    if (!call.toolUsed || call.toolUsed === 'unknown') continue;
     const group = toolGroups.get(call.toolUsed) ?? [];
     group.push(call);
     toolGroups.set(call.toolUsed, group);

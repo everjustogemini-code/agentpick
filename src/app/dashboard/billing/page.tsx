@@ -75,7 +75,7 @@ export default function BillingPage() {
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        setError(data.message ?? data.error ?? 'Upgrade failed.');
+        setError(data.error?.message ?? data.message ?? 'Upgrade failed.');
         setUpgrading(false);
       }
     } catch {
