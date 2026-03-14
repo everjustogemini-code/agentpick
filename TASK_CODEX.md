@@ -1,237 +1,257 @@
-# TASK_CODEX.md — v0.next (2026-03-14)
+# TASK_CODEX.md — Cycle 2
 
-**Agent:** Codex
-**Theme:** CSS design system, hero upgrade, micro-interactions, two API bug fixes
-**Do NOT touch:** `src/app/playground/page.tsx`, `src/components/PlaygroundRequestBuilder.tsx`, `src/components/PlaygroundResponsePanel.tsx`, `src/components/ScoreRing.tsx`, `src/components/AnimatedCounter.tsx`, `src/components/SiteHeader.tsx`, `src/app/api/v1/router/usage/route.ts`, `src/app/benchmarks/page.tsx`, `src/app/benchmarks/[task]/page.tsx`, `src/app/dashboard/[slug]/page.tsx`
+> Agent: Codex | Date: 2026-03-14 | Difficulty: Medium
+> Features: F1A (Aurora hero) + F1B (Dark glassmorphic /connect) + F1C (Card micro-interactions)
 
 ---
 
-## Task 1 — Design System: `src/app/globals.css`
+## Files to Create / Modify
 
-Add the following CSS at the end of `globals.css`. Do NOT remove or modify any existing rules.
+| Action | File |
+|--------|------|
+| MODIFY | `src/app/globals.css` |
+| MODIFY | `src/app/page.tsx` |
+| MODIFY | `src/app/connect/page.tsx` |
 
-### A. Glassmorphism card
+**DO NOT TOUCH:** `src/components/SiteHeader.tsx`, `src/components/ScoreRing.tsx`, `src/components/AnimatedCounter.tsx`, `src/components/PlaygroundShell.tsx`, `src/app/playground/page.tsx`, `src/app/benchmarks/page.tsx`, `src/app/products/[slug]/page.tsx`, `src/app/api/**`
+
+---
+
+## Feature 1A + 1C — CSS Design System Tokens
+
+File: `src/app/globals.css`
+
+**Read the file first.** Append the following blocks at the end of the file (do not remove anything existing).
+
+### Aurora blob keyframes
 
 ```css
-.card-glass {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-}
-```
-
-### B. Interactive card micro-interactions
-
-```css
-.card-interactive {
-  position: relative;
-  overflow: hidden;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-.card-interactive:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
-}
-.card-interactive:active {
-  transform: translateY(-1px);
-}
-.card-interactive::after {
-  content: '';
+/* ── Aurora Blob Animations ─────────────────────────────────── */
+.aurora-blob {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  width: 0;
-  background: #2563EB;
-  transition: width 200ms ease;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  pointer-events: none;
 }
-.card-interactive:hover::after {
-  width: 100%;
+.aurora-blob-1 {
+  width: 600px; height: 400px;
+  background: #6366f1; /* indigo */
+  animation: aurora-drift-1 12s ease-in-out infinite alternate;
+}
+.aurora-blob-2 {
+  width: 500px; height: 350px;
+  background: #0ea5e9; /* cyan */
+  animation: aurora-drift-2 8s ease-in-out infinite alternate;
+}
+.aurora-blob-3 {
+  width: 400px; height: 300px;
+  background: #10b981; /* emerald */
+  animation: aurora-drift-3 10s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes aurora-drift-1 {
+    from { transform: translate(0, 0) rotate(0deg); }
+    to   { transform: translate(120px, -60px) rotate(20deg); }
+  }
+  @keyframes aurora-drift-2 {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-80px, 80px); }
+  }
+  @keyframes aurora-drift-3 {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(60px, 40px) rotate(-15deg); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-interactive {
-    transition: none;
-  }
-  .card-interactive:hover {
-    transform: none;
-  }
-  .card-interactive::after {
-    transition: none;
-  }
+  .aurora-blob { animation: none; }
 }
 ```
 
-### C. CSS custom properties for shadows
+### Card lift micro-interaction
 
 ```css
-:root {
-  --shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
-}
-```
-
-### D. Fade-in animation (used by PlaygroundResponsePanel)
-
-```css
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
+/* ── Card Lift Micro-interaction ─────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .card-lift {
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+    will-change: transform;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .card-lift:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    border-color: rgba(14, 165, 233, 0.4); /* cyan glow border */
   }
-}
-.animate-fadeIn {
-  animation: fadeIn 250ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-fadeIn {
-    animation: none;
+  .card-lift:active {
+    transform: translateY(-1px) scale(1.005);
   }
 }
 ```
 
-### E. Gradient mesh background utility
+---
 
-```css
-.bg-gradient-mesh {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(37, 99, 235, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(99, 102, 241, 0.10) 0%, transparent 55%),
-    #FAFAFA;
-}
+## Feature 1A — Aurora Animated Hero on Homepage
+
+File: `src/app/page.tsx`
+
+**Read the file first.** Find the hero section (the top `<section>` or `<div>` that contains the main `<h1>` and its surrounding gradient/background). Make the following targeted changes:
+
+### 1. Wrap existing hero background container with aurora blobs
+
+Inside the hero's outermost container (keep existing `overflow-hidden relative` or add them), add three blob divs as the **first children** before any existing content:
+
+```tsx
+{/* Aurora blobs */}
+<div className="aurora-blob aurora-blob-1" style={{ top: '-80px', left: '-100px' }} />
+<div className="aurora-blob aurora-blob-2" style={{ top: '60px', right: '-60px' }} />
+<div className="aurora-blob aurora-blob-3" style={{ bottom: '-40px', left: '30%' }} />
+
+{/* Radial vignette mask over blobs */}
+<div
+  className="absolute inset-0 pointer-events-none"
+  style={{
+    background: 'radial-gradient(ellipse 70% 60% at 50% 40%, transparent 30%, rgba(3,7,18,0.85) 80%)',
+  }}
+/>
 ```
 
----
+Make sure the hero container has `position: relative` and `overflow: hidden` so blobs don't escape.
 
-## Task 2 — Hero upgrade: `src/app/page.tsx`
+### 2. Update hero `<h1>` typography
 
-Read the file first. Make these changes only — do not alter any other sections.
+Find the existing `<h1>` element. Replace its className with:
 
-### 2a. Hero background
-
-Find the hero section's outermost wrapper div (look for `bg-\[#FAFAFA\]` or a plain light background class on the hero).
-
-Replace that background with `bg-gradient-mesh` (the utility class added in globals.css above). If the element uses inline Tailwind arbitrary bg values, switch to the class.
-
-If the hero wrapper has `className="... bg-[#FAFAFA] ..."`, change it to `className="... bg-gradient-mesh ..."`.
-
-### 2b. Hero headline typography
-
-Find the `<h1>` inside the hero section. Apply:
-- `style={{ fontSize: 'clamp(3rem, 7vw, 5.5rem)', fontWeight: 800, letterSpacing: '-0.03em' }}`
-- Remove any conflicting Tailwind text-size classes (`text-4xl`, `text-5xl`, `text-6xl`, etc.) from the h1's className. Keep all other classes.
-
-### 2c. Hero subheadline typography
-
-Find the `<p>` or subtitle element directly below the `<h1>` in the hero.
-- Ensure it has: `text-[#525252]` (or `text-neutral-600`), `text-xl` (≈1.25rem), `leading-relaxed` (line-height 1.6)
-- Font weight: 400 (remove any `font-medium` or `font-semibold` if present on this element)
-
----
-
-## Task 3 — Apply `.card-glass` to pricing, strategy, and competitive position cards
-
-You need to find and update 3 sets of card components. Read each file before editing.
-
-### 3a. Pricing cards
-
-Grep for "pricing" in `src/components/` and `src/app/` to find the pricing card component.
-- Likely file: `src/components/PricingCard.tsx` or similar.
-- Find the root card `<div>` with its border/background classes.
-- Add `card-glass` to its className. Keep all existing classes.
-- Also add `card-interactive` to the same element for hover lift.
-
-### 3b. Strategy cards
-
-Grep for "strategy" in `src/components/` to find the strategy card component.
-- Likely file: `src/components/StrategyCard.tsx` or similar.
-- Find the root card `<div>`.
-- Add `card-glass card-interactive` to its className.
-
-### 3c. Competitive position card on `/dashboard/[slug]`
-
-This card was recently added (part of feat/competitive-snapshot merge). Do NOT modify `src/app/dashboard/[slug]/page.tsx` — that file is owned by Claude Code.
-
-Instead, look for a dedicated component: `src/components/CompetitivePositionCard.tsx` or similar.
-- Add `card-glass card-interactive` to the root card div's className.
-
-### 3d. Benchmark score cards
-
-Grep for benchmark-related card components in `src/components/`.
-- Likely file: `src/components/BenchmarkCard.tsx` or `src/components/BenchmarkResultCard.tsx`.
-- Add `card-glass card-interactive` to the root card div's className.
-
----
-
-## Task 4 — Bug Fix A: Crawl endpoint accepts flat `{url}` shape
-
-Modify: `src/app/api/v1/route/crawl/route.ts`
-
-Read the file first. Find the Zod schema that validates the request body.
-
-**Current:** requires `{ params: { url: "..." } }` — flat `{ url: "..." }` returns 400.
-
-**Fix:** Replace the current body schema with a union that accepts both shapes, then normalize:
-
-```ts
-import { z } from 'zod'
-
-const CrawlBody = z.union([
-  z.object({ params: z.object({ url: z.string().url() }) }),
-  z.object({ url: z.string().url() })
-])
-
-// After parsing:
-const parsed = CrawlBody.parse(body)
-const url = 'params' in parsed ? parsed.params.url : parsed.url
+```tsx
+className="font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400"
 ```
 
-- Do not change any other logic in the handler — only the schema definition and the URL extraction line.
-- If the file already has `const url = body.params.url` or similar, replace it with the normalized form above.
+Keep the existing text content exactly as-is. Do not change font size classes — only add/replace the color/gradient classes listed above.
+
+### 3. Add eyebrow label above `<h1>`
+
+Directly above the `<h1>`, insert:
+
+```tsx
+<p className="uppercase tracking-widest text-xs text-cyan-400 mb-3">
+  AI Tool Router
+</p>
+```
+
+If an eyebrow label already exists, update its className to match the spec above instead of inserting a duplicate.
 
 ---
 
-## Task 5 — Bug Fix B: Priority endpoint normalizes `tools`/`priority_tools`/`search`
+## Feature 1B — Dark Glassmorphic `/connect` Page
 
-Modify: `src/app/api/v1/router/priority/route.ts`
+File: `src/app/connect/page.tsx`
 
-Read the file first. Find where `tools` or `priority_tools` is read from the request body.
+**Read the file first.** Apply the following changes throughout the file. Read each section carefully before editing.
 
-**Current:** Only reads `body.tools` or `body.priority_tools`, so `{ "search": [...] }` returns 400.
+### Global page background
 
-**Fix:** At the entry of the handler (before any validation of the tools array), add:
+Find the outermost page wrapper element. Replace any `bg-white`, `bg-gray-50`, or `bg-gray-100` with `bg-gray-950`. The page should be dark throughout.
 
-```ts
-const tools = body.tools ?? body.priority_tools ?? body.search
-if (!tools?.length) {
-  return NextResponse.json(
-    { error: 'VALIDATION_ERROR', message: 'Provide tools or priority_tools' },
-    { status: 400 }
+### Card elements
+
+For every element that currently uses `bg-white` as a card background, replace with:
+```
+bg-white/5 border border-white/10 backdrop-blur-md rounded-xl
+```
+Also add `-webkit-backdrop-filter: blur(12px)` via inline `style={{ WebkitBackdropFilter: 'blur(12px)' }}` on each glass card for Safari 17+ compatibility.
+
+### HTTP method badges
+
+Find any HTTP method badges (e.g., `POST`, `GET`). Replace their className with:
+```
+bg-gradient-to-r from-blue-600 to-blue-500 text-white px-2 py-0.5 rounded text-xs font-mono
+```
+
+### Strategy chips / tag pills
+
+Find strategy or tag chips (small clickable or display pills). Add the following hover class to each:
+```
+hover:shadow-[0_0_14px_rgba(16,185,129,0.35)]
+```
+
+### Terminal / code block
+
+Find the code block (likely a `<pre>` or `<code>` element showing an API example). Wrap it in a terminal chrome container:
+
+```tsx
+<div className="rounded-xl overflow-hidden border border-white/10">
+  {/* Terminal chrome header */}
+  <div className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border-b border-white/10">
+    {/* Traffic light dots */}
+    <span className="w-3 h-3 rounded-full bg-red-500" />
+    <span className="w-3 h-3 rounded-full bg-yellow-400" />
+    <span className="w-3 h-3 rounded-full bg-green-500" />
+    {/* Filename tab */}
+    <span className="ml-3 text-xs text-gray-400 font-mono bg-white/5 px-3 py-0.5 rounded-t">
+      agentpick_example.py
+    </span>
+    {/* Copy button — right-aligned */}
+    <CopyCodeButton code={/* the code string */} />
+  </div>
+  {/* Existing pre/code element goes here — keep its content unchanged */}
+  {existingPreOrCodeElement}
+</div>
+```
+
+Add a `CopyCodeButton` component **inline in the same file** (do not create a new file):
+
+```tsx
+"use client"
+function CopyCodeButton({ code }: { code: string }) {
+  const [copied, setCopied] = React.useState(false)
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(code)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }}
+      className="ml-auto text-xs text-gray-400 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded transition-colors"
+      style={{ transition: 'opacity 200ms' }}
+    >
+      {copied ? '✓ Copied' : 'Copy'}
+    </button>
   )
 }
 ```
 
-Then use `tools` everywhere the handler previously used `body.tools` or `body.priority_tools`.
+If the file is currently a pure server component, add `"use client"` at the top of the file to support the copy button. If it already uses any client hooks, it's already a client component.
 
-- Do not change any other logic — only the field normalization at the top of the handler.
-- Match the existing error response format (check how other validation errors are returned in this file).
+### Text color updates (dark mode)
+
+Replace these text colors throughout the file:
+- `text-gray-900` → `text-white`
+- `text-gray-800` → `text-gray-100`
+- `text-gray-700` → `text-gray-200`
+- `text-gray-600` → `text-gray-400`
+- `text-gray-500` → `text-gray-500` (keep)
+- `border-gray-200` → `border-white/10`
+- `border-gray-100` → `border-white/5`
+
+### Add `.card-lift` to interactive cards
+
+Find interactive cards on the page (tool cards, strategy cards, pricing tier cards if present). Add `card-lift` to their `className` alongside existing classes. This class is defined in `globals.css` and provides the hover lift animation.
 
 ---
 
 ## Acceptance Criteria
 
-- `globals.css` compiles without errors — no broken CSS syntax
-- `.card-glass` produces visible blur/glass effect against a gradient background
-- `.card-interactive` produces a 4px lift on hover with blue underline sweep
-- All animations include `prefers-reduced-motion: reduce` override (no motion)
-- Hero headline renders at ≥ 48px on desktop, responsive via clamp
-- `POST /api/v1/route/crawl` with `{ "url": "https://example.com" }` returns 200 (no 400)
-- `POST /api/v1/router/priority` with `{ "search": [...] }` routes correctly (no 400)
-- No existing passing tests regress
+- [ ] Homepage hero shows animated aurora blobs with radial vignette mask
+- [ ] Hero `<h1>` uses gradient text (`from-white via-gray-100 to-gray-400`)
+- [ ] Eyebrow label `text-cyan-400 uppercase tracking-widest text-xs` above `<h1>`
+- [ ] `/connect` page background is `bg-gray-950` (dark throughout)
+- [ ] All cards on `/connect` are glass: `bg-white/5 border border-white/10 backdrop-blur-md`
+- [ ] `-webkit-backdrop-filter` present on glass cards (Safari 17+ compatibility)
+- [ ] Code block has terminal chrome: colored dots + filename tab + copy button
+- [ ] Copy button shows `✓ Copied` for 2s then reverts
+- [ ] Strategy/tool chips have emerald glow ring on hover
+- [ ] `.card-lift` class in `globals.css` with `prefers-reduced-motion` guard
+- [ ] Aurora blobs stop animating when `prefers-reduced-motion: reduce`
+- [ ] Zero horizontal scroll introduced on any viewport
+- [ ] No existing functionality broken on homepage or `/connect`
