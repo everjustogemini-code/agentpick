@@ -27,10 +27,12 @@ const STRATEGY_ALIASES: Record<string, Strategy> = {
   CHEAPEST: 'cheapest',
   MOST_ACCURATE: 'best_performance',
   MANUAL: 'balanced',
+  CUSTOM: 'balanced',
   AUTO: 'auto',
   // Alt forms
   fastest: 'most_stable',
   most_accurate: 'best_performance',
+  custom: 'balanced',
   BEST_PERFORMANCE: 'best_performance',
   MOST_STABLE: 'most_stable',
 };

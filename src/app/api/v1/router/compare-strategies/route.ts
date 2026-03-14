@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       capability,
       category,
       strategies: result,
-      recommendation: 'Use balanced for general use. Switch to most_stable for uptime, cheapest for batch jobs, best_performance for research.',
+      recommendation: 'Use BALANCED for general use. Switch to FASTEST for uptime, CHEAPEST for batch jobs, MOST_ACCURATE for research.',
     });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
