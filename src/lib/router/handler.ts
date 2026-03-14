@@ -164,6 +164,13 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     // If account check fails, allow routing (fail-open for /route/* surface)
   }
 
+  // 4b. BYOK plan restriction — FREE plan cannot use bring-your-own API keys
+  if (body.tool_api_key && preAccount?.plan === 'FREE') {
+    return apiError('PLAN_RESTRICTED', 'BYOK is available on STARTER and above.', 403, {
+      details: { plan: preAccount.plan },
+    });
+  }
+
   // 5. Route the request
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body);
@@ -180,7 +187,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         response,
         strategyUsed as any,
         !!body.tool_api_key,
-        response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [],
+        response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [response.meta.tool_used],
       );
     } catch (recordErr) {
       // Don't fail the request if recording fails

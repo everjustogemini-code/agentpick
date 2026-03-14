@@ -37,17 +37,22 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
+  const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null;
+
   return Response.json({
     plan: account.plan,
     plan_label: getRouterPlanLabel(account.plan),
     daily_limit: limits.limit,
     daily_used: limits.used,
     daily_remaining: limits.remaining,
+    monthlyLimit,
+    callsThisMonth,
+    strategy: account.strategy,
     stats,
     ai_routing_summary: stats.aiRouting,
     account: {
       plan: account.plan,
-      monthlyLimit: (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null,
+      monthlyLimit,
       callsThisMonth,
       billingCycleStart: account.billingCycleStart,
       strategy: account.strategy,
