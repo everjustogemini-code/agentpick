@@ -18,11 +18,14 @@ export interface QueryContext {
   freshness: 'realtime' | 'recent' | 'any';
 }
 
+// When Haiku classification times out or fails, default to 'news' type so the router
+// selects a quality realtime tool (tavily) rather than the simple-query default ordering
+// which can route to serpapi-google in some key-availability configurations.
 const DEFAULT_CONTEXT: QueryContext = {
-  type: 'simple',
+  type: 'news',
   domain: 'general',
   depth: 'shallow',
-  freshness: 'any',
+  freshness: 'recent',
 };
 
 // In-memory cache: key → { result, timestamp }
@@ -66,6 +69,10 @@ export function fastClassify(query: string): QueryContext | null {
   // Tech/AI company or product signal — combined with any newsTerms triggers a news classification
   // without requiring an explicit year, since product launches are clearly time-sensitive.
   const techCompanySignal = /\b(openai|anthropic|google|microsoft|apple|meta|nvidia|amazon|tesla|spacex|stripe|figma|vercel|mistral|gemini|claude|gpt|llama|sora|dall-e|chatgpt|copilot)\b/i;
+  // Generic topic/domain signal — used to classify "latest X" / "recent X" without requiring
+  // a specific company name or year. Prevents these queries from falling through to Haiku
+  // where slightly different phrasings can return inconsistent classifications.
+  const genericTopicSignal = /\b(ai|ml|machine learning|deep learning|llm|model|framework|api|tool|platform|startup|market|crypto|blockchain|defi|nft|regulation|law|policy|security|privacy|feature|product|service|update|release|version)\b/i;
   // Explicit recency terms always trigger news classification — avoids LLM non-determinism
   if (explicitRecencySignal.test(lower)) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
@@ -73,7 +80,8 @@ export function fastClassify(query: string): QueryContext | null {
   }
   const hasNewsWithDomain = newsTerms.test(lower) && (
     yearPattern.test(lower) ||
-    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower))
+    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower)) ||
+    genericTopicSignal.test(lower)  // "latest AI tools", "recent ML updates", "latest crypto news" etc.
   );
   if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
