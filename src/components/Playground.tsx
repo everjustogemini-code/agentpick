@@ -62,6 +62,26 @@ function buildPlaygroundRequestBody(capability: Capability, query: string) {
   };
 }
 
+function normalizeCrawlInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const candidate =
+    trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function escapeSingleQuotedShell(value: string) {
   return value.replace(/'/g, `'\"'\"'`);
 }
@@ -151,6 +171,17 @@ export default function Playground() {
   async function handleRoute() {
     if (!query.trim() || loading) return;
 
+    const trimmedQuery = query.trim();
+    if (capability === 'crawl' && !normalizeCrawlInput(trimmedQuery)) {
+      setResponse({
+        capability,
+        error: 'Enter a valid http(s) URL for crawl requests.',
+        results: [],
+      });
+      setResultVersion((current) => current + 1);
+      return;
+    }
+
     setLoading(true);
     setResponse(null);
 
@@ -159,7 +190,7 @@ export default function Playground() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify(buildPlaygroundRequestBody(capability, query)),
+        body: JSON.stringify(buildPlaygroundRequestBody(capability, trimmedQuery)),
       });
 
       let data: PlaygroundResponse;
@@ -295,7 +326,10 @@ export default function Playground() {
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-white/35">
-              Cmd/Ctrl + Enter routes the current request. {query.length}/{queryLimit}
+              Cmd/Ctrl + Enter routes the current request.
+              {capability === 'crawl' ? ' Enter a valid URL.' : ''}
+              {' '}
+              {query.length}/{queryLimit}
             </p>
 
             <button

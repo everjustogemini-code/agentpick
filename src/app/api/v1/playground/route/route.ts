@@ -311,11 +311,21 @@ function normalizeCapability(value: unknown): Capability | null {
   return VALID_CAPABILITIES.includes(value as Capability) ? (value as Capability) : null;
 }
 
-function normalizeCrawlQuery(query: string): string {
-  if (query.startsWith('http://') || query.startsWith('https://')) {
-    return query;
+function normalizeCrawlQuery(query: string): string | null {
+  const candidate =
+    query.startsWith('http://') || query.startsWith('https://')
+      ? query
+      : `https://${query}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
   }
-  return `https://${query}`;
 }
 
 function getQueryLimit(capability: Capability): number {
@@ -324,7 +334,7 @@ function getQueryLimit(capability: Capability): number {
 
 function buildParams(capability: Capability, query: string): Record<string, unknown> {
   if (capability === 'crawl') {
-    return { url: normalizeCrawlQuery(query) };
+    return { url: query };
   }
 
   if (capability === 'embed') {
@@ -417,10 +427,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const normalizedQuery =
+    capability === 'crawl' ? normalizeCrawlQuery(query) : query;
+
+  if (!normalizedQuery) {
+    return jsonNoStore(
+      { error: 'crawl requests require a valid http(s) URL.' },
+      { status: 400 },
+    );
+  }
+
   try {
     const playgroundAgent = await getPlaygroundAgent();
     const { response } = await routeRequest(playgroundAgent.id, capability, {
-      params: buildParams(capability, query),
+      params: buildParams(capability, normalizedQuery),
       strategy: 'auto',
     });
 

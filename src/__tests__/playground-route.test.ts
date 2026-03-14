@@ -154,6 +154,58 @@ describe('playground route', () => {
     ]);
   });
 
+  it('normalizes schemaless crawl URLs before routing', async () => {
+    mocks.routeRequest.mockResolvedValue({
+      response: {
+        data: {
+          url: 'https://agentpick.dev/',
+          title: 'AgentPick',
+          markdown: 'Agent router homepage',
+        },
+        meta: {
+          tool_used: 'firecrawl',
+          latency_ms: 321,
+          trace_id: 'trace_crawl_1',
+        },
+      },
+    });
+
+    const response = await POST(
+      createRequest({
+        capability: 'crawl',
+        query: 'agentpick.dev',
+      }, '198.51.100.9'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.routeRequest).toHaveBeenCalledWith(
+      'agent_playground',
+      'crawl',
+      expect.objectContaining({
+        params: {
+          url: 'https://agentpick.dev/',
+        },
+      }),
+    );
+  });
+
+  it('rejects invalid crawl URLs before routing upstream', async () => {
+    const response = await POST(
+      createRequest({
+        capability: 'crawl',
+        query: 'not a url at all',
+      }, '198.51.100.10'),
+    );
+
+    expect(response.status).toBe(400);
+
+    const json = await response.json();
+    expect(json).toMatchObject({
+      error: 'crawl requests require a valid http(s) URL.',
+    });
+    expect(mocks.routeRequest).not.toHaveBeenCalled();
+  });
+
   it('rate limits each IP after five requests per minute', async () => {
     mocks.routeRequest.mockResolvedValue({
       response: {
