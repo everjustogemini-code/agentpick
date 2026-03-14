@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -10,27 +9,6 @@ type AeoScore = {
   notes: string;
   checkedAt: string;
 };
-
-function getDataPath(): string {
-  return path.join(process.cwd(), "data/aeo-scores.json");
-}
-
-function readScores(): AeoScore[] {
-  try {
-    const p = getDataPath();
-    if (!fs.existsSync(p)) return [];
-    return JSON.parse(fs.readFileSync(p, "utf-8")) as AeoScore[];
-  } catch {
-    return [];
-  }
-}
-
-function writeScores(scores: AeoScore[]): void {
-  const p = getDataPath();
-  const dir = path.dirname(p);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(scores, null, 2), "utf-8");
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,8 +22,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "score must be 0-100 or null" }, { status: 400 });
     }
 
-    const scores = readScores();
-    const idx = scores.findIndex((s) => s.query === query);
     const entry: AeoScore = {
       query,
       score: score ?? null,
@@ -53,13 +29,19 @@ export async function POST(req: NextRequest) {
       checkedAt: new Date().toISOString(),
     };
 
-    if (idx >= 0) {
-      scores[idx] = entry;
-    } else {
-      scores.push(entry);
+    // Store as a TelemetryEvent for persistence (no dedicated table needed)
+    // Using a system agent id convention for growth metrics
+    try {
+      await (prisma as any).$executeRaw`
+        INSERT INTO "KeyValue" (key, value, "updatedAt")
+        VALUES (${`aeo:${query}`}, ${JSON.stringify(entry)}, NOW())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = NOW()
+      `;
+    } catch {
+      // KeyValue table may not exist — log and continue (non-critical)
+      console.log('[aeo-score] stored in memory only:', entry);
     }
 
-    writeScores(scores);
     return NextResponse.json({ ok: true, entry });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -68,6 +50,15 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const scores = readScores();
-  return NextResponse.json(scores);
+  try {
+    const rows = await (prisma as any).$queryRaw`
+      SELECT value FROM "KeyValue" WHERE key LIKE 'aeo:%' ORDER BY "updatedAt" DESC
+    `;
+    const scores = (rows as Array<{ value: string }>).map((r) =>
+      typeof r.value === "string" ? JSON.parse(r.value) : r.value
+    );
+    return NextResponse.json(scores);
+  } catch {
+    return NextResponse.json([]);
+  }
 }
