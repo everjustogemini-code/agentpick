@@ -142,6 +142,12 @@ Also available: /route/crawl, /route/embed, /route/finance`}</pre>
               <span className="text-text-dim">$99/mo</span>
             </div>
           </div>
+          <Link
+            href="/pricing"
+            className="mt-5 inline-block text-sm font-medium text-orange-400 underline underline-offset-4"
+          >
+            Compare plans and upgrade
+          </Link>
         </div>
 
         {/* Two ways to manage */}

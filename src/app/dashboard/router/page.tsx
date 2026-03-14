@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { getRouterPlanLabel } from '@/lib/router/plans';
 
 /* ─── Types ─── */
 interface AccountInfo {
   id: string;
   plan: string;
+  planLabel?: string;
   strategy: string;
   priorityTools: string[];
   excludedTools: string[];
@@ -414,6 +416,7 @@ export default function RouterDashboardPage() {
   /* ─── Dashboard ─── */
   const stats = usage?.stats;
   const maskedKey = apiKey.slice(0, 12) + '...' + apiKey.slice(-4);
+  const planLabel = account.planLabel ?? getRouterPlanLabel(account.plan);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -426,7 +429,7 @@ export default function RouterDashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-medium text-orange-400 border border-orange-500/20">
-            {account.plan}
+            {planLabel}
           </span>
           <span className="text-xs text-white/40">
             {usage?.daily_used ?? 0} / {usage?.daily_limit ?? 0} today
@@ -597,6 +600,10 @@ export default function RouterDashboardPage() {
             <span className="font-mono text-orange-400">{STRATEGY_DISPLAY[account.strategy] ?? account.strategy.toLowerCase()}</span>
           </div>
           <div className="flex items-center justify-between">
+            <span className="text-white/40">Plan</span>
+            <span className="font-mono text-orange-400">{planLabel}</span>
+          </div>
+          <div className="flex items-center justify-between">
             <span className="text-white/40">Fallback enabled</span>
             <span className="font-mono text-orange-400">{account.fallbackEnabled ? 'Yes' : 'No'}</span>
           </div>
@@ -643,7 +650,7 @@ export default function RouterDashboardPage() {
             Unlock BYOK, higher limits, and priority support.
           </p>
           <Link
-            href="/connect"
+            href="/pricing"
             className="mt-3 inline-block rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white hover:bg-orange-600 transition-colors shadow-glow-orange"
           >
             View Plans →
