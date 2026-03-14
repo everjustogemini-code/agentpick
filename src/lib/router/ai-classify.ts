@@ -152,6 +152,9 @@ export async function getClassification(query: string, capability: string): Prom
     classificationCache.set(key, { result, timestamp: Date.now() });
     return { context: result, cached: false, classificationMs: ms };
   } catch {
+    // Cache the default so the same query does not retry Haiku (and timeout again) on the
+    // next call. This ensures routing is both consistent and fast when Haiku is unavailable.
+    classificationCache.set(key, { result: DEFAULT_CONTEXT, timestamp: Date.now() });
     return { context: DEFAULT_CONTEXT, cached: false, classificationMs: Date.now() - start };
   }
 }
