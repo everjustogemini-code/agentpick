@@ -210,13 +210,24 @@ async function discoverTools(args: {
     where.weightedScore = { gte: args.min_score };
   }
 
-  // If use_case is provided, search in name, tagline, and tags
+  // If use_case is provided, search broadly in name, tagline, description, and tags
   if (args.use_case) {
-    where.OR = [
+    const q = args.use_case.toLowerCase();
+    // Split into keywords for broader matching
+    const keywords = q.split(/\s+/).filter(k => k.length > 2);
+    const conditions: Record<string, unknown>[] = [
       { name: { contains: args.use_case, mode: 'insensitive' } },
       { tagline: { contains: args.use_case, mode: 'insensitive' } },
-      { tags: { has: args.use_case.toLowerCase() } },
+      { description: { contains: args.use_case, mode: 'insensitive' } },
+      { tags: { has: q } },
     ];
+    // Also match individual keywords
+    for (const kw of keywords) {
+      conditions.push({ name: { contains: kw, mode: 'insensitive' } });
+      conditions.push({ tagline: { contains: kw, mode: 'insensitive' } });
+      conditions.push({ tags: { has: kw } });
+    }
+    where.OR = conditions;
   }
 
   const limit = Math.min(20, Math.max(1, args.limit ?? 5));
