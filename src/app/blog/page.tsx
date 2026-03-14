@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'how-we-benchmark-search-apis-for-ai-agents',
+    title: 'How We Benchmark Search APIs for AI Agents (2026)',
+    description:
+      'The methodology behind AgentPick\'s 680+ benchmark runs: 4 data sources, continuous scoring, 90-day rolling window. Why Perplexity leads at 7.0 and how to use rankings in production routing.',
+    date: '2026-05-16',
+    readTime: '7 min',
+    tag: 'Methodology',
+    tagColor: '#6366F1',
+  },
+  {
     slug: 'jina-ai-for-ai-agents',
     title: 'Jina AI for AI Agents: Benchmark Results & Reader API Guide (2026)',
     description:

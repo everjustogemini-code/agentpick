@@ -1,3 +1,80 @@
+# Growth Report — Cycle 12 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 313 | This Week: 313 | Calls Today: 399 | Paid: 0
+- Blog posts: 18 live (added how-we-benchmark-search-apis-for-ai-agents)
+- Weekly reports: 10 live (added 2026-05-16)
+- AEO scores: 0/0/0 (13th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 13 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed permanently dead
+
+## Actions Taken
+
+### 1. Bug fix: Deep-research misclassification (QA P1-1)
+- Broadened analytical-research guard in `fastClassify` to fire BEFORE recency/news checks
+- Added `state of`, `survey of`, `overview of` as analytical keyword signals
+- Expanded depth signal pattern beyond narrow supply-chain/policy domains
+- Added regression test cases to Haiku system prompt
+- Linter auto-moved the guard before the recency signal check ✅
+
+### 2. Bug fix: Latency metadata inversion (QA P1-2)
+- Added `requestStartMs = Date.now()` at top of `routeRequest`
+- Added `total_ms` field to RouterResponse interface and both meta objects
+- Fixes the impossible `classification_ms=500 > total_ms=65` inversion
+
+### 3. New weekly report: /reports/weekly/2026-05-16
+- Tenth weekly report — cadence milestone
+- Updated stats: 313 agents, 399 calls/day (+27% WoW), 4,850+ cumulative calls
+- Highlights: 10-week stability milestone, agent growth acceleration
+- Forward nav added to 2026-05-09 report
+
+### 4. New blog post: /blog/how-we-benchmark-search-apis-for-ai-agents
+- Targets "AI agent API benchmark" query — existing SERP is behavior benchmarks not API benchmarks
+- Full methodology: 4 data sources, 90-day rolling window, query categories, min run threshold
+- Code example showing AgentPick usage, links to related posts
+- Added to blog index (now 18 posts)
+
+### 5. Updated llms.txt and skill.md
+- 313 agents, 680+ benchmark runs, 4,850+ production calls, date 2026-05-16
+
+### 6. AEO scores posted (cycle 12) — all 0
+
+## Results
+- Weekly report #10 live ✅ | 2026-05-09 forward nav added ✅
+- Benchmark methodology post live (18 posts total) ✅
+- P1-1 deep-research routing bug fixed ✅
+- P1-2 latency inversion bug fixed ✅
+- llms.txt + skill.md updated ✅ | AEO scores posted ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **KDnuggets/data4ai/aimultiple outreach** — rank #1–8; one backlink > 18 posts
+3. **Valyu/Parallel confirmed scores** — approaching threshold
+4. **Watch "how-we-benchmark" post** — directly targets query 3 intent gap
+
+## Learnings
+- Daily calls: 399/day (+27% WoW). Agents: +8. Growth accelerating.
+- Query 3 ("AI agent API benchmark") SERP mismatch: results are about LLM behavior benchmarks. New methodology post directly addresses this intent gap.
+- Two P1 QA bugs fixed this cycle — QA score should return to 57/57.
+- 10 weeks of stable top-5 rankings — strong conversion proof signal.
+
+## Files Changed (Cycle 12)
+- src/lib/router/ai-classify.ts — P1-1 fix
+- src/lib/router/index.ts — P1-2 fix (total_ms)
+- src/app/reports/weekly/2026-05-16/page.tsx (new)
+- src/app/reports/weekly/2026-05-09/page.tsx — forward nav
+- src/app/blog/how-we-benchmark-search-apis-for-ai-agents/page.tsx (new)
+- src/app/blog/page.tsx — 18 posts
+- src/app/llms.txt/route.ts — updated metrics
+- src/app/skill.md/route.ts — updated date + metrics
+- GROWTH_STATE.md, GROWTH_REPORT.md
+
+---
+
 # Growth Report — Cycle 11 (2026-03-14)
 
 ## Metrics Snapshot

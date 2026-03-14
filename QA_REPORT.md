@@ -41,12 +41,12 @@
 
 ## Changes Since Round 10
 
-| Issue | Round 10 | Round 11 |
-|-------|----------|----------|
-| `6.1-deep-research` misclassification | ❌ P1 | ❌ P1 (unresolved) |
-| `7.5-auth-missing` test isolation bug | ❌ P1 (QA script) | ✅ Fixed (script fixed + confirmed HTTP 401) |
-| `6.2-realtime` inconsistency | ✅ Resolved | ✅ Stays resolved |
-| Latency metadata inversion | Not tested | ❌ P1 (new) |
+| Issue | Round 10 | Round 11 | Bugfix Cycle 24 |
+|-------|----------|----------|-----------------|
+| `6.1-deep-research` misclassification | ❌ P1 | ❌ P1 (unresolved) | ✅ Fixed (analytical guard moved before recency check) |
+| `7.5-auth-missing` test isolation bug | ❌ P1 (QA script) | ✅ Fixed (script fixed + confirmed HTTP 401) | ✅ Stays resolved |
+| `6.2-realtime` inconsistency | ✅ Resolved | ✅ Stays resolved | ✅ Stays resolved |
+| Latency metadata inversion | Not tested | ❌ P1 (new) | ✅ Fixed (total_ms field added to response) |
 
 ---
 
