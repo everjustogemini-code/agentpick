@@ -5,7 +5,7 @@ describe('aiRoute — tool ordering by classification', () => {
   it('routes realtime finance to fast tools', () => {
     const ctx: QueryContext = { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'realtime' };
     const tools = aiRoute(ctx, 'search');
-    // Realtime prefers tavily (high quality + speed) first; serpapi-google is no longer in CAPABILITY_TOOLS
+    // Realtime should prefer tavily (fast) first
     expect(tools[0]).toBe('tavily');
     expect(tools.length).toBeGreaterThan(0);
   });
@@ -28,8 +28,7 @@ describe('aiRoute — tool ordering by classification', () => {
   it('routes simple to quality-first tools', () => {
     const ctx: QueryContext = { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
-    // Simple uses quality-first ordering (same as news/realtime) for determinism
-    expect(tools[0]).toBe('tavily');
+    expect(tools[0]).toBe('tavily'); // Deterministic first pick
     expect(tools.length).toBeGreaterThan(0);
   });
 
@@ -43,7 +42,7 @@ describe('aiRoute — tool ordering by classification', () => {
   it('always includes all capability tools as fallbacks', () => {
     const ctx: QueryContext = { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
-    // Should include all 9 search tools (serpapi-google removed from CAPABILITY_TOOLS)
+    // Should include all 9 search tools
     expect(tools.length).toBe(9);
   });
 });

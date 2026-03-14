@@ -34,10 +34,8 @@ describe('Capability validation', () => {
 describe('Strategy-based ranking', () => {
   it('best_performance ranks highest quality first', () => {
     const ranked = getRankedToolsForCapability('search', 'best_performance');
-    // First configured tool is first; quality-sorted order is preserved within each group
-    expect(ranked.length).toBeGreaterThan(0);
-    expect(ranked).toContain('exa-search');
-    expect(ranked).toContain('perplexity-search');
+    expect(ranked).toContain('exa-search'); // quality 4.6
+    expect(ranked).toContain('perplexity-search'); // quality 4.2
   });
 
   it('cheapest ranks lowest cost first (with quality floor)', () => {
@@ -48,8 +46,7 @@ describe('Strategy-based ranking', () => {
   it('most_stable ranks highest stability first (with quality floor)', () => {
     const ranked = getRankedToolsForCapability('search', 'most_stable');
     expect(ranked.length).toBeGreaterThan(0);
-    // serpapi has highest stability (0.98); it will be first among configured tools
-    expect(ranked).toContain('serpapi');
+    expect(ranked).toContain('serpapi'); // stability 0.98
   });
 
   it('all canonical strategies return non-empty results', () => {
