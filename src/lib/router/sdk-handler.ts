@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, routerSdkLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
-import { routeRequest, CAPABILITY_TOOLS } from './index';
+import { routeRequest, CAPABILITY_TOOLS, getRankedToolsForCapability } from './index';
 import type { RouterRequest, Strategy } from './index';
 import {
   applyStrategy,
@@ -222,7 +222,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       routeBody,
       {
         data: { error: message },
-        meta: { tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? 'unknown', latency_ms: 0, fallback_used: false, trace_id: `trace_fail_${Date.now()}` },
+        meta: { tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? 'unknown', latency_ms: 0, fallback_used: false, trace_id: `trace_fail_${Date.now()}` },
       },
       strategyUsed,
       Boolean(routeBody.tool_api_key),

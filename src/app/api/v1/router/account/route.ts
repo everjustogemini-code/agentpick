@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import {
+  ROUTER_PLAN_MONTHLY_LIMITS,
+  getRouterPlanLabel,
+  getRouterPlanSlug,
+} from '@/lib/router/plans';
 import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
@@ -11,17 +16,23 @@ export async function GET(request: NextRequest) {
   if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
   const account = await ensureDeveloperAccount(agent.id);
+  const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? 3000;
 
-  const planLimits: Record<string, number> = {
-    FREE: 3000, STARTER: 10000, PRO: 100000, ENTERPRISE: 1_000_000,
-  };
-  const monthlyLimit = planLimits[account.plan] ?? 3000;
+  // Count calls this calendar month (not all-time totalCalls)
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const callsThisMonth = await db.routerCall.count({
+    where: { developerId: account.id, createdAt: { gte: monthStart } },
+  });
 
   return Response.json({
     account: {
       id: account.id,
       email: agent.ownerEmail ?? null,
       plan: account.plan,
+      planLabel: getRouterPlanLabel(account.plan),
+      planSlug: getRouterPlanSlug(account.plan),
       strategy: account.strategy,
       priorityTools: account.priorityTools,
       excludedTools: account.excludedTools,
@@ -34,8 +45,8 @@ export async function GET(request: NextRequest) {
       totalFallbacks: account.totalFallbacks,
       usage: {
         monthlyLimit,
-        monthlyUsed: account.totalCalls,
-        monthlyRemaining: Math.max(0, monthlyLimit - account.totalCalls),
+        monthlyUsed: callsThisMonth,
+        monthlyRemaining: Math.max(0, monthlyLimit - callsThisMonth),
       },
       createdAt: account.createdAt,
     },

@@ -5,20 +5,14 @@
 
 import { prisma } from '@/lib/prisma';
 import { BROWSE_STATUSES } from '@/lib/product-status';
+import { ROUTER_PLAN_DAILY_LIMITS, type RouterPlanCode } from './plans';
 import type { RouterRequest, RouterResponse, Strategy } from './index';
 import { getRankedToolsForCapability } from './index';
 
 const db = prisma as any;
 
 export type RouterStrategyValue = 'BALANCED' | 'FASTEST' | 'CHEAPEST' | 'MOST_ACCURATE' | 'MANUAL' | 'AUTO';
-export type RouterPlanValue = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE';
-
-const PLAN_LIMITS: Record<RouterPlanValue, number> = {
-  FREE: 100,
-  STARTER: 1000,
-  PRO: 10000,
-  ENTERPRISE: 1_000_000,
-};
+export type RouterPlanValue = RouterPlanCode;
 
 const CAPABILITY_TO_CATEGORY: Record<string, string> = {
   search: 'search_research',
@@ -97,7 +91,7 @@ export async function ensureDeveloperAccount(agentId: string) {
  * Returns { allowed: boolean, remaining: number, limit: number }.
  */
 export async function checkUsageLimit(developerId: string, plan: RouterPlanValue) {
-  const limit = PLAN_LIMITS[plan];
+  const limit = ROUTER_PLAN_DAILY_LIMITS[plan];
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -152,7 +146,8 @@ export async function applyStrategy(
 
   // Only set a strategy-based tool if there are no priority_tools.
   // Priority tools take precedence and are handled by routeRequest().
-  if (!modified.tool && !modified.priority_tools?.length) {
+  // AUTO strategy: skip pre-selection — let routeRequest's AI classifier pick the tool.
+  if (!modified.tool && !modified.priority_tools?.length && account.strategy !== 'AUTO') {
     const best = getBestToolForStrategy(capability, account.strategy, account.excludedTools, account.latencyBudgetMs);
     if (best) {
       modified.tool = best;

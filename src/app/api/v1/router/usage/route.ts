@@ -1,15 +1,9 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
+import { ROUTER_PLAN_MONTHLY_LIMITS, getRouterPlanLabel } from '@/lib/router/plans';
 import { checkUsageLimit, ensureDeveloperAccount, getUsageStats } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 import { prisma } from '@/lib/prisma';
-
-const MONTHLY_LIMITS: Record<string, number | null> = {
-  FREE: 10000,
-  STARTER: 50000,
-  PRO: 100000,
-  ENTERPRISE: null,
-};
 
 export async function GET(request: NextRequest) {
   const agent = await authenticateAgent(request);
@@ -46,6 +40,7 @@ export async function GET(request: NextRequest) {
 
   return Response.json({
     plan: account.plan,
+    plan_label: getRouterPlanLabel(account.plan),
     daily_limit: limits.limit,
     daily_used: limits.used,
     daily_remaining: limits.remaining,
@@ -53,7 +48,7 @@ export async function GET(request: NextRequest) {
     ai_routing_summary: stats.aiRouting,
     account: {
       plan: account.plan,
-      monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
+      monthlyLimit: (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null,
       callsThisMonth,
       strategy: account.strategy,
     },

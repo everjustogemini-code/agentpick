@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateApiKey, hashApiKey } from '@/lib/auth';
+import { ROUTER_PLAN_MONTHLY_LIMITS } from '@/lib/router/plans';
 import { checkRateLimit, registerLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       });
 
       const plan = existingAgent.developerAccount.plan;
-      const monthlyLimit = plan === 'FREE' ? 3000 : plan === 'STARTER' ? 10000 : plan === 'PRO' ? 100000 : 1_000_000;
+      const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[plan] ?? 3000;
 
       return Response.json({
         apiKey,
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
     return Response.json({
       apiKey,
       plan: 'free',
-      monthlyLimit: 3000,
+      monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
     }, { status: 201 });
   } catch (err) {
     console.error('Router register error:', err);
