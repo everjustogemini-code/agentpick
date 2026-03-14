@@ -150,18 +150,46 @@ async function callWithKey(
 }
 
 /**
+ * Snapshot of which tools have platform API keys configured, captured at module
+ * load time. Using a fixed snapshot (rather than reading process.env live on each
+ * request) prevents a race condition where BYOK key injection in callWithKey
+ * temporarily deletes an env var in its finally-block cleanup, causing concurrent
+ * requests' deprioritizeUnconfiguredTools checks to see a tool as unconfigured
+ * and select a lower-quality fallback (e.g. serpapi-google instead of tavily).
+ */
+const _platformConfiguredSnapshot: Map<string, boolean> = new Map();
+
+function _initPlatformConfigSnapshot(): void {
+  for (const slugs of Object.values(CAPABILITY_TOOLS)) {
+    for (const slug of slugs) {
+      const envVar = getByokEnvVarForService(slug);
+      _platformConfiguredSnapshot.set(slug, !envVar || Boolean(process.env[envVar]?.trim()));
+    }
+  }
+}
+// Execute immediately at module load — before any BYOK mutations can occur.
+_initPlatformConfigSnapshot();
+
+/**
  * Move tools without a configured platform API key to the end of the list.
  * Within each group (configured / unconfigured), the original order is preserved.
  * This prevents strategies like 'cheapest' from routing to tools that will
  * immediately throw "KEY not set" and waste a fallback slot.
+ *
+ * Uses the module-load-time snapshot to avoid the BYOK env-injection race condition.
  */
 function deprioritizeUnconfiguredTools(tools: string[]): string[] {
   const configured: string[] = [];
   const unconfigured: string[] = [];
   for (const slug of tools) {
-    const envVar = getByokEnvVarForService(slug);
-    // If no env var is needed for this tool, or the env var is set → configured
-    if (!envVar || Boolean(process.env[envVar]?.trim())) {
+    // Use startup snapshot; fall back to live check for tools added after module init.
+    const isConfigured = _platformConfiguredSnapshot.has(slug)
+      ? _platformConfiguredSnapshot.get(slug)!
+      : (() => {
+          const envVar = getByokEnvVarForService(slug);
+          return !envVar || Boolean(process.env[envVar]?.trim());
+        })();
+    if (isConfigured) {
       configured.push(slug);
     } else {
       unconfigured.push(slug);

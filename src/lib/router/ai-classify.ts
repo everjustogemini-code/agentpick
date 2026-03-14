@@ -56,11 +56,19 @@ export function fastClassify(query: string): QueryContext | null {
     return { type: 'realtime', domain: 'finance', depth: 'shallow', freshness: 'recent' };
   }
 
-  // News signals — strong news indicators OR news + time reference
+  // News signals — strong news indicators OR news + time/domain reference
   const newsTerms = /\b(latest|breaking|recent|new|announced|launched|funding|raised|acquired|ipo|merger|regulation|ruling)\b/i;
-  const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger)\b/i;
+  const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger|released|release|update|patch|vulnerability|incident|outage|breach|hacked|exploit|layoffs?|bankrupt)\b/i;
   const yearPattern = /\b20(2[4-9]|3[0-9])\b/;
-  if (strongNewsTerms.test(lower) || (newsTerms.test(lower) && (yearPattern.test(lower) || /\b(today|this week|this month|yesterday|recently)\b/i.test(lower)))) {
+  // Tech/AI company or product signal — combined with any newsTerms triggers a news classification
+  // without requiring an explicit year, since product launches are clearly time-sensitive.
+  const techCompanySignal = /\b(openai|anthropic|google|microsoft|apple|meta|nvidia|amazon|tesla|spacex|stripe|figma|vercel|mistral|gemini|claude|gpt|llama|sora|dall-e|chatgpt|copilot)\b/i;
+  const hasNewsWithDomain = newsTerms.test(lower) && (
+    yearPattern.test(lower) ||
+    /\b(today|this week|this month|yesterday|recently|right now|just now|latest version|what happened|what's happening|update on|status of)\b/i.test(lower) ||
+    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower))
+  );
+  if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
@@ -195,11 +203,19 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return CAPABILITY_TOOLS[capability] ?? [];
   }
 
-  // Realtime data and news → both use the same consistent tool order to prevent
-  // non-determinism when a query is borderline between the two classifications.
+  // Realtime data, news, and research-with-recent-freshness → consistent tool order.
+  // Grouping research+recent with news/realtime prevents non-determinism when Haiku
+  // oscillates between classifying a query as type='news' vs type='research' across
+  // different runs — both should prefer fresh-data tools (tavily, exa-search).
   // tavily is primary; exa-search is secondary (high-quality, reliably configured).
   // serpapi-google is last: it was causing non-determinism when primary tools were unconfigured.
-  if (context.type === 'realtime' || context.freshness === 'realtime' || context.type === 'news' || context.freshness === 'recent') {
+  if (
+    context.type === 'realtime' ||
+    context.freshness === 'realtime' ||
+    context.type === 'news' ||
+    context.freshness === 'recent' ||
+    (context.type === 'research' && context.freshness === 'recent')
+  ) {
     return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
   }
 
