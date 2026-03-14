@@ -45,7 +45,7 @@ export function fastClassify(query: string): QueryContext | null {
   const realtimeTerms = /\b(today|right now|current|live|real.?time|latest price|price now)\b/i;
   // Standalone realtime/live signals that don't require finance context:
   // "live coverage", "live updates", "real-time feed", "realtime data" etc.
-  const standaloneRealtimeSignal = /\b(live (coverage|updates?|feed|stream|blog|scores?|results?|data|situation|report)|real.?time (updates?|feed|data|coverage|alerts?|stream)|live\s+\w+\s+(updates?|coverage|feed)|breaking news|latest news|top news|news today|current news|recent news|what('s| is) happening( with| in| to)?|happening (now|right now)|news right now|current status of|as of right now)\b/i;
+  const standaloneRealtimeSignal = /\b(live (coverage|updates?|feed|stream|blog|scores?|results?|data|situation|report)|real.?time (updates?|feed|data|coverage|alerts?|stream)|live\s+\w+\s+(updates?|coverage|feed)|breaking news|latest news|top news|news today|current news|recent news|what('s| is) happening( with| in| to)?|happening (now|right now)|news right now|current status of|as of right now|right now|at the moment|in real.?time|real.?time (news|information|info|status)|latest (updates?|developments?|reports?|headlines?)|up.?to.?date (news|information|info)|most recent (news|updates?|developments?))\b/i;
 
   // Ticker-like patterns: 1-5 uppercase letters followed by finance terms
   const tickerPattern = /\b[A-Z]{1,5}\b/;
@@ -96,6 +96,19 @@ export function fastClassify(query: string): QueryContext | null {
   if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
+  }
+
+  // Analytical/policy/socioeconomic framing → always research/deep
+  // Must fire before the general research terms block because queries like
+  // "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
+  // match strongNewsTerms ("shortage") and get mis-routed to news/tavily without this guard.
+  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
+  const multifactorDomains = /\b(supply chain|geopolit|policy|socioeconomic|chip shortage|semiconductor|trade war|regulation|inflation|macro|systemic)\b/i;
+  const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
+
+  if (analyticalKeywords.test(query) && multifactorDomains.test(query) && !genuineNewsSignals.test(query)) {
+    const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
 
   // Research signals — catches detailed/technical explanation requests (P1-4)
@@ -175,6 +188,7 @@ Rules:
 - stocks/crypto/forex/earnings → finance domain
 - AI/ML/framework/API/code → tech domain
 - court/SEC/regulation/law → legal domain
+- If the query contains words like "analysis", "causes", "implications", "impact of", "effects of", "why did", combined with multi-domain framing (supply chain, geopolitics, policy, socioeconomics), classify as type=research, depth=deep — regardless of the topic domain. Only classify as type=news if the query is explicitly seeking recent/breaking news (contains signals like "today", "latest", "what happened", "breaking").
 
 Examples:
 "NVDA stock price" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
@@ -192,6 +206,8 @@ Examples:
 "best react state management library" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 "EUR USD exchange rate" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
 "Y Combinator W26 batch companies" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
+"comprehensive analysis of global chip shortage causes and solutions with supply chain implications" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"what happened with chip shortage today" → {"type":"news","domain":"general","depth":"shallow","freshness":"recent"}
 
 No explanation. JSON only.`;
 
