@@ -24,6 +24,7 @@ export function getStripeClient(): Stripe {
         name: 'AgentPick',
         version: '0.1.0',
       },
+      httpClient: Stripe.createFetchHttpClient(),
     });
   }
 
