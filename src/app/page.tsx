@@ -11,7 +11,7 @@ import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
 import AnimatedCounter from '@/components/AnimatedCounter';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 function fmt(n: number): string {
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
