@@ -1,3 +1,38 @@
+# Growth State — Cycle 15 (2026-03-14)
+
+## Live Health Check (Cycle 15)
+- Router health: UNAUTHORIZED without key → 200 with valid key ✅
+- Agent registration: 200 OK ✅
+- Homepage: HTTP/2 200 ✅
+- /pricing: HTTP/2 200 ✅
+- /blog: HTTP/2 200 ✅
+- /connect: HTTP/2 200 ✅
+- /checkout?plan=pro: zsh "no matches" (Stripe not configured — no Stripe env vars)
+- Moltbook: DNS failure — permanently skipped
+
+## AEO Scores (Cycle 15)
+- "best search API for AI agents" → 0 (Tavily, KDnuggets, Firecrawl, Brave, Exa dominate)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, GitHub/philschmid, Sierra, AgentBench, IBM dominate)
+- All scores posted to /api/v1/admin/growth-metrics/aeo-score ✅ (8th cycle at 0)
+
+## New Competitors Spotted This Cycle
+- Valyu Search — new benchmark entrant; ranked #1 across 5 categories (FreshQA, SimpleQA, finance, economics, medical) in independent study
+
+## Actions Taken (Cycle 15)
+1. New blog: /blog/valyu-search-api-for-ai-agents (Valyu enters evaluation, dedicated post same cycle)
+2. New weekly report: /reports/weekly/2026-04-11 (5th weekly report — cadence maintained)
+3. Forward nav added: 2026-04-04 → 2026-04-11
+4. llms.txt updated: 301 agents, 3,338 calls, Valyu Search added
+5. AEO scores posted (3 queries, all 0)
+
+## Key Blockers
+1. Zero paid conversions — Stripe still not configured
+2. Zero search visibility — 8 cycles at 0 for all 3 queries
+3. No backlinks from KDnuggets, data4ai, aimultiple
+
+---
+
 # Growth State — Cycle 14 (2026-03-14)
 
 ## Live Health Check

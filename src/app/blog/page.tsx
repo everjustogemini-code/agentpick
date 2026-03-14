@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'valyu-search-api-for-ai-agents',
+    title: 'Valyu Search API for AI Agents: Benchmark Results (2026)',
+    description:
+      'Valyu Search ranked #1 across 5 benchmark categories in independent comparisons. How it performs in AgentPick production routing data vs Perplexity, Exa, Tavily, and Brave.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'parallel-search-api-for-ai-agents',
     title: 'Parallel Search API for AI Agents: Benchmark Results (2026)',
     description:
