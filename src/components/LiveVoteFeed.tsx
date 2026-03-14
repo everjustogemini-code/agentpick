@@ -90,9 +90,9 @@ export default function LiveVoteFeed({
   const displayItems = items.slice(0, maxItems);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-bg-terminal-border bg-bg-terminal font-mono">
+    <div className="overflow-x-hidden rounded-xl border border-bg-terminal-border bg-bg-terminal font-mono">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-bg-terminal-border px-5 py-3">
+      <div className="flex items-center justify-between border-b border-bg-terminal-border px-3 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-[7px] w-[7px]">
             <span className="absolute inline-flex h-full w-full animate-[pulse_2s_ease_infinite] rounded-full bg-accent-green opacity-75" />
@@ -129,7 +129,7 @@ export default function LiveVoteFeed({
             {displayItems.map((item, i) => (
               <div
                 key={item.id}
-                className={`flex items-start gap-3 border-b border-[#1E233340] px-5 py-2 ${
+                className={`flex items-start gap-2 border-b border-[#1E233340] px-3 py-2 sm:gap-3 sm:px-5 ${
                   i === 0 ? 'animate-[fadeIn_0.3s_ease]' : ''
                 }`}
               >
@@ -137,27 +137,27 @@ export default function LiveVoteFeed({
                   {timeAgo(item.createdAt)}
                 </span>
                 {item.type === 'benchmark' ? (
-                  <span className="min-w-[80px] text-[11px] text-[#A78BFA]">
+                  <span className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#A78BFA]">
                     benchmark
                   </span>
                 ) : item.type === 'arena' ? (
-                  <span className="min-w-[80px] text-[11px] text-[#F97316]">
+                  <span className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#F97316]">
                     arena
                   </span>
                 ) : item.type === 'xray' ? (
-                  <span className="min-w-[80px] text-[11px] text-[#EC4899]">
+                  <span className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#EC4899]">
                     x-ray
                   </span>
                 ) : item.type === 'playground' ? (
-                  <span className="min-w-[80px] text-[11px] text-[#38BDF8]">
+                  <span className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#38BDF8]">
                     playground
                   </span>
                 ) : item.agentId ? (
-                  <a href={`/agents/${item.agentId}`} className="min-w-[80px] text-[11px] text-[#CBD5E1] hover:text-white hover:underline">
+                  <a href={`/agents/${item.agentId}`} className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#CBD5E1] hover:text-white hover:underline">
                     {item.agentName}
                   </a>
                 ) : (
-                  <span className="min-w-[80px] text-[11px] text-[#CBD5E1]">
+                  <span className="min-w-[60px] text-[11px] sm:min-w-[80px] text-[#CBD5E1]">
                     {item.agentName}
                   </span>
                 )}

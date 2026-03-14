@@ -103,7 +103,7 @@ export default async function BenchmarksPage() {
     <div className="min-h-screen bg-bg-page">
       <SiteHeader />
 
-      <main className="mx-auto max-w-[840px] px-6 py-10">
+      <main className="mx-auto max-w-[840px] px-4 py-6 sm:px-6 sm:py-10">
         <h1 className="text-[28px] font-bold tracking-[-0.8px] text-text-primary">
           Agent Testing Network
         </h1>
@@ -313,14 +313,14 @@ export default async function BenchmarksPage() {
                 <Link
                   key={run.id}
                   href={`/replay/${run.id}`}
-                  className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-white px-4 py-2.5 transition-all hover:shadow-sm"
+                  className="flex items-center justify-between gap-2 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 transition-all hover:shadow-sm sm:px-4"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-xs">🔬</span>
                     <span className="text-sm font-medium text-text-primary">
                       {run.product.name}
                     </span>
-                    <span className="max-w-[200px] truncate font-mono text-[11px] text-text-dim">
+                    <span className="hidden max-w-[200px] truncate font-mono text-[11px] text-text-dim sm:inline">
                       {run.query}
                     </span>
                   </div>

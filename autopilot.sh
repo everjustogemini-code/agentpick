@@ -35,26 +35,51 @@ tg_raw "🚀 Autopilot v2 Cycle $CYCLE starting"
 # ═══════════════════════════════════════════
 # STEP 1: PM Agent — produce next version spec
 # ═══════════════════════════════════════════
-echo "📋 Step 1: PM producing NEXT_VERSION.md..."
+# Check if last QA failed — if so, this cycle is BUG FIX ONLY
+QA_LAST=$(tail -1 QA_REPORT.md 2>/dev/null || echo "NONE")
+if echo "$QA_LAST" | grep -qi "FAIL"; then
+  echo "📋 Step 1: BUGFIX CYCLE — QA failed last time, fixing issues first"
+  tg_raw "🔧 Cycle $CYCLE: BUGFIX 优先 — 上轮QA未通过"
+  
+  claude --permission-mode bypassPermissions \
+    -p "You are the AgentPick PM. Your workspace is $(pwd).
 
-claude --permission-mode bypassPermissions \
-  -p "You are the AgentPick PM. Your workspace is $(pwd).
+THIS IS A BUGFIX CYCLE. QA failed last round. Read QA_REPORT.md carefully.
+
+RULES:
+1. Read QA_REPORT.md — every P1 and P2 issue listed there MUST be addressed
+2. NO NEW FEATURES this cycle. Zero. Only bug fixes.
+3. Write NEXT_VERSION.md with ONLY bug fixes from QA_REPORT.md
+4. Each fix must reference the exact QA issue number
+5. Include the exact file paths and what needs to change
+
+The pattern is: QA keeps reporting the same issues every cycle because they never get fixed.
+THIS CYCLE BREAKS THAT PATTERN. Fix every single reported issue.
+
+Write NEXT_VERSION.md now. Bug fixes only." \
+    --output-format text 2>&1 | tee "$LOGDIR/pm_${CYCLE}.log" | tail -5
+else
+  echo "📋 Step 1: PM producing NEXT_VERSION.md (feature cycle)..."
+  
+  claude --permission-mode bypassPermissions \
+    -p "You are the AgentPick PM. Your workspace is $(pwd).
 
 INSTRUCTIONS:
-1. Read QA_REPORT.md if it exists
+1. Read QA_REPORT.md if it exists — any remaining P1/P2 bugs MUST be included as must-have fixes
 2. Read git log --oneline -20 for recent changes  
 3. Check the live site https://agentpick.dev
-4. Write NEXT_VERSION.md with exactly 3 must-have features
+4. Write NEXT_VERSION.md with exactly 3 must-have items
 
-FOCUS FOR THIS CYCLE:
-- Major UI upgrade — introduce modern design components (glassmorphism, animated cards, micro-interactions, gradient backgrounds, better typography)
-- Fix any P0/P1 bugs from QA
-- One new feature that increases developer adoption
+PRIORITY ORDER (strict):
+1. Fix ALL remaining P1/P2 bugs from QA_REPORT.md (if any exist, they are must-have #1)
+2. Major UI upgrade — modern design, glassmorphism, animations, better typography
+3. One new feature that increases developer adoption
 
-The goal: ship a visually impressive version every cycle. AgentPick should look like a premium product, not a hackathon project.
+NEVER ship new features while bugs remain. Bugs first, features second.
 
-Write NEXT_VERSION.md now. Be specific about UI components and design specs." \
-  --output-format text 2>&1 | tee "$LOGDIR/pm_${CYCLE}.log" | tail -5
+Write NEXT_VERSION.md now. Be specific." \
+    --output-format text 2>&1 | tee "$LOGDIR/pm_${CYCLE}.log" | tail -5
+fi
 
 if [ ! -f NEXT_VERSION.md ]; then
   echo "❌ PM failed"
@@ -74,15 +99,16 @@ claude --permission-mode bypassPermissions \
 
 Split the work into exactly 2 task files, one for each coding agent:
 
-TASK_CLAUDE_CODE.md — The harder task (new features, complex UI components, API endpoints, database changes). Claude Code excels at multi-file architectural changes.
+TASK_CLAUDE_CODE.md — API/backend fixes, complex multi-file changes, new endpoints, database work.
+TASK_CODEX.md — Frontend fixes, component bugs, styling issues, simple single-file changes.
 
-TASK_CODEX.md — The simpler but important task (bug fixes, component styling, test writing, documentation, copy changes). Codex excels at focused single-file changes.
-
-RULES:
+CRITICAL RULES:
 - Tasks MUST NOT touch the same files (prevent merge conflicts)
 - Each task file must list EXACTLY which files to create/modify
-- Include full design specs (colors, spacing, animations in CSS/Tailwind)
-- Be extremely specific — the coding agent should not need to make design decisions
+- Be extremely specific — include exact function names, line numbers if possible
+- IF NEXT_VERSION.md contains bug fixes, those bugs MUST appear in one of the task files
+- EVERY bug from NEXT_VERSION.md must be assigned. No bug left behind.
+- After writing both files, verify: is every item from NEXT_VERSION.md covered in either TASK_CLAUDE_CODE.md or TASK_CODEX.md?
 
 Write both files now: TASK_CLAUDE_CODE.md and TASK_CODEX.md" \
   --output-format text 2>&1 | tee "$LOGDIR/split_${CYCLE}.log" | tail -5
