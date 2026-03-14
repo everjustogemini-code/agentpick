@@ -201,9 +201,29 @@ git merge --no-ff "feat/cycle-${CYCLE}-codex" -m "Merge Codex cycle $CYCLE" 2>&1
   git commit -m "Merge Codex cycle $CYCLE (auto-resolved)" 2>/dev/null
 }
 
+# ── Stamp deploy marker ──
+GHASH=$(git rev-parse --short HEAD)
+cat > DEPLOY_MARKER.json << MARKER_EOF
+{"cycle": $CYCLE, "gitHash": "$GHASH", "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+MARKER_EOF
+git add DEPLOY_MARKER.json
+git commit -m "[autopilot] Deploy marker: cycle $CYCLE ($GHASH)" 2>/dev/null
+GHASH=$(git rev-parse --short HEAD)
+
+# ── Security: block push if API keys leaked ──
+if git diff origin/main..HEAD -- '*.ts' '*.js' '*.mjs' | grep -qiE "(sk-ant-|sk-or-|pplx-|apify_api|tvly-|bb_live)"; then
+  echo "⚠ BLOCKED: API key leak detected"
+  tg_raw "⚠️ Cycle $CYCLE: Push BLOCKED — API key in code"
+  exit 1
+fi
+
 # Push
-git push origin main 2>&1 || true
-tg_raw "🚀 Cycle $CYCLE: Code merged and pushed. Vercel deploying..."
+git push origin main 2>&1 || {
+  echo "⚠ Push failed"
+  tg_raw "⚠️ Cycle $CYCLE: git push failed — check GitHub secret scanning"
+  exit 1
+}
+tg_raw "🚀 Cycle $CYCLE: Pushed $GHASH → Vercel deploying..."
 
 # Clean up branches
 git branch -d "feat/cycle-${CYCLE}-cc" "feat/cycle-${CYCLE}-codex" 2>/dev/null
@@ -211,10 +231,36 @@ git branch -d "feat/cycle-${CYCLE}-cc" "feat/cycle-${CYCLE}-codex" 2>/dev/null
 echo "✅ Merged and pushed"
 
 # ═══════════════════════════════════════════
-# STEP 5: Wait for deploy, then QA
+# STEP 5: Wait for deploy, then VERIFY it's live
 # ═══════════════════════════════════════════
 echo "⏳ Waiting 90s for Vercel deploy..."
 sleep 90
+
+# ── Verify deployment actually went live ──
+echo "🔍 Verifying deployment..."
+LIVE_VERSION=$(curl -s "https://agentpick.dev/api/version" 2>/dev/null)
+LIVE_CYCLE=$(echo "$LIVE_VERSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',{}).get('autopilotCycle','none'))" 2>/dev/null || echo "error")
+LIVE_HASH=$(echo "$LIVE_VERSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',{}).get('gitHash','none'))" 2>/dev/null || echo "error")
+
+echo "  Expected: cycle=$CYCLE hash=$GHASH"
+echo "  Live: cycle=$LIVE_CYCLE hash=$LIVE_HASH"
+
+if [ "$LIVE_CYCLE" = "$CYCLE" ] || [ "$LIVE_HASH" = "$GHASH" ]; then
+  echo "  ✅ Deploy verified!"
+  tg_raw "✅ Cycle $CYCLE 部署已验证上线 ($GHASH)"
+else
+  echo "  ⚠ Deploy NOT verified — may still be building"
+  tg_raw "⚠️ Cycle $CYCLE: 代码已push但部署未确认 (expected $GHASH, got $LIVE_HASH). 等待中..."
+  # Wait another 60s and retry
+  sleep 60
+  LIVE_VERSION=$(curl -s "https://agentpick.dev/api/version" 2>/dev/null)
+  LIVE_HASH=$(echo "$LIVE_VERSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version',{}).get('gitHash','none'))" 2>/dev/null || echo "error")
+  if [ "$LIVE_HASH" = "$GHASH" ]; then
+    tg_raw "✅ Cycle $CYCLE 延迟部署已确认 ($GHASH)"
+  else
+    tg_raw "❌ Cycle $CYCLE 部署失败! Live=$LIVE_HASH Expected=$GHASH"
+  fi
+fi
 
 echo "🔍 Step 5: QA testing..."
 tg_raw "🔍 Cycle $CYCLE: QA testing live site..."
