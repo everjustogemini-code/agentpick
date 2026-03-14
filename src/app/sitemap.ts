@@ -34,6 +34,26 @@ const RANKING_SLUGS = [
   'top-agent-tools',
 ];
 
+const BLOG_SLUGS = [
+  'tavily-vs-exa-vs-brave-search-api',
+  'why-your-ai-agent-needs-a-tool-router',
+  'hidden-cost-hardcoding-api-tools',
+  'auto-fallback-agentpick-keeps-agent-running',
+  '5-routing-strategies-ai-agent-tool-selection',
+];
+
+const TOP_COMPARE_SLUGS = [
+  'tavily-vs-exa-search',
+  'tavily-vs-brave-search',
+  'exa-search-vs-brave-search',
+  'tavily-vs-serper-api',
+  'openai-api-vs-anthropic-api',
+  'openai-api-vs-groq',
+  'pinecone-db-vs-upstash-redis',
+  'pinecone-db-vs-supabase-db',
+  'firecrawl-api-vs-jina-reader',
+];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const products = await prisma.product.findMany({
     where: { status: { in: BROWSE_STATUSES } },
