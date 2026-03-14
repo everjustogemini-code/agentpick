@@ -8,6 +8,8 @@ export const maxDuration = 60;
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
 const RESULT_LIMIT = 3;
+const MAX_QUERY_LENGTH = 2000;
+const MAX_URL_LENGTH = 2048;
 const PLAYGROUND_AGENT_TOKEN = 'ah_internal_playground_demo';
 
 const rateStore = new Map<string, { count: number; resetAt: number }>();
@@ -22,6 +24,15 @@ type PlaygroundResult = {
   snippet?: string;
   meta?: string[];
 };
+
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  headers.set('Cache-Control', 'no-store');
+  return Response.json(body, {
+    ...init,
+    headers,
+  });
+}
 
 function getClientIp(request: NextRequest): string {
   return (
@@ -299,6 +310,10 @@ function normalizeCrawlQuery(query: string): string {
   return `https://${query}`;
 }
 
+function getQueryLimit(capability: Capability): number {
+  return capability === 'crawl' ? MAX_URL_LENGTH : MAX_QUERY_LENGTH;
+}
+
 function buildParams(capability: Capability, query: string): Record<string, unknown> {
   if (capability === 'crawl') {
     return { url: normalizeCrawlQuery(query) };
@@ -350,11 +365,17 @@ export async function POST(request: NextRequest) {
   const rateLimit = checkIpRateLimit(ip);
 
   if (!rateLimit.allowed) {
-    return Response.json(
+    return jsonNoStore(
       {
         error: `Rate limit exceeded. Try again in ${rateLimit.retryAfterSeconds ?? 60}s.`,
+        retryAfterSeconds: rateLimit.retryAfterSeconds ?? 60,
       },
-      { status: 429 },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimit.retryAfterSeconds ?? 60),
+        },
+      },
     );
   }
 
@@ -362,21 +383,30 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });
+    return jsonNoStore({ error: 'Invalid JSON body.' }, { status: 400 });
   }
 
   const capability = normalizeCapability(body.capability);
   const query = readString(body.query);
 
   if (!capability) {
-    return Response.json(
+    return jsonNoStore(
       { error: `capability must be one of: ${VALID_CAPABILITIES.join(', ')}` },
       { status: 400 },
     );
   }
 
   if (!query) {
-    return Response.json({ error: 'query is required.' }, { status: 400 });
+    return jsonNoStore({ error: 'query is required.' }, { status: 400 });
+  }
+
+  const queryLimit = getQueryLimit(capability);
+
+  if (query.length > queryLimit) {
+    return jsonNoStore(
+      { error: `query exceeds maximum length of ${queryLimit} characters.` },
+      { status: 413 },
+    );
   }
 
   try {
@@ -390,7 +420,7 @@ export async function POST(request: NextRequest) {
     const failed = response.meta.trace_id.startsWith('trace_fail_');
     const errorMessage = failed ? extractErrorMessage(response.data) ?? 'Routing failed.' : undefined;
 
-    return Response.json(
+    return jsonNoStore(
       {
         capability,
         tool: response.meta.tool_used,
@@ -407,7 +437,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Playground routing failed.';
 
-    return Response.json(
+    return jsonNoStore(
       {
         error: message,
       },
