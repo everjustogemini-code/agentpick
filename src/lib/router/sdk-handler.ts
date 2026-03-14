@@ -113,7 +113,11 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   }
 
   if (!body.params || typeof body.params !== 'object') {
-    return apiError('VALIDATION_ERROR', 'params object is required.', 400);
+    const hasPriority = Array.isArray(body.priority_tools);
+    const hint = hasPriority
+      ? ' When using priority_tools, also include your query: {"query":"...", "priority_tools":["tool-a","tool-b"]}.'
+      : ' Pass params directly: {"params":{"query":"..."}} or use flat body: {"query":"..."}.';
+    return apiError('VALIDATION_ERROR', `params object is required.${hint}`, 400);
   }
 
   // Validate query length before routing (P2-9: boundary validation)
