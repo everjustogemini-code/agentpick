@@ -75,7 +75,14 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   // and no ?token= query param. This avoids any DB lookup for clearly unauthenticated
   // requests and closes the window for an intermittent auth-bypass edge case.
   const _authHeader = request.headers.get('authorization');
-  const _urlForAuth = new URL(request.url);
+  // Wrap URL parsing: a malformed request URL must yield 401, not a thrown exception
+  // that Next.js converts to a 500 (which would bypass the auth gate entirely).
+  let _urlForAuth: URL;
+  try {
+    _urlForAuth = new URL(request.url);
+  } catch {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
   // Reject whitespace-only or absent auth headers as well as missing ?token= params.
   // This closes an intermittent edge case where a header with only whitespace bypassed the null check.
   if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {

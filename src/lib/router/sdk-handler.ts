@@ -44,8 +44,15 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
 
   // Short-circuit immediately if no Authorization header and no ?token= query param.
   // This avoids any DB lookup for clearly unauthenticated requests.
+  // Wrap URL parsing in try/catch: a malformed request URL should yield 401, not an
+  // unhandled throw that Next.js might convert to a 500 (bypassing the auth gate).
   const _authHeader = request.headers.get('authorization');
-  const _urlForAuth = new URL(request.url);
+  let _urlForAuth: URL;
+  try {
+    _urlForAuth = new URL(request.url);
+  } catch {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
   if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
