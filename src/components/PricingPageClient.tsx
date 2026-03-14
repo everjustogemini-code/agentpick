@@ -182,6 +182,8 @@ export default function PricingPageClient() {
                   const data = await res.json();
                   if (data.api_key) {
                     setDraftKey(data.api_key);
+                    // Copy key to clipboard
+                    try { await navigator.clipboard.writeText(data.api_key); } catch {}
                     await loadAccount(data.api_key);
                   } else {
                     setAccountError('Registration failed. Try again.');
@@ -195,6 +197,20 @@ export default function PricingPageClient() {
               className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-300 transition-colors hover:bg-orange-500/20"
             >
               Get a free API key instantly →
+            </button>
+          </div>
+        )}
+
+        {apiKey && account && (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <span className="text-sm text-emerald-400">✓ Key active</span>
+            <code className="flex-1 truncate font-mono text-xs text-white/60">{apiKey.slice(0, 20)}...{apiKey.slice(-6)}</code>
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(apiKey); }}
+              className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/5 hover:text-white/80"
+            >
+              Copy
             </button>
           </div>
         )}
