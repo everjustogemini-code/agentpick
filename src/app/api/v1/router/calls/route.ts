@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {
       developerId: account.id,
       // Exclude legacy records where toolUsed was not properly recorded
-      NOT: { toolUsed: 'unknown' },
+      NOT: [{ toolUsed: 'unknown' }, { toolUsed: '' }],
     };
     if (capability) {
       where.capability = capability;

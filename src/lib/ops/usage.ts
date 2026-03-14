@@ -35,7 +35,8 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   tavily: "tavily",
   "exa-search": "exa",
   exa: "exa",
-  serpapi: "serper",
+  serpapi: "serpapi",
+  "serpapi-google": "serpapi",
   serper: "serper",
   "serper-api": "serper",
   "jina-ai": "jina",
@@ -49,7 +50,6 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   perplexity: "perplexity",
   "you-search": "you",
   you: "you",
-  "serpapi-google": "serpapi",
   "bing-web-search": "bing",
   bing: "bing",
   // Crawling

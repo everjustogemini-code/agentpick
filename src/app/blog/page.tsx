@@ -23,6 +23,26 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'tool-routing-for-ai-agents',
+    title: 'Tool Routing for AI Agents: Skip the Boilerplate',
+    description:
+      'Stop hardcoding Tavily or Exa. Tool routing automatically selects the best API per query — with fallback, benchmarks, and zero maintenance. 5-minute integration.',
+    date: '2026-03-14',
+    readTime: '6 min',
+    tag: 'Architecture',
+    tagColor: '#8B5CF6',
+  },
+  {
+    slug: 'perplexity-api-for-ai-agents',
+    title: 'Perplexity API for AI Agents: Benchmark Results & When to Use It',
+    description:
+      'Perplexity API is currently #1 for AI agent search (score 7.0, 536 runs). When does it win, when does Exa beat it, and how to route to it automatically.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'best-search-api-for-ai-agents',
     title: 'Best Search API for AI Agents (2026 Benchmark Results)',
     description:
