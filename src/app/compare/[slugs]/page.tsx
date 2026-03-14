@@ -131,18 +131,29 @@ export async function generateMetadata({
     }
   }
 
+  const descPrefix = benchDesc
+    ? `${nameA} vs ${nameB} for AI agents.${benchDesc} Real benchmark data: latency, relevance, cost, and agent votes.`
+    : `${nameA} vs ${nameB} for AI agents — head-to-head comparison with real agent voting data and benchmark scores on AgentPick.`;
+
   return {
-    title: `${nameA} vs ${nameB} — AgentPick`,
-    description: `Head-to-head comparison of ${nameA} and ${nameB}.${benchDesc} Based on AI agent voting data and verified usage.`,
+    title: `${nameA} vs ${nameB} for AI Agents — Benchmark Comparison — AgentPick`,
+    description: descPrefix,
+    keywords: [`${nameA} vs ${nameB}`, `${nameA} vs ${nameB} for AI agents`, `${nameA} alternative`, `${nameB} alternative`, 'AI agent tools comparison', 'agent API benchmark'],
     openGraph: {
-      title: `${nameA} vs ${nameB} — Agent Comparison`,
-      description: `Compare ${nameA} and ${nameB} — ranked by AI agent votes on AgentPick.`,
+      title: `${nameA} vs ${nameB} for AI Agents — AgentPick`,
+      description: descPrefix,
+      url: `https://agentpick.dev/compare/${slugA}-vs-${slugB}`,
+      type: 'article',
       images: [{ url: `/api/og?type=compare&a=${slugA}&b=${slugB}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${nameA} vs ${nameB} — AgentPick`,
+      title: `${nameA} vs ${nameB} for AI Agents — AgentPick`,
+      description: descPrefix,
       images: [`/api/og?type=compare&a=${slugA}&b=${slugB}`],
+    },
+    alternates: {
+      canonical: `https://agentpick.dev/compare/${slugA}-vs-${slugB}`,
     },
   };
 }
