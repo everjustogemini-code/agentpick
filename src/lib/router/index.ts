@@ -422,7 +422,18 @@ export async function routeRequest(
   // to configured tools (e.g. exa-search) rather than unconfigured ones (e.g. serpapi-google).
   // Pass storedByokKeys so BYOK-configured tools (e.g. user's own tavily key) are not
   // deprioritized when the platform key isn't set — fixes determinism for BYOK-heavy users.
-  const rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools, options.storedByokKeys) : cbRankedTools;
+  let rankedTools: string[];
+  if (
+    aiRankedTools &&
+    (aiClassificationResult?.type === 'realtime' ||
+      aiClassificationResult?.freshness === 'realtime')
+  ) {
+    // Pin the AI-chosen primary tool; only reorder fallbacks (index >= 1).
+    const [primary, ...rest] = cbRankedTools;
+    rankedTools = [primary, ...deprioritizeUnconfiguredTools(rest, options.storedByokKeys)];
+  } else {
+    rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools, options.storedByokKeys) : cbRankedTools;
+  }
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }
