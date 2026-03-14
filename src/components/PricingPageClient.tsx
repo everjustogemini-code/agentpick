@@ -67,6 +67,9 @@ export default function PricingPageClient() {
       if (persist) {
         window.localStorage.setItem(STORAGE_KEY, key);
       }
+
+      // Auto-redirect to dashboard after loading account
+      window.location.href = '/dashboard';
     } catch (error) {
       setAccount(null);
       setApiKey('');
@@ -148,22 +151,34 @@ export default function PricingPageClient() {
           )}
         </div>
 
-        <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
-          <input
-            type="password"
-            value={draftKey}
-            onChange={(event) => setDraftKey(event.target.value)}
-            placeholder="ah_live_sk_..."
-            className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[#050507] px-4 py-3 text-sm font-mono text-white placeholder:text-white/20 focus:border-orange-500/45 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={accountLoading}
-            className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {accountLoading ? 'Loading account...' : 'Load account'}
-          </button>
-        </form>
+        {account ? (
+          <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center">
+            <a
+              href="/dashboard"
+              className="rounded-2xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-orange-400"
+            >
+              Go to Dashboard →
+            </a>
+            <span className="text-sm text-white/40">Account loaded. Choose a plan below or manage your dashboard.</span>
+          </div>
+        ) : (
+          <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
+            <input
+              type="password"
+              value={draftKey}
+              onChange={(event) => setDraftKey(event.target.value)}
+              placeholder="ah_live_sk_..."
+              className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[#050507] px-4 py-3 text-sm font-mono text-white placeholder:text-white/20 focus:border-orange-500/45 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={accountLoading}
+              className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {accountLoading ? 'Loading account...' : 'Load account'}
+            </button>
+          </form>
+        )}
 
         {!apiKey && !accountLoading && (
           <div className="mt-4 flex items-center gap-3">
@@ -182,6 +197,8 @@ export default function PricingPageClient() {
                   const data = await res.json();
                   if (data.api_key) {
                     setDraftKey(data.api_key);
+                    // Copy key to clipboard
+                    try { await navigator.clipboard.writeText(data.api_key); } catch {}
                     await loadAccount(data.api_key);
                   } else {
                     setAccountError('Registration failed. Try again.');
@@ -195,6 +212,20 @@ export default function PricingPageClient() {
               className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-300 transition-colors hover:bg-orange-500/20"
             >
               Get a free API key instantly →
+            </button>
+          </div>
+        )}
+
+        {apiKey && account && (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <span className="text-sm text-emerald-400">✓ Key active</span>
+            <code className="flex-1 truncate font-mono text-xs text-white/60">{apiKey.slice(0, 20)}...{apiKey.slice(-6)}</code>
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(apiKey); }}
+              className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/5 hover:text-white/80"
+            >
+              Copy
             </button>
           </div>
         )}
