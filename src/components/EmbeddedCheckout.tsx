@@ -10,7 +10,9 @@ import {
 // NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is the preferred env var name for client-side access.
 // If your deployment uses STRIPE_PUBLISHABLE_KEY, add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 // to your Vercel env vars with the same value.
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '');
+// Publishable key is public (safe to embed in client code)
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_live_51TAsMW7beKX4qoOLuN5qvYp5O7ns187U82kgYrHN5DwXm1MBaq3UmfnjMeylqXswiXLV7H1nGnjQOfKMOchz7DHp009N6rtLMQ';
+const stripePromise = loadStripe(STRIPE_PK);
 
 type EmbeddedCheckoutProps = {
   plan: 'pro' | 'growth' | 'scale';
