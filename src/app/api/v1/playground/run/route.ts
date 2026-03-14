@@ -111,7 +111,13 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await upstream.json();
-    return Response.json(data, { status: upstream.status });
+    // Normalize: expose meta fields at top level so the UI can read tool_used and latency_ms directly
+    const normalized = {
+      ...data,
+      tool_used: data.meta?.tool_used ?? data.tool_used ?? null,
+      latency_ms: data.meta?.latency_ms ?? data.latency_ms ?? 0,
+    };
+    return Response.json(normalized, { status: upstream.status });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Router error';
     return Response.json({ error: message }, { status: 502 });

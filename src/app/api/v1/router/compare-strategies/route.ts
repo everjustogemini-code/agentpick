@@ -15,81 +15,87 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest) {
-  const agent = await authenticateAgent(request);
-  if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  try {
+    const agent = await authenticateAgent(request);
+    if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
-  const url = new URL(request.url);
-  const capability = url.searchParams.get('capability') ?? 'search';
-  const category = CAPABILITY_TO_CATEGORY[capability];
+    const url = new URL(request.url);
+    const capability = url.searchParams.get('capability') ?? 'search';
+    const category = CAPABILITY_TO_CATEGORY[capability];
 
-  if (!category) {
-    return apiError('VALIDATION_ERROR', `Unknown capability: ${capability}`, 400);
-  }
-
-  // Only include tools that the router can actually use for this capability
-  const allowedSlugs = CAPABILITY_TOOLS[capability] ?? [];
-
-  const products = await db.product.findMany({
-    where: {
-      category: category as any,
-      status: { in: BROWSE_STATUSES },
-      slug: { in: allowedSlugs },
-    },
-    select: {
-      slug: true,
-      name: true,
-      weightedScore: true,
-      avgLatencyMs: true,
-      avgCostUsd: true,
-      avgBenchmarkRelevance: true,
-      successRate: true,
-    },
-    take: 10,
-  });
-
-  // Enrich products with hardcoded characteristics as fallback
-  for (const product of products) {
-    const chars = TOOL_CHARACTERISTICS[product.slug];
-    if (chars) {
-      if (product.avgLatencyMs == null) product.avgLatencyMs = chars.latency;
-      if (product.avgCostUsd == null) product.avgCostUsd = chars.cost;
-      if (product.weightedScore == null) product.weightedScore = chars.quality;
+    if (!category) {
+      return apiError('VALIDATION_ERROR', `Unknown capability: ${capability}`, 400);
     }
-  }
 
-  const strategies = {
-    BALANCED: [...products].sort((left, right) => (right.weightedScore ?? 0) - (left.weightedScore ?? 0)),
-    FASTEST: [...products].sort((left, right) => (left.avgLatencyMs ?? 9999) - (right.avgLatencyMs ?? 9999)),
-    CHEAPEST: [...products].sort((left, right) => (left.avgCostUsd ?? 9999) - (right.avgCostUsd ?? 9999)),
-    MOST_ACCURATE: [...products].sort((left, right) => (right.avgBenchmarkRelevance ?? 0) - (left.avgBenchmarkRelevance ?? 0)),
-  };
+    // Only include tools that the router can actually use for this capability
+    const allowedSlugs = CAPABILITY_TOOLS[capability] ?? [];
 
-  const result: Record<
-    string,
-    {
-      top_pick: string;
-      top_3: Array<{ slug: string; name: string; score?: number; latency?: number; cost?: number; relevance?: number }>;
+    const products = await db.product.findMany({
+      where: {
+        category: category as any,
+        status: { in: BROWSE_STATUSES },
+        slug: { in: allowedSlugs },
+      },
+      select: {
+        slug: true,
+        name: true,
+        weightedScore: true,
+        avgLatencyMs: true,
+        avgCostUsd: true,
+        avgBenchmarkRelevance: true,
+        successRate: true,
+      },
+      take: 10,
+    });
+
+    // Enrich products with hardcoded characteristics as fallback
+    for (const product of products) {
+      const chars = TOOL_CHARACTERISTICS[product.slug];
+      if (chars) {
+        if (product.avgLatencyMs == null) product.avgLatencyMs = chars.latency;
+        if (product.avgCostUsd == null) product.avgCostUsd = chars.cost;
+        if (product.weightedScore == null) product.weightedScore = chars.quality;
+      }
     }
-  > = {};
 
-  for (const [strategy, sorted] of Object.entries(strategies)) {
-    result[strategy] = {
-      top_pick: sorted[0]?.slug ?? 'none',
-      top_3: sorted.slice(0, 3).map((product) => ({
-        slug: product.slug,
-        name: product.name,
-        score: product.weightedScore ?? undefined,
-        latency: product.avgLatencyMs ?? undefined,
-        cost: product.avgCostUsd ?? undefined,
-        relevance: product.avgBenchmarkRelevance ?? undefined,
-      })),
+    const strategies = {
+      BALANCED: [...products].sort((left, right) => (right.weightedScore ?? 0) - (left.weightedScore ?? 0)),
+      FASTEST: [...products].sort((left, right) => (left.avgLatencyMs ?? 9999) - (right.avgLatencyMs ?? 9999)),
+      CHEAPEST: [...products].sort((left, right) => (left.avgCostUsd ?? 9999) - (right.avgCostUsd ?? 9999)),
+      MOST_ACCURATE: [...products].sort((left, right) => (right.avgBenchmarkRelevance ?? 0) - (left.avgBenchmarkRelevance ?? 0)),
     };
-  }
 
-  return Response.json({
-    capability,
-    category,
-    strategies: result,
-    recommendation: 'Use balanced for general use. Switch to most_stable for uptime, cheapest for batch jobs, best_performance for research.',
-  });
+    const result: Record<
+      string,
+      {
+        top_pick: string;
+        top_3: Array<{ slug: string; name: string; score?: number; latency?: number; cost?: number; relevance?: number }>;
+      }
+    > = {};
+
+    for (const [strategy, sorted] of Object.entries(strategies)) {
+      result[strategy] = {
+        top_pick: sorted[0]?.slug ?? 'none',
+        top_3: sorted.slice(0, 3).map((product) => ({
+          slug: product.slug,
+          name: product.name,
+          score: product.weightedScore ?? undefined,
+          latency: product.avgLatencyMs ?? undefined,
+          cost: product.avgCostUsd ?? undefined,
+          relevance: product.avgBenchmarkRelevance ?? undefined,
+        })),
+      };
+    }
+
+    return Response.json({
+      capability,
+      category,
+      strategies: result,
+      recommendation: 'Use balanced for general use. Switch to most_stable for uptime, cheapest for batch jobs, best_performance for research.',
+    });
+  } catch (err) {
+    const reqId = request.headers.get('x-request-id') ?? 'unknown';
+    console.error(`[${reqId}] GET /api/v1/router/compare-strategies error:`, err);
+    return apiError('INTERNAL_ERROR', 'An unexpected error occurred.', 500);
+  }
 }

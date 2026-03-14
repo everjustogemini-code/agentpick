@@ -165,6 +165,40 @@ export default function PricingPageClient() {
           </button>
         </form>
 
+        {!apiKey && !accountLoading && (
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-sm text-white/40">Don't have a key?</span>
+            <button
+              type="button"
+              onClick={async () => {
+                setAccountLoading(true);
+                setAccountError('');
+                try {
+                  const res = await fetch('/api/v1/agents/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: `web-${Date.now()}` }),
+                  });
+                  const data = await res.json();
+                  if (data.api_key) {
+                    setDraftKey(data.api_key);
+                    await loadAccount(data.api_key);
+                  } else {
+                    setAccountError('Registration failed. Try again.');
+                  }
+                } catch {
+                  setAccountError('Registration failed. Try again.');
+                } finally {
+                  setAccountLoading(false);
+                }
+              }}
+              className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-300 transition-colors hover:bg-orange-500/20"
+            >
+              Get a free API key instantly →
+            </button>
+          </div>
+        )}
+
         {account?.email && (
           <div className="mt-4 space-y-1 text-sm text-white/55">
             <p>
