@@ -1,15 +1,25 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
-import dynamic from 'next/dynamic';
 
 const RouterAnalyticsDashboard = dynamic(
-  () => import('@/components/dashboard/RouterAnalyticsDashboard').then(m => ({ default: m.RouterAnalyticsDashboard })),
-  { ssr: false, loading: () => <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white text-center">Loading analytics...</div> }
+  () =>
+    import('@/components/dashboard/RouterAnalyticsDashboard').then((m) => ({
+      default: m.RouterAnalyticsDashboard,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-[28px] bg-slate-950 p-6 text-white text-center text-sm">
+        Loading analytics...
+      </div>
+    ),
+  },
 );
 
 const API_KEY_STORAGE_KEY = 'agentpick_api_key';
@@ -24,6 +34,11 @@ function normalizeApiKey(value: string) {
   return value.trim();
 }
 
+/** Returns true if the plan string indicates a Free-tier user. */
+function isFreePlan(plan: string) {
+  return plan.toLowerCase() === 'free';
+}
+
 export default function DashboardPage() {
   const [apiKey, setApiKey] = useState('');
   const [inputKey, setInputKey] = useState('');
@@ -36,6 +51,10 @@ export default function DashboardPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [newKey, setNewKey] = useState('');
 
+  // Lightweight account state needed for upgrade CTAs
+  const [accountPlan, setAccountPlan] = useState<string | null>(null);
+  const [usagePercent, setUsagePercent] = useState<number | null>(null);
+
   useEffect(() => {
     const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
     if (!saved) return;
@@ -43,6 +62,53 @@ export default function DashboardPage() {
     setApiKey(saved);
     setInputKey(saved);
   }, []);
+
+  // Fetch plan / usage info for upgrade CTAs once connected
+  useEffect(() => {
+    if (!apiKey) {
+      setAccountPlan(null);
+      setUsagePercent(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadAccountInfo() {
+      try {
+        const [accountRes, usageRes] = await Promise.all([
+          fetch('/api/v1/router/account', { headers: authHeaders(apiKey) }),
+          fetch('/api/v1/router/usage?days=30', { headers: authHeaders(apiKey) }),
+        ]);
+
+        if (!accountRes.ok || !usageRes.ok) return;
+
+        const accountData = await accountRes.json();
+        const usageData = await usageRes.json();
+
+        if (cancelled) return;
+
+        const plan: string = usageData.account?.plan ?? accountData.account?.plan ?? 'free';
+        const monthlyLimit: number | null = usageData.account?.monthlyLimit ?? null;
+        const callsThisMonth: number = usageData.account?.callsThisMonth ?? 0;
+
+        setAccountPlan(plan);
+
+        if (monthlyLimit && monthlyLimit > 0) {
+          setUsagePercent(Math.min((callsThisMonth / monthlyLimit) * 100, 100));
+        } else {
+          setUsagePercent(null);
+        }
+      } catch {
+        // CTAs are best-effort — silently ignore
+      }
+    }
+
+    void loadAccountInfo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
 
   function persistApiKey(value: string) {
     setApiKey(value);
@@ -55,6 +121,8 @@ export default function DashboardPage() {
     setInputKey('');
     setNewKey('');
     setError('');
+    setAccountPlan(null);
+    setUsagePercent(null);
     localStorage.removeItem(API_KEY_STORAGE_KEY);
   }
 
@@ -119,6 +187,10 @@ export default function DashboardPage() {
     }
   }
 
+  const showFreeCtas = accountPlan !== null && isFreePlan(accountPlan);
+  const showUsageHint =
+    showFreeCtas && usagePercent !== null && usagePercent > 50;
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.12),_transparent_24%),linear-gradient(180deg,_#f7f3ec_0%,_#f8fafc_42%,_#ffffff_100%)]">
       <SiteHeader />
@@ -139,6 +211,7 @@ export default function DashboardPage() {
 
         {apiKey ? (
           <div className="mt-10 space-y-6">
+            {/* Main dashboard info section */}
             <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                 Main dashboard
@@ -147,9 +220,53 @@ export default function DashboardPage() {
                 Plan details, monthly call progress, strategy selection, estimated cost, and
                 budget editing all stay on this page.
               </p>
+              {/* Free plan upgrade one-liner */}
+              {showFreeCtas && (
+                <p className="mt-3 text-xs text-slate-500">
+                  Free plan · 3,000 calls/mo{' '}
+                  <span className="mx-1 text-slate-300">→</span>
+                  <Link
+                    href="/checkout?plan=pro"
+                    className="font-medium text-orange-500 hover:text-orange-600 transition-colors"
+                  >
+                    Upgrade to Pro for 10K calls →
+                  </Link>
+                </p>
+              )}
             </section>
 
+            {/* Usage hint — only when >50% consumed on Free plan */}
+            {showUsageHint && (
+              <p className="px-1 text-xs text-slate-400">
+                You&apos;ve used{' '}
+                <span className="font-medium text-slate-500">
+                  {Math.round(usagePercent!)}%
+                </span>{' '}
+                of your monthly calls.{' '}
+                <Link
+                  href="/pricing"
+                  className="text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 transition-colors"
+                >
+                  Need more? →
+                </Link>
+              </p>
+            )}
+
+            {/* Embedded analytics dashboard */}
             <RouterAnalyticsDashboard />
+
+            {/* Subtle pro banner for Free plan users */}
+            {showFreeCtas && (
+              <div className="rounded-2xl border border-slate-200 px-5 py-3 text-xs text-slate-400">
+                Pro users get 10× more calls and priority routing.{' '}
+                <Link
+                  href="/pricing"
+                  className="font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 transition-colors"
+                >
+                  See plans →
+                </Link>
+              </div>
+            )}
 
             {newKey ? (
               <section className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
