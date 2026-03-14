@@ -14,6 +14,7 @@ import {
   checkUsageLimit,
   ensureDeveloperAccount,
   isRouterStrategy,
+  normalizeStrategy,
   recordRouterCall,
   type RouterPlanValue,
   type RouterStrategyValue,
@@ -74,7 +75,9 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       tool_api_key: url.searchParams.get('tool_api_key') ?? undefined,
       params,
       fallback: fallbackParam ? fallbackParam.split(',').map((item) => item.trim()).filter(Boolean) : undefined,
-      strategy: isRouterStrategy(strategyParam) ? strategyParam : undefined,
+      strategy: strategyParam
+        ? (isRouterStrategy(strategyParam) ? strategyParam as RouterStrategyValue : (normalizeStrategy(strategyParam) ?? undefined))
+        : undefined,
       priority_tools: priorityParam ? priorityParam.split(',').map(s => s.trim()).filter(Boolean) : undefined,
     };
   } else {
@@ -128,8 +131,18 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   }
 
   // Normalize strategy to uppercase canonical form for consistent SDK_TO_CORE mapping
-  const rawStrategy = body.strategy && isRouterStrategy(body.strategy) ? body.strategy : (account.strategy as RouterStrategyValue);
-  const strategyUsed = rawStrategy.toUpperCase() as RouterStrategyValue;
+  // Accept both SDK enum names (CHEAPEST, MOST_ACCURATE) and canonical names (cheapest, best_performance)
+  let strategyUsed: RouterStrategyValue;
+  if (body.strategy) {
+    if (isRouterStrategy(body.strategy)) {
+      strategyUsed = (body.strategy as string).toUpperCase() as RouterStrategyValue;
+    } else {
+      const normalized = normalizeStrategy(body.strategy as string);
+      strategyUsed = normalized ?? (account.strategy as RouterStrategyValue);
+    }
+  } else {
+    strategyUsed = account.strategy as RouterStrategyValue;
+  }
 
   // Map SDK/Prisma strategies to canonical core names
   const SDK_TO_CORE: Record<string, Strategy> = {

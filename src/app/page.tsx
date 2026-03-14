@@ -42,7 +42,7 @@ async function getStats() {
 
 async function getActivityEvents(): Promise<ActivityEvent[]> {
   try {
-  const [votes, benchmarks, playgroundSessions] = await Promise.all([
+  const [votes, benchmarks] = await Promise.all([
     prisma.vote.findMany({
       where: { proofVerified: true },
       orderBy: { createdAt: 'desc' },
@@ -51,7 +51,7 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
         agent: { select: { name: true, modelFamily: true } },
         product: { select: { name: true, slug: true } },
       },
-    }),
+    }).catch(() => []),
     prisma.benchmarkRun.findMany({
       orderBy: { createdAt: 'desc' },
       take: 8,
@@ -59,13 +59,8 @@ async function getActivityEvents(): Promise<ActivityEvent[]> {
         product: { select: { name: true, slug: true } },
       },
     }).catch(() => []),
-    prisma.playgroundSession.findMany({
-      where: { status: 'completed' },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-      select: { id: true, domain: true, tools: true, createdAt: true },
-    }).catch(() => []),
   ]);
+  const playgroundSessions: any[] = [];
 
   const events: ActivityEvent[] = [];
 

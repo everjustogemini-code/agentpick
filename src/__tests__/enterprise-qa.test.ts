@@ -72,8 +72,9 @@ describe('P0-2: Invalid capability returns 404 (via getRankedToolsForCapability)
     }
   });
 
-  it('valid capabilities are exactly search, crawl, embed, finance', () => {
-    expect(Object.keys(CAPABILITY_TOOLS).sort()).toEqual(['crawl', 'embed', 'finance', 'search']);
+  it('valid capabilities include search, crawl, embed, finance, code, communication, translation, ocr', () => {
+    const keys = Object.keys(CAPABILITY_TOOLS).sort();
+    expect(keys).toEqual(['code', 'communication', 'crawl', 'embed', 'finance', 'ocr', 'search', 'translation']);
   });
 });
 
@@ -82,7 +83,7 @@ describe('P0-2: Invalid capability returns 404 (via getRankedToolsForCapability)
 describe('P1-3: Priority tools affect fallback chain', () => {
   it('returns tools in strategy order by default', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced');
-    expect(ranked.length).toBe(9);
+    expect(ranked.length).toBe(10);
     // Balanced = quality/(cost*latency), should have a reasonable first pick
     expect(ranked[0]).toBeDefined();
   });
@@ -91,7 +92,7 @@ describe('P1-3: Priority tools affect fallback chain', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced', ['serpapi', 'tavily']);
     expect(ranked).not.toContain('serpapi');
     expect(ranked).not.toContain('tavily');
-    expect(ranked.length).toBe(7);
+    expect(ranked.length).toBe(8);
   });
 
   it('all strategies produce non-empty results for valid capabilities', () => {
