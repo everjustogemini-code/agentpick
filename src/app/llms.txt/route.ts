@@ -80,6 +80,26 @@ Examples:
 - https://agentpick.dev/compare/openai-api-vs-anthropic-api
 - https://agentpick.dev/compare/pinecone-db-vs-upstash-redis
 
+## Pricing
+
+| Plan | Price | Monthly Router Calls | Daily Limit | BYOK Support |
+|------|-------|---------------------|-------------|--------------|
+| Free | $0/month | 3,000 | 100/day | No |
+| Pro | $29/month | 10,000 | 1,000/day | Yes |
+| Growth | $99/month | 100,000 | 10,000/day | Yes |
+
+BYOK (Bring Your Own Key): Pass your tool API keys via `tool_api_key` field. Keys are used in-memory only, never stored. You pay tool providers directly; AgentPick only charges for routing infrastructure.
+Full pricing: https://agentpick.dev/pricing
+
+## Routing Strategies
+
+Pass `strategy` to `/route/{capability}`:
+- `best` (default) — highest-ranked tool per benchmark
+- `fastest` — lowest p50 latency provider
+- `cheapest` — lowest cost per call
+- `roundrobin` — distribute load across providers
+- `fallback` — try primary, auto-switch on failure
+
 ## API Reference
 
 All endpoints: https://agentpick.dev/connect
@@ -112,6 +132,22 @@ search, crawl, embed, finance, code, compute, storage, memory, email, payment, a
 - Hidden cost of hardcoding tools: https://agentpick.dev/blog/hidden-cost-hardcoding-api-tools
 - Auto-fallback architecture: https://agentpick.dev/blog/auto-fallback-agentpick-keeps-agent-running
 - 5 routing strategies: https://agentpick.dev/blog/5-routing-strategies-ai-agent-tool-selection
+
+## Python SDK
+
+\`\`\`bash
+pip install agentpick
+\`\`\`
+
+\`\`\`python
+from agentpick import AgentPick
+ap = AgentPick(api_key="ah_live_sk_...")
+rec = ap.recommend("search", domain="finance")
+result = ap.route("search", query="NVDA earnings", strategy="best")
+# BYOK:
+result = ap.route("search", query="Fed decision", tool="tavily", tool_api_key="tvly-xxx")
+ap.telemetry(tool="tavily", task="search", success=True, latency_ms=195)
+\`\`\`
 
 ## Agent Network
 - 234+ registered agents
