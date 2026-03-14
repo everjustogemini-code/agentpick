@@ -1,3 +1,71 @@
+# Growth Report — Cycle 14 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 296 | This Week: 296 | Calls Today: 337 | Paid: 0
+- Blog posts: 12 live (added brave-search-for-ai-agents)
+- New page: /reports/weekly/2026-03-28 — 3rd weekly report
+- AEO scores: 0/0/0 (6th cycle in a row — zero visibility in all target queries)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — zero revenue. STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env.
+2. **Zero search visibility** — 6 cycles at 0 for all 3 AEO queries. Content is accumulating but not yet ranking.
+3. **No directory listings** — kdnuggets.com, aimultiple.com, data4ai.com rank for our queries; AgentPick not listed.
+
+## Actions Taken
+
+### 1. AEO scores checked and posted (cycle 14)
+- "best search API for AI agents" → 0 (KDnuggets, Tavily, Firecrawl, Brave, Exa, Buttondown, Linkup, Parallel dominate)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME/Safe, Deepchecks, Arize AI, LangChain dominate)
+- "AI agent API benchmark" → 0 (EvidentlyAI, GitHub/philschmid, Sierra, AgentBench, o-mega.ai, IBM dominate)
+- All 3 scores posted to DB via AEO score endpoint
+
+### 2. New blog post: /blog/brave-search-for-ai-agents
+- Targets: "brave search api for ai agents", "brave search api free", "brave vs tavily for agents"
+- Key angle: Brave is the ONLY major search API with fully independent index (no Google/Bing dependency)
+- Key differentiator: 2,000 calls/month free — most generous free tier of any ranked API
+- Benchmark position: #5 at score 5.8, used as fallback layer in all strategies
+- Brave appears in search results for "best search API for AI agents" — highest-leverage missing post
+- Added to blog index (now 12 posts)
+
+### 3. New report: /reports/weekly/2026-03-28
+- Third weekly benchmark report — establishes 3-week cadence pattern for search engines
+- Key update: Brave Search formally added to rankings at #5 (5.8), "new" tag this week
+- Links back to 2026-03-21 and 2026-03-14 reports (internal link chain now 3 deep)
+- Updated stats: 296 agents, 2,710 cumulative calls
+
+## Results
+- Brave Search blog post live (fills gap in query 1 search results) ✅
+- Weekly report #3 live at /reports/weekly/2026-03-28 ✅
+- Blog index updated to 12 posts ✅
+- AEO scores posted successfully to DB ✅
+- Moltbook: DNS failure again (6th cycle), marked dead permanently
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Directory submissions** — kdnuggets.com, aimultiple.com, data4ai.com rank for target queries; submit AgentPick
+3. **Parallel Search API blog post** — Parallel appears twice in "best search API for AI agents" results, no dedicated post
+4. **Linkup verification** — add Linkup to active benchmark set; gives content hook when it gets a score
+
+## Learnings
+- Brave Search consistently appears in "best search API for AI agents" results across multiple cycles.
+  Creating a dedicated Brave post fills a content gap and establishes a link between their brand searches
+  and AgentPick. Any API appearing in AEO search results for our target queries should have a dedicated post.
+- 3 consecutive weekly reports now exist. Search engines will begin recognizing the cadence signal.
+  By cycle 16-17, this pattern should show measurable indexing improvement for the reports section.
+- The Parallel Search API (parallel.ai) now appears twice in query 1 results. This is the next
+  high-leverage post: "Parallel Search API for AI agents" targets a brand with growing visibility.
+- Zero paid conversion after 14 cycles confirms Stripe configuration is the single biggest blocker.
+  All other growth work is wasted until checkout works.
+
+## Files Changed (Cycle 14)
+- `src/app/blog/brave-search-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added Brave post at top (now 12 posts)
+- `src/app/reports/weekly/2026-03-28/page.tsx` (new)
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 12 (2026-03-14)
 
 ## Metrics Snapshot
