@@ -197,9 +197,10 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
 
   // Realtime data and news → both use the same consistent tool order to prevent
   // non-determinism when a query is borderline between the two classifications.
-  // tavily is chosen as primary: it handles both realtime and news queries well.
+  // tavily is primary; exa-search is secondary (high-quality, reliably configured).
+  // serpapi-google is last: it was causing non-determinism when primary tools were unconfigured.
   if (context.type === 'realtime' || context.freshness === 'realtime' || context.type === 'news' || context.freshness === 'recent') {
-    return filterAvailable(['tavily', 'serpapi-google', 'serpapi', 'brave-search', 'exa-search'], capability);
+    return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
   }
 
   // Deep research → quality tools first

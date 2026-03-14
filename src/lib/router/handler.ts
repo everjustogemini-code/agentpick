@@ -76,7 +76,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   // requests and closes the window for an intermittent auth-bypass edge case.
   const _authHeader = request.headers.get('authorization');
   const _urlForAuth = new URL(request.url);
-  if (!_authHeader && !_urlForAuth.searchParams.has('token')) {
+  // Reject whitespace-only or absent auth headers as well as missing ?token= params.
+  // This closes an intermittent edge case where a header with only whitespace bypassed the null check.
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 
