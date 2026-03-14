@@ -206,6 +206,139 @@ export default async function HomePage() {
         </section>
       </div>
 
+      {/* ============ Two Ways to Start ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 pt-12 pb-6">
+        <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">Getting started</p>
+        <h2 className="mb-8 text-[28px] font-bold text-text-primary" style={{ letterSpacing: '-0.02em' }}>
+          Two ways to start
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+
+          {/* Conversational Card */}
+          <div className="card p-6 border-2 border-accent/30 relative overflow-hidden">
+            <div className="absolute top-3 right-3 rounded-full bg-accent/10 px-2 py-0.5 font-mono text-[10px] text-accent uppercase tracking-widest">
+              New ✨
+            </div>
+            <div className="mb-3 text-[24px]">💬</div>
+            <h3 className="mb-1 text-[20px] font-bold tracking-tight text-text-primary">
+              Conversational
+            </h3>
+            <p className="mb-4 text-[13px] text-text-tertiary">
+              Send one message to your AI agent — everything else happens in chat.
+            </p>
+
+            {/* Chat bubble demo */}
+            <div className="mb-5 space-y-2">
+              <div className="flex justify-end">
+                <div className="rounded-2xl rounded-tr-sm bg-accent px-3 py-2 text-[13px] text-white max-w-[85%]">
+                  install agentpick and search for NVIDIA earnings
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-tl-sm border border-border bg-bg-card px-3 py-2 text-[13px] text-text-primary max-w-[85%]">
+                  ✓ AgentPick installed. Routing your query via Exa&nbsp;(finance)&hellip;
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-tl-sm border border-border bg-bg-card px-3 py-2 text-[13px] text-text-primary max-w-[85%]">
+                  Found 8 sources. NVDA Q4 revenue was $22.1B&hellip;
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-border bg-bg-secondary p-3 font-mono text-[12px]">
+              <div className="mb-1 text-text-tertiary">Tell your agent:</div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-text-primary break-all">install agentpick</span>
+                <CopyButton text="install agentpick" />
+              </div>
+            </div>
+
+            <p className="mb-3 text-[13px] text-text-secondary leading-relaxed">
+              Works with OpenClaw, Claude, and any agent with skill support.<br />
+              Install + use + monitor + upgrade — <strong>all in chat</strong>.
+            </p>
+            <p className="text-[12px] text-text-tertiary">Zero code. Zero dashboard. Zero browser.</p>
+          </div>
+
+          {/* Developer Card */}
+          <div className="card p-6">
+            <div className="mb-3 text-[24px]">💻</div>
+            <h3 className="mb-1 text-[20px] font-bold tracking-tight text-text-primary">
+              Developer
+            </h3>
+            <p className="mb-4 text-[13px] text-text-tertiary">
+              Standard SaaS flow. Get an API key and start routing in 60 seconds.
+            </p>
+
+            <div className="mb-5 rounded-lg border border-border bg-bg-code p-4 font-mono text-[13px]">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-green-400">pip install agentpick</span>
+                <CopyButton text="pip install agentpick" dark />
+              </div>
+              <div className="text-white/40 text-[12px] leading-relaxed">
+                <div>from agentpick import AgentPick</div>
+                <div>ap = AgentPick(api_key=&quot;YOUR_KEY&quot;)</div>
+                <div>results = ap.search(&quot;NVDA earnings&quot;)</div>
+              </div>
+            </div>
+
+            <p className="mb-4 text-[13px] text-text-secondary leading-relaxed">
+              Full dashboard, analytics, strategy selector, and BYOK support.
+            </p>
+
+            <Link href="/dashboard/router" className="btn-primary btn-shimmer inline-block">
+              Get API key →
+            </Link>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* ============ Two Ways to Manage ============ */}
+      <ScrollReveal className="mx-auto max-w-[1200px] px-6 pb-12">
+        <div className="rounded-xl border border-border bg-bg-card/50 p-6">
+          <p className="mb-4 font-mono text-[11px] uppercase tracking-widest text-text-tertiary">Management</p>
+          <h2 className="mb-6 text-[22px] font-bold text-text-primary" style={{ letterSpacing: '-0.02em' }}>
+            Two ways to manage
+          </h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[18px]">💬</span>
+                <span className="font-semibold text-text-primary">In your chat</span>
+              </div>
+              <div className="space-y-1 font-mono text-[13px] text-text-secondary mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-text-tertiary">›</span>
+                  <span>&ldquo;show my agentpick usage&rdquo;</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-text-tertiary">›</span>
+                  <span>&ldquo;upgrade to pro&rdquo;</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-text-tertiary">›</span>
+                  <span>&ldquo;switch to cheapest strategy&rdquo;</span>
+                </div>
+              </div>
+              <p className="text-[13px] text-text-tertiary">Your agent handles it — no browser needed.</p>
+            </div>
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[18px]">💻</span>
+                <span className="font-semibold text-text-primary">On the web</span>
+              </div>
+              <p className="mb-3 text-[13px] text-text-secondary leading-relaxed">
+                Full dashboard with analytics, strategy selector, billing, and API key management.
+              </p>
+              <Link href="/dashboard/router" className="btn-secondary inline-block text-[13px]">
+                Open Dashboard →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+
       {/* ============ Trust Bar ============ */}
       <ScrollReveal>
         <TrustBar />
