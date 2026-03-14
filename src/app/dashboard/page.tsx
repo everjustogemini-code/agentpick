@@ -250,7 +250,7 @@ export default function DashboardPage() {
                   Free plan · 500 calls/mo{' '}
                   <span className="mx-1 text-slate-300">→</span>
                   <Link
-                    href="/checkout?plan=pro"
+                    href="/pricing?plan=pro"
                     className="font-medium text-orange-500 hover:text-orange-600 transition-colors"
                   >
                     Upgrade to Pro for 10K calls →

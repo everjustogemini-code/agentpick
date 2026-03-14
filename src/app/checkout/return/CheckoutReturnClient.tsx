@@ -73,7 +73,7 @@ export default function CheckoutReturnClient() {
           <h1 className="text-2xl font-bold text-white">Payment incomplete</h1>
           <p className="mt-3 text-sm text-white/55">Your checkout session is still open.</p>
           <Link
-            href={`/checkout?plan=${plan ?? 'pro'}`}
+            href={`/pricing?plan=${plan ?? 'pro'}`}
             className="mt-6 inline-block rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-400"
           >
             Return to checkout

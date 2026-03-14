@@ -148,7 +148,7 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
     "strategy": "BALANCED",
     "plan": "FREE",
     "calls_remaining": 87,
-    "message": "Only 10 free calls left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/checkout?plan=pro"
+    "message": "Only 10 free calls left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro"
   }
 }
 \`\`\`
@@ -175,9 +175,9 @@ if result.get("meta", {}).get("message"):
 
 ## Payments
 
-### Upgrade via Web (Embedded Checkout)
-Navigate the user to: \`https://agentpick.dev/checkout?plan=pro\`, \`?plan=growth\`, or \`?plan=scale\`
-The user pays without leaving agentpick.dev using Stripe Embedded Checkout.
+### Upgrade via Web (Hosted Checkout)
+Navigate the user to: \`https://agentpick.dev/pricing?plan=pro\`, \`?plan=growth\`, or \`?plan=scale\`
+AgentPick will create a Stripe hosted checkout session and redirect the user to \`checkout.stripe.com\`.
 
 ### Upgrade via Telegram (In-Chat Payment)
 

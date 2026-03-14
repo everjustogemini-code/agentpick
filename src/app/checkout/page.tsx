@@ -4,8 +4,8 @@ import SiteHeader from '@/components/SiteHeader';
 import CheckoutPageClient from './CheckoutPageClient';
 
 export const metadata: Metadata = {
-  title: 'Checkout | AgentPick',
-  description: 'Subscribe to AgentPick Pro, Growth, or Scale — pay without leaving the site.',
+  title: 'Checkout Redirect | AgentPick',
+  description: 'Redirecting plan selections into the hosted Stripe checkout flow.',
 };
 
 export default function CheckoutPage() {

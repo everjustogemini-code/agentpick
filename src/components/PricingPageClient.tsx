@@ -2,7 +2,7 @@
 
 import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   PRICING_CARD_PLANS,
@@ -35,16 +35,10 @@ export default function PricingPageClient() {
   const [accountError, setAccountError] = useState('');
   const [checkoutError, setCheckoutError] = useState('');
   const [checkoutPlan, setCheckoutPlan] = useState<UpgradePlanSlug | null>(null);
+  const [checkoutReady, setCheckoutReady] = useState(false);
+  const [autoCheckoutAttempted, setAutoCheckoutAttempted] = useState(false);
 
-  useEffect(() => {
-    const savedKey = window.localStorage.getItem(STORAGE_KEY);
-    if (!savedKey) return;
-
-    setDraftKey(savedKey);
-    void loadAccount(savedKey, false);
-  }, []);
-
-  async function loadAccount(key: string, persist = true) {
+  const loadAccount = useCallback(async (key: string, persist = true) => {
     setAccountLoading(true);
     setAccountError('');
     setCheckoutError('');
@@ -67,9 +61,6 @@ export default function PricingPageClient() {
       if (persist) {
         window.localStorage.setItem(STORAGE_KEY, key);
       }
-
-      // Auto-redirect to dashboard after loading account
-      window.location.href = '/dashboard';
     } catch (error) {
       setAccount(null);
       setApiKey('');
@@ -78,7 +69,30 @@ export default function PricingPageClient() {
     } finally {
       setAccountLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const savedKey = window.localStorage.getItem(STORAGE_KEY);
+    if (!savedKey) {
+      setCheckoutReady(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    setDraftKey(savedKey);
+    setApiKey(savedKey);
+
+    void loadAccount(savedKey, false).finally(() => {
+      if (!cancelled) {
+        setCheckoutReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAccount]);
 
   async function handleAccountSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,10 +105,9 @@ export default function PricingPageClient() {
     await loadAccount(draftKey.trim(), true);
   }
 
-  async function handleCheckout(plan: UpgradePlanSlug) {
+  const handleCheckout = useCallback(async (plan: UpgradePlanSlug) => {
     let key = apiKey;
     if (!key) {
-      // Auto-register if no key
       try {
         const res = await fetch('/api/v1/agents/register', {
           method: 'POST',
@@ -137,11 +150,20 @@ export default function PricingPageClient() {
     } finally {
       setCheckoutPlan(null);
     }
-  }
+  }, [apiKey]);
 
   const checkoutState = searchParams.get('checkout');
   const checkoutPlanFromUrl = normalizeUpgradePlan(searchParams.get('plan'));
   const currentPlanLabel = account?.planLabel ?? (account ? getRouterPlanLabel(account.plan) : null);
+
+  useEffect(() => {
+    if (!checkoutReady || checkoutState || !checkoutPlanFromUrl || autoCheckoutAttempted) {
+      return;
+    }
+
+    setAutoCheckoutAttempted(true);
+    void handleCheckout(checkoutPlanFromUrl);
+  }, [autoCheckoutAttempted, checkoutPlanFromUrl, checkoutReady, checkoutState, handleCheckout]);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -367,7 +389,7 @@ export default function PricingPageClient() {
                   {isBusy && 'Opening checkout…'}
                   {!isBusy && exactMatch && 'Current plan'}
                   {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
-                  {!isBusy && !exactMatch && !higherPlan && !account && 'Load API key to upgrade'}
+                  {!isBusy && !exactMatch && !higherPlan && !account && 'Continue to checkout'}
                   {!isBusy && !exactMatch && !higherPlan && account && plan.ctaLabel}
                 </button>
               )}
