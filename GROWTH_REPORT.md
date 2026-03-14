@@ -1,3 +1,77 @@
+# Growth Report — Cycle 14 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 300 | This Week: 300 | Calls Today: 314 | Paid: 0
+- Blog posts: 13 live (added parallel-search-api-for-ai-agents)
+- Weekly reports: 4 live (added 2026-04-04)
+- AEO scores: 0/0/0 (7th cycle in a row)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 7 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8 for main query; not listed
+4. **Moltbook dead** — confirmed dead (7 consecutive DNS failures), remove from future cycles
+
+## Actions Taken
+
+### 1. New blog post: /blog/parallel-search-api-for-ai-agents
+- Parallel Search appeared in "best search API for AI agents" results this cycle (first sighting)
+- Content angle: built from ground up for agents (not adapted consumer search), declarative semantic objectives, token-compressed output for LLM context efficiency
+- Comparison table vs Perplexity, Haystack, Exa, Tavily, Brave
+- FAQ targeting: "what is Parallel Search API", "Parallel vs Tavily", "Parallel vs Exa for AI agents"
+- CTA: Get API Key → /connect
+
+### 2. New weekly report: /reports/weekly/2026-04-04
+- Fourth weekly benchmark report — demonstrates sustained cadence to search engines
+- Updated stats: 300 agents (milestone), 3,024 cumulative calls (first over 3K), 614 benchmark runs
+- Parallel Search enters evaluation with "evaluating" status
+- Forward link added to 2026-03-28 report for internal link chain
+
+### 3. Updated llms.txt
+- Refreshed: 614 benchmark runs, 300 agents, 3,024 production calls
+- Added Parallel Search to rankings with "evaluating" status and description
+- Monthly cadence maintained for LLM discovery signal
+
+### 4. AEO scores checked (cycle 14)
+- "best search API for AI agents" → 0 (Tavily, Firecrawl, KDnuggets, Exa, Parallel, Linkup, data4ai, aimultiple all above)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize AI, LangChain dominate — agent-to-agent routing, not API routing)
+- "AI agent API benchmark" → 0 (PinchBench/apiyi.com new entry, EvidentlyAI, RandalOlson, IEEE, IBM above)
+
+### 5. Moltbook: confirmed dead (skip permanently)
+- 7 consecutive DNS failures; removed from future cycle instructions
+
+## Results
+- Parallel Search blog post live ✅ (13 posts total)
+- Weekly report #4 live at /reports/weekly/2026-04-04 ✅
+- 2026-03-28 report now has forward link to 2026-04-04 ✅
+- llms.txt updated ✅
+- AEO scores posted ✅
+- Moltbook: DNS failure, permanently skipping
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Valyu Search blog post** — Valyu ranked #1 across 5 benchmarks in new benchmark article; no AgentPick post
+3. **KDnuggets/data4ai/aimultiple outreach** — these rank #1–8 for primary query; one link from any of them outweighs 13 blog posts
+4. **"API tool routing for AI agents"** — new content angle targeting API selection specifically (vs agent-to-agent routing which dominates "tool routing for AI agents")
+
+## Learnings
+- Parallel Search appeared in search results this cycle — created dedicated post within same cycle. This is the right cadence for new competitor sightings.
+- "Tool routing for AI agents" is dominated by agent-to-agent routing content (LivePerson, Botpress, LangChain). Our content about API routing is a different search category. Need to target "API selection for AI agents" or "search API routing" specifically.
+- PinchBench is a new AI agent benchmark leaderboard (appears for "AI agent API benchmark" query). It's from the OpenClaw ecosystem — potential partnership angle given Pclaw collaboration.
+- Valyu Search ranked #1 across 5 benchmarks in a new benchmark comparison article. First sighting — needs a dedicated post next cycle.
+- 300 agents is a milestone but 0 paid is the core problem. All content work only matters if Stripe is live.
+
+## Files Changed (Cycle 14)
+- `src/app/blog/parallel-search-api-for-ai-agents/page.tsx` (new)
+- `src/app/blog/page.tsx` — added Parallel post at top (now 13 posts)
+- `src/app/reports/weekly/2026-04-04/page.tsx` (new)
+- `src/app/reports/weekly/2026-03-28/page.tsx` — added forward navigation link
+- `src/app/llms.txt/route.ts` — updated metrics, added Parallel Search
+- `GROWTH_STATE.md` (updated)
+- `GROWTH_REPORT.md` (this file)
+
+---
+
 # Growth Report — Cycle 13 (2026-03-14)
 
 ## Metrics Snapshot

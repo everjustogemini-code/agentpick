@@ -1,37 +1,29 @@
-# Growth State — Cycle 13 (2026-03-14)
+# Growth State — Cycle 14 (2026-03-14)
 
-## Working
-- Homepage (/) → 200 ✅
-- /pricing → 200 ✅
-- /blog → 200 ✅
-- /connect → 200 ✅
-- Agent registration: POST /api/v1/agents/register → returns api_key, plan: free ✅
-- Health: GET /api/health → 200, db ok ✅
-- AEO score endpoint → 200 ✅
-- Blog posts: 12 live (added brave-search-api-for-ai-agents)
-- Weekly reports: 3 live (added 2026-03-28)
+## Live Health Check
+- Router health: UNAUTHORIZED (as expected — requires API key)
+- Agent registration: 200 OK — `{"agent_id":"cmmqqgdqy...","api_key":"ah_live_sk_...","reputation_score":0.1,"status":"active"}`
+- Homepage: HTTP/2 200
+- /pricing: HTTP/2 200
+- /blog: HTTP/2 200
+- /connect: HTTP/2 200
+- /checkout?plan=pro: no response (Stripe not configured)
+- Moltbook: DNS failure (exit code 6) — confirmed dead channel (7th consecutive failure)
 
-## Broken / Issues
-- GET /api/v1/router/health → 401 UNAUTHORIZED (requires API key; real health at /api/health)
-- Moltbook distribution → DNS failure again, dead channel
-- AEO: 0/0/0 across all 3 target queries — 6th cycle in a row
+## AEO Scores (Cycle 14)
+- "best search API for AI agents" → 0 (Tavily, Firecrawl, KDnuggets, Exa, Parallel, Linkup, data4ai, aimultiple, SerpAPI, Medium article all above)
+- "tool routing for AI agents" → 0 (LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize AI, LangChain, GitHub, NivaLabs all above)
+- "AI agent API benchmark" → 0 (apiyi.com/PinchBench, EvidentlyAI, RandalOlson, aitools4you, o-mega, modelslab, Nature, IEEE, LiveBench, IBM all above)
+- All scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
 
-## Metrics
-- Total Agents: 297 | This Week: 297 | Calls Today: 337 | Paid: 0
+## New Competitors Spotted This Cycle
+- Parallel Search (parallel.ai) — now in "best search API for AI agents" results; built for AI agents; declarative semantic objectives
+- Valyu Search — ranked #1 across 5 benchmarks in new Medium article (FreshQA, SimpleQA, finance, economics, medical)
+- PinchBench — new AI agent leaderboard (49 models, real-time scoring); appears in "AI agent API benchmark" query
 
-## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
-2. **Zero search visibility** — 6 cycles at 0/0/0 AEO
-3. **No directory listings** — KDnuggets (ranks #1 for our main query), aimultiple.com, data4ai.com
-4. **Free tier 500 calls/month** — tight vs Tavily free 1000/month
-
-## Actions Taken (Cycle 13)
-1. New blog: /blog/brave-search-api-for-ai-agents (gap identified last cycle)
-2. New weekly report: /reports/weekly/2026-03-28 (3rd weekly report, cadence signal)
-3. Updated llms.txt: 297 agents, 2,710 calls, added Brave to rankings
-4. AEO scores posted: 0/0/0
-
-## Next Priority
-1. Stripe config (owner action)
-2. Get listed on KDnuggets "7 Free Web Search APIs for AI Agents" article
-3. Dev.to/HN post with real benchmark data
+## Key Findings
+1. Zero paid conversions — Stripe still not configured (/checkout returns no response)
+2. 300 agents milestone crossed (was 297 last cycle)
+3. Moltbook dead — skip permanently
+4. Content gap filled: Parallel Search blog post created this cycle
+5. "tool routing for AI agents" is dominated by agent-to-agent routing content, not API routing — different content angle needed

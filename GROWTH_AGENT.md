@@ -29,9 +29,7 @@ curl -s https://agentpick.dev/api/v1/admin/growth-metrics
 - 更新 compare 页面数据
 
 **低优先：**
-- Moltbook 发帖（最多 2 条/轮，用真实数据）
-  - API key: moltbook_sk_AdYBjvbWZZJ4nxt6NaYHM4kr7cSDofL4
-  - Agent ID: f3b7afd4-2b8e-4306-9f37-bf7efbfba31c
+- ~~Moltbook~~ — DNS 7 连败，永久跳过
 
 ### 3. AEO Score 检查（每 3 轮做 1 次）
 搜索这些关键词，看 AgentPick 是否出现：
@@ -56,6 +54,13 @@ POST 分数到 `/api/v1/admin/growth-metrics/aeo-score`
 - 客观对比，承认每个工具优劣
 - AgentPick 只在文末自然提到
 - 参考 Hugging Face Leaderboard 的风格
+
+## 竞争对手监控策略
+每轮 AEO 搜索时，记录搜索结果中第一次出现的新竞争对手：
+- 当 cycle 内首次出现 → 同轮内创建专属对比博客（已做: Linkup/Brave/Parallel）
+- Valyu Search — 下轮优先 (ranked #1 across 5 benchmarks in new article)
+- "tool routing" 搜索结果全是 agent-to-agent routing，不是 API routing
+  → 需要专门的 "API tool selection for AI agents" 或 "search API routing" 内容
 
 ## 绝对不做
 - 不手动在 HN/Reddit/Twitter 发帖

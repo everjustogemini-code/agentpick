@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'parallel-search-api-for-ai-agents',
+    title: 'Parallel Search API for AI Agents: Benchmark Results (2026)',
+    description:
+      'Parallel Search is built from the ground up for AI agents — declarative semantic objectives, token-compressed excerpts, fewer round trips. How it compares to Perplexity, Exa, and Tavily.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'brave-search-api-for-ai-agents',
     title: 'Brave Search API for AI Agents: Benchmark Results (2026)',
     description:
