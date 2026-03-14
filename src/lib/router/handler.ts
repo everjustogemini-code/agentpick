@@ -213,11 +213,23 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   }
 
   // 5. Route the request
-  // If the account has AUTO strategy and no explicit strategy was in the request body,
-  // apply it now so AI classification runs and ai_routing_summary gets populated.
-  // This aligns /api/v1/route/* behavior with /api/v1/router/* for AUTO accounts.
-  if (!body.strategy && preAccount?.strategy && (preAccount.strategy as string).toUpperCase() === 'AUTO') {
-    body = { ...body, strategy: 'auto' };
+  // If no explicit strategy was in the request body, apply the account's stored strategy.
+  // AUTO triggers AI classification; CHEAPEST enables BYOK-aware cheapest routing.
+  // Other strategies (BALANCED, FASTEST, MOST_ACCURATE) are mapped to their core equivalents.
+  // This aligns /api/v1/route/* behavior with /api/v1/router/* for all account strategy types.
+  if (!body.strategy && preAccount?.strategy) {
+    const accountStrat = (preAccount.strategy as string).toUpperCase();
+    const ACCOUNT_STRAT_TO_CORE: Record<string, import('./index').Strategy> = {
+      AUTO: 'auto',
+      CHEAPEST: 'cheapest',
+      MOST_ACCURATE: 'best_performance',
+      FASTEST: 'most_stable',
+      BALANCED: 'balanced',
+    };
+    const coreStrat = ACCOUNT_STRAT_TO_CORE[accountStrat];
+    if (coreStrat) {
+      body = { ...body, strategy: coreStrat };
+    }
   }
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body, {

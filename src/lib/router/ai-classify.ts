@@ -65,7 +65,8 @@ export function fastClassify(query: string): QueryContext | null {
   const yearPattern = /\b20(2[4-9]|3[0-9])\b/;
   // Explicit recency signals — queries containing these are unambiguously time-sensitive
   // and should always classify as 'news' without requiring an LLM call.
-  const explicitRecencySignal = /\b(today|right now|this week|this month|yesterday|just now|as of|currently|what happened|what's happening|latest news|recent news|breaking news|top news|news about|update on|status of|current events?|trending)\b/i;
+  // Broad coverage prevents non-deterministic Haiku classifications for time-sensitive queries.
+  const explicitRecencySignal = /\b(today|right now|this week|this month|yesterday|just now|as of|currently|what happened|what's happening|latest news|recent news|breaking news|top news|news about|update on|status of|current events?|trending|what's new|whats new|happening now|in \d{4}|this year|so far in|year to date|ytd|q[1-4] \d{4}|week of|month of)\b/i;
   // Tech/AI company or product signal — combined with any newsTerms triggers a news classification
   // without requiring an explicit year, since product launches are clearly time-sensitive.
   const techCompanySignal = /\b(openai|anthropic|google|microsoft|apple|meta|nvidia|amazon|tesla|spacex|stripe|figma|vercel|mistral|gemini|claude|gpt|llama|sora|dall-e|chatgpt|copilot)\b/i;
