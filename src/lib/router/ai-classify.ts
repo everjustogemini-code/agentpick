@@ -213,8 +213,7 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     context.type === 'realtime' ||
     context.freshness === 'realtime' ||
     context.type === 'news' ||
-    context.freshness === 'recent' ||
-    (context.type === 'research' && context.freshness === 'recent')
+    context.freshness === 'recent'
   ) {
     return filterAvailable(['tavily', 'exa-search', 'brave-search', 'serper', 'serpapi', 'serpapi-google'], capability);
   }
