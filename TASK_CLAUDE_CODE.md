@@ -1,218 +1,219 @@
-# TASK_CLAUDE_CODE.md — vNext
-> Agent: Claude Code | Date: 2026-03-14 | Source: NEXT_VERSION.md
-> Scope: Must-Have #1 (all P1/P2 bug fixes) + Must-Have #3 (Playground backend)
+# TASK_CLAUDE_CODE.md
+**Agent:** Claude Code
+**Date:** 2026-03-14
+**Source:** NEXT_VERSION.md Must-Have #1 (P1/P2 bugs) + Must-Have #2 (backend verify)
 
 ---
 
-## Files to Create / Modify
+## Files to modify (ONLY these — no others)
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/app/api/v1/route/crawl/route.ts` |
 | MODIFY | `src/lib/router/handler.ts` |
-| MODIFY | `src/app/api/v1/router/priority/route.ts` |
+| MODIFY | `src/lib/router/index.ts` |
 | MODIFY | `src/app/api/v1/router/usage/route.ts` |
-| MODIFY | `src/lib/router/ai-classify.ts` |
-| CREATE | `src/app/api/v1/playground/route/route.ts` |
+| VERIFY (patch only if broken) | `src/app/api/v1/router/priority/route.ts` |
+| VERIFY (patch only if broken) | `src/app/api/v1/playground/route/route.ts` |
 
-**DO NOT TOUCH:** `src/app/page.tsx`, `src/app/connect/page.tsx`, `src/app/globals.css`,
-`src/app/benchmarks/**`, `src/app/products/**`, `src/components/**`, `src/app/dashboard/router/page.tsx`
+**DO NOT TOUCH:** Any file in `src/app/connect/`, `src/app/dashboard/`, `src/components/`, `src/app/page.tsx`, or any other frontend file.
 
 ---
 
-## Bug 1 — P1: Fix crawl endpoint rejects bare `{"url":"..."}`
+## Bug 1 — P1: Crawl endpoint rejects bare `{"url":"..."}` body
 
-**File:** `src/app/api/v1/route/crawl/route.ts`
+**File:** `src/lib/router/handler.ts`  
+**Current broken line (~117):**
+```typescript
+if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input)) {
+```
 
-**Problem:** `POST /api/v1/route/crawl {"url": "https://example.com"}` returns
-`400 VALIDATION_ERROR: params object is required`.
+**Root cause:** The flat-body → `params` promotion logic does not include `url`. So `POST /api/v1/route/crawl {"url":"https://example.com"}` reaches the guard at line 135:
+```typescript
+if (!body.params || typeof body.params !== 'object') {
+  return apiError('VALIDATION_ERROR', 'params object is required.', 400);
+}
+```
+and fails.
+
+**Fix:** Add `|| parsed.url` to the condition so `url` triggers auto-promotion:
+```typescript
+// BEFORE:
+if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input)) {
+
+// AFTER:
+if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input || parsed.url)) {
+```
+
+No other changes needed. The `crawl/route.ts` already has belt-and-suspenders normalization via Zod but that path has edge cases (fails if URL format is invalid); the handler fix is the authoritative fix.
+
+**Test:** `POST /api/v1/route/crawl {"url":"https://example.com"}` → 200 or tool error, NOT `400 VALIDATION_ERROR: params object is required`.
+
+---
+
+## Bug 2 — P2: `cheapest` strategy routes to Tavily (wrong cost ranking)
+
+**File:** `src/lib/router/index.ts`
+
+**Current state (TOOL_CHARACTERISTICS ~line 94):**
+```typescript
+serpapi: { quality: 3.0, cost: 0.0002, latency: 89, stability: 0.98 },
+```
+
+**Root cause:** Per correct API pricing, Serper (mapped to `serpapi` slug) costs ~$0.0001/call, same tier as Brave. Current value of `0.0002` may cause it to rank unexpectedly in edge cases. The spec requires `cheapest` to resolve: `brave-search → serper → serpapi-google → tavily → exa-search`.
+
+Costs that produce this order:
+- `brave-search`: 0.0001 ✓ (already correct)
+- `serpapi`: 0.0001 ← **change from 0.0002**
+- `tavily`: 0.001 ✓
+- `exa-search`: 0.002 ✓
 
 **Fix:**
-1. Read the file and find the body validation/parsing block.
-2. Replace the URL extraction so it accepts both shapes:
-   ```ts
-   const url = body.url ?? body.params?.url
-   if (!url) {
-     return NextResponse.json({ error: 'VALIDATION_ERROR: url is required' }, { status: 400 })
-   }
-   ```
-3. Remove any hard guard that rejects requests without a `params` wrapper.
-4. Replace all downstream `body.params.url` / `parsed.params.url` references with the normalized `url` variable.
-5. The old shape `{ params: { url } }` must continue to work (backward compat).
+```typescript
+// BEFORE:
+serpapi: { quality: 3.0, cost: 0.0002, latency: 89, stability: 0.98 },
+
+// AFTER:
+serpapi: { quality: 3.0, cost: 0.0001, latency: 89, stability: 0.98 },
+```
+
+Do NOT change any other field in TOOL_CHARACTERISTICS. Do NOT change routing logic.
+
+**Test:** `getRankedToolsForCapability('search', 'cheapest')[0]` must be `brave-search` or `serpapi`, never `tavily`.
 
 ---
 
-## Bug 2 — P2: Fix `cheapest` strategy routes to Tavily
-
-**File:** `src/lib/router/handler.ts` (primary; also check `src/lib/router/index.ts` and `src/lib/router/sdk-handler.ts` if not found)
-
-**Problem:** `cheapest` strategy returns `toolUsed: "tavily"`. Tavily costs ~$0.001/call;
-Brave/Serper cost ~$0.0001/call — Tavily is 10× more expensive and must rank last.
-
-**Fix:**
-1. Search for a cost map / ranking array (e.g. `TOOL_COSTS`, `costMap`, or an ordered array).
-2. Update numeric cost values so the sort order (ascending = cheapest first) becomes:
-   ```
-   brave-search  → cheapest
-   serper
-   serpapi-google
-   tavily
-   exa-search    → most expensive
-   ```
-   Example corrected map:
-   ```ts
-   const TOOL_COSTS: Record<string, number> = {
-     'brave-search':    0.0001,
-     'serper':          0.0002,
-     'serpapi-google':  0.0003,
-     'tavily':          0.001,
-     'exa-search':      0.002,
-   }
-   ```
-3. Do NOT change any routing logic — only fix the cost values.
-
----
-
-## Bug 3 — P2: Priority endpoint rejects `search` field alias
+## Bug 3 — P2: Priority endpoint field name mismatch (verify + harden)
 
 **File:** `src/app/api/v1/router/priority/route.ts`
 
-**Problem:** `POST /api/v1/router/priority {"search": ["exa-search"]}` returns
-`400 Provide tools/priority_tools`. API expects `priority_tools`; docs/SDK send `search`.
+**Current state:** Line 23 already reads:
+```typescript
+const toolsValue = body.tools ?? body.priority_tools ?? body.search;
+```
+This should already accept `search` as an alias. **Read the file and verify this line exists unchanged.**
 
-**Fix:**
-1. Find where `tools` / `priority_tools` is extracted from `body`.
-2. Normalize all three aliases before any validation:
-   ```ts
-   const priority_tools = body.priority_tools ?? body.tools ?? body.search
-   if (!priority_tools?.length) {
-     return NextResponse.json(
-       { error: 'Provide tools or priority_tools' },
-       { status: 400 }
-     )
-   }
-   ```
-3. Use `priority_tools` for the rest of the handler. Replace all `body.tools` /
-   `body.priority_tools` / `body.search` references downstream with `priority_tools`.
+If the line is present and correct, the only remaining fix is the error message at line 35. Update it to mention `search` as a valid alias:
+```typescript
+// BEFORE:
+return apiError('VALIDATION_ERROR', 'Provide tools/priority_tools (priority list) or excluded/excluded_tools (exclusion list).', 400);
+
+// AFTER:
+return apiError('VALIDATION_ERROR', 'Provide tools/priority_tools/search (priority list) or excluded/excluded_tools (exclusion list).', 400);
+```
+
+If the alias handling on line 23 is broken or missing, also fix it:
+```typescript
+const toolsValue = body.tools ?? body.priority_tools ?? body.search;
+```
+
+**Test:** `POST /api/v1/router/priority {"search":["exa-search"]}` → 200 JSON response.
 
 ---
 
-## Bug 4 — P2: Usage response missing `monthlyLimit`, `callsThisMonth`, `strategy`
+## Bug 4 — P2: Usage response missing `monthlyLimit`, `callsThisMonth`, `strategy` at top level
 
 **File:** `src/app/api/v1/router/usage/route.ts`
 
-**Problem:** `GET /api/v1/router/usage` returns only `{ plan }` inside the account object.
-Dashboard and SDK clients display blank values.
+**Current state:** These fields ARE returned but only nested under `account`. The response shape is:
+```json
+{
+  "plan": "FREE",
+  "daily_limit": ...,
+  "stats": {...},
+  "account": { "plan": "FREE", "monthlyLimit": 10000, "callsThisMonth": 42, "strategy": "AUTO" }
+}
+```
 
-**Fix:**
-1. Read the file. Find where the `account` object is assembled for the response.
-2. Add these computed fields:
+Dashboard and SDK clients read top-level fields. They see `plan` but not `monthlyLimit`, `callsThisMonth`, or `strategy`.
 
-   ```ts
-   // Derive monthly limit from plan
-   const PLAN_LIMITS: Record<string, number> = {
-     free: 10_000,
-     pro: 100_000,
-     enterprise: 1_000_000,
-   }
-   const monthlyLimit = PLAN_LIMITS[user.plan ?? 'free'] ?? 10_000
+**Fix:** Also expose these three fields at the top level of the response (keep the `account` sub-object for backwards compat with any client already reading it):
 
-   // Count calls this calendar month
-   const now = new Date()
-   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-   const callsThisMonth = await prisma.routerCall.count({
-     where: { userId: user.id, createdAt: { gte: startOfMonth } },
-   })
-   // If RouterCall is not the correct model name, check prisma/schema.prisma
+```typescript
+// BEFORE (return statement):
+return Response.json({
+  plan: account.plan,
+  daily_limit: limits.limit,
+  daily_used: limits.used,
+  daily_remaining: limits.remaining,
+  stats,
+  account: {
+    plan: account.plan,
+    monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
+    callsThisMonth,
+    strategy: account.strategy,
+  },
+});
 
-   // Strategy: check all possible field names
-   const strategy = user.strategy ?? user.defaultStrategy ?? user.routerStrategy ?? 'auto'
-   ```
+// AFTER:
+return Response.json({
+  plan: account.plan,
+  monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
+  callsThisMonth,
+  strategy: account.strategy,
+  daily_limit: limits.limit,
+  daily_used: limits.used,
+  daily_remaining: limits.remaining,
+  stats,
+  account: {
+    plan: account.plan,
+    monthlyLimit: MONTHLY_LIMITS[account.plan as string] ?? null,
+    callsThisMonth,
+    strategy: account.strategy,
+  },
+});
+```
 
-3. Return the complete account object:
-   ```ts
-   return NextResponse.json({
-     account: { plan: user.plan ?? 'free', monthlyLimit, callsThisMonth, strategy },
-     // ...keep any other existing response fields
-   })
-   ```
+**Test:** `GET /api/v1/router/usage` response body must have `monthlyLimit`, `callsThisMonth`, `strategy` as direct top-level keys (not only nested under `account`).
 
 ---
 
 ## Bug 5 — P2: `ai_routing_summary` never populated
 
-**Files:** `src/lib/router/ai-classify.ts`, `src/lib/router/handler.ts`
+**File:** `src/lib/router/handler.ts`
 
-**Problem:** The `ai_routing_summary` field is documented but always absent after AI-strategy calls.
+**Root cause:** The field is documented but never emitted. The response currently includes `meta.ai_classification` (when strategy=auto) but no `ai_routing_summary` at the root level.
 
-**Decision — implement or remove, no partial contract:**
+**Fix:** After the `routeRequest(...)` call in the POST handler, add `ai_routing_summary` to the response JSON when AI classification was used. Find the `Response.json(...)` call that returns the route result and augment it:
 
-- **Option A (implement):** In `ai-classify.ts`, after classification runs, build a summary object and return it alongside the classification result:
-  ```ts
-  return {
-    tool: selectedTool,
-    ai_routing_summary: {
-      model: 'gpt-4o-mini',       // or whichever model is used
-      confidence: score,           // numeric 0–1 if available
-      category: classifiedCategory,
-      latency_ms: Date.now() - start,
-    }
-  }
-  ```
-  Then in `handler.ts`, propagate `ai_routing_summary` into the final response object when strategy is `ai` or `auto`.
+```typescript
+// When result.response.meta.ai_classification exists, add to root of response:
+const responseBody: Record<string, unknown> = { ...result.response };
+if (result.response.meta.ai_classification) {
+  responseBody.ai_routing_summary = {
+    strategy_used: body.strategy ?? account.strategy ?? 'balanced',
+    tool_selected: result.response.meta.tool_used,
+    reasoning: result.response.meta.ai_classification.reasoning ?? null,
+    classification_ms: result.response.meta.classification_ms ?? null,
+  };
+}
+return Response.json(responseBody, { headers: responseHeaders });
+```
 
-- **Option B (remove contract):** If AI classification is not yet reliable, search for every occurrence of `ai_routing_summary` across all route handlers and response types and remove the field. Delete any OpenAPI/JSDoc comments that reference it.
+Replace the existing `return Response.json(result.response, ...)` call with this block. Do not create a new one.
 
-Pick whichever option is simpler given the current code. Either outcome is acceptable — no partial states.
-
----
-
-## Must-Have #3 — New Playground Backend Endpoint
-
-### CREATE: `src/app/api/v1/playground/route/route.ts`
-
-> Check `src/app/api/v1/playground/run/route.ts` first — if it can be extended to match
-> this spec, extend it instead of creating a duplicate.
-
-**Spec:**
-- `POST /api/v1/playground/route`
-- **No API key required** (unauthenticated)
-- **IP rate limit:** 5 requests/minute per IP
-  - Check for `UPSTASH_REDIS_REST_URL` env var; if present use Upstash
-  - Otherwise use an in-memory `Map<string, { count: number; resetAt: number }>` (resets per minute)
-  - Return `429 { error: 'Rate limit exceeded. Try again in 60 seconds.' }` when over limit
-- **Input:**
-  ```ts
-  { query: string; type: 'search' | 'embed' | 'finance' }
-  ```
-- **Processing:**
-  - Use `process.env.PLAYGROUND_KEY` as the API key for the downstream routing call
-  - Call the same routing logic as the capability endpoints (`/api/v1/route/search`, etc.)
-    based on the `type` field
-- **Output:** Same shape as `/api/v1/route/search` PLUS:
-  ```ts
-  {
-    // ...standard route response fields...
-    results: [...].slice(0, 2),  // cap to 2 items
-    _playground: true,
-    traceId: string,
-    tool: string,                // which tool was selected
-    classification_reason?: string,  // AI reasoning if available
-    latency_ms: number,
-  }
-  ```
-- **Billing:** Do NOT write calls to any user's RouterCall / usage records
+**Test:** `POST /api/v1/route/search {"query":"test","strategy":"auto"}` response body must contain `ai_routing_summary` with non-null `tool_selected`.
 
 ---
 
-## Acceptance Checklist
+## Must-Have #2 Backend — Verify playground/route endpoint
 
-- [ ] `POST /api/v1/route/crawl {"url":"https://example.com"}` → HTTP 200
-- [ ] `POST /api/v1/route/crawl {"params":{"url":"https://example.com"}}` → HTTP 200 (old shape still works)
-- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → `toolUsed` is `brave-search` or `serper` (not `tavily`)
-- [ ] `POST /api/v1/router/priority {"search":["exa-search"]}` → HTTP 200
-- [ ] `POST /api/v1/router/priority {"tools":["exa-search"]}` → HTTP 200 (still works)
-- [ ] `GET /api/v1/router/usage` returns `monthlyLimit`, `callsThisMonth`, `strategy` in account object
-- [ ] `ai_routing_summary` is either always present (when AI strategy used) or removed from all docs/code
-- [ ] `POST /api/v1/playground/route` returns `_playground: true`, ≤2 results, `latency_ms`
-- [ ] 6th request from same IP within 1 minute → HTTP 429
+**File:** `src/app/api/v1/playground/route/route.ts`
+
+This endpoint already exists and is substantially complete. **Read it and verify:**
+1. Rate limit is 5 req/min per IP (in-memory fallback + Upstash if configured) ✓
+2. `PLAYGROUND_KEY` env var is used as auth for upstream call ✓
+3. Results capped to 2 items ✓
+4. `_playground: true` in response ✓
+5. `traceId` included ✓
+
+If all 5 checks pass, make no changes. If any are broken, patch in-place.
+
+---
+
+## Verification checklist
+
+- [ ] `POST /api/v1/route/crawl {"url":"https://example.com"}` → not 400
+- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → `tool_used` is `brave-search` or `serpapi`
+- [ ] `POST /api/v1/router/priority {"search":["exa-search"]}` → 200
+- [ ] `GET /api/v1/router/usage` top-level has `monthlyLimit`, `callsThisMonth`, `strategy`
+- [ ] `POST /api/v1/route/search {"strategy":"auto"}` response has `ai_routing_summary`
