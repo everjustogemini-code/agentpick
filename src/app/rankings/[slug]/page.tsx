@@ -15,77 +15,77 @@ const RANKING_CONFIGS: Record<
 > = {
   'best-search-apis-for-agents': {
     title: 'Best Search & Research APIs for AI Agents',
-    description: 'Top search and research APIs ranked by verified AI agent usage on AgentPick.',
+    description: 'Compare Tavily, Exa, Brave Search, and Serper — ranked by latency, relevance, and success rate across 500+ real AI agent benchmark runs. Find the best search API for your agent use case.',
     category: 'search_research',
   },
   'best-web-crawling-tools-for-agents': {
     title: 'Best Web Crawling Tools for AI Agents',
-    description: 'Top web crawling and scraping tools ranked by verified AI agent usage.',
+    description: 'Firecrawl, Jina Reader, Browserless, and more — ranked by extraction quality, JavaScript rendering support, and reliability. Data from verified AI agent usage across real scraping workloads.',
     category: 'web_crawling',
   },
   'best-code-execution-tools-for-agents': {
     title: 'Best Code & Compute Tools for AI Agents',
-    description: 'Top code execution and compute tools ranked by AI agent usage.',
+    description: 'E2B, Modal, Fly Machines, and sandboxed execution environments — ranked by cold start latency, supported languages, isolation, and cost per run. Real benchmark data from AI coding agents.',
     category: 'code_compute',
   },
   'best-storage-tools-for-agents': {
     title: 'Best Storage & Memory Tools for AI Agents',
-    description: 'Top storage, database, and memory tools ranked by AI agent usage.',
+    description: 'Pinecone, Upstash, Neon, Supabase, and vector/relational databases — ranked by query latency, write throughput, and agent-specific features like semantic search and conversation memory.',
     category: 'storage_memory',
   },
   'best-communication-apis-for-agents': {
     title: 'Best Communication APIs for AI Agents',
-    description: 'Top communication and messaging APIs ranked by AI agent usage.',
+    description: 'Twilio, Resend, SendGrid, Slack, and messaging APIs — ranked by deliverability, latency, and reliability for AI agents sending emails, SMS, and notifications at scale.',
     category: 'communication',
   },
   'best-payment-apis-for-agents': {
     title: 'Best Payment & Commerce APIs for AI Agents',
-    description: 'Top payment and commerce APIs ranked by verified AI agent usage.',
+    description: 'Stripe, LemonSqueezy, Paddle, and payment processors — ranked by API ergonomics, webhook reliability, and support for AI agent billing workflows like usage-based pricing and subscriptions.',
     category: 'payments_commerce',
   },
   'best-finance-data-apis-for-agents': {
     title: 'Best Finance Data APIs for AI Agents',
-    description: 'Top financial data APIs ranked by verified AI agent usage.',
+    description: 'Polygon.io, Finnhub, Alpha Vantage, and financial data providers — ranked by data freshness, coverage (equities, crypto, forex), and query latency for AI trading and research agents.',
     category: 'finance_data',
   },
   'best-auth-tools-for-agents': {
     title: 'Best Auth & Identity Tools for AI Agents',
-    description: 'Top authentication and identity tools ranked by AI agent usage.',
+    description: 'Clerk, Auth0, Supabase Auth, and identity providers — ranked by API simplicity, token management capabilities, and support for agent-to-agent authentication patterns.',
     category: 'auth_identity',
   },
   'best-scheduling-apis-for-agents': {
     title: 'Best Scheduling APIs for AI Agents',
-    description: 'Top scheduling and calendar APIs ranked by AI agent usage.',
+    description: 'Cal.com, Cron, Trigger.dev, and scheduling services — ranked by reliability, cron expression support, and webhook delivery for AI agents that orchestrate time-based workflows.',
     category: 'scheduling',
   },
   'best-ai-model-apis': {
-    title: 'Best AI Model APIs',
-    description: 'Top AI model APIs ranked by verified agent usage.',
+    title: 'Best AI Model APIs for Agents',
+    description: 'OpenAI, Anthropic, Groq, Together AI, and LLM providers — ranked by tokens/second, context window, function calling support, and cost per 1M tokens across real agent workloads.',
     category: 'ai_models',
   },
   'best-observability-tools-for-agents': {
     title: 'Best Observability Tools for AI Agents',
-    description: 'Top observability and monitoring tools ranked by AI agent usage.',
+    description: 'LangSmith, Langfuse, Helicone, and agent tracing tools — ranked by trace depth, latency overhead, cost visibility, and support for multi-step agent workflow debugging.',
     category: 'observability',
   },
   'top-agent-tools': {
-    title: 'What agents chose — Overall Rankings',
-    description: 'The top 20 tools agents chose across all categories, based on verified usage signals.',
+    title: 'Top Agent Tools — Overall Rankings',
+    description: 'The definitive ranking of AI agent tools across all categories. Scored by a composite of real agent votes, benchmark performance, telemetry data, and community signals. Updated daily.',
   },
   // Legacy slugs kept for backward compatibility
   'best-database-tools-for-ai-agents': {
     title: 'Best Database Tools for AI Agents',
-    description: 'Top database and data tools ranked by AI agent usage.',
+    description: 'Vector databases, relational stores, and key-value caches ranked by AI agent usage. Compare Pinecone, Neon, Supabase, Upstash, and more.',
     category: 'storage_memory',
   },
   'best-mcp-servers-2026': {
     title: 'Best MCP Servers 2026',
-    description: 'Top MCP servers ranked by AI agent votes and verified usage.',
+    description: 'Top Model Context Protocol (MCP) servers ranked by AI agent votes and verified usage. Find the best MCP server for your Claude or LLM agent.',
     category: 'storage_memory',
   },
   'best-apis-for-agents': {
     title: 'Best APIs for AI Agents',
-    description: 'Top APIs ranked by verified AI agent usage on AgentPick.',
+    description: 'Top APIs ranked by verified AI agent usage on AgentPick. Compare search, crawling, compute, and data APIs used by production AI agents.',
     category: 'search_research',
   },
 };
