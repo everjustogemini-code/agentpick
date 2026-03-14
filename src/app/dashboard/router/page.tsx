@@ -287,102 +287,106 @@ export default function RouterDashboardPage() {
     // Show the new API key if just registered
     if (newKey) {
       return (
-        <div className="mx-auto max-w-md px-4 py-20">
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">Your API Key</h1>
-          <p className="mb-4 text-sm text-gray-500">Save this key — you won&apos;t see it again.</p>
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <code className="block break-all font-mono text-sm text-gray-800">{newKey}</code>
+        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+          <div className="w-full max-w-md px-4 py-12">
+            <h1 className="mb-2 text-2xl font-bold text-white">Your API Key</h1>
+            <p className="mb-4 text-sm text-white/40">Save this key — you won&apos;t see it again.</p>
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] p-4">
+              <code className="block break-all font-mono text-sm text-green-400">{newKey}</code>
+            </div>
+            <button
+              onClick={() => { navigator.clipboard.writeText(newKey); }}
+              className="mt-3 w-full rounded-lg bg-white/[0.06] px-4 py-2 text-sm font-medium text-white/60 hover:bg-white/[0.09]"
+            >
+              Copy to clipboard
+            </button>
+            <p className="mt-4 text-xs text-white/30">Loading dashboard...</p>
           </div>
-          <button
-            onClick={() => { navigator.clipboard.writeText(newKey); }}
-            className="mt-3 w-full rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-          >
-            Copy to clipboard
-          </button>
-          <p className="mt-4 text-xs text-gray-400">Loading dashboard...</p>
         </div>
       );
     }
 
     return (
-      <div className="mx-auto max-w-md px-4 py-20">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">Router Dashboard</h1>
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="w-full max-w-md px-4 py-12">
+          <h1 className="mb-2 text-2xl font-bold text-white">Router Dashboard</h1>
 
-        {!showRegister ? (
-          <>
-            <p className="mb-8 text-sm text-gray-500">Enter your AgentPick API key to view your dashboard.</p>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">API Key</label>
-                <input
-                  type="password"
-                  value={inputKey}
-                  onChange={(e) => setInputKey(e.target.value)}
-                  placeholder="ah_live_sk_..."
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                />
+          {!showRegister ? (
+            <>
+              <p className="mb-8 text-sm text-white/40">Enter your AgentPick API key to view your dashboard.</p>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/50">API Key</label>
+                  <input
+                    type="password"
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
+                    placeholder="ah_live_sk_..."
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm font-mono text-white placeholder-white/20 focus:border-orange-500/60 focus:outline-none focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  />
+                </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={loading || !inputKey}
+                  className="w-full rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {loading ? 'Checking...' : 'View Dashboard'}
+                </button>
+              </form>
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => { setShowRegister(true); setError(''); }}
+                  className="text-sm font-medium text-orange-500 hover:underline"
+                >
+                  Create new account (free)
+                </button>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <button
-                type="submit"
-                disabled={loading || !inputKey}
-                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-              >
-                {loading ? 'Checking...' : 'View Dashboard'}
-              </button>
-            </form>
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => { setShowRegister(true); setError(''); }}
-                className="text-sm font-medium text-orange-500 hover:underline"
-              >
-                Create new account (free)
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mb-8 text-sm text-gray-500">Create a free account to get your API key instantly.</p>
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Agent name</label>
-                <input
-                  type="text"
-                  value={registerName}
-                  onChange={(e) => setRegisterName(e.target.value)}
-                  placeholder="my-agent"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                />
+            </>
+          ) : (
+            <>
+              <p className="mb-8 text-sm text-white/40">Create a free account to get your API key instantly.</p>
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/50">Agent name</label>
+                  <input
+                    type="text"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    placeholder="my-agent"
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm font-mono text-white placeholder-white/20 focus:border-orange-500/60 focus:outline-none focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/50">Email (optional)</label>
+                  <input
+                    type="email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm font-mono text-white placeholder-white/20 focus:border-orange-500/60 focus:outline-none focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  />
+                </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <button
+                  type="submit"
+                  disabled={registerLoading}
+                  className="w-full rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {registerLoading ? 'Creating...' : 'Create account & get API key'}
+                </button>
+              </form>
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => { setShowRegister(false); setError(''); }}
+                  className="text-sm text-white/30 hover:underline"
+                >
+                  Already have a key? Sign in
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Email (optional)</label>
-                <input
-                  type="email"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <button
-                type="submit"
-                disabled={registerLoading}
-                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
-              >
-                {registerLoading ? 'Creating...' : 'Create account & get API key'}
-              </button>
-            </form>
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => { setShowRegister(false); setError(''); }}
-                className="text-sm text-gray-400 hover:underline"
-              >
-                Already have a key? Sign in
-              </button>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -392,21 +396,22 @@ export default function RouterDashboardPage() {
   const maskedKey = apiKey.slice(0, 12) + '...' + apiKey.slice(-4);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="min-h-screen bg-[#0a0a0f]">
+      <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">AgentPick Router Dashboard</h1>
-          <p className="mt-1 text-xs text-gray-400 font-mono">{maskedKey}</p>
+          <h1 className="text-xl font-bold text-white">AgentPick Router Dashboard</h1>
+          <p className="mt-1 text-xs text-white/30 font-mono">{maskedKey}</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700">
+          <span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-medium text-orange-400 border border-orange-500/20">
             {account.plan}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-white/40">
             {usage?.daily_used ?? 0} / {usage?.daily_limit ?? 0} today
           </span>
-          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600">Logout</button>
+          <button onClick={handleLogout} className="text-xs text-white/30 hover:text-white/60">Logout</button>
         </div>
       </div>
 
@@ -420,23 +425,31 @@ export default function RouterDashboardPage() {
 
       {/* Tool Usage */}
       {stats && Object.keys(stats.byTool).length > 0 && (
-        <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">TOOL USAGE</h2>
+        <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+          <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">
+            Tool Usage
+          </h2>
           <div className="space-y-3">
             {Object.entries(stats.byTool)
               .sort(([, a], [, b]) => b.calls - a.calls)
-              .map(([tool, data]) => {
+              .map(([tool, data], index) => {
                 const pct = stats.totalCalls > 0 ? (data.calls / stats.totalCalls) * 100 : 0;
                 return (
                   <div key={tool} className="flex items-center gap-3">
-                    <span className="w-28 truncate text-xs font-mono text-gray-600">{tool}</span>
+                    <span className="w-28 truncate text-xs font-mono text-white/50">{tool}</span>
                     <div className="flex-1">
-                      <div className="h-2 rounded-full bg-gray-100">
-                        <div className="h-2 rounded-full bg-orange-400" style={{ width: `${Math.max(pct, 2)}%` }} />
+                      <div className="h-2 rounded-full bg-white/[0.06]">
+                        <div
+                          className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 shadow-glow-orange transition-all duration-500"
+                          style={{
+                            width: `${Math.max(pct, 2)}%`,
+                            transitionDelay: `${index * 60}ms`,
+                          }}
+                        />
                       </div>
                     </div>
-                    <span className="w-10 text-right text-xs text-gray-500">{pct.toFixed(0)}%</span>
-                    <span className="w-14 text-right text-xs text-gray-400">{data.avgLatency}ms</span>
+                    <span className="w-10 text-right text-xs text-white/40">{pct.toFixed(0)}%</span>
+                    <span className="w-14 text-right text-xs text-white/30">{data.avgLatency}ms</span>
                   </div>
                 );
               })}
@@ -445,18 +458,18 @@ export default function RouterDashboardPage() {
       )}
 
       {/* Strategy Selector */}
-      <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">STRATEGY</h2>
+      <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+        <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">STRATEGY</h2>
         <div className="flex flex-wrap gap-2">
           {STRATEGIES.map((s) => (
             <button
               key={s}
               onClick={() => handleStrategyChange(s)}
               disabled={!!strategyLoading}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 disabled:opacity-50 border ${
                 account.strategy === s
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-orange-500/15 text-orange-400 border-orange-500/50 ring-1 ring-orange-500/50 shadow-glow-orange'
+                  : 'border-white/[0.08] bg-white/[0.04] text-white/50 hover:bg-white/[0.07] hover:text-white/70'
               }`}
             >
               {strategyLoading === s ? '...' : (STRATEGY_DISPLAY[s] ?? s.toLowerCase())}{s === 'AUTO' ? ' ★' : ''}
@@ -464,7 +477,7 @@ export default function RouterDashboardPage() {
           ))}
         </div>
         {strategyError && <p className="mt-2 text-xs text-red-500">{strategyError}</p>}
-        <p className="mt-3 text-xs text-gray-400">
+        <p className="mt-3 text-xs text-white/40">
           {account.strategy === 'AUTO' && 'AI routing — analyzes each query and picks the optimal tool.'}
           {account.strategy === 'BALANCED' && 'Best value — quality/cost ratio. Good for general use.'}
           {account.strategy === 'FASTEST' && 'Highest uptime — most reliable tools first.'}
@@ -476,28 +489,28 @@ export default function RouterDashboardPage() {
 
       {/* Strategy Comparison */}
       {comparison?.strategies && (
-        <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">STRATEGY COMPARISON</h2>
+        <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+          <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">STRATEGY COMPARISON</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="pb-2 text-left font-medium text-gray-500">Strategy</th>
-                  <th className="pb-2 text-left font-medium text-gray-500">Top Pick</th>
-                  <th className="pb-2 text-right font-medium text-gray-500">Score</th>
-                  <th className="pb-2 text-right font-medium text-gray-500">Latency</th>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="pb-2 text-left font-medium text-white/30">Strategy</th>
+                  <th className="pb-2 text-left font-medium text-white/30">Top Pick</th>
+                  <th className="pb-2 text-right font-medium text-white/30">Score</th>
+                  <th className="pb-2 text-right font-medium text-white/30">Latency</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(comparison.strategies).map(([name, data]) => (
-                  <tr key={name} className="border-b border-gray-50">
-                    <td className="py-2 font-mono text-gray-700">
+                  <tr key={name} className="border-b border-white/[0.04]">
+                    <td className="py-2 font-mono text-white/70">
                       {name.toLowerCase()}
                       {name === account.strategy ? ' ★' : ''}
                     </td>
-                    <td className="py-2 text-gray-600">{data.top_pick}</td>
-                    <td className="py-2 text-right text-gray-500">{data.top_3[0]?.score?.toFixed(1) ?? '—'}</td>
-                    <td className="py-2 text-right text-gray-500">{data.top_3[0]?.latency ? `${data.top_3[0].latency}ms` : '—'}</td>
+                    <td className="py-2 text-white/60">{data.top_pick}</td>
+                    <td className="py-2 text-right text-white/40">{data.top_3[0]?.score?.toFixed(1) ?? '—'}</td>
+                    <td className="py-2 text-right text-white/40">{data.top_3[0]?.latency ? `${data.top_3[0].latency}ms` : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -507,27 +520,27 @@ export default function RouterDashboardPage() {
       )}
 
       {/* Recent Calls */}
-      <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
+      <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">RECENT CALLS</h2>
-          <span className="text-[10px] text-gray-400">auto-refresh 10s</span>
+          <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">RECENT CALLS</h2>
+          <span className="text-[10px] text-white/20">auto-refresh 10s</span>
         </div>
         {calls.length === 0 ? (
-          <p className="text-xs text-gray-400">No calls recorded yet. Make an API request to see data here.</p>
+          <p className="text-xs text-white/30">No calls recorded yet. Make an API request to see data here.</p>
         ) : (
           <div className="space-y-2">
             {calls.map((call) => (
-              <div key={call.id} className="flex items-start gap-3 rounded-lg bg-gray-50 px-3 py-2">
-                <span className="mt-0.5 text-[10px] text-gray-400 whitespace-nowrap">{formatTime(call.createdAt)}</span>
-                <span className="text-xs font-medium text-gray-500">{call.capability}</span>
-                <span className="flex-1 truncate text-xs text-gray-600">&quot;{call.query || '—'}&quot;</span>
-                <span className="text-xs text-gray-500">→ {call.toolUsed}</span>
-                <span className={`text-xs font-medium ${call.success ? 'text-green-600' : 'text-red-500'}`}>
+              <div key={call.id} className="flex items-start gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.04] transition-colors duration-150">
+                <span className="mt-0.5 text-[10px] text-white/30 whitespace-nowrap">{formatTime(call.createdAt)}</span>
+                <span className="text-xs font-medium text-white/40">{call.capability}</span>
+                <span className="flex-1 truncate text-xs text-white/50">&quot;{call.query || '—'}&quot;</span>
+                <span className="text-xs text-white/50">→ {call.toolUsed}</span>
+                <span className={`text-xs font-medium ${call.success ? 'text-green-400' : 'text-red-500'}`}>
                   {call.success ? '✓' : '✗'}
                 </span>
-                <span className="text-[10px] text-gray-400">{call.latencyMs}ms</span>
+                <span className="text-[10px] text-white/25">{call.latencyMs}ms</span>
                 {call.fallbackUsed && (
-                  <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] text-yellow-700">
+                  <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-400">
                     fallback from {call.fallbackFrom}
                   </span>
                 )}
@@ -539,16 +552,16 @@ export default function RouterDashboardPage() {
 
       {/* Fallback Log */}
       {calls.some(c => c.fallbackUsed) && (
-        <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">FALLBACK LOG</h2>
+        <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+          <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">FALLBACK LOG</h2>
           <div className="space-y-2">
             {calls.filter(c => c.fallbackUsed).map((call) => (
               <div key={call.id} className="flex items-center gap-3 text-xs">
-                <span className="text-gray-400">{formatDate(call.createdAt)} {formatTime(call.createdAt)}</span>
+                <span className="text-white/30">{formatDate(call.createdAt)} {formatTime(call.createdAt)}</span>
                 <span className="text-red-500">{call.fallbackFrom}</span>
-                <span className="text-gray-400">→</span>
-                <span className="text-green-600">{call.toolUsed}</span>
-                <span className="text-gray-400">({call.latencyMs}ms, {call.success ? 'success' : 'failed'})</span>
+                <span className="text-white/30">→</span>
+                <span className="text-green-400">{call.toolUsed}</span>
+                <span className="text-white/30">({call.latencyMs}ms, {call.success ? 'success' : 'failed'})</span>
               </div>
             ))}
           </div>
@@ -556,46 +569,46 @@ export default function RouterDashboardPage() {
       )}
 
       {/* Settings */}
-      <div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">SETTINGS</h2>
+      <div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+        <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">SETTINGS</h2>
         <div className="space-y-3 text-xs">
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Strategy</span>
-            <span className="font-mono text-gray-700">{STRATEGY_DISPLAY[account.strategy] ?? account.strategy.toLowerCase()}</span>
+            <span className="text-white/40">Strategy</span>
+            <span className="font-mono text-orange-400">{STRATEGY_DISPLAY[account.strategy] ?? account.strategy.toLowerCase()}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Fallback enabled</span>
-            <span className="text-gray-700">{account.fallbackEnabled ? 'Yes' : 'No'}</span>
+            <span className="text-white/40">Fallback enabled</span>
+            <span className="font-mono text-orange-400">{account.fallbackEnabled ? 'Yes' : 'No'}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Max fallbacks</span>
-            <span className="text-gray-700">{account.maxFallbacks}</span>
+            <span className="text-white/40">Max fallbacks</span>
+            <span className="font-mono text-orange-400">{account.maxFallbacks}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Monthly budget</span>
-            <span className="text-gray-700">
+            <span className="text-white/40">Monthly budget</span>
+            <span className="font-mono text-orange-400">
               {account.monthlyBudgetUsd !== null ? `$${account.monthlyBudgetUsd}` : 'Unlimited'}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Spent this month</span>
-            <span className="text-gray-700">${account.spentThisMonth.toFixed(2)}</span>
+            <span className="text-white/40">Spent this month</span>
+            <span className="font-mono text-orange-400">${account.spentThisMonth.toFixed(2)}</span>
           </div>
           {account.priorityTools.length > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-gray-500">Priority tools</span>
-              <span className="font-mono text-gray-700">{account.priorityTools.join(', ')}</span>
+              <span className="text-white/40">Priority tools</span>
+              <span className="font-mono text-orange-400">{account.priorityTools.join(', ')}</span>
             </div>
           )}
           {account.excludedTools.length > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-gray-500">Excluded tools</span>
-              <span className="font-mono text-gray-700">{account.excludedTools.join(', ')}</span>
+              <span className="text-white/40">Excluded tools</span>
+              <span className="font-mono text-orange-400">{account.excludedTools.join(', ')}</span>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-gray-500">Latency budget</span>
-            <span className="text-gray-700">
+            <span className="text-white/40">Latency budget</span>
+            <span className="font-mono text-orange-400">
               {account.latencyBudgetMs !== null ? `${account.latencyBudgetMs}ms` : 'No limit'}
             </span>
           </div>
@@ -604,26 +617,69 @@ export default function RouterDashboardPage() {
 
       {/* Upgrade CTA */}
       {account.plan === 'FREE' && (
-        <div className="rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 p-5 text-center">
-          <p className="text-sm font-medium text-gray-800">Upgrade to Pro — 10K calls/month</p>
-          <p className="mt-1 text-xs text-gray-500">Unlock BYOK, higher limits, and priority support.</p>
+        <div className="rounded-2xl border border-orange-500/20 bg-gradient-to-r from-orange-500/10 to-amber-500/10 p-5 text-center backdrop-blur-sm">
+          <p className="text-sm font-medium text-white">Upgrade to Pro — 10K calls/month</p>
+          <p className="mt-1 text-xs text-white/40">
+            Unlock BYOK, higher limits, and priority support.
+          </p>
           <Link
             href="/connect"
-            className="mt-3 inline-block rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white hover:bg-orange-600"
+            className="mt-3 inline-block rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium text-white hover:bg-orange-600 transition-colors shadow-glow-orange"
           >
             View Plans →
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
+  const [displayed, setDisplayed] = useState<string | number>(value);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplayed(value);
+      return;
+    }
+
+    const isPercent = typeof value === 'string' && value.endsWith('%');
+    const isDollar = typeof value === 'string' && value.startsWith('$');
+    const isNum = typeof value === 'number';
+    const target = isNum ? value
+      : isPercent ? parseFloat(value as string)
+      : isDollar ? parseFloat((value as string).slice(1))
+      : null;
+
+    if (target === null) { setDisplayed(value); return; }
+
+    const start = performance.now();
+    const duration = 600;
+    const raf = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cur = target * eased;
+      if (isNum) setDisplayed(Math.round(cur));
+      else if (isPercent) setDisplayed(`${cur.toFixed(1)}%`);
+      else if (isDollar) setDisplayed(`$${cur.toFixed(2)}`);
+      if (t < 1) requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }, [value]);
+
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4">
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="mt-1 text-[11px] text-gray-400">{label}</p>
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 shadow-glass
+                    backdrop-blur-sm transition-all duration-200
+                    hover:border-white/[0.13] hover:bg-white/[0.06]">
+      <p className="text-3xl font-bold tabular-nums bg-gradient-to-b from-white to-white/60
+                    bg-clip-text text-transparent">
+        {displayed}
+      </p>
+      <p className="mt-1 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">
+        {label}
+      </p>
     </div>
   );
 }
