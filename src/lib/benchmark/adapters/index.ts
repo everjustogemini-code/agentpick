@@ -116,9 +116,9 @@ export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
   tavily: 'tavily',
   exa: 'exa-search',
   'exa-search': 'exa-search',
-  serper: 'serpapi',
+  serper: 'serper',
   serpapi: 'serpapi',
-  'serper-api': 'serpapi',
+  'serper-api': 'serper',
   brave: 'brave-search',
   'brave-search': 'brave-search',
   jina: 'jina-ai',
@@ -181,7 +181,7 @@ export function resolveProductSlug(adapterKey: string): string {
 // Product slugs that exist in the Product table AND have working adapters.
 export const BENCHMARKABLE_SLUGS = [
   // Search
-  'tavily', 'exa-search', 'serpapi', 'jina-ai', 'firecrawl',
+  'tavily', 'exa-search', 'serpapi', 'serper', 'brave-search', 'jina-ai', 'firecrawl',
   'perplexity-search', 'you-search', 'serpapi-google', 'bing-web-search',
   // Crawling
   'apify', 'scrapingbee', 'browserbase',

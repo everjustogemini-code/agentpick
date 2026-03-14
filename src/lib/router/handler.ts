@@ -42,13 +42,22 @@ function resolveStrategy(raw: string): Strategy | null {
   return STRATEGY_ALIASES[raw] ?? STRATEGY_ALIASES[raw.toUpperCase()] ?? null;
 }
 
-/** Map canonical core strategy names to SDK/Prisma enum values for call recording */
+/** Map canonical core strategy names AND SDK/Prisma enum names to SDK enum values for call recording */
 const CORE_TO_SDK: Record<string, string> = {
+  // Canonical router names
   balanced: 'BALANCED',
   best_performance: 'MOST_ACCURATE',
   cheapest: 'CHEAPEST',
   most_stable: 'FASTEST',
   auto: 'AUTO',
+  manual: 'MANUAL',
+  // SDK/Prisma uppercase enum names (as stored in account.strategy)
+  BALANCED: 'BALANCED',
+  MOST_ACCURATE: 'MOST_ACCURATE',
+  CHEAPEST: 'CHEAPEST',
+  FASTEST: 'FASTEST',
+  AUTO: 'AUTO',
+  MANUAL: 'MANUAL',
 };
 
 export async function handleRouteRequest(request: NextRequest, capability: string) {

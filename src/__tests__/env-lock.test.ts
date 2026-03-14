@@ -63,4 +63,4 @@ describe('withSerializedProviderEnv', () => {
     expect(order[1]).toBe('second-start');
     expect(order.indexOf('second-end')).toBeLessThan(order.indexOf('first-end'));
   });
-}
+});

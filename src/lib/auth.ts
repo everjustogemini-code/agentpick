@@ -13,9 +13,15 @@ export async function authenticateAgent(request: Request) {
   // Support Bearer header or ?token= query param (for GET-only runtimes like ChatGPT Actions)
   let token: string | null = null;
   const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ah_')) {
-    token = authHeader.slice(7);
-  } else {
+  if (authHeader) {
+    // RFC 6750: Bearer scheme is case-insensitive; extract token after "Bearer "
+    const lower = authHeader.toLowerCase();
+    if (lower.startsWith('bearer ')) {
+      const candidate = authHeader.slice(7);
+      if (candidate.startsWith('ah_')) token = candidate;
+    }
+  }
+  if (!token) {
     const url = new URL(request.url);
     const qToken = url.searchParams.get('token');
     if (qToken?.startsWith('ah_')) token = qToken;

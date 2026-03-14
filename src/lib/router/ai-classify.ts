@@ -154,6 +154,7 @@ async function classifyQuery(query: string, _capability: string): Promise<QueryC
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 60,
+    temperature: 0,
     system: CLASSIFY_SYSTEM,
     messages: [{ role: 'user', content: query }],
   });
