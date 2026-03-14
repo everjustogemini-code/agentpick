@@ -118,6 +118,10 @@ const STRATEGY_LABELS: Record<KnownStrategy, string> = {
   MANUAL: 'Manual',
 };
 
+function isSelectableStrategy(value: string): value is SelectableStrategy {
+  return STRATEGY_OPTIONS.some((option) => option.value === value);
+}
+
 function authHeaders(apiKey: string, includeJson = false) {
   return {
     Authorization: `Bearer ${apiKey}`,
@@ -459,6 +463,9 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
         : 'bg-[linear-gradient(90deg,_#22d3ee_0%,_#818cf8_45%,_#f472b6_100%)]';
   const hasByokSavings = panel.byokSavingsLast30Days > 0;
   const byokCoveragePercent = (panel.byokCoverageRate * 100).toFixed(1);
+  const strategySelectorValue = isSelectableStrategy(panel.strategy) ? panel.strategy : '';
+  const selectedStrategy =
+    STRATEGY_OPTIONS.find((option) => option.value === strategySelectorValue) ?? null;
 
   return (
     <section className="rounded-[32px] border border-white/70 bg-white/88 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
@@ -617,7 +624,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
       </div>
 
       <div className="mt-8 rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(248,250,252,0.96)_0%,_rgba(255,255,255,0.96)_100%)] p-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-end">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
               Current strategy
@@ -636,29 +643,72 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {STRATEGY_OPTIONS.map((option) => {
-              const active = panel.strategy === option.value;
-              const pending = strategyPending === option.value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleStrategyChange(option.value)}
-                  disabled={Boolean(strategyPending)}
-                  title={option.description}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                    active
-                      ? 'border-slate-950 bg-slate-950 text-white'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900'
-                  } ${strategyPending && !pending ? 'opacity-50' : ''} ${strategyPending ? 'cursor-wait' : 'cursor-pointer'}`}
-                >
-                  {pending ? '...' : option.label}
-                </button>
-              );
-            })}
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[inset_0_1px_0_rgba(15,23,42,0.03)]">
+            <label
+              className="font-mono text-[11px] uppercase tracking-[0.22em] text-slate-500"
+              htmlFor="routing-strategy"
+            >
+              Strategy selector
+            </label>
+            <select
+              id="routing-strategy"
+              value={strategySelectorValue}
+              disabled={Boolean(strategyPending)}
+              aria-busy={Boolean(strategyPending)}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                if (isSelectableStrategy(nextValue)) {
+                  void handleStrategyChange(nextValue);
+                }
+              }}
+              className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white disabled:cursor-wait disabled:bg-slate-100"
+            >
+              {!strategySelectorValue ? (
+                <option value="" disabled>
+                  {STRATEGY_LABELS[panel.strategy]} selected on this account
+                </option>
+              ) : null}
+              {STRATEGY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {strategyPending
+                ? `Switching to ${STRATEGY_LABELS[strategyPending]}...`
+                : selectedStrategy?.description ?? 'Choose how the router should optimize each request.'}
+            </p>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {STRATEGY_OPTIONS.map((option) => {
+            const active = panel.strategy === option.value;
+
+            return (
+              <div
+                key={option.value}
+                className={`rounded-2xl border px-4 py-4 transition ${
+                  active
+                    ? 'border-slate-950 bg-slate-950 text-white'
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold tracking-[-0.02em]">{option.label}</p>
+                  {active ? (
+                    <span className="rounded-full bg-white/15 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white">
+                      Current
+                    </span>
+                  ) : null}
+                </div>
+                <p className={`mt-2 text-sm leading-6 ${active ? 'text-slate-200' : 'text-slate-600'}`}>
+                  {option.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
