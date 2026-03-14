@@ -15,10 +15,18 @@ export const runtime = 'nodejs';
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>(['active', 'trialing']);
 const INACTIVE_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>([
   'canceled',
+  'incomplete',
   'incomplete_expired',
   'paused',
   'unpaid',
 ]);
+
+function canProvisionCheckoutSession(
+  session: Pick<Stripe.Checkout.Session, 'payment_status'>,
+): boolean {
+  // Stripe recommends using Checkout payment_status to decide when fulfillment should happen.
+  return session.payment_status === 'paid' || session.payment_status === 'no_payment_required';
+}
 
 async function updateDeveloperPlan(developerAccountId: string, plan: RouterPlanCode) {
   await db.developerAccount.updateMany({
@@ -54,12 +62,13 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session;
         const developerAccountId = getDeveloperAccountIdFromCheckoutSession(session);
         const routerPlan = getPlanFromMetadata(session.metadata);
 
-        if (developerAccountId && routerPlan) {
+        if (developerAccountId && routerPlan && canProvisionCheckoutSession(session)) {
           await updateDeveloperPlan(developerAccountId, routerPlan);
         }
         break;
