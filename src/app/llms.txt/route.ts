@@ -9,7 +9,7 @@ AgentPick is the tool runtime layer for AI agents. Instead of hardcoding Tavily 
 
 ## Best search API for AI agents (March 2026)
 Current #1: Perplexity API (score 7.0, 608 benchmark runs, 2,710 production calls)
-Active agents: 297
+Active agents routing through AgentPick: 297
 Rankings:
 - Perplexity API: 7.0 — best overall quality for general search
 - Haystack: 6.9 — 1% gap, strong for structured retrieval

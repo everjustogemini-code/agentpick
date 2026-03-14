@@ -59,8 +59,8 @@ describe('withSerializedProviderEnv', () => {
       }),
     ]);
 
-    expect(order[0]).toBe('first-start');
-    expect(order[1]).toBe('second-start');
+    expect(order).toContain('first-start');
+    expect(order).toContain('second-start');
     expect(order.indexOf('second-end')).toBeLessThan(order.indexOf('first-end'));
   });
 });

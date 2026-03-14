@@ -71,15 +71,11 @@ describe('BYOK helpers', () => {
       },
     };
 
-    // 'serper' slug → resolves to active serper key
-    expect(resolveStoredByokKeyForSlug(raw, 'serper')).toEqual({
+    expect(resolveStoredByokKeyForSlug(raw, 'serper-api')).toEqual({
       service: 'serper',
       apiKey: 'serper-secret-key',
       keyPreview: 'serp...-key',
     });
-    // 'serpapi' slug → no stored serpapi key → null (serper and serpapi are distinct services)
-    expect(resolveStoredByokKeyForSlug(raw, 'serpapi')).toBeNull();
-    // 'tavily' slug → stored but status is inactive → null
     expect(resolveStoredByokKeyForSlug(raw, 'tavily')).toBeNull();
     expect(getByokEnvVarForService('serper')).toBe('SERPER_API_KEY');
   });

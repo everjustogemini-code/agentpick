@@ -5,18 +5,18 @@ import SiteHeader from '@/components/SiteHeader';
 export const metadata: Metadata = {
   title: 'AI Agent API Benchmark Report — Week of March 28, 2026 — AgentPick',
   description:
-    'Weekly AI agent API benchmark results: 608 runs. Perplexity #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). Brave Search enters at #5 (5.8). 297 active agents routing through AgentPick.',
+    'Weekly AI agent API benchmark results: 608 runs across search, crawl, and retrieval APIs. Perplexity leads at 7.0, Haystack #2 at 6.9, Exa #3 at 6.4. Brave Search enters dedicated tracking. 297 active agents.',
   openGraph: {
     title: 'AI Agent API Benchmark Report — March 28, 2026',
     description:
-      '608 benchmark runs. 297 active agents. Brave Search enters at #5 (5.8, $0.0008/call, 2.1h news freshness advantage). Weekly rankings for AI agent developers.',
+      '608 benchmark runs. 297 active agents. Perplexity API #1 (7.0), Haystack #2 (6.9), Exa Search #3 (6.4). Brave Search #5 (5.8). Weekly rankings for AI agent developers.',
     url: 'https://agentpick.dev/reports/weekly/2026-03-28',
     images: [{ url: '/api/og?type=benchmark&cap=search', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'AI Agent API Benchmark — Week of March 28, 2026',
-    description: 'Perplexity #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4), Brave new #5 (5.8). 608 runs.',
+    description: 'Perplexity #1 (7.0), Haystack #2 (6.9), Exa #3 (6.4). 608 runs. 297 agents.',
     images: ['/api/og?type=benchmark&cap=search'],
   },
 };
@@ -47,13 +47,15 @@ export default function WeeklyReport() {
           </h1>
           <p className="mt-3 text-base leading-relaxed text-text-secondary">
             608 benchmark runs across search, crawl, and retrieval APIs. 297 active agents routing
-            through AgentPick. Updated weekly from live production data and standardized benchmark queries.
+            calls through AgentPick. Updated weekly from live production data and standardized
+            benchmark queries.
           </p>
         </header>
 
         <article className="prose-blog">
           <div className="space-y-8 text-[15px] leading-relaxed text-text-secondary">
 
+            {/* Summary card */}
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">This Week at a Glance — March 22–28, 2026</h3>
               <div className="grid grid-cols-3 gap-4 text-sm">
@@ -74,9 +76,9 @@ export default function WeeklyReport() {
 
             <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">Search API Rankings</h2>
             <p>
-              Scores are composite quality metrics: relevance, latency, uptime, answer quality. Data
-              combines router traces (40%), benchmark runs (25%), telemetry (20%), agent votes (15%).
-              90-day rolling window.
+              Rankings are composite quality scores weighted across relevance, latency, uptime, and
+              answer quality. Data combines router traces (40%), benchmark runs (25%), telemetry (20%),
+              and agent votes (15%). 90-day rolling window.
             </p>
 
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
@@ -90,12 +92,12 @@ export default function WeeklyReport() {
                       <th className="px-5 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Rank</th>
                       <th className="px-5 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">API</th>
                       <th className="px-5 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Score</th>
-                      <th className="px-5 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Change</th>
+                      <th className="px-5 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">vs Last Week</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F5F5F5]">
                     <tr className="bg-[#F0FFF4]">
-                      <td className="px-5 py-3 font-mono text-green-700">#1</td>
+                      <td className="px-5 py-3 font-mono text-green-700">#1 ★</td>
                       <td className="px-5 py-3 font-semibold text-text-primary">Perplexity API</td>
                       <td className="px-5 py-3 font-mono font-bold text-green-600">7.0</td>
                       <td className="px-5 py-3 font-mono text-text-dim">— stable</td>
@@ -129,28 +131,55 @@ export default function WeeklyReport() {
               </div>
             </div>
 
-            <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">This Week: Brave Search Enters Dedicated Tracking</h2>
-            <p>
-              Brave Search API now has a dedicated benchmark track at AgentPick. Score: 5.8 / 10 —
-              ranked 5th overall. Key finding: Brave is the cheapest search API at $0.0008/call
-              (7.5x cheaper than Perplexity) and leads on news freshness with a 2.1-hour advantage
-              over Tavily.
-            </p>
-            <p>
-              Brave&apos;s independent index (not a Google/Bing reseller) gives it unique coverage
-              characteristics. AgentPick now routes to Brave automatically when query intent is
-              news-focused or when the <code className="rounded bg-bg-muted px-1.5 py-0.5 font-mono text-[13px]">cheapest</code> strategy is active.
-            </p>
-            <p>
-              Full Brave benchmark analysis: <Link href="/blog/brave-search-api-for-ai-agents" className="text-[#0EA5E9] hover:underline">Brave Search API for AI Agents →</Link>
-            </p>
+            <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">This Week&apos;s Highlights</h2>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#F97316]">New Entry</span>
+                </div>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">Brave Search API enters dedicated tracking</h3>
+                <p className="text-sm text-text-secondary">
+                  Brave Search API now has a dedicated benchmark track. Score 5.8 — 5th overall.
+                  Key strengths: cheapest at $0.0008/call (7.5x cheaper than Perplexity), 2.1h
+                  freshness advantage for news. AgentPick routes to Brave automatically for
+                  news-monitoring and budget-optimized workloads.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#0EA5E9]">Growth</span>
+                </div>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">297 agents, 337 calls today</h3>
+                <p className="text-sm text-text-secondary">
+                  Registered agents crossed 297 this week (+2 from last week). Router call volume
+                  holding at 337 calls/day. Cumulative production calls: 2,710.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-dim">Stable</span>
+                </div>
+                <h3 className="mb-1 text-sm font-[650] text-text-primary">Top 4 rankings unchanged — high confidence</h3>
+                <p className="text-sm text-text-secondary">
+                  Perplexity (7.0), Haystack (6.9), Exa (6.4), and Tavily (6.1) have held their
+                  positions for 3+ weeks. Score stability indicates high benchmark confidence.
+                  608 cumulative benchmark runs for search.
+                </p>
+              </div>
+            </div>
 
             <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">Router Stats</h2>
 
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+              <div className="px-5 py-4 border-b border-[#E5E5E5]">
+                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-dim">Week of March 22–28, 2026</h3>
+              </div>
               <div className="divide-y divide-[#F5F5F5]">
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="text-text-dim">Production calls (cumulative)</span>
+                  <span className="text-text-dim">Total routed calls</span>
                   <span className="font-mono font-bold text-text-primary">2,710</span>
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
@@ -158,16 +187,48 @@ export default function WeeklyReport() {
                   <span className="font-mono font-bold text-text-primary">337</span>
                 </div>
                 <div className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="text-text-dim">Active agents</span>
-                  <span className="font-mono font-bold text-text-primary">297</span>
-                </div>
-                <div className="flex items-center justify-between px-5 py-3 text-sm">
                   <span className="text-text-dim">Top strategy</span>
                   <span className="font-mono font-bold text-text-primary">auto</span>
+                </div>
+                <div className="flex items-center justify-between px-5 py-3 text-sm">
+                  <span className="text-text-dim">Top routed tool</span>
+                  <span className="font-mono font-bold text-text-primary">Perplexity API</span>
+                </div>
+                <div className="flex items-center justify-between px-5 py-3 text-sm">
+                  <span className="text-text-dim">Active agents</span>
+                  <span className="font-mono font-bold text-text-primary">297</span>
                 </div>
               </div>
             </div>
 
+            <h2 className="text-[22px] font-[650] tracking-[-0.5px] text-text-primary">Methodology</h2>
+            <p>
+              AgentPick benchmarks are continuous — not one-time snapshots. Benchmark agents run
+              standardized queries 24/7 across all tracked APIs. Scores combine four data sources:
+            </p>
+            <ul className="list-none space-y-2 pl-0">
+              <li className="flex gap-3 text-sm">
+                <span className="font-mono text-text-dim w-4">40%</span>
+                <span>Router traces — real production call outcomes</span>
+              </li>
+              <li className="flex gap-3 text-sm">
+                <span className="font-mono text-text-dim w-4">25%</span>
+                <span>Benchmark runs — standardized query suites</span>
+              </li>
+              <li className="flex gap-3 text-sm">
+                <span className="font-mono text-text-dim w-4">20%</span>
+                <span>Telemetry — latency, uptime, error rates</span>
+              </li>
+              <li className="flex gap-3 text-sm">
+                <span className="font-mono text-text-dim w-4">15%</span>
+                <span>Agent votes — developer satisfaction signals</span>
+              </li>
+            </ul>
+            <p>
+              Full methodology: <Link href="/benchmarks/methodology" className="text-[#0EA5E9] hover:underline">/benchmarks/methodology</Link>
+            </p>
+
+            {/* Navigation between reports */}
             <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0]">
               <Link
                 href="/reports/weekly/2026-03-21"
@@ -183,10 +244,12 @@ export default function WeeklyReport() {
               </Link>
             </div>
 
+            {/* CTA */}
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 text-center shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <h3 className="mb-2 text-base font-[650] text-text-primary">Use these rankings in your agent</h3>
               <p className="mb-4 text-sm text-text-secondary">
                 AgentPick routes to the highest-ranked API automatically. Free tier: 500 calls/month.
+                No credit card required.
               </p>
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link
