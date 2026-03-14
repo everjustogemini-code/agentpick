@@ -171,10 +171,11 @@ export async function runBenchmarkAgentNow(configId: string) {
  * Create individual BenchmarkRun records for each tool+query result.
  * These feed into score-aggregate cron for avgBenchmarkRelevance.
  */
-async function createBenchmarkRunRecords(
+export async function createBenchmarkRunRecords(
   agentId: string,
   domain: string,
-  results: Array<{ query: string; tool: string; success: boolean; latencyMs: number | null; relevance: number; status?: unknown; meta?: Record<string, unknown> }>,
+  results: Array<{ query: string; tool: string; success: boolean; latencyMs: number | null; relevance: number; freshness?: number; completeness?: number; status?: unknown; meta?: Record<string, unknown> }>,
+  batchId?: string,
 ) {
   for (const r of results) {
     const productSlug = resolveProductSlug(r.tool);
@@ -195,10 +196,13 @@ async function createBenchmarkRunRecords(
           latencyMs: r.latencyMs ?? 0,
           resultCount: Number(r.meta?.results ?? 0),
           relevanceScore: r.relevance,
+          freshnessScore: r.freshness ?? null,
+          completenessScore: r.completeness ?? null,
           domain,
           complexity: 'standard',
           success: r.success,
           costUsd: null,
+          batchId: batchId ?? null,
         },
       });
     } catch {
