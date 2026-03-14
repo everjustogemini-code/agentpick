@@ -42,8 +42,15 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     );
   }
 
-  const agent = await authenticateAgent(request);
-  if (!agent) {
+  // Wrap authenticateAgent in try/catch: a DB timeout or URL parse error during auth
+  // should return 401, not bubble up as an unhandled 500.
+  let agent: Awaited<ReturnType<typeof authenticateAgent>>;
+  try {
+    agent = await authenticateAgent(request);
+  } catch {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
+  if (!agent || !agent.id) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 
