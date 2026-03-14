@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   PRICING_CARD_PLANS,
+  UPGRADE_PLAN_CONFIG,
   getRouterPlanLabel,
   isPlanAtLeast,
   normalizeUpgradePlan,
@@ -23,9 +24,6 @@ type BillingAccount = {
   billingCycleStart: string;
 };
 
-// Unused: kept for reference (old hosted checkout)
-// type UpgradeResponse = { checkoutUrl: string; };
-
 export default function PricingPageClient() {
   const searchParams = useSearchParams();
   const [draftKey, setDraftKey] = useState('');
@@ -35,8 +33,6 @@ export default function PricingPageClient() {
   const [accountError, setAccountError] = useState('');
   const [checkoutError, setCheckoutError] = useState('');
   const [checkoutPlan, setCheckoutPlan] = useState<UpgradePlanSlug | null>(null);
-  const [checkoutReady, setCheckoutReady] = useState(false);
-  const [autoCheckoutAttempted, setAutoCheckoutAttempted] = useState(false);
 
   const loadAccount = useCallback(async (key: string, persist = true) => {
     setAccountLoading(true);
@@ -74,24 +70,12 @@ export default function PricingPageClient() {
   useEffect(() => {
     const savedKey = window.localStorage.getItem(STORAGE_KEY);
     if (!savedKey) {
-      setCheckoutReady(true);
       return;
     }
 
-    let cancelled = false;
-
     setDraftKey(savedKey);
     setApiKey(savedKey);
-
-    void loadAccount(savedKey, false).finally(() => {
-      if (!cancelled) {
-        setCheckoutReady(true);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    void loadAccount(savedKey, false);
   }, [loadAccount]);
 
   async function handleAccountSubmit(event: FormEvent<HTMLFormElement>) {
@@ -107,18 +91,20 @@ export default function PricingPageClient() {
 
   const handleCheckout = useCallback(async (plan: UpgradePlanSlug) => {
     let key = apiKey;
+
     if (!key) {
       try {
         const res = await fetch('/api/v1/agents/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'checkout-' + Date.now() }),
+          body: JSON.stringify({ name: `checkout-${Date.now()}` }),
         });
         const data = await res.json();
         if (data.api_key) {
           key = data.api_key;
+          setDraftKey(key);
           setApiKey(key);
-          window.localStorage.setItem('agentpick_api_key', key);
+          window.localStorage.setItem(STORAGE_KEY, key);
         } else {
           setCheckoutError('Unable to create account. Try again.');
           return;
@@ -128,26 +114,38 @@ export default function PricingPageClient() {
         return;
       }
     }
+
     setCheckoutError('');
     setCheckoutPlan(plan);
-    // Save key and navigate to embedded checkout page
-    if (key) window.localStorage.setItem('agentpick_api_key', key);
-    window.location.href = '/checkout?plan=' + plan;
-    return;
+
+    try {
+      const response = await fetch('/api/v1/router/upgrade', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.checkoutUrl) {
+        throw new Error(data?.error?.message ?? data?.message ?? 'Unable to start Stripe checkout.');
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Unable to start Stripe checkout.');
+      setCheckoutPlan(null);
+    }
   }, [apiKey]);
 
   const checkoutState = searchParams.get('checkout');
   const checkoutPlanFromUrl = normalizeUpgradePlan(searchParams.get('plan'));
+  const checkoutPlanLabelFromUrl = checkoutPlanFromUrl
+    ? UPGRADE_PLAN_CONFIG[checkoutPlanFromUrl].label
+    : null;
   const currentPlanLabel = account?.planLabel ?? (account ? getRouterPlanLabel(account.plan) : null);
-
-  useEffect(() => {
-    if (!checkoutReady || checkoutState || !checkoutPlanFromUrl || autoCheckoutAttempted) {
-      return;
-    }
-
-    setAutoCheckoutAttempted(true);
-    void handleCheckout(checkoutPlanFromUrl);
-  }, [autoCheckoutAttempted, checkoutPlanFromUrl, checkoutReady, checkoutState, handleCheckout]);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -160,21 +158,13 @@ export default function PricingPageClient() {
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base">
           Billing is tied to your AgentPick router API key. Load the key you use in the dashboard,
-          then send that account through Stripe Checkout.
+          then send that account through hosted Stripe Checkout.
         </p>
       </div>
 
-      {checkoutState === 'success' && checkoutPlanFromUrl && (
-        <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100">
-          Stripe checkout completed for{' '}
-          {checkoutPlanFromUrl === 'pro' ? 'Pro' : checkoutPlanFromUrl === 'growth' ? 'Growth' : 'Scale'}.
-          The webhook should sync your plan in a few seconds.
-        </div>
-      )}
-
-      {checkoutState === 'cancelled' && checkoutPlanFromUrl && (
+      {checkoutState === 'cancelled' && checkoutPlanLabelFromUrl && (
         <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
-          Stripe checkout was cancelled. Your account is unchanged.
+          Stripe checkout for {checkoutPlanLabelFromUrl} was cancelled. Your account is unchanged.
         </div>
       )}
 
@@ -199,13 +189,15 @@ export default function PricingPageClient() {
 
         {account ? (
           <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center">
-            <a
+            <Link
               href="/dashboard"
               className="rounded-2xl bg-orange-500 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-orange-400"
             >
               Go to Dashboard →
-            </a>
-            <span className="text-sm text-white/40">Account loaded. Choose a plan below or manage your dashboard.</span>
+            </Link>
+            <span className="text-sm text-white/40">
+              Account loaded. Choose a plan below or manage your dashboard.
+            </span>
           </div>
         ) : (
           <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
@@ -228,7 +220,7 @@ export default function PricingPageClient() {
 
         {!apiKey && !accountLoading && (
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-sm text-white/40">Don't have a key?</span>
+            <span className="text-sm text-white/40">Don&apos;t have a key?</span>
             <button
               type="button"
               onClick={async () => {
@@ -243,8 +235,9 @@ export default function PricingPageClient() {
                   const data = await res.json();
                   if (data.api_key) {
                     setDraftKey(data.api_key);
-                    // Copy key to clipboard
-                    try { await navigator.clipboard.writeText(data.api_key); } catch {}
+                    try {
+                      await navigator.clipboard.writeText(data.api_key);
+                    } catch {}
                     await loadAccount(data.api_key);
                   } else {
                     setAccountError('Registration failed. Try again.');
@@ -264,11 +257,15 @@ export default function PricingPageClient() {
 
         {apiKey && account && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-            <span className="text-sm text-emerald-400">✓ Key active</span>
-            <code className="flex-1 truncate font-mono text-xs text-white/60">{apiKey.slice(0, 20)}...{apiKey.slice(-6)}</code>
+            <span className="text-sm text-emerald-400">Active key</span>
+            <code className="flex-1 truncate font-mono text-xs text-white/60">
+              {apiKey.slice(0, 20)}...{apiKey.slice(-6)}
+            </code>
             <button
               type="button"
-              onClick={() => { navigator.clipboard.writeText(apiKey); }}
+              onClick={() => {
+                void navigator.clipboard.writeText(apiKey);
+              }}
               className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/5 hover:text-white/80"
             >
               Copy
@@ -294,10 +291,10 @@ export default function PricingPageClient() {
         {checkoutError && <p className="mt-4 text-sm text-red-400">{checkoutError}</p>}
       </section>
 
-      <section className="mt-10 grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-10 grid gap-5 lg:grid-cols-3">
         {PRICING_CARD_PLANS.map((plan) => {
           const upgradePlan = plan.slug === 'free' ? null : (plan.slug as UpgradePlanSlug);
-          const isPaidPlan = plan.slug === 'pro' || plan.slug === 'growth' || plan.slug === 'scale';
+          const isPaidPlan = plan.slug !== 'free';
           const exactMatch = account ? account.plan === plan.routerPlan : false;
           const higherPlan =
             account && isPaidPlan ? isPlanAtLeast(account.plan, plan.routerPlan) && !exactMatch : false;
@@ -307,7 +304,7 @@ export default function PricingPageClient() {
             <article
               key={plan.slug}
               className={`flex flex-col rounded-3xl border p-7 backdrop-blur-sm ${
-                plan.slug === 'scale'
+                plan.slug === 'growth'
                   ? 'border-orange-500/30 bg-gradient-to-b from-orange-500/15 to-white/[0.05]'
                   : 'border-white/[0.08] bg-white/[0.04]'
               }`}
@@ -317,9 +314,9 @@ export default function PricingPageClient() {
                   <h3 className="text-2xl font-semibold text-white">{plan.label}</h3>
                   <p className="mt-2 text-sm leading-6 text-white/50">{plan.description}</p>
                 </div>
-                {plan.slug === 'scale' && (
+                {plan.slug === 'growth' && (
                   <span className="rounded-full border border-orange-400/40 bg-orange-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-200">
-                    Best value
+                    Most popular
                   </span>
                 )}
               </div>
@@ -339,7 +336,7 @@ export default function PricingPageClient() {
                 {plan.overagePerCall !== null ? (
                   <div className="mt-1 text-orange-300/80">then ${plan.overagePerCall}/call overage</div>
                 ) : (
-                  <div className="mt-1 text-white/35">hard cap — no overage</div>
+                  <div className="mt-1 text-white/35">hard cap - no overage</div>
                 )}
               </div>
 
@@ -370,7 +367,7 @@ export default function PricingPageClient() {
                   disabled={isBusy || exactMatch || higherPlan}
                   className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isBusy && 'Opening checkout…'}
+                  {isBusy && 'Opening checkout...'}
                   {!isBusy && exactMatch && 'Current plan'}
                   {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
                   {!isBusy && !exactMatch && !higherPlan && !account && 'Continue to checkout'}

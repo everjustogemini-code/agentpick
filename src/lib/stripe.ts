@@ -2,6 +2,14 @@ import Stripe from 'stripe';
 import { UPGRADE_PLAN_CONFIG, type RouterPlanCode, type UpgradePlanSlug } from '@/lib/router/plans';
 
 let stripeClient: Stripe | null = null;
+const STRIPE_PRICE_PLAN_ENV_MAP: Array<{
+  envKey: 'STRIPE_PRICE_PRO_MONTHLY' | 'STRIPE_PRICE_GROWTH_MONTHLY' | 'STRIPE_PRICE_SCALE_MONTHLY';
+  routerPlan: RouterPlanCode;
+}> = [
+  { envKey: 'STRIPE_PRICE_PRO_MONTHLY', routerPlan: 'STARTER' },
+  { envKey: 'STRIPE_PRICE_GROWTH_MONTHLY', routerPlan: 'PRO' },
+  { envKey: 'STRIPE_PRICE_SCALE_MONTHLY', routerPlan: 'SCALE' },
+];
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -44,10 +52,10 @@ export function resolveRouterPlanFromStripePriceId(
 ): RouterPlanCode | null {
   if (!priceId) return null;
 
-  for (const config of Object.values(UPGRADE_PLAN_CONFIG)) {
-    const configuredPriceId = process.env[config.priceEnvKey];
+  for (const mapping of STRIPE_PRICE_PLAN_ENV_MAP) {
+    const configuredPriceId = process.env[mapping.envKey];
     if (configuredPriceId && configuredPriceId === priceId) {
-      return config.routerPlan;
+      return mapping.routerPlan;
     }
   }
 

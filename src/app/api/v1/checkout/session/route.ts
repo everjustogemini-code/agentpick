@@ -22,7 +22,7 @@ export const runtime = 'nodejs';
  * Creates a Stripe Checkout Session with ui_mode='embedded'.
  * Returns clientSecret for use with <EmbeddedCheckout />.
  *
- * Body: { plan: "pro" | "growth" | "scale" }
+ * Body: { plan: "pro" | "growth" }
  * Auth: Bearer <agentpick_api_key>
  */
 export async function POST(request: NextRequest) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   const plan = normalizeUpgradePlan(body.plan);
   if (!plan) {
-    return apiError('VALIDATION_ERROR', 'plan must be "pro", "growth", or "scale".', 400);
+    return apiError('VALIDATION_ERROR', 'plan must be "pro" or "growth".', 400);
   }
 
   const targetPlan = UPGRADE_PLAN_CONFIG[plan];

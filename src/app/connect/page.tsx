@@ -177,12 +177,12 @@ Also available: /route/crawl, /route/embed, /route/finance`}</pre>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-white font-bold">Pro</span>
-              <span className="text-white/50">10,000 calls/month</span>
+              <span className="text-white/50">5,000 calls/month</span>
               <span className="text-text-dim">$29/mo</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-white font-bold">Growth</span>
-              <span className="text-white/50">100,000 calls/month</span>
+              <span className="text-white/50">25,000 calls/month</span>
               <span className="text-text-dim">$99/mo</span>
             </div>
           </div>

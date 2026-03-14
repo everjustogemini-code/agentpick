@@ -16,7 +16,7 @@ export default function PricingSection() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {PRICING_CARD_PLANS.map((plan) => {
           const isFree = plan.slug === 'free';
 
@@ -27,9 +27,9 @@ export default function PricingSection() {
                   <h3 className="mb-1 text-[18px] font-semibold text-text-primary">{plan.label}</h3>
                   <p className="text-[13px] leading-5 text-text-secondary">{plan.description}</p>
                 </div>
-                {plan.slug === 'scale' && (
+                {plan.slug === 'growth' && (
                   <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-500">
-                    Best value
+                    Most popular
                   </span>
                 )}
               </div>

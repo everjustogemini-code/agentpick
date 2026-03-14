@@ -19,6 +19,7 @@ const originalEnv = {
   VERCEL_URL: process.env.VERCEL_URL,
   STRIPE_PRICE_PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
   STRIPE_PRICE_GROWTH_MONTHLY: process.env.STRIPE_PRICE_GROWTH_MONTHLY,
+  STRIPE_PRICE_SCALE_MONTHLY: process.env.STRIPE_PRICE_SCALE_MONTHLY,
 };
 
 afterEach(() => {
@@ -28,12 +29,14 @@ afterEach(() => {
   process.env.VERCEL_URL = originalEnv.VERCEL_URL;
   process.env.STRIPE_PRICE_PRO_MONTHLY = originalEnv.STRIPE_PRICE_PRO_MONTHLY;
   process.env.STRIPE_PRICE_GROWTH_MONTHLY = originalEnv.STRIPE_PRICE_GROWTH_MONTHLY;
+  process.env.STRIPE_PRICE_SCALE_MONTHLY = originalEnv.STRIPE_PRICE_SCALE_MONTHLY;
 });
 
 describe('router billing helpers', () => {
   it('normalizes paid upgrade plans', () => {
     expect(normalizeUpgradePlan('PRO')).toBe('pro');
     expect(normalizeUpgradePlan('growth')).toBe('growth');
+    expect(normalizeUpgradePlan('scale')).toBeNull();
     expect(normalizeUpgradePlan('enterprise')).toBeNull();
   });
 
@@ -108,9 +111,11 @@ describe('stripe billing helpers', () => {
   it('resolves router plans from configured Stripe price ids', () => {
     process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_pro_123';
     process.env.STRIPE_PRICE_GROWTH_MONTHLY = 'price_growth_456';
+    process.env.STRIPE_PRICE_SCALE_MONTHLY = 'price_scale_789';
 
     expect(resolveRouterPlanFromStripePriceId('price_pro_123')).toBe('STARTER');
     expect(resolveRouterPlanFromStripePriceId('price_growth_456')).toBe('PRO');
+    expect(resolveRouterPlanFromStripePriceId('price_scale_789')).toBe('SCALE');
     expect(resolveRouterPlanFromStripePriceId('price_unknown')).toBeNull();
   });
 });
