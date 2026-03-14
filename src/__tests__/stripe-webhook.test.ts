@@ -48,6 +48,7 @@ describe('stripe webhook route', () => {
       data: {
         object: {
           client_reference_id: 'dev_from_client_ref',
+          payment_status: 'paid',
           metadata: {
             routerPlan: 'STARTER',
           },
@@ -75,6 +76,35 @@ describe('stripe webhook route', () => {
         billingCycleStart: now,
       },
     });
+  });
+
+  it('does not provision checkout sessions that are still unpaid', async () => {
+    mocks.constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          client_reference_id: 'dev_unpaid',
+          payment_status: 'unpaid',
+          metadata: {
+            routerPlan: 'STARTER',
+          },
+        },
+      },
+    });
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const response = await POST(
+      new Request('https://agentpick.dev/api/webhooks/stripe', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'sig_test',
+        },
+        body: 'payload',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.updateMany).not.toHaveBeenCalled();
   });
 
   it('resolves the target plan from the Stripe price id on subscription updates', async () => {
@@ -157,6 +187,53 @@ describe('stripe webhook route', () => {
     expect(response.status).toBe(200);
     expect(mocks.updateMany).toHaveBeenCalledWith({
       where: { id: 'dev_789' },
+      data: {
+        plan: 'FREE',
+        spentThisMonth: 0,
+        billingCycleStart: now,
+      },
+    });
+  });
+
+  it('downgrades incomplete subscriptions back to free until payment clears', async () => {
+    const now = new Date('2026-03-14T11:00:00.000Z');
+    vi.setSystemTime(now);
+    mocks.resolveRouterPlanFromStripePriceId.mockReturnValue('PRO');
+    mocks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          metadata: {
+            developerAccountId: 'dev_incomplete',
+          },
+          status: 'incomplete',
+          items: {
+            data: [
+              {
+                price: {
+                  id: 'price_growth_456',
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const response = await POST(
+      new Request('https://agentpick.dev/api/webhooks/stripe', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'sig_test',
+        },
+        body: 'payload',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.updateMany).toHaveBeenCalledWith({
+      where: { id: 'dev_incomplete' },
       data: {
         plan: 'FREE',
         spentThisMonth: 0,

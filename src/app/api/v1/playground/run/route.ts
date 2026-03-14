@@ -1,10 +1,30 @@
 import { NextRequest } from 'next/server';
+import { hashApiKey } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const maxDuration = 60;
 
+const PLAYGROUND_AGENT_TOKEN = 'ah_internal_playground_demo';
+
+async function getPlaygroundAgent() {
+  const apiKeyHash = hashApiKey(PLAYGROUND_AGENT_TOKEN);
+  return prisma.agent.upsert({
+    where: { apiKeyHash },
+    update: { lastActiveAt: new Date(), isRestricted: false },
+    create: {
+      apiKeyHash,
+      name: 'playground-agent',
+      modelFamily: 'internal',
+      orchestrator: 'agentpick-playground',
+      description: 'Internal agent used for the public API playground.',
+      isRestricted: false,
+    },
+    select: { id: true },
+  });
+}
+
 export async function POST(request: NextRequest) {
-  const demoKey = process.env.PLAYGROUND_DEMO_KEY ?? 'DEMO_KEY';
+  const demoKey = process.env.PLAYGROUND_DEMO_KEY ?? PLAYGROUND_AGENT_TOKEN;
 
   let body: { endpoint?: string; query?: string; strategy?: string; apiKey?: string };
   try {
@@ -53,6 +73,11 @@ export async function POST(request: NextRequest) {
         { status: 429 },
       );
     }
+  }
+
+  // Ensure playground agent exists in DB when using demo token
+  if (isDemo) {
+    await getPlaygroundAgent();
   }
 
   // Build the authorization header

@@ -217,7 +217,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       message,
       data: null,
       meta: {
-        tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? 'unknown',
+        tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? `${capability}-unavailable`,
         latency_ms: 0,
         fallback_used: false,
         trace_id: `trace_fail_${Date.now()}`,
