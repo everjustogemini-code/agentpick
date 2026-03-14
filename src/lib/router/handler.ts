@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
-import { routeRequest, CAPABILITY_TOOLS } from './index';
+import { routeRequest, CAPABILITY_TOOLS, getRankedToolsForCapability } from './index';
 import type { RouterRequest, Strategy } from './index';
 import { ensureDeveloperAccount, recordRouterCall, type RouterStrategyValue } from './sdk';
 import { escapeHtml } from '@/lib/sanitize';
@@ -206,7 +206,10 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Router error';
     const failTraceId = `trace_fail_${Date.now()}`;
-    const failToolUsed = body?.tool ?? `${capability}-unavailable`;
+    const failToolUsed =
+      body?.tool ??
+      getRankedToolsForCapability(capability, body?.strategy ?? 'balanced')[0] ??
+      capability;
     // Record the failure for analytics — best-effort
     if (preAccount) {
       const strategyUsed = CORE_TO_SDK[body?.strategy ?? 'balanced'] ?? 'BALANCED';

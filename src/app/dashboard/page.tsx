@@ -51,6 +51,9 @@ export default function DashboardPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [newKey, setNewKey] = useState('');
 
+  const [showFullKey, setShowFullKey] = useState(false);
+  const [keyCopied, setKeyCopied] = useState(false);
+
   // Lightweight account state needed for upgrade CTAs
   const [accountPlan, setAccountPlan] = useState<string | null>(null);
   const [usagePercent, setUsagePercent] = useState<number | null>(null);
@@ -113,6 +116,23 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, [apiKey]);
+
+  function maskApiKey(key: string) {
+    if (key.length <= 12) return key;
+    const prefix = key.slice(0, 10); // e.g. "ah_live_sk"
+    const suffix = key.slice(-4);
+    return `${prefix}_...${suffix}`;
+  }
+
+  async function handleCopyKey() {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setKeyCopied(true);
+      setTimeout(() => setKeyCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  }
 
   function persistApiKey(value: string) {
     setApiKey(value);
@@ -301,6 +321,35 @@ export default function DashboardPage() {
                 </div>
               </section>
             ) : null}
+
+            {/* Always-visible API key section */}
+            <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                Your API Key
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Stored locally in this browser. Use it to authenticate router calls.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <div className="flex-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 select-all">
+                  {showFullKey ? apiKey : maskApiKey(apiKey)}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFullKey((v) => !v)}
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  {showFullKey ? 'Hide' : 'Show'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyKey}
+                  className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  {keyCopied ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </section>
 
             <UsagePanel apiKey={apiKey} onLogout={handleLogout} />
             <ByokPanel apiKey={apiKey} onAuthError={handleLogout} />

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       });
 
       const plan = existingAgent.developerAccount.plan;
-      const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[plan] ?? 3000;
+      const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[plan] ?? ROUTER_PLAN_MONTHLY_LIMITS.FREE;
 
       return Response.json({
         apiKey,

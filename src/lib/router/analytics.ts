@@ -263,8 +263,8 @@ export function buildRouterAnalytics(
     if (call.createdAt < since || call.createdAt > now) {
       continue;
     }
-    // Skip legacy DB records where toolUsed was not properly recorded
-    if (!call.toolUsed || call.toolUsed === 'unknown') {
+    // Skip legacy/failure DB records where toolUsed was not properly recorded
+    if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable')) {
       continue;
     }
 

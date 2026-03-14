@@ -55,8 +55,12 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   const account = await ensureDeveloperAccount(agent.id);
   const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue);
   if (!usage.allowed) {
-    return apiError('USAGE_LIMIT', `Daily limit reached (${usage.limit} calls). Upgrade plan for more.`, 429, {
-      details: { plan: account.plan, limit: usage.limit, used: usage.used },
+    const isMonthly = usage.hardCapped;
+    const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;
+    const usedCount = isMonthly ? usage.monthlyUsed : usage.used;
+    const limitLabel = isMonthly ? 'Monthly' : 'Daily';
+    return apiError('USAGE_LIMIT', `${limitLabel} call limit reached (${limitCount} calls). Upgrade plan for more.`, 429, {
+      details: { plan: account.plan, limit: limitCount, used: usedCount, period: isMonthly ? 'monthly' : 'daily' },
     });
   }
 
