@@ -1,11 +1,15 @@
+import { randomUUID } from "crypto";
 import { ensureOpsSettings, generateQuerySet, getBenchmarkAgentById } from "./data";
 import { prisma } from "./prisma";
 import { runToolProbe } from "./service-probes";
 import { getFrequencyMs } from "./utils";
+import { DOMAIN_DEFINITIONS } from "./constants";
 import { recalculateProductScore } from "@/lib/voting";
 import { calculateReputation } from "@/lib/reputation";
 import { calculateDiversity } from "@/lib/sybil";
-import { resolveProductSlug } from "@/lib/benchmark/adapters";
+import { callToolAPI, resolveProductSlug, BENCHMARKABLE_SLUGS } from "@/lib/benchmark/adapters";
+import { evaluateResult } from "@/lib/benchmark/evaluator";
+import { BROWSE_STATUSES } from "@/lib/product-status";
 
 const db = prisma as any;
 
@@ -350,6 +354,174 @@ export async function buildCronAdapterPayload(limit = 10) {
       id: agent?.id,
       displayName: agent?.displayName,
       lastRunAt: agent?.lastRunAt,
+    })),
+  };
+}
+
+// ============================================================
+// BATCH BENCHMARK — runs all eligible tools for one domain
+// per invocation, sharing a single batchId.
+// ============================================================
+
+/**
+ * Returns the canonical product slugs (as stored in the Product table)
+ * that are benchmarkable for a given domain, derived from each domain's
+ * suggestedTools list.
+ */
+function getBenchmarkableSlugsByDomain(domain: string): string[] {
+  const domainDef = DOMAIN_DEFINITIONS.find((d) => d.slug === domain);
+  if (!domainDef) return [];
+  return domainDef.suggestedTools
+    .map((alias) => resolveProductSlug(alias))
+    .filter((slug) => BENCHMARKABLE_SLUGS.includes(slug));
+}
+
+/**
+ * Picks the domain that was least recently covered by a batch BenchmarkRun.
+ * Falls back to the first defined domain if no batch runs exist yet.
+ */
+async function pickNextBatchDomain(): Promise<string> {
+  const domains = DOMAIN_DEFINITIONS.map((d) => d.slug);
+
+  const lastRuns = await Promise.all(
+    domains.map((domain) =>
+      db.benchmarkRun.findFirst({
+        where: { domain, batchId: { not: null } },
+        orderBy: { createdAt: "desc" },
+        select: { domain: true, createdAt: true },
+      }),
+    ),
+  );
+
+  const lastRunTime = new Map<string, number>();
+  for (let i = 0; i < domains.length; i++) {
+    const run = lastRuns[i];
+    lastRunTime.set(domains[i], run ? new Date(run.createdAt).getTime() : 0);
+  }
+
+  return domains.reduce((oldest, domain) =>
+    (lastRunTime.get(domain) ?? 0) < (lastRunTime.get(oldest) ?? 0) ? domain : oldest,
+    domains[0],
+  );
+}
+
+/**
+ * Picks a query from the generated query set for a domain,
+ * rotating by cron period (every 20 min → new query each invocation).
+ */
+function pickBatchQuery(domain: string): string {
+  const items = generateQuerySet(domain, 20);
+  const periodMs = 20 * 60 * 1000;
+  const index = Math.floor(Date.now() / periodMs) % items.length;
+  return items[index]?.query ?? items[0].query;
+}
+
+/**
+ * Runs a single batch benchmark:
+ *   1. Rotate domain selection (least-recently-batched domain).
+ *   2. Pick one query from that domain's query set.
+ *   3. Generate a shared batchId.
+ *   4. Call ALL benchmarkable tools for that domain in parallel.
+ *   5. LLM-evaluate (Claude Haiku) each result.
+ *   6. Persist BenchmarkRun records with the shared batchId.
+ *   7. Recalculate product scores for affected products.
+ */
+export async function runBatchBenchmark(): Promise<{
+  batchId: string;
+  domain: string;
+  query: string;
+  toolsRun: number;
+  results: Array<{ tool: string; success: boolean; relevance: number; latencyMs: number | null }>;
+}> {
+  const domain = await pickNextBatchDomain();
+  const query = pickBatchQuery(domain);
+  const batchId = randomUUID();
+
+  const toolSlugs = getBenchmarkableSlugsByDomain(domain);
+
+  const products = await db.product.findMany({
+    where: { slug: { in: toolSlugs }, status: { in: BROWSE_STATUSES } },
+    select: { id: true, slug: true },
+  });
+
+  if (products.length === 0) {
+    return { batchId, domain, query, toolsRun: 0, results: [] };
+  }
+
+  // Run all tools in parallel to stay within cron time limits
+  const settled = await Promise.allSettled(
+    products.map(async (product: any) => {
+      try {
+        const result = await callToolAPI(product.slug, query);
+        const success = result.statusCode >= 200 && result.statusCode < 300;
+
+        let relevance = 0;
+        let freshness = 0;
+        let completeness = 0;
+
+        if (success) {
+          try {
+            const evaluation = await evaluateResult(
+              query,
+              `Batch benchmark for ${domain} domain`,
+              result.response,
+              "anthropic",
+            );
+            relevance = evaluation.relevance;
+            freshness = evaluation.freshness;
+            completeness = evaluation.completeness;
+          } catch {
+            // LLM evaluation failed — leave scores at 0
+          }
+        }
+
+        return {
+          query,
+          tool: product.slug,
+          success,
+          latencyMs: result.latencyMs ?? null,
+          relevance,
+          freshness,
+          completeness,
+          status: result.statusCode,
+          meta: { results: result.resultCount ?? 0 },
+        };
+      } catch {
+        return {
+          query,
+          tool: product.slug,
+          success: false,
+          latencyMs: null,
+          relevance: 0,
+          freshness: 0,
+          completeness: 0,
+          status: 500,
+          meta: { results: 0 },
+        };
+      }
+    }),
+  );
+
+  const probeResults = settled
+    .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  await createBenchmarkRunRecords("benchmark-internal", domain, probeResults, batchId);
+
+  for (const product of products) {
+    await recalculateProductScore(product.id);
+  }
+
+  return {
+    batchId,
+    domain,
+    query,
+    toolsRun: probeResults.length,
+    results: probeResults.map((r) => ({
+      tool: r.tool,
+      success: r.success,
+      relevance: r.relevance,
+      latencyMs: r.latencyMs,
     })),
   };
 }
