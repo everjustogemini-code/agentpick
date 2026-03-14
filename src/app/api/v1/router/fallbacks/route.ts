@@ -4,8 +4,21 @@ import { ensureDeveloperAccount, getFallbackStats } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
 export async function GET(request: NextRequest) {
+  // Short-circuit for missing/whitespace auth — avoids DB lookup for clearly unauthenticated requests
+  const _authHeader = request.headers.get('authorization');
+  let _urlForAuth: URL;
+  try { _urlForAuth = new URL(request.url); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
+
   try {
-    const agent = await authenticateAgent(request);
+    let agent: Awaited<ReturnType<typeof authenticateAgent>>;
+    try {
+      agent = await authenticateAgent(request);
+    } catch {
+      return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+    }
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
     const account = await ensureDeveloperAccount(agent.id);

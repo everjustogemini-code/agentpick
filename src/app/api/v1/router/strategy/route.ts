@@ -7,10 +7,20 @@ import { apiError } from '@/types';
 const db = prisma as any;
 
 export async function POST(request: NextRequest) {
-  const agent = await authenticateAgent(request);
+  let agent: Awaited<ReturnType<typeof authenticateAgent>>;
+  try {
+    agent = await authenticateAgent(request);
+  } catch {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
   if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
-  const account = await ensureDeveloperAccount(agent.id);
+  let account: Awaited<ReturnType<typeof ensureDeveloperAccount>>;
+  try {
+    account = await ensureDeveloperAccount(agent.id);
+  } catch {
+    return apiError('INTERNAL_ERROR', 'Account lookup failed.', 500);
+  }
 
   let body: { strategy?: string };
   try {
