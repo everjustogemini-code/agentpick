@@ -36,14 +36,19 @@ export async function POST(request: NextRequest) {
   }
 
   const db = prisma as any;
-  const updated = await db.developerAccount.update({
-    where: { id: account.id },
-    data: update,
-  });
+  try {
+    const updated = await db.developerAccount.update({
+      where: { id: account.id },
+      data: update,
+    });
 
-  return Response.json({
-    message: 'Priority updated.',
-    priorityTools: updated.priorityTools,
-    excludedTools: updated.excludedTools,
-  });
+    return Response.json({
+      message: 'Priority updated.',
+      priorityTools: updated.priorityTools,
+      excludedTools: updated.excludedTools,
+    });
+  } catch (err) {
+    console.error('Priority update failed:', err);
+    return apiError('INTERNAL_ERROR', 'Failed to update priority tools.', 500);
+  }
 }

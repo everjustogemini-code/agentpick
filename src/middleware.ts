@@ -75,7 +75,10 @@ function extractPlanFromAuthHeader(request: NextRequest): 'free' | 'pro' | 'grow
   // Key-authenticated requests are bucketed by IP and get the 'public' bucket
   // unless overridden by a plan hint (future).
   const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ah_')) return 'free'; // conservative default for keyed
+  // X-AgentPick-Plan is set on responses; for incoming requests we can't query DB in edge middleware.
+  // Use 'free' as a conservative default for keyed requests so they get relaxed per-IP limits
+  // vs completely unauthenticated 'public' traffic. Pro/growth limits are enforced by Upstash per-agent-ID.
+  if (authHeader?.startsWith('Bearer ah_')) return 'free';
   return 'public';
 }
 
