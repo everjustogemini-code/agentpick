@@ -48,6 +48,9 @@ export const BYOK_SERVICE_CATALOG: ByokServiceDefinition[] = [
   { service: 'openai', displayName: 'OpenAI Embeddings', envVar: 'OPENAI_API_KEY', placeholder: 'sk-...' },
   { service: 'cohere', displayName: 'Cohere Embeddings', envVar: 'COHERE_API_KEY', placeholder: 'co_...' },
   { service: 'voyage', displayName: 'Voyage AI', envVar: 'VOYAGE_API_KEY', placeholder: 'pa-...' },
+  { service: 'e2b', displayName: 'E2B Code Execution', envVar: 'E2B_API_KEY', placeholder: 'e2b_...' },
+  { service: 'resend', displayName: 'Resend Email', envVar: 'RESEND_API_KEY', placeholder: 're_...' },
+  { service: 'edenai', displayName: 'Eden AI', envVar: 'EDENAI_API_KEY', placeholder: 'eden_...' },
 ];
 
 const BYOK_SERVICE_MAP = Object.fromEntries(

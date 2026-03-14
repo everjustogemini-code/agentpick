@@ -3,6 +3,7 @@ const API_NAMES = [
   'Brave', 'Perplexity', 'Alpha Vantage', 'Apify', 'SerpAPI', 'Finnhub',
   'ScrapingBee', 'Diffbot', 'Bing', 'Google', 'Voyage AI', 'FMP', 'Crawl4AI',
   'Browserbase', 'Hyperbrowser', 'Steel',
+  'E2B', 'Resend', 'Eden AI',
 ];
 
 export default function TrustBar() {

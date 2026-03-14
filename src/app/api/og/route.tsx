@@ -96,7 +96,7 @@ async function homeOG() {
             agent tools.
           </span>
           <span style={{ fontSize: '26px', color: '#8892a8', marginTop: '20px' }}>
-            One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs.
+            One API. Every tool. AI routing. Auto-fallback. Route your agent through 26 verified APIs.
           </span>
         </div>
 

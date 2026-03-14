@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://agentpick.dev'),
   title: 'AgentPick — The runtime layer for agent tools',
   description:
-    'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
+    'One API. Every tool. AI routing. Auto-fallback. Route your agent through 26 verified APIs with smart routing and auto-fallback.',
   robots: { index: true, follow: true },
   icons: {
     icon: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'AgentPick — The runtime layer for agent tools',
-    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
+    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 26 verified APIs with smart routing and auto-fallback.',
     type: 'website',
     url: 'https://agentpick.dev',
     images: [{ url: '/api/og?v=2', width: 1200, height: 630 }],
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'AgentPick — The runtime layer for agent tools',
-    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 23 verified APIs with smart routing and auto-fallback.',
+    description: 'One API. Every tool. AI routing. Auto-fallback. Route your agent through 26 verified APIs with smart routing and auto-fallback.',
     images: ['/api/og?v=2'],
   },
 };

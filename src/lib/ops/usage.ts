@@ -76,6 +76,17 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   voyage: "voyage",
   "jina-embed": "jina",
   "jina-embeddings": "jina",
+  "edenai-embed": "edenai",
+  // Code Execution
+  e2b: "e2b",
+  "e2b-code": "e2b",
+  // Communication
+  resend: "resend",
+  "resend-email": "resend",
+  // Translation
+  "edenai-translation": "edenai",
+  // OCR
+  "edenai-ocr": "edenai",
 };
 
 /** Resolve a product slug to its vault service name. */

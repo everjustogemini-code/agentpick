@@ -40,8 +40,12 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
   search: ['exa-search', 'tavily', 'serpapi', 'serpapi-google', 'brave-search', 'perplexity-search', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
-  embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed'],
+  embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
+  code: ['e2b'],
+  communication: ['resend'],
+  translation: ['edenai-translation'],
+  ocr: ['edenai-ocr'],
 };
 
 /**
@@ -69,6 +73,11 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'cohere-embed':           { quality: 4.0, cost: 0.0001,  latency: 120,  stability: 0.98 },
   'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
+  'edenai-embed':           { quality: 3.5, cost: 0.0001,  latency: 300,  stability: 0.92 },
+  e2b:                      { quality: 4.5, cost: 0.0001,  latency: 2000, stability: 0.93 },
+  resend:                   { quality: 4.8, cost: 0.0,     latency: 300,  stability: 0.99 },
+  'edenai-translation':     { quality: 4.0, cost: 0.00015, latency: 400,  stability: 0.94 },
+  'edenai-ocr':             { quality: 4.0, cost: 0.001,   latency: 800,  stability: 0.93 },
 };
 
 export type Strategy = 'auto' | 'balanced' | 'best_performance' | 'cheapest' | 'most_stable';
@@ -456,20 +465,28 @@ export async function routeRequest(
 
   // All tools failed — return last failure
   const traceId = `trace_fail_${Date.now()}`;
+  const failureMeta: RouterResponse['meta'] = {
+    tool_used: toolSlug,
+    latency_ms: lastResult?.latencyMs ?? 0,
+    fallback_used: triedTools.length > 1,
+    fallback_from: firstFailedTool,
+    trace_id: traceId,
+    cost_usd: lastResult?.costUsd ?? 0,
+    result_count: lastResult?.resultCount ?? 0,
+    byok_used: lastAttemptUsedByok,
+    byok_service: lastByokService,
+  };
+  if (aiClassificationResult) {
+    failureMeta.ai_classification = {
+      ...aiClassificationResult,
+      reasoning: buildAiReasoning(aiClassificationResult, toolSlug),
+    };
+    failureMeta.classification_ms = classificationMs;
+  }
   return {
     response: {
       data: lastResult?.response ?? { error: 'All tools failed' },
-      meta: {
-        tool_used: toolSlug,
-        latency_ms: lastResult?.latencyMs ?? 0,
-        fallback_used: triedTools.length > 1,
-        fallback_from: firstFailedTool,
-        trace_id: traceId,
-        cost_usd: lastResult?.costUsd ?? 0,
-        result_count: lastResult?.resultCount ?? 0,
-        byok_used: lastAttemptUsedByok,
-        byok_service: lastByokService,
-      },
+      meta: failureMeta,
     },
   };
 }

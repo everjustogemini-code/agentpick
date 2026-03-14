@@ -23,6 +23,12 @@ import { callOpenAIEmbed } from './openai-embed';
 import { callCohereEmbed } from './cohere-embed';
 import { callVoyageEmbed } from './voyage-embed';
 import { callJinaEmbed } from './jina-embed';
+// Code execution adapters
+import { callE2B } from './e2b';
+// Communication adapters
+import { callResend } from './resend';
+// Eden AI aggregator adapters
+import { callEdenAIEmbed, callEdenAITranslation, callEdenAIOcr } from './edenai';
 
 import { trackVaultUsage, vaultServiceForSlug } from '@/lib/ops/usage';
 
@@ -84,6 +90,21 @@ const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>)
   voyage: callVoyageEmbed,
   'jina-embed': callJinaEmbed,
   'jina-embeddings': callJinaEmbed,
+  'edenai-embed': callEdenAIEmbed,
+
+  // === Code Execution ===
+  e2b: callE2B,
+  'e2b-code': callE2B,
+
+  // === Communication ===
+  resend: callResend,
+  'resend-email': callResend,
+
+  // === Translation ===
+  'edenai-translation': callEdenAITranslation,
+
+  // === OCR ===
+  'edenai-ocr': callEdenAIOcr,
 };
 
 /**
@@ -136,6 +157,17 @@ export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
   'voyage-embeddings': 'voyage-embed',
   'jina-embed': 'jina-embed',
   'jina-embeddings': 'jina-embed',
+  'edenai-embed': 'edenai-embed',
+  // === Code Execution ===
+  e2b: 'e2b',
+  'e2b-code': 'e2b',
+  // === Communication ===
+  resend: 'resend',
+  'resend-email': 'resend',
+  // === Translation ===
+  'edenai-translation': 'edenai-translation',
+  // === OCR ===
+  'edenai-ocr': 'edenai-ocr',
 };
 
 /**
@@ -156,7 +188,15 @@ export const BENCHMARKABLE_SLUGS = [
   // Finance
   'polygon-io', 'alpha-vantage', 'financial-modeling-prep',
   // Embedding
-  'openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed',
+  'openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed',
+  // Code Execution
+  'e2b',
+  // Communication
+  'resend',
+  // Translation
+  'edenai-translation',
+  // OCR
+  'edenai-ocr',
 ];
 
 export async function callToolAPI(
