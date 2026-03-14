@@ -1,78 +1,72 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
-  score: number; // 0–100
+  score: number   // 0–10
+  size?: number   // default 48
 }
 
-const RADIUS = 20;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // ~125.66
-
-function getColor(score: number): string {
-  if (score >= 80) return '#22C55E';
-  if (score >= 60) return '#F59E0B';
-  return '#EF4444';
+function scoreColor(score: number) {
+  if (score >= 8) return '#22c55e'   // green-500
+  if (score >= 6) return '#f59e0b'   // amber-500
+  return '#ef4444'                    // red-500
 }
 
-export default function ScoreRing({ score }: Props) {
-  const clampedScore = Math.max(0, Math.min(100, score));
-  const finalOffset = CIRCUMFERENCE * (1 - clampedScore / 100);
-  const [dashOffset, setDashOffset] = useState(CIRCUMFERENCE);
+export default function ScoreRing({ score, size = 48 }: Props) {
+  const clamped = Math.max(0, Math.min(10, score))
+  const r = size / 2 - 4
+  const circumference = 2 * Math.PI * r
+  const finalOffset = circumference * (1 - clamped / 10)
+  const [offset, setOffset] = useState(circumference)
+  const reduced = useRef(false)
 
   useEffect(() => {
-    // Trigger animation after mount
-    const raf = requestAnimationFrame(() => {
-      setDashOffset(finalOffset);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [finalOffset]);
-
-  const color = getColor(clampedScore);
+    if (typeof window === 'undefined') return
+    reduced.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced.current) {
+      setOffset(finalOffset)
+      return
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setOffset(finalOffset))
+    })
+  }, [finalOffset])
 
   return (
-    <svg
-      width={48}
-      height={48}
-      viewBox="0 0 48 48"
-      aria-label={`Score: ${clampedScore}`}
-    >
-      {/* Background ring */}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label={`Score: ${clamped.toFixed(1)}`}>
+      {/* Track */}
       <circle
-        cx={24}
-        cy={24}
-        r={RADIUS}
-        fill="none"
-        stroke="#E5E5E5"
-        strokeWidth={3}
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke="#1f2937" strokeWidth={4}
       />
-      {/* Progress ring */}
+      {/* Score arc */}
       <circle
-        cx={24}
-        cy={24}
-        r={RADIUS}
+        cx={size / 2} cy={size / 2} r={r}
         fill="none"
-        stroke={color}
-        strokeWidth={3}
+        stroke={scoreColor(clamped)}
+        strokeWidth={4}
         strokeLinecap="round"
-        strokeDasharray={CIRCUMFERENCE}
-        strokeDashoffset={dashOffset}
-        transform="rotate(-90 24 24)"
-        style={{ transition: 'stroke-dashoffset 600ms ease-out' }}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        style={{
+          transition: reduced.current ? 'none' : 'stroke-dashoffset 600ms ease-out',
+          transform: 'rotate(-90deg)',
+          transformOrigin: '50% 50%',
+        }}
       />
-      {/* Score text */}
+      {/* Label */}
       <text
-        x={24}
-        y={24}
+        x="50%" y="50%"
+        dominantBaseline="middle"
         textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={11}
-        fontWeight={500}
-        fill={color}
-        fontFamily="var(--font-jetbrains-mono), monospace"
+        fontSize={size * 0.28}
+        fontFamily="'JetBrains Mono', monospace"
+        fontWeight="500"
+        fill="white"
       >
-        {Math.round(clampedScore)}
+        {clamped.toFixed(1)}
       </text>
     </svg>
-  );
+  )
 }

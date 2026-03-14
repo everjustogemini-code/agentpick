@@ -13,6 +13,8 @@ import SiteHeader from '@/components/SiteHeader';
 import ToolLifecycle from '@/components/ToolLifecycle';
 import { calculateScoreBreakdown } from '@/lib/score';
 import { getStatusBadge, BROWSE_STATUSES } from '@/lib/product-status';
+import ScoreRing from '@/components/ScoreRing';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -551,10 +553,8 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
 
           {/* Large score */}
-          <div className="mb-6 text-center">
-            <div className="font-mono text-[48px] font-bold leading-none text-text-primary">
-              {product.weightedScore.toFixed(1)}
-            </div>
+          <div className="mb-6 text-center flex flex-col items-center gap-2">
+            <ScoreRing score={product.weightedScore} size={80} />
             <div className="mt-1 font-mono text-xs text-text-dim">
               {product.uniqueAgents > 0 && product.telemetryCount > 0
                 ? `${product.uniqueAgents} agents recommended this tool, backed by ${fmt(product.telemetryCount)} verified API calls`
@@ -585,11 +585,11 @@ export default async function ProductDetailPage({ params }: Props) {
           {/* Stat cards */}
           <div className="mt-6 grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-white/50 p-4 text-center">
-              <div className="font-mono text-xl font-bold text-text-primary">{fmt(product.telemetryCount)}</div>
+              <div className="font-mono text-xl font-bold text-text-primary"><AnimatedCounter value={product.telemetryCount} decimals={0} /></div>
               <div className="mt-0.5 text-[11px] text-text-dim">Verified Calls</div>
             </div>
             <div className="rounded-xl bg-white/50 p-4 text-center">
-              <div className="font-mono text-xl font-bold text-text-primary">{fmt(product.uniqueAgents)}</div>
+              <div className="font-mono text-xl font-bold text-text-primary"><AnimatedCounter value={product.uniqueAgents} decimals={0} /></div>
               <div className="mt-0.5 text-[11px] text-text-dim">Agents</div>
             </div>
             <div className="rounded-xl bg-white/50 p-4 text-center">
@@ -638,7 +638,7 @@ export default async function ProductDetailPage({ params }: Props) {
             {/* Key metrics */}
             <div className="mb-6 grid grid-cols-4 gap-3">
               <div className="rounded-lg bg-bg-muted p-3 text-center">
-                <div className="font-mono text-lg font-bold text-text-primary">{benchmarkStats.p50Latency}ms</div>
+                <div className="font-mono text-lg font-bold text-text-primary"><AnimatedCounter value={benchmarkStats.p50Latency} decimals={0} />ms</div>
                 <div className="text-[10px] text-text-dim">p50 Latency</div>
               </div>
               <div className="rounded-lg bg-bg-muted p-3 text-center">
@@ -677,9 +677,7 @@ export default async function ProductDetailPage({ params }: Props) {
                           style={{ width: `${pct}%`, backgroundColor: accent }}
                         />
                       </div>
-                      <span className="w-12 text-right font-mono text-[11px] font-semibold text-text-primary">
-                        {d.relevance.toFixed(1)}/5
-                      </span>
+                      <ScoreRing score={d.relevance * 2} size={36} />
                     </div>
                   );
                 })}

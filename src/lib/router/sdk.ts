@@ -55,6 +55,8 @@ export function normalizeStrategy(value: string): RouterStrategyValue | null {
   if (VALID_STRATEGIES.includes(upper as RouterStrategyValue)) return upper as RouterStrategyValue;
   // Map canonical API names to Prisma enum values
   const aliases: Record<string, RouterStrategyValue> = {
+    CUSTOM: 'MANUAL',
+    custom: 'MANUAL',
     BEST_PERFORMANCE: 'MOST_ACCURATE',
     MOST_STABLE: 'FASTEST',
   };
