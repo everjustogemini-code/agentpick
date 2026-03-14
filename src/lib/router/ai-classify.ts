@@ -45,7 +45,7 @@ export function fastClassify(query: string): QueryContext | null {
   const realtimeTerms = /\b(today|right now|current|live|real.?time|latest price|price now)\b/i;
   // Standalone realtime/live signals that don't require finance context:
   // "live coverage", "live updates", "real-time feed", "realtime data" etc.
-  const standaloneRealtimeSignal = /\b(live (coverage|updates?|feed|stream|blog|scores?|results?|data|situation|report)|real.?time (updates?|feed|data|coverage|alerts?|stream)|live\s+\w+\s+(updates?|coverage|feed)|breaking news|latest news|top news|news today|current news|recent news|what('s| is) happening( with| in| to)?|happening (now|right now)|news right now|current status of|as of right now)\b/i;
+  const standaloneRealtimeSignal = /\b(live (coverage|updates?|feed|stream|blog|scores?|results?|data|situation|report)|real.?time (updates?|feed|data|coverage|alerts?|stream)|live\s+\w+\s+(updates?|coverage|feed)|breaking news|latest news|top news|news today|current news|recent news|what('s| is) happening( with| in| to)?|happening (now|right now)|news right now|current status of|as of right now|right now|at the moment|in real.?time|real.?time (news|information|info|status)|latest (updates?|developments?|reports?|headlines?)|up.?to.?date (news|information|info)|most recent (news|updates?|developments?))\b/i;
 
   // Ticker-like patterns: 1-5 uppercase letters followed by finance terms
   const tickerPattern = /\b[A-Z]{1,5}\b/;
