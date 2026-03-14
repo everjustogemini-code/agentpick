@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'exa-search-for-ai-agents',
+    title: 'Exa Search API for AI Agents: Benchmark Results (2026)',
+    description:
+      'Exa Search scores 6.4 in AgentPick benchmarks and runs 50% faster than Perplexity. When to choose Exa over the #1 pick — and when not to.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'tool-routing-for-ai-agents',
     title: 'Tool Routing for AI Agents: Skip the Boilerplate',
     description:
