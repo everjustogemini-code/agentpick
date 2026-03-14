@@ -4,6 +4,12 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
+import dynamic from 'next/dynamic';
+
+const RouterAnalyticsDashboard = dynamic(
+  () => import('@/components/dashboard/RouterAnalyticsDashboard').then(m => ({ default: m.RouterAnalyticsDashboard })),
+  { ssr: false, loading: () => <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white text-center">Loading analytics...</div> }
+);
 
 const API_KEY_STORAGE_KEY = 'agentpick_api_key';
 
@@ -141,55 +147,7 @@ export default function DashboardPage() {
               </p>
             </section>
 
-            <section className="grid gap-6 rounded-[32px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] lg:grid-cols-[1.1fr_0.9fr]">
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-cyan-300/80">
-                  Agent Analytics
-                </p>
-                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">
-                  Open the live router analytics console.
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  Drill into calls by tool, strategy mix, latency percentiles, fallback rate, and
-                  spend trends with a dedicated dashboard that refreshes every 30 seconds.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs font-medium text-slate-200">
-                    24h / 7d / 30d
-                  </span>
-                  <span className="rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs font-medium text-slate-200">
-                    p50 / p95 / p99
-                  </span>
-                  <span className="rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs font-medium text-slate-200">
-                    Live every 30s
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-slate-400">
-                  Included views
-                </p>
-                <div className="mt-4 grid gap-3 text-sm text-slate-200">
-                  <div className="rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
-                    Calls by tool and strategy distribution.
-                  </div>
-                  <div className="rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
-                    Latency percentiles with fallback-rate monitoring.
-                  </div>
-                  <div className="rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
-                    Cost trend and top-tool load summary.
-                  </div>
-                </div>
-
-                <Link
-                  href="/dashboard/router"
-                  className="mt-5 inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-5 py-3 text-sm font-medium text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/16"
-                >
-                  Open analytics dashboard
-                </Link>
-              </div>
-            </section>
+            <RouterAnalyticsDashboard />
 
             {newKey ? (
               <section className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
