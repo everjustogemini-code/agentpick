@@ -1,7 +1,7 @@
-# TASK_CLAUDE_CODE.md — Cycle 2
+# TASK_CLAUDE_CODE.md — v0.4 Cycle
 
 > Agent: Claude Code | Date: 2026-03-14 | Difficulty: Hard
-> Features: F2 (4 API bug fixes) + F3 (Playground) + F1D (AnimatedCounter) + F1E (ScoreRing)
+> Features: F1 (glassmorphic design system) + F3 (interactive code generator)
 
 ---
 
@@ -9,668 +9,557 @@
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/app/api/v1/route/crawl/route.ts` |
-| MODIFY | `src/app/api/v1/router/priority/route.ts` |
-| MODIFY | `src/app/api/v1/router/usage/route.ts` |
-| MODIFY | `src/app/api/v1/router/strategy/route.ts` *(read first — find where strategy enum lives)* |
-| MODIFY | `src/app/api/v1/playground/run/route.ts` |
-| MODIFY | `src/app/playground/page.tsx` |
-| MODIFY | `src/components/PlaygroundShell.tsx` |
-| MODIFY | `src/components/SiteHeader.tsx` |
-| MODIFY | `src/app/benchmarks/page.tsx` |
-| MODIFY | `src/app/products/[slug]/page.tsx` |
-| CREATE | `src/components/ScoreRing.tsx` |
-| CREATE | `src/components/AnimatedCounter.tsx` |
-| MODIFY | `prisma/schema.prisma` |
-| CREATE | `prisma/migrations/20260314_playground_rate_limits/migration.sql` |
+| MODIFY | `src/app/globals.css` |
+| MODIFY | `src/app/dashboard/router/page.tsx` |
+| MODIFY | `src/app/page.tsx` |
+| MODIFY | `src/app/connect/page.tsx` |
+| CREATE | `src/components/CodeGeneratorWidget.tsx` |
 
-**DO NOT TOUCH:** `src/app/globals.css`, `src/app/page.tsx`, `src/app/connect/page.tsx`
+**DO NOT TOUCH:** Any file under `src/app/api/`, `src/lib/router/`, `src/components/SiteHeader.tsx`
 
 ---
 
-## Feature 2 — Fix 4 P2 API Contract Bugs
+## Feature 1 — Glassmorphic Design System
 
-### Bug A — `/api/v1/route/crawl` rejects flat body (QA test 1.1b)
+### 1A. `src/app/globals.css` — Add Dark Tokens + Glass Utilities + Animations
 
-File: `src/app/api/v1/route/crawl/route.ts`
+This project uses **Tailwind v4** (`@import "tailwindcss"` in globals.css; no `tailwind.config.ts`). Theme extensions go in the existing `@theme inline {}` block and a separate `@theme {}` block.
 
-**Read the file first.** Then at the handler entry, replace the body parse with a Zod union that accepts both `{ url }` (flat) and `{ params: { url } }` (nested). Use the normalized `url` everywhere below:
+**Step 1 — Add to the existing `:root` block** (after the last existing variable):
 
-```ts
-import { z } from 'zod'
+```css
+/* === Dark Glass Design System (v0.4) === */
+--bg-base:           #0a0a0f;
+--bg-surface:        rgba(255,255,255,0.04);
+--bg-surface-hover:  rgba(255,255,255,0.07);
+--border-subtle:     rgba(255,255,255,0.08);
+--border-active:     rgba(249,115,22,0.45);
 
-const CrawlBody = z.union([
-  z.object({ params: z.object({ url: z.string().url() }) }),
-  z.object({ url: z.string().url() }),
-])
-const parsed = CrawlBody.parse(body)
-const url = 'params' in parsed ? parsed.params.url : parsed.url
+--gradient-mesh: radial-gradient(ellipse 80% 60% at 50% -10%,
+                   rgba(249,115,22,0.15) 0%, transparent 70%),
+                 radial-gradient(ellipse 60% 40% at 80% 80%,
+                   rgba(99,102,241,0.08) 0%, transparent 60%);
 ```
 
-Canonical docs shape remains `{ params: { url } }`. Flat shape is silently accepted forever.
+**Step 2 — Add inside the existing `@theme inline {}` block** (after the last `--color-*` token):
 
----
-
-### Bug B — `/api/v1/router/priority` wrong field name (QA test 2.6)
-
-File: `src/app/api/v1/router/priority/route.ts`
-
-**Read the file first.** At the very top of the handler (before any Zod validation), add normalization:
-
-```ts
-const tools = body.tools ?? body.priority_tools ?? body.search
-if (!tools?.length) {
-  return NextResponse.json(
-    { error: 'Provide tools or priority_tools' },
-    { status: 400 }
-  )
-}
-// replace all subsequent uses of body.tools / body.priority_tools with `tools`
+```css
+--color-bg-base: var(--bg-base);
+--color-bg-surface: var(--bg-surface);
+--color-bg-surface-hover: var(--bg-surface-hover);
+--color-border-subtle: var(--border-subtle);
+--color-border-active: var(--border-active);
 ```
 
----
+**Step 3 — Append a new `@theme {}` block** at the end of the file (for shadow + blur Tailwind v4 utilities):
 
-### Bug C — Usage endpoint missing account fields (QA test 7.1)
-
-File: `src/app/api/v1/router/usage/route.ts`
-
-**Read the file first.** Extend the `account` object from `{ plan }` to all four fields:
-
-```ts
-const plan = user.plan ?? 'free'
-
-const PLAN_LIMITS: Record<string, number> = {
-  free: 10_000,
-  pro: 100_000,
-  enterprise: 10_000_000,
-}
-const monthlyLimit = PLAN_LIMITS[plan] ?? 10_000
-
-const now = new Date()
-const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-const callsThisMonth = await prisma.routerCall.count({
-  where: { userId: user.id, createdAt: { gte: monthStart } },
-})
-
-const strategy = user.strategy ?? 'auto'
-
-const account = { plan, monthlyLimit, callsThisMonth, strategy }
-```
-
----
-
-### Bug D — `custom` strategy not supported for fallback (QA test 1.3)
-
-**Read `src/app/api/v1/router/strategy/route.ts` first** (and any strategy enum/switch in `src/lib/router/`). Find where the strategy enum is defined and where routing dispatches by strategy name.
-
-1. Add `"custom"` to the valid strategy values (Zod enum or string union).
-2. In the routing dispatch switch/if-else, handle `"custom"`:
-
-```ts
-case 'custom': {
-  const saved: string[] = user.priorityTools ?? []
-  if (saved.length === 0) {
-    return resolveAuto(context)   // fall back to auto
-  }
-  return resolvePriority(saved, context)
+```css
+@theme {
+  --shadow-glass: 0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-glow-orange: 0 0 12px rgba(249,115,22,0.35);
+  --shadow-glow-cyan:   0 0 12px rgba(14,165,233,0.3);
+  --backdrop-blur-xs: 4px;
 }
 ```
 
-If `resolveAuto` / `resolvePriority` have different names in the codebase, use the actual function names — do not rename them.
+**Step 4 — Append `hero-mesh` class + `mesh-shift` keyframe** after the existing `@keyframes` section:
 
----
+```css
+@keyframes mesh-shift {
+  0%   { background-position: 0% 50%, 0 0, 0 0; }
+  50%  { background-position: 100% 50%, 0 0, 0 0; }
+  100% { background-position: 0% 50%, 0 0, 0 0; }
+}
 
-## Feature 3 — Interactive API Playground (`/playground`)
+.hero-mesh {
+  background:
+    var(--gradient-mesh),
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 200% 200%, 64px 64px, 64px 64px;
+}
 
-### 3A. Database Migration
-
-Create file: `prisma/migrations/20260314_playground_rate_limits/migration.sql`
-
-```sql
-CREATE TABLE IF NOT EXISTS playground_rate_limits (
-  id    SERIAL  PRIMARY KEY,
-  ip    TEXT    NOT NULL,
-  date  DATE    NOT NULL,
-  count INTEGER NOT NULL DEFAULT 1,
-  UNIQUE (ip, date)
-);
-```
-
-Add the Prisma model to `prisma/schema.prisma` (read the file to find the right place to insert):
-
-```prisma
-model PlaygroundRateLimit {
-  id    Int      @id @default(autoincrement())
-  ip    String
-  date  DateTime @db.Date
-  count Int      @default(1)
-
-  @@unique([ip, date])
-  @@map("playground_rate_limits")
+@media (prefers-reduced-motion: no-preference) {
+  .hero-mesh { animation: mesh-shift 20s ease infinite; }
 }
 ```
 
 ---
 
-### 3B. Playground API Route
+### 1B–1F. `src/app/dashboard/router/page.tsx` — Full Glass Redesign
 
-File: `src/app/api/v1/playground/run/route.ts`
+Read the file first. It is a large `'use client'` component with a login screen and a dashboard view.
 
-**Read the file first.** Rewrite the POST handler with demo-key rate limiting:
+#### Page background wrapper
 
-```
-POST /api/v1/playground/run
-Body: { endpoint: 'search'|'crawl'|'embed'|'finance', query: string, strategy: string, apiKey?: string }
-
-Logic:
-1. If apiKey is provided AND is NOT equal to process.env.PLAYGROUND_DEMO_KEY:
-   → forward to real route /api/v1/route/{endpoint} with the user's key, no rate limit check.
-
-2. Otherwise (demo key path):
-   a. Extract IP from x-forwarded-for header (first value) or req socket remoteAddress.
-   b. Upsert playground_rate_limits: increment count for ip + today's UTC date.
-      SQL: INSERT INTO playground_rate_limits (ip, date, count)
-           VALUES ($1, CURRENT_DATE, 1)
-           ON CONFLICT (ip, date) DO UPDATE SET count = playground_rate_limits.count + 1
-           RETURNING count;
-   c. If returned count > 10:
-      → return 429 { error: "Demo limit reached", cta: "Sign up free to continue" }
-   d. Otherwise: forward to /api/v1/route/{endpoint} with Authorization: Bearer {PLAYGROUND_DEMO_KEY}.
-
-3. Return the real route's JSON response unchanged.
-```
-
-Use `prisma.playgroundRateLimit.upsert` or a raw `prisma.$executeRaw` — whichever fits cleanly.
-
----
-
-### 3C. Playground Page
-
-File: `src/app/playground/page.tsx`
-
-**Read the file first.** Replace/update with:
+The dashboard return block starts with `<div className="mx-auto max-w-4xl px-4 py-8">`. Wrap it:
 
 ```tsx
-import type { Metadata } from 'next'
-import PlaygroundShell from '@/components/PlaygroundShell'
-
-export const metadata: Metadata = {
-  title: 'API Playground — AgentPick',
-  description: 'Try the AgentPick router live in your browser. No signup required.',
-}
-
-export default function PlaygroundPage() {
-  return (
-    <main className="bg-gray-950 min-h-screen pt-6 pb-20">
-      <div className="max-w-7xl mx-auto px-4 mb-8">
-        <p className="uppercase tracking-widest text-xs text-cyan-400 mb-2">Interactive Demo</p>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">API Playground</h1>
-        <p className="mt-2 text-gray-400 text-sm max-w-lg">
-          Run live routing queries against the AgentPick API. No signup needed — demo key included.
-        </p>
-      </div>
-      <PlaygroundShell />
-    </main>
-  )
-}
-```
-
----
-
-### 3D. PlaygroundShell Component
-
-File: `src/components/PlaygroundShell.tsx`
-
-**Read the file first.** Rewrite as a full `"use client"` component with the two-panel layout below.
-
-#### State shape
-
-```ts
-const [endpoint, setEndpoint] = useState<'search'|'crawl'|'embed'|'finance'>('search')
-const [query, setQuery] = useState('')
-const [strategy, setStrategy] = useState<'auto'|'fastest'|'cheapest'|'best_quality'>('auto')
-const [apiKey, setApiKey] = useState('')        // '' = use demo key
-const [showKeyInput, setShowKeyInput] = useState(false)
-const [loading, setLoading] = useState(false)
-const [result, setResult] = useState<object | null>(null)
-const [latency, setLatency] = useState<number | null>(null)
-const [toolUsed, setToolUsed] = useState<string | null>(null)
-const [error429, setError429] = useState(false)
-const [activeTab, setActiveTab] = useState<'response'|'curl'|'python'|'node'>('response')
-```
-
-#### Layout
-
-```tsx
-<div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
-  {/* LEFT: Request Builder */}
-  {/* RIGHT: Response Panel */}
+// Before:
+<div className="mx-auto max-w-4xl px-4 py-8">
+  ...content...
 </div>
-```
 
-Both panels: `bg-white/5 border border-white/10 backdrop-blur-md rounded-xl p-6`
-
-#### Request Builder (left panel)
-
-**Endpoint tabs** — pill row, `flex gap-2 mb-5`:
-- Pill: `px-4 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-colors`
-- Active: `bg-cyan-500 text-white`
-- Inactive: `bg-white/10 text-gray-400 hover:bg-white/20`
-- Options: `Search` | `Crawl` | `Embed` | `Finance`
-
-**Query textarea:**
-```tsx
-<label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Query</label>
-<textarea
-  rows={3}
-  value={query}
-  onChange={e => setQuery(e.target.value)}
-  placeholder="Find the latest research on LLM benchmarks"
-  className="w-full font-mono text-sm bg-black/30 border border-white/10 rounded-lg px-3 py-2
-             text-gray-100 placeholder:text-gray-600 resize-none focus:outline-none
-             focus:border-cyan-500/50 transition-colors"
-/>
-```
-
-**Strategy pills** — below textarea, same pill style as endpoint tabs:
-- Label: `<p className="text-xs text-gray-500 uppercase tracking-widest mt-4 mb-2">Strategy</p>`
-- Options: `auto` | `fastest` | `cheapest` | `best_quality` (display as `Auto` | `Fastest` | `Cheapest` | `Best Quality`)
-
-**API key row** (below strategy pills):
-```tsx
-{!showKeyInput ? (
-  <div className="flex items-center gap-3 mt-4">
-    <span className="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">
-      Using demo key (10 req/day)
-    </span>
-    <button onClick={() => setShowKeyInput(true)}
-      className="text-xs text-cyan-400 hover:text-cyan-300">
-      Use my own key →
-    </button>
+// After:
+<div className="min-h-screen bg-[#0a0a0f]">
+  <div className="mx-auto max-w-4xl px-4 py-8">
+    ...content...
   </div>
-) : (
-  <input
-    type="text"
-    value={apiKey}
-    onChange={e => setApiKey(e.target.value)}
-    placeholder="sk-..."
-    className="mt-4 w-full font-mono text-sm bg-black/30 border border-white/10 rounded-lg
-               px-3 py-2 text-gray-100 placeholder:text-gray-600 focus:outline-none
-               focus:border-cyan-500/50 transition-colors"
-  />
-)}
-```
-
-**Run button:**
-```tsx
-<button
-  onClick={handleRun}
-  disabled={!query.trim() || loading}
-  className="mt-5 w-full py-3 rounded-lg font-semibold text-white
-             bg-gradient-to-r from-cyan-600 to-blue-600
-             hover:from-cyan-500 hover:to-blue-500
-             transition-all disabled:opacity-40 disabled:cursor-not-allowed
-             flex items-center justify-center gap-2"
->
-  {loading
-    ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-    : '▶ Run Query'}
-</button>
-```
-
-**handleRun function:**
-```ts
-async function handleRun() {
-  if (!query.trim() || loading) return
-  setLoading(true)
-  setError429(false)
-  const t0 = Date.now()
-  try {
-    const res = await fetch('/api/v1/playground/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        endpoint,
-        query,
-        strategy,
-        apiKey: apiKey || undefined,
-      }),
-    })
-    const data = await res.json()
-    if (res.status === 429) {
-      setError429(true)
-      setResult(null)
-    } else {
-      setResult(data)
-      setLatency(data.latency ?? Date.now() - t0)
-      setToolUsed(data.tool ?? null)
-      setActiveTab('response')
-    }
-  } finally {
-    setLoading(false)
-  }
-}
-```
-
-#### Response Panel (right panel)
-
-**Tab row:**
-```tsx
-<div className="flex gap-2 mb-4 flex-wrap">
-  {(['response','curl','python','node'] as const).map(tab => (
-    <button key={tab} onClick={() => setActiveTab(tab)}
-      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-        activeTab === tab
-          ? 'bg-cyan-500 text-white'
-          : 'bg-white/10 text-gray-400 hover:bg-white/20'
-      }`}>
-      {tab === 'curl' ? 'cURL' : tab === 'node' ? 'Node' : tab === 'python' ? 'Python' : 'Response'}
-    </button>
-  ))}
 </div>
 ```
 
-**429 error banner** (show when `error429 === true`):
+#### Login screen — dark glass
+
+The login screen renders when `!apiKey || !account`. Its outer wrapper `<div className="mx-auto max-w-md px-4 py-20">` becomes:
+
 ```tsx
-<div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-500/30 text-red-400 text-sm">
-  Demo limit reached.{' '}
-  <a href="/connect" className="underline underline-offset-2">Sign up free to continue</a>
-</div>
+<div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+  <div className="w-full max-w-md px-4 py-12">
 ```
 
-**Response tab content:**
-- Empty state (result is null):
-  ```tsx
-  <div className="border border-dashed border-white/20 rounded-lg h-48 flex items-center
-                  justify-center text-gray-500 text-sm">
-    Run a query to see live routing
-  </div>
+Close the extra div. Also close the API-key-display variant with the same wrapper.
+
+Inside login/register form:
+- `<h1 ...text-gray-900>` → `text-white`
+- `<p ...text-gray-500>` (subtitle) → `text-white/40`
+- `<label ...text-gray-600>` → `text-white/50`
+- All `<input>` className → replace entirely with:
   ```
-- With result:
-  ```tsx
-  <div className="relative">
-    {/* Badge row */}
-    <div className="flex gap-2 mb-2">
-      {latency && (
-        <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono">
-          {latency}ms
-        </span>
-      )}
-      {toolUsed && (
-        <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-mono">
-          {toolUsed}
-        </span>
-      )}
+  "w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm font-mono text-white placeholder-white/20 focus:border-orange-500/60 focus:outline-none focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+  ```
+- Submit buttons: `bg-gray-900 ... hover:bg-gray-800` → `bg-orange-500 hover:bg-orange-600`
+- "Create new account" link: keep `text-orange-500`
+- API key display card: `border-green-200 bg-green-50` → `border-white/[0.08] bg-white/[0.04]`; code `text-gray-800` → `text-green-400`
+- Copy button: `bg-gray-100 text-gray-700 hover:bg-gray-200` → `bg-white/[0.06] text-white/60 hover:bg-white/[0.09]`
+- "Loading dashboard..." text: `text-gray-400` → `text-white/30`
+- "Already have a key?" button: `text-gray-400` → `text-white/30`
+
+#### Dashboard header
+
+- `text-xl font-bold text-gray-900` → `text-xl font-bold text-white`
+- `text-xs text-gray-400 font-mono` → `text-xs text-white/30 font-mono`
+- Plan badge: `bg-orange-100 text-orange-700` → `bg-orange-500/15 text-orange-400 border border-orange-500/20`
+- Usage counter: `text-xs text-gray-500` → `text-xs text-white/40`
+- Logout: `text-xs text-gray-400 hover:text-gray-600` → `text-xs text-white/30 hover:text-white/60`
+
+#### StatCard — animated counter (replace entire function)
+
+The `StatCard` component at the bottom of the file parses string/number values and animates them. Replace the entire function:
+
+```tsx
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  const [displayed, setDisplayed] = useState<string | number>(value);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplayed(value);
+      return;
+    }
+
+    const isPercent = typeof value === 'string' && value.endsWith('%');
+    const isDollar = typeof value === 'string' && value.startsWith('$');
+    const isNum = typeof value === 'number';
+    const target = isNum ? value
+      : isPercent ? parseFloat(value as string)
+      : isDollar ? parseFloat((value as string).slice(1))
+      : null;
+
+    if (target === null) { setDisplayed(value); return; }
+
+    const start = performance.now();
+    const duration = 600;
+    const raf = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cur = target * eased;
+      if (isNum) setDisplayed(Math.round(cur));
+      else if (isPercent) setDisplayed(`${cur.toFixed(1)}%`);
+      else if (isDollar) setDisplayed(`$${cur.toFixed(2)}`);
+      if (t < 1) requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }, [value]);
+
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 shadow-glass
+                    backdrop-blur-sm transition-all duration-200
+                    hover:border-white/[0.13] hover:bg-white/[0.06]">
+      <p className="text-3xl font-bold tabular-nums bg-gradient-to-b from-white to-white/60
+                    bg-clip-text text-transparent">
+        {displayed}
+      </p>
+      <p className="mt-1 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">
+        {label}
+      </p>
     </div>
-    <pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-100 overflow-auto max-h-80
-                    transition-opacity duration-300">
-      {JSON.stringify(result, null, 2)}
-    </pre>
-  </div>
-  ```
-
-**Code tabs** — each tab is a `<div className="relative">` containing:
-```tsx
-<button
-  onClick={() => copyToClipboard(snippet)}
-  className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-xs text-gray-400 px-2 py-1 rounded transition-colors"
->
-  {copied ? '✓ Copied' : 'Copy'}
-</button>
-<pre className="text-xs font-mono bg-black/40 rounded p-4 text-gray-300 overflow-auto max-h-80 pt-8">
-  {snippet}
-</pre>
+  );
+}
 ```
 
-Use a single `const [copied, setCopied] = useState(false)` with a `setTimeout` reset at 2000ms.
+Note: `useState` and `useEffect` are already imported. No new imports needed.
 
-**Live code snippet generation** (no Run click needed — derive from state):
+#### Tool Usage Panel — glass card + gradient bars
 
-```ts
-const effectiveKey = apiKey || 'demo_key'
+Replace the entire tool usage section (the `<div className="mb-8 rounded-xl border border-gray-100 bg-white p-5">` containing `TOOL USAGE`):
 
-const curlSnippet = `curl -X POST https://agentpick.dev/api/v1/route/${endpoint} \\
-  -H "Authorization: Bearer ${effectiveKey}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"query": "${query || 'your query here'}", "strategy": "${strategy}"}'`
-
-const pythonSnippet = `import requests
-
-res = requests.post(
-    "https://agentpick.dev/api/v1/route/${endpoint}",
-    headers={"Authorization": "Bearer ${effectiveKey}"},
-    json={"query": "${query || 'your query here'}", "strategy": "${strategy}"}
-)
-print(res.json()["tool"], res.json()["latency"])`
-
-const nodeSnippet = `const res = await fetch('https://agentpick.dev/api/v1/route/${endpoint}', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer ${effectiveKey}',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({ query: "${query || 'your query here'}", strategy: "${strategy}" })
-})
-const data = await res.json()
-console.log(data.tool, data.latency + 'ms')`
+```tsx
+<div className="mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5
+                shadow-glass backdrop-blur-sm">
+  <h2 className="mb-4 text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30">
+    Tool Usage
+  </h2>
+  <div className="space-y-3">
+    {Object.entries(stats.byTool)
+      .sort(([, a], [, b]) => b.calls - a.calls)
+      .map(([tool, data], index) => {
+        const pct = stats.totalCalls > 0 ? (data.calls / stats.totalCalls) * 100 : 0;
+        return (
+          <div key={tool} className="flex items-center gap-3">
+            <span className="w-28 truncate text-xs font-mono text-white/50">{tool}</span>
+            <div className="flex-1">
+              <div className="h-2 rounded-full bg-white/[0.06]">
+                <div
+                  className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400
+                              shadow-glow-orange transition-all duration-500"
+                  style={{
+                    width: `${Math.max(pct, 2)}%`,
+                    transitionDelay: `${index * 60}ms`,
+                  }}
+                />
+              </div>
+            </div>
+            <span className="w-10 text-right text-xs text-white/40">{pct.toFixed(0)}%</span>
+            <span className="w-14 text-right text-xs text-white/30">{data.avgLatency}ms</span>
+          </div>
+        );
+      })}
+  </div>
+</div>
 ```
 
-**CTA banner** (demo key mode only — hide when `apiKey` is non-empty):
+#### Strategy Selector Panel — glass + pill glow
+
+Replace outer div `rounded-xl border border-gray-100 bg-white p-5` → `rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm`
+
+Section heading: `text-sm font-semibold text-gray-700` → `text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30`
+
+Strategy button className — replace entirely:
 ```tsx
-{!apiKey && (
-  <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-cyan-900/40 to-blue-900/40
-                  border border-cyan-500/20 text-sm text-center">
-    <span className="text-gray-300">Get your free API key →</span>{' '}
-    <a href="/connect"
-       className="text-cyan-400 font-semibold hover:text-cyan-300 underline underline-offset-2">
-      Sign up free
-    </a>
-  </div>
-)}
+className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150
+  disabled:opacity-50 border ${
+  account.strategy === s
+    ? 'bg-orange-500/15 text-orange-400 border-orange-500/50 ring-1 ring-orange-500/50 shadow-glow-orange'
+    : 'border-white/[0.08] bg-white/[0.04] text-white/50 hover:bg-white/[0.07] hover:text-white/70'
+}`}
+```
+
+Strategy error: keep `text-xs text-red-500`
+Strategy description: `text-xs text-gray-400` → `text-xs text-white/40`
+
+#### Strategy Comparison Panel — glass card
+
+- Outer div: same glass card pattern
+- `text-gray-500` headers → `text-white/30`
+- `border-gray-100` / `border-gray-50` → `border-white/[0.06]` / `border-white/[0.04]`
+- `text-gray-700` → `text-white/70`; `text-gray-600` → `text-white/60`; `text-gray-500` → `text-white/40`
+
+#### Recent Calls Panel — glass + hover rows
+
+- Outer div: same glass card pattern
+- Section heading → `text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30`
+- "auto-refresh 10s": `text-gray-400` → `text-white/20`
+- Empty state: `text-gray-400` → `text-white/30`
+- Call row div: remove `bg-gray-50` → `hover:bg-white/[0.04] transition-colors duration-150`
+- Timestamp `text-gray-400` → `text-white/30`
+- Capability `text-gray-500` → `text-white/40`
+- Query `text-gray-600` → `text-white/50`
+- Tool `text-gray-500` → `text-white/50`
+- Success `text-green-600` → `text-green-400`; fail `text-red-500` → keep
+- Latency `text-gray-400` → `text-white/25`
+- Fallback badge: `bg-yellow-100 text-yellow-700` → `bg-yellow-500/10 text-yellow-400`
+
+#### Fallback Log Panel — glass card
+
+Same glass card treatment. Same text color mapping pattern.
+
+#### Settings Panel — glass card
+
+Same glass card treatment. `font-mono text-gray-700` for values → `font-mono text-orange-400`
+
+#### Upgrade CTA — dark gradient
+
+Replace entirely:
+```tsx
+<div className="rounded-2xl border border-orange-500/20 bg-gradient-to-r
+                from-orange-500/10 to-amber-500/10 p-5 text-center backdrop-blur-sm">
+  <p className="text-sm font-medium text-white">Upgrade to Pro — 10K calls/month</p>
+  <p className="mt-1 text-xs text-white/40">
+    Unlock BYOK, higher limits, and priority support.
+  </p>
+  <Link
+    href="/connect"
+    className="mt-3 inline-block rounded-lg bg-orange-500 px-4 py-2 text-xs font-medium
+               text-white hover:bg-orange-600 transition-colors shadow-glow-orange"
+  >
+    View Plans →
+  </Link>
+</div>
 ```
 
 ---
 
-### 3E. Add Playground to Main Nav
+### 1E. `src/app/page.tsx` — Hero Animated Gradient Mesh
 
-File: `src/components/SiteHeader.tsx`
+Read the file. The hero section is a `<section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20">`. Wrap it:
 
-**Read the file first.** Find the nav links array (desktop nav + mobile drawer). Add a `Playground` entry between `Router` and `Dashboard`, matching the exact className/style of the surrounding nav items. If nav links are defined as an array of objects, add:
+```tsx
+// Before:
+<section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20">
+  ...
+</section>
 
-```ts
-{ label: 'Playground', href: '/playground' }
+// After:
+<div className="hero-mesh relative overflow-hidden">
+  <section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20 relative z-10">
+    ...
+  </section>
+</div>
 ```
+
+Update the `<h1>` className (preserve font-size classes, only replace color/weight):
+```tsx
+className="mb-4 text-[40px] font-extrabold leading-[1.1] tracking-tight
+           text-transparent bg-clip-text bg-gradient-to-br
+           from-white via-gray-100 to-gray-400 md:text-[56px]"
+```
+Remove the `style={{ letterSpacing: '-0.02em' }}` prop (tracking-tight replaces it).
+
+The subtitle `<p>` below: keep size classes, change `text-text-secondary` → `text-white/60`.
 
 ---
 
-## Feature 1D — Animated Metric Counters
+## Feature 3 — Interactive Code Generator Widget
 
-### AnimatedCounter Component
+### 3A. CREATE `src/components/CodeGeneratorWidget.tsx`
 
-Create: `src/components/AnimatedCounter.tsx`
+Full implementation — pure client-side, no API calls:
 
 ```tsx
-"use client"
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react';
 
-interface Props {
-  value: number
-  decimals?: 0 | 1
-  duration?: number
+const LANGUAGES = ['Python', 'JavaScript', 'curl'] as const;
+const CAPABILITIES = ['search', 'crawl', 'finance', 'embed'] as const;
+const STRATEGIES = ['auto', 'balanced', 'best_performance', 'cheapest', 'most_stable'] as const;
+
+type Language = typeof LANGUAGES[number];
+type Capability = typeof CAPABILITIES[number];
+type Strategy = typeof STRATEGIES[number];
+
+const SAMPLE_QUERIES: Record<Capability, string> = {
+  search: 'latest AI research papers',
+  crawl: 'https://example.com',
+  finance: 'NVDA earnings Q4 2025',
+  embed: 'semantic search text',
+};
+
+function buildCode(lang: Language, cap: Capability, strat: Strategy): string {
+  const q = SAMPLE_QUERIES[cap];
+  if (lang === 'Python') {
+    return `import agentpick\n\nclient = agentpick.Client(api_key="YOUR_KEY")\n\nresult = client.${cap}(\n    query="${q}",\n    strategy="${strat}"\n)\n\nprint(result)`;
+  }
+  if (lang === 'JavaScript') {
+    return `import AgentPick from 'agentpick';\n\nconst client = new AgentPick({ apiKey: 'YOUR_KEY' });\n\nconst result = await client.${cap}({\n  query: '${q}',\n  strategy: '${strat}',\n});\n\nconsole.log(result);`;
+  }
+  // curl
+  return `curl -X POST https://agentpick.dev/api/v1/route/${cap} \\\n  -H "Authorization: Bearer YOUR_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "query": "${q}",\n    "strategy": "${strat}"\n  }'`;
 }
 
-export default function AnimatedCounter({ value, decimals = 0, duration = 1200 }: Props) {
-  const [display, setDisplay] = useState(decimals === 1 ? '0.0' : '0')
-  const ref = useRef<HTMLSpanElement>(null)
-  const started = useRef(false)
+function pill(active: boolean) {
+  return `rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 border ${
+    active
+      ? 'bg-orange-500/15 text-orange-400 border-orange-500/50 ring-1 ring-orange-500/50'
+      : 'border-white/[0.08] bg-white/[0.04] text-white/50 hover:bg-white/[0.07] hover:text-white/70'
+  }`;
+}
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
+export default function CodeGeneratorWidget() {
+  const [lang, setLang] = useState<Language>('Python');
+  const [cap, setCap] = useState<Capability>('search');
+  const [strat, setStrat] = useState<Strategy>('auto');
+  const [copied, setCopied] = useState(false);
 
-    const el = ref.current
-    if (!el) return
+  const code = buildCode(lang, cap, strat);
+  const filename = lang === 'Python' ? 'main.py' : lang === 'JavaScript' ? 'index.js' : 'request.sh';
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true
-          observer.disconnect()
-
-          // Check prefers-reduced-motion
-          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            setDisplay(decimals === 1 ? value.toFixed(1) : Math.round(value).toLocaleString())
-            return
-          }
-
-          const start = performance.now()
-          function tick(now: number) {
-            const elapsed = now - start
-            const t = Math.min(elapsed / duration, 1)
-            // ease-out cubic: cubic-bezier(0.25, 1, 0.5, 1)
-            const progress = 1 - Math.pow(1 - t, 3)
-            const current = value * progress
-            setDisplay(
-              decimals === 1
-                ? current.toFixed(1)
-                : Math.round(current).toLocaleString()
-            )
-            if (t < 1) requestAnimationFrame(tick)
-          }
-          requestAnimationFrame(tick)
-        }
-      },
-      { threshold: 0.3 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [value, decimals, duration])
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
-    <span ref={ref} style={{ display: 'inline-block', minWidth: 'max-content' }}>
-      <span aria-hidden>{display}</span>
-      {/* Hidden clone prevents layout shift */}
-      <span className="sr-only">{decimals === 1 ? value.toFixed(1) : Math.round(value).toLocaleString()}</span>
-    </span>
-  )
+    <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5 shadow-glass backdrop-blur-sm">
+      {/* Header */}
+      <div className="mb-4 font-mono text-[10px] uppercase tracking-[1.5px] text-white/30">
+        Build your request
+      </div>
+
+      {/* Configurator */}
+      <div className="mb-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-24 shrink-0 text-xs text-white/30">Language</span>
+          <div className="flex flex-wrap gap-1.5">
+            {LANGUAGES.map(l => (
+              <button key={l} onClick={() => setLang(l)} className={pill(lang === l)}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-24 shrink-0 text-xs text-white/30">Capability</span>
+          <div className="flex flex-wrap gap-1.5">
+            {CAPABILITIES.map(c => (
+              <button key={c} onClick={() => setCap(c)} className={pill(cap === c)}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-24 shrink-0 text-xs text-white/30">Strategy</span>
+          <div className="flex flex-wrap gap-1.5">
+            {STRATEGIES.map(s => (
+              <button key={s} onClick={() => setStrat(s)} className={pill(strat === s)}>
+                {s}{s === 'auto' ? ' ★' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Code block with terminal chrome */}
+      <div>
+        <div className="flex items-center gap-2 rounded-t-lg border border-b-0 border-white/[0.06] bg-white/[0.03] px-4 py-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
+          <span className="ml-2 font-mono text-[11px] text-white/20">{filename}</span>
+          <button
+            onClick={handleCopy}
+            className="ml-auto flex items-center gap-1.5 rounded border border-white/[0.08]
+                       bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium
+                       text-white/40 transition-all duration-150 hover:text-white/70"
+          >
+            {copied ? <span className="text-green-400">✓ Copied</span> : 'Copy'}
+          </button>
+        </div>
+        <div className="overflow-x-auto rounded-b-lg border border-white/[0.06] bg-[#0d0d14] p-4 font-mono text-[13px] leading-relaxed">
+          <SyntaxHighlight code={code} language={lang} />
+        </div>
+      </div>
+    </div>
+  );
 }
-```
 
-### Integrate into Benchmarks Page
-
-File: `src/app/benchmarks/page.tsx`
-
-**Read the file first.** Find all numeric stats (latency ms, counts, scores 0–10). Import `AnimatedCounter` from `@/components/AnimatedCounter` and wrap:
-- Latency/ms: `<AnimatedCounter value={latencyMs} decimals={0} />ms`
-- Counts: `<AnimatedCounter value={count} decimals={0} />`
-- Scores: `<AnimatedCounter value={score} decimals={1} />`
-
-Also import and integrate `ScoreRing` (see below) in the same file edit pass.
-
-### Integrate into Product Pages
-
-File: `src/app/products/[slug]/page.tsx`
-
-Same pattern — **read first**, then wrap numeric stats with `AnimatedCounter` and replace score displays with `ScoreRing`.
-
----
-
-## Feature 1E — Benchmark Score Ring (SVG Component)
-
-### ScoreRing Component
-
-Create: `src/components/ScoreRing.tsx`
-
-```tsx
-"use client"
-
-import { useEffect, useRef, useState } from 'react'
-
-interface Props {
-  score: number   // 0–10
-  size?: number   // default 48
+function SyntaxHighlight({ code, language }: { code: string; language: Language }) {
+  return (
+    <div>
+      {code.split('\n').map((line, i) => (
+        <div key={i} className="min-h-[1.5rem]">
+          <HighlightLine line={line} language={language} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function scoreColor(score: number) {
-  if (score >= 8) return '#22c55e'   // green-500
-  if (score >= 6) return '#f59e0b'   // amber-500
-  return '#ef4444'                    // red-500
-}
+function HighlightLine({ line }: { line: string; language: Language }) {
+  if (line.trim().startsWith('#') || line.trim().startsWith('//')) {
+    return <span className="text-gray-500">{line}</span>;
+  }
 
-export default function ScoreRing({ score, size = 48 }: Props) {
-  const r = size / 2 - 4
-  const circumference = 2 * Math.PI * r
-  const finalOffset = circumference * (1 - score / 10)
-  const [offset, setOffset] = useState(circumference)
-  const reduced = useRef(false)
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    reduced.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced.current) {
-      setOffset(finalOffset)
-      return
+  const push = (text: string, cls: string) => {
+    if (text) parts.push(<span key={key++} className={cls}>{text}</span>);
+  };
+
+  const tokenRe = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b(?:import|from|const|await|async|function|return|print|console\.log)\b|\b\w+(?=\())/g;
+  let match: RegExpExecArray | null;
+  while ((match = tokenRe.exec(line)) !== null) {
+    push(line.slice(lastIndex, match.index), 'text-white/70');
+    const token = match[0];
+    if (token.startsWith('"') || token.startsWith("'")) {
+      push(token, 'text-green-400');
+    } else if (/^(import|from|const|await|async|function|return|print|console\.log)$/.test(token)) {
+      push(token, 'text-blue-400');
+    } else {
+      push(token, 'text-orange-300');
     }
-    // Trigger animation: start at circumference, set to final after one frame
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setOffset(finalOffset))
-    })
-  }, [finalOffset])
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label={`Score: ${score.toFixed(1)}`}>
-      {/* Track */}
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke="#1f2937" strokeWidth={4}
-      />
-      {/* Score arc */}
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none"
-        stroke={scoreColor(score)}
-        strokeWidth={4}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        style={{
-          transition: reduced.current ? 'none' : 'stroke-dashoffset 600ms ease-out',
-          transform: 'rotate(-90deg)',
-          transformOrigin: '50% 50%',
-        }}
-      />
-      {/* Label */}
-      <text
-        x="50%" y="50%"
-        dominantBaseline="middle"
-        textAnchor="middle"
-        fontSize={size * 0.28}
-        fontFamily="'JetBrains Mono', monospace"
-        fontWeight="500"
-        fill="white"
-      >
-        {score.toFixed(1)}
-      </text>
-    </svg>
-  )
+    lastIndex = match.index + token.length;
+  }
+  push(line.slice(lastIndex), 'text-white/70');
+  return <>{parts}</>;
 }
 ```
 
-### Integrate ScoreRing into Pages
+---
 
-- **`src/app/benchmarks/page.tsx`** — find benchmark result rows that show a raw score number; replace with `<ScoreRing score={score} size={48} />`. Do this in the same edit pass as AnimatedCounter integration.
-- **`src/app/products/[slug]/page.tsx`** — find score cards; replace raw score display with `<ScoreRing score={score} size={56} />`. Same edit pass as AnimatedCounter.
+### 3B. MODIFY `src/app/connect/page.tsx` — Add Widget + Dark Theme
+
+Read the file first. It is a server component (no `'use client'`).
+
+**Add import at top:**
+```tsx
+import CodeGeneratorWidget from '@/components/CodeGeneratorWidget';
+```
+
+**Change page background:** `bg-bg-page` → `bg-[#0a0a0f]`
+
+**Update hero typography:**
+- `<h1>`: add/replace color class with `text-white`
+- `<p className="mb-10 text-sm text-text-muted">` → `<p className="mb-6 text-sm text-white/40">` (note: mb-10 → mb-6 since widget follows)
+
+**Insert widget** between the subtitle `<p>` and the `{/* Quick Start */}` comment:
+```tsx
+{/* Interactive Code Generator */}
+<CodeGeneratorWidget />
+```
+
+**Dark theme all cards** — for each `<div>` that is a card (has `rounded-xl border`):
+- `border border-border-default bg-white` → `border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm`
+- `border-button-primary-bg/30 bg-button-primary-bg/5` (Quick Start card) → `border-orange-500/20 bg-orange-500/[0.05]`
+- Inline `style={{ WebkitBackdropFilter: 'blur(12px)' }}` on each glass card
+
+**Text color global replacements:**
+- `text-text-primary` → `text-white`
+- `text-text-secondary` → `text-white/50`
+- `text-text-muted` / `text-text-dim` → `text-white/30`
+- `text-button-primary-bg` (orange highlights) → `text-orange-400`
+- Section label `font-mono text-[10px] uppercase tracking-[1.5px] text-text-dim` → `... text-white/30`
+
+**Footer:** `border-border-default` → `border-white/[0.06]`; `text-text-dim` → `text-white/20`
+
+**HTTP method badges** — keep as-is (they already use `accent-blue/10` etc, which will look fine on dark bg)
 
 ---
 
-## Acceptance Criteria
+## Acceptance Checklist
 
-- [ ] QA tests 1.1b, 2.6, 7.1, 1.3 all pass; zero regressions on currently-passing tests
-- [ ] `/playground` two-column on desktop, single-column on mobile, no horizontal scroll
-- [ ] Demo key rate limit fires at request 11 → 429 + CTA banner
-- [ ] All 4 endpoint types (search, crawl, embed, finance) return real responses on demo key
-- [ ] Code snippets update live as query/strategy/endpoint/apiKey state changes
-- [ ] `Playground` in main nav (desktop + mobile drawer)
-- [ ] `ScoreRing` animates stroke-dashoffset on mount with correct color thresholds
-- [ ] `AnimatedCounter` counts up from 0 on viewport entry, no SSR errors
-- [ ] `prefers-reduced-motion: reduce` skips all animations
+- [ ] No `bg-white` or `border-gray-100` on router dashboard or `/connect`
+- [ ] Glass tokens live in `globals.css` `@theme` block
+- [ ] Dashboard outer background is `bg-[#0a0a0f]`
+- [ ] Login/register screen is dark glass
+- [ ] Stat counters animate 0 → value in 600ms (cubic ease-out)
+- [ ] Motion disabled when `prefers-reduced-motion: reduce`
+- [ ] Tool bars use `from-orange-500 to-amber-400` gradient + stagger delay × 60ms
+- [ ] Active strategy pill has `ring-1 ring-orange-500/50 shadow-glow-orange`
+- [ ] Hero section has `.hero-mesh` animated mesh background
+- [ ] `<h1>` on homepage uses gradient text (`from-white via-gray-100 to-gray-400`)
+- [ ] `CodeGeneratorWidget` renders on `/connect` above Quick Start
+- [ ] All 3 × 4 × 5 = 60 combinations render valid code (no placeholders left)
+- [ ] Copy button shows `✓ Copied` for 1.5s then resets
+- [ ] Zero API calls on widget interaction (pure state)
+- [ ] Mobile: configurator rows flex-wrap (no horizontal scroll)

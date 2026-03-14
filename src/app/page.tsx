@@ -115,14 +115,14 @@ export default async function HomePage() {
       <SiteHeader />
 
       {/* ============ Section 1: Hero ============ */}
-      <section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20">
+      <div className="hero-mesh relative overflow-hidden">
+        <section className="mx-auto max-w-[1200px] px-6 pb-4 pt-16 md:pt-20 relative z-10">
         <h1
-          className="mb-4 text-[40px] font-bold leading-[1.1] text-text-primary md:text-[56px]"
-          style={{ letterSpacing: '-0.02em' }}
+          className="mb-4 text-[40px] font-extrabold leading-[1.1] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400 md:text-[56px]"
         >
           The runtime layer for agent tools.
         </h1>
-        <p className="mb-6 max-w-[520px] text-[18px] leading-relaxed text-text-secondary md:text-[20px]">
+        <p className="mb-6 max-w-[520px] text-[18px] leading-relaxed text-white/60 md:text-[20px]">
           One API. Every tool. AI routing. Auto-fallback.
         </p>
 
@@ -152,7 +152,8 @@ export default async function HomePage() {
             <CopyButton text="openclaw skill install agentpick" />
           </div>
         </div>
-      </section>
+        </section>
+      </div>
 
       {/* ============ Section 2: Trust Bar ============ */}
       <ScrollReveal>

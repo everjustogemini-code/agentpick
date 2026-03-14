@@ -1,5 +1,69 @@
-# QA Report — 2026-03-14 01:00 (updated from 00:28)
-## Deploy: ef1ded2
+# QA Report — 2026-03-14 (latest run)
+## Score: 40/51
+## P0 Blockers: none
+## P1 Issues: 9 issues (see below)
+
+---
+
+---
+
+## P0 Blockers
+
+None. Auth security intact — unauthenticated requests correctly return 401.
+
+## P1 Issues
+
+1. **Tool ID mismatch `serpapi-google` vs `serpapi`** — Router returns `serpapi-google`; QA allowlist expects `serpapi`. Search results return correctly; allowlist or router normalization needs update.
+
+2. **Crawl endpoint payload shape** — `POST /api/v1/route/crawl {"url": "..."}` returns 400. Requires `{"params": {"url": "..."}}`. API contract or docs need to be updated.
+
+3. **`custom` strategy returns 400** — Valid strategies: `auto, best_performance, cheapest, balanced, most_stable`. `custom` strategy with priority list is not implemented or uses a different API shape.
+
+4. **`cheapest` strategy routes to Tavily** — QA expects `serper`/`brave-search`; router picks Tavily. Cost ranking table should be reviewed.
+
+5. **Priority endpoint field name** — `POST /api/v1/router/priority {"search": [...]}` returns 400. Correct field name is `priority_tools`.
+
+6. **Classification latency > total latency** — `classification_ms: 501` exceeds `total_latency_ms: 233`. Metric calculation bug in API response.
+
+7. **No `ai_routing_summary` in usage endpoint** — Field absent even after multiple auto-strategy calls. Feature may not be implemented.
+
+8. **Account response fields sparse** — `/api/v1/router/usage` only returns `plan`; missing `monthlyLimit`, `callsThisMonth`, `strategy`.
+
+9. **Embed tool ID `jina-embed` vs `jina-embeddings`** — Tool works correctly; allowlist naming is stale.
+
+## What Looks Good
+
+- All 4 main pages return 200 with correct content
+- Auth: invalid/missing keys return 401 correctly
+- AI routing logic: deep research → `exa-search`, realtime → `tavily`, simple → `brave-search`
+- AI classification metadata (`type`, `depth`, `freshness`, `reasoning`) returned
+- All 5 edge cases pass (empty query, invalid capability, 5000-char query, invalid strategy, 5 concurrent calls)
+- Dashboard API endpoints: usage, fallbacks, compare-strategies, set-strategy, set-budget, weekly-report all 200
+- Finance routing: `POST /api/v1/route/finance` → `alpha-vantage` with real data
+- Registration: returns `apiKey` + `plan` on 201
+- Data integrity: RouterCall records include all required fields
+
+## QA Script Bugs
+
+1. `7.5` false positive — `headers={}` doesn't strip auto-injected bearer token
+2. `1.1` — allowlist uses `serpapi`, API returns `serpapi-google`
+3. `B.1` — allowlist uses `jina-embeddings`, API returns `jina-embed`
+4. **Security**: hardcoded Telegram bot token in script line 28 — move to env var
+
+## Page Load Results
+
+| Page | Status |
+|------|--------|
+| `/` | PASS — hero, nav, code block, pricing, CTA all present |
+| `/connect` | PASS — pip install, strategies, pricing, API endpoint, dashboard link all present |
+| `/dashboard` | PASS — loads correctly (unauthenticated shows login gate as expected) |
+| `/products/tavily` | PASS — full product profile, score 6.2/10, 100% success rate, benchmark data |
+
+FAIL
+
+---
+
+## Previous Run (2026-03-14 01:00, Deploy ef1ded2)
 ## Score: 40/51 raw (78%) — adjusted 42/51 (82%) after 3 QA-script false-positive corrections
 ## P0 Blockers: none
 ## P1 Critical: none
