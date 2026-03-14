@@ -1,7 +1,7 @@
 # TASK_CLAUDE_CODE.md
 **Agent:** Claude Code
 **Date:** 2026-03-14
-**Source:** NEXT_VERSION.md — Bugfix Cycle 5 (QA Round 7, score 37/49)
+**Source:** NEXT_VERSION.md — Bugfix Cycle 4 (QA Round 8, score 30/37)
 
 ---
 
@@ -9,167 +9,105 @@
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/lib/router/sdk-handler.ts` |
-| VERIFY / MODIFY | `prisma/schema.prisma` |
-| MODIFY | `src/middleware.ts` |
-| MODIFY | `next.config.ts` |
-| VERIFY / MODIFY | `src/lib/router/index.ts` |
-| VERIFY / MODIFY | `src/lib/router/sdk.ts` |
-| MODIFY (export) | `src/app/mcp/route.ts` |
-| CREATE | `src/app/api/v1/mcp/tools/list/route.ts` |
+| MODIFY | `src/app/api/v1/health/route.ts` |
+| MODIFY (if needed) | `next.config.ts` |
+| MODIFY | `src/lib/router/handler.ts` |
+| MODIFY | `src/lib/router/index.ts` |
+| MODIFY | `src/lib/router/plans.ts` |
+| MODIFY | `src/app/api/v1/router/register/route.ts` |
 
-**DO NOT TOUCH:** `src/components/**`, `src/app/dashboard/**`, `src/app/playground/**`, or any other frontend file.
+**DO NOT TOUCH:** `src/app/products/[slug]/page.tsx`, `src/app/connect/page.tsx`, or any other frontend file.
 
 ---
 
-## Bug P0-2 — `toolUsed` empty/unknown in `/api/v1/router/calls`
+## Bug P1-1 — `/api/v1/health` returns 500
 
-### Fix 1 — `src/lib/router/sdk-handler.ts:186` (and ~line 242)
+**Root cause:** Next.js catch-all `src/app/api/v1/[[...path]]/route.ts` intercepts the request before `health/route.ts` can handle it.
 
-Both `.catch(() => {})` calls silently swallow DB write errors, causing records to be stored with default/empty `toolUsed`. Change both occurrences:
+### Fix 1 — `src/app/api/v1/health/route.ts`
 
-```typescript
-// BEFORE:
-).catch(() => {});
+Replace the entire file body with a re-export of the canonical health handler:
 
-// AFTER:
-).catch((e) => console.error('[recordRouterCall] write failed:', e));
+```ts
+import { GET as canonicalHealth } from '@/app/api/health/route';
+export { canonicalHealth as GET };
 ```
 
-### Fix 2 — `src/lib/router/sdk-handler.ts` error-path catch block (~line 220)
+### Fix 2 — `next.config.ts` (only if Fix 1 alone doesn't resolve the 500)
 
-The inline `tool_used` computation uses hardcoded `'balanced'` instead of the actual `coreStrategy`. Replace the inline expression with a named variable:
+Read the file first. Add `/api/v1/health` → `/api/health` rewrite inside the `rewrites()` array (or create the function if absent):
 
-```typescript
-// BEFORE (line ~220):
-tool_used: modifiedRequest.tool ?? modifiedRequest.priority_tools?.[0] ?? getRankedToolsForCapability(capability, 'balanced')[0] ?? `${capability}-unavailable`,
-
-// AFTER:
-// Add ABOVE the failureResponse object:
-const resolvedToolUsed =
-  modifiedRequest.tool ??
-  modifiedRequest.priority_tools?.[0] ??
-  getRankedToolsForCapability(capability, coreStrategy)[0] ??
-  capability;
-
-// In failureResponse.meta:
-tool_used: resolvedToolUsed,
+```ts
+{ source: '/api/v1/health', destination: '/api/health', permanent: false }
 ```
 
-### Fix 3 — `prisma/schema.prisma`
-
-Read the schema and verify `RouterCall.toolUsed` is `String` (non-nullable). If it is `String?` (nullable):
-1. Change to `String @default("")`
-2. Run: `npx prisma migrate dev --name fix-router-call-tool-used-nullable`
-3. Backfill: `UPDATE "RouterCall" SET "toolUsed" = '' WHERE "toolUsed" IS NULL;`
+**Acceptance:** `GET /api/v1/health` → HTTP 200, body matches `GET /api/health` (db status, uptime, commit).
 
 ---
 
-## Bug P0-3 — XSS risk: missing effective Content-Security-Policy
+## Bug P1-2 — `strategy: "custom"` rejected with HTTP 400
 
-### Fix 1 — `src/middleware.ts:190`
+**Root cause (two bugs):**
+1. `src/lib/router/handler.ts` lines 119–125: params-extraction branch only fires when a query field is present; a body with only `priority` (no `query`) skips extraction → `params` is undefined → returns `VALIDATION_ERROR`.
+2. `STRATEGY_ALIASES` (line 35) silently maps `custom` → `balanced`; `priority` array is accepted but ignored.
 
-Current value (page-route CSP):
+### Fix 1 — `src/lib/router/handler.ts` lines 119–125
+
+Extend the params-extraction trigger to also fire when `priority`, `priority_tools`, or `priorityTools` is present:
+
+```ts
+if (!parsed.params && (
+  parsed.query || parsed.q || parsed.text || parsed.input ||
+  parsed.url || parsed.ticker || parsed.symbol ||
+  parsed.priority || parsed.priority_tools || parsed.priorityTools  // ← add
+)) {
 ```
-"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'"
-```
 
-Replace with (remove `'unsafe-inline'` and `'unsafe-eval'` from `script-src`; tighten `frame-ancestors`):
-```
-"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none'"
-```
+### Fix 2 — `src/lib/router/handler.ts` line 35 (`STRATEGY_ALIASES`) and `VALID_STRATEGIES`
 
-**Note:** Removing `'unsafe-eval'` may break Next.js hydration in dev mode. Test in staging. If it breaks production, fall back to `'unsafe-eval'` only and remove only `'unsafe-inline'`.
+- Remove `'custom'` from `STRATEGY_ALIASES`.
+- Add `'custom'` to `VALID_STRATEGIES`.
 
-### Fix 2 — `next.config.ts`
+### Fix 3 — `src/lib/router/index.ts` — implement `custom` strategy in `routeRequest`
 
-The file currently has an empty `nextConfig`. Add a `headers()` function:
+Add a branch: when `strategy === 'custom'`, iterate `params.priority_tools ?? params.priority` in order and return the first available/enabled tool. Fall back to default capability ranking if the list is empty or all tools are unavailable.
 
-```typescript
-import type { NextConfig } from "next";
+### Fix 4 — `src/lib/router/handler.ts` lines 93 and 114 (error message hint)
 
-const nextConfig: NextConfig = {
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-        ],
-      },
-    ];
-  },
-};
+If `custom` is not fully wired (i.e. Falls back silently), remove it from the error message hint so callers are not misled. If it IS implemented above, leave it in.
 
-export default nextConfig;
-```
+**Acceptance:** `POST /api/v1/route/search` with `{"query":"test","strategy":"custom","priority":["tavily","exa-search"]}` → HTTP 200, `meta.tool_used` is the first available tool from the priority array.
 
 ---
 
-## Bug P1-1 — Strategy differentiation: auto/balanced/cheapest all pick same tool
+## Bug P1-3 — Free tier hits 429 after ~8 calls
 
-### Fix 1 — `src/lib/router/index.ts`
+**Root cause:** `ROUTER_PLAN_MONTHLY_LIMITS.FREE = 500` but register response advertises `monthlyLimit: 3000`. QA accounts exhaust the real 500-call cap across test cycles.
 
-Read the file and verify `TOOL_CHARACTERISTICS` (or equivalent cost/quality data) for `search` capability produces distinct rankings per strategy:
-- `cheapest` → `brave-search` first (cost ~0.0001)
-- `balanced` → `tavily` first (quality ≥ 4.0, best cost-efficiency)
-- `best_performance` → `exa-search` first (quality ~4.6)
+### Fix 1 — `src/lib/router/plans.ts`
 
-If the rankings collapse to the same tool, inspect the scoring function. Add a temporary `console.log` in staging to trace `getRankedToolsForCapability('search', strategy)` output for each strategy. Fix the cost/quality values if incorrect.
+- **Line 17**: `ROUTER_PLAN_MONTHLY_LIMITS.FREE` → change `500` to `3000`
+- **Line 25**: `ROUTER_PLAN_DAILY_LIMITS.FREE` → change `200` to `100`
 
-### Fix 2 — `src/lib/router/sdk.ts:150`
+### Fix 2 — `src/app/api/v1/router/register/route.ts`
 
-Read the file and verify `applyStrategy()` receives the per-request `strategyUsed` value (already confirmed in `sdk-handler.ts:159` as `strategy: strategyUsed`). If `applyStrategy` internally re-reads `account.strategy` instead of the passed argument, fix it to use the argument.
+Read the file. In the 201 response body, replace any hardcoded `monthlyLimit` value with a dynamic lookup:
 
-No code change needed if both routing through the argument correctly — add a staging log to confirm.
-
----
-
-## Bug P1-3 — MCP endpoints 404 at `/api/v1/mcp/tools/list`
-
-`src/app/api/v1/mcp/route.ts` already re-exports `GET`/`POST` from `/mcp/route.ts` (manifest + JSON-RPC), so `/api/v1/mcp` is already resolved. Only `/tools/list` is missing.
-
-### Fix 1 — `src/app/mcp/route.ts`
-
-Read the file and verify `SERVER_INFO` is exported. If it is declared as `const SERVER_INFO = { ... }` without `export`, add the `export` keyword:
-```typescript
-// BEFORE:
-const SERVER_INFO = {
-// AFTER:
-export const SERVER_INFO = {
+```ts
+monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS[plan]
 ```
-This is the **only** change allowed in this file.
 
-### Fix 2 — Create `src/app/api/v1/mcp/tools/list/route.ts`
+Ensure `ROUTER_PLAN_MONTHLY_LIMITS` is imported from `src/lib/router/plans.ts`.
 
-```typescript
-/**
- * GET /api/v1/mcp/tools/list — REST convenience route returning the MCP tools array.
- * Actual MCP server lives at /mcp (JSON-RPC 2.0) and at /api/v1/mcp (re-exported).
- */
-import { SERVER_INFO } from '@/app/mcp/route';
-
-export async function GET() {
-  return Response.json(
-    { tools: SERVER_INFO.tools },
-    {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-}
-```
+**Acceptance:** A newly registered free-tier key makes 50 sequential calls without 429. `monthlyLimit` in register response equals enforced limit (3000).
 
 ---
 
 ## Verification Checklist
 
-- [ ] `GET /api/v1/router/calls` — every record has non-empty `toolUsed` (no empty string, no "unknown")
-- [ ] Any API response includes `X-Content-Type-Options: nosniff`
-- [ ] Page routes: CSP header does NOT contain `unsafe-eval`
-- [ ] `POST /api/v1/router/search {"strategy":"cheapest"}` picks a different tool than `{"strategy":"best_performance"}`
-- [ ] `GET /api/v1/mcp/tools/list` returns 200 with a `tools` array
+- [ ] `GET /api/v1/health` → HTTP 200, body matches `/api/health`
+- [ ] `POST /api/v1/route/search` with `{"query":"test","strategy":"custom","priority":["tavily","exa-search"]}` → 200, correct `meta.tool_used`
+- [ ] `POST /api/v1/route/search` with `{"strategy":"custom","priority":["tool-a","tavily"]}` (no query) → 400 `params object required` (not a strategy rejection)
+- [ ] Register response `monthlyLimit` equals `ROUTER_PLAN_MONTHLY_LIMITS.FREE` (3000)
+- [ ] 50 sequential calls on a fresh free-tier key → no 429
+- [ ] No changes made to files owned by TASK_CODEX.md

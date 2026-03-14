@@ -1,109 +1,76 @@
 # TASK_CODEX.md
 **Agent:** Codex
 **Date:** 2026-03-14
-**Source:** NEXT_VERSION.md — Bugfix Cycle 5 (QA Round 7, score 37/49)
+**Source:** NEXT_VERSION.md — Bugfix Cycle 4 (QA Round 8, score 30/37)
 
 ---
 
-## Files to Modify / Verify
+## Files to Modify
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/components/PlaygroundShell.tsx` |
-| VERIFY (no code change expected) | `src/app/dashboard/billing/page.tsx` |
+| MODIFY | `src/app/products/[slug]/page.tsx` |
+| MODIFY | `src/app/connect/page.tsx` |
 
-**DO NOT TOUCH:** `src/lib/router/**`, `src/app/api/**`, `src/middleware.ts`, `next.config.ts`, `prisma/**`, `src/app/mcp/**`, or any file not listed above.
-
----
-
-## Bug P0-1 — `/dashboard/billing` 404 + Stripe env vars
-
-### Fix 1 — Verify `src/app/dashboard/billing/page.tsx` is tracked in git
-
-Run: `git ls-files src/app/dashboard/billing/page.tsx`
-
-- If the output is empty (file not tracked), **add and commit it**: `git add src/app/dashboard/billing/page.tsx`
-- If the file doesn't exist at all, read `src/app/dashboard/page.tsx` for the billing section structure, then create a minimal `billing/page.tsx` that renders the billing info from `/api/v1/router/usage`.
-
-**No other code changes.** The Stripe logic in `src/app/api/v1/router/upgrade/route.ts` is already correct — it only needs the env vars below (add to Vercel, not code):
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PRICE_ID_PRO`
-- `STRIPE_PRICE_ID_GROWTH`
-- `STRIPE_WEBHOOK_SECRET`
+**DO NOT TOUCH:** `src/lib/router/**`, `src/app/api/**`, `next.config.ts`, `src/middleware.ts`, or any file not listed above.
 
 ---
 
-## Bug P1-2 — Playground broken: run returns 500, errors swallowed
+## Bug P2-1 — `/products/tavily` cold-start 500
 
-### Fix — `src/components/PlaygroundShell.tsx`
+**Root cause:** SSR data fetch throws/times out on first cold-start invocation of a serverless function; unhandled error bubbles up as 500. Self-heals on warm instances.
 
-**Current behavior:** The component only handles `status === 429` (line ~39 sets `error429`). All other non-2xx statuses (401, 500, etc.) fall through without user-visible feedback — the result panel stays blank or shows stale data.
+### Fix 1 — `src/app/products/[slug]/page.tsx`
 
-**Read the file first**, then apply these changes:
+Read the file first. Wrap the top-level data fetch in a try/catch and return a graceful error response instead of letting it become an unhandled 500:
 
-#### Change 1 — Add a generic `errorMessage` state alongside `error429`
-
-```typescript
-// Add near existing useState calls:
-const [errorMessage, setErrorMessage] = useState<string | null>(null)
-```
-
-#### Change 2 — Expand the fetch error handling block (around line ~35–50)
-
-Find the block that sets `error429`. Extend it to handle all non-ok responses:
-
-```typescript
-// BEFORE (approximate):
-if (res.status === 429) {
-  setError429(true)
-  return
+```ts
+try {
+  // existing data fetch logic
+} catch (err) {
+  return new Response('Service temporarily unavailable', {
+    status: 503,
+    headers: { 'Retry-After': '1' },
+  });
 }
-
-// AFTER:
-if (res.status === 429) {
-  setError429(true)
-  setErrorMessage(null)
-  return
-}
-if (!res.ok) {
-  const body = await res.json().catch(() => ({}))
-  setErrorMessage(
-    body?.error?.message ??
-    body?.message ??
-    `Request failed (${res.status})`
-  )
-  return
-}
-setErrorMessage(null)
 ```
 
-#### Change 3 — Display `errorMessage` in the result area
+Alternatively, if the page uses `notFound()` or `redirect()`, the catch block should call the appropriate Next.js helper rather than returning a raw Response.
 
-Find the 429 error banner (around line ~204–215). Add a sibling banner directly after it for `errorMessage`:
+### Fix 2 — `src/app/products/[slug]/page.tsx`
 
-```tsx
-{errorMessage && (
-  <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-500/30 text-red-400 text-sm">
-    {errorMessage}
-  </div>
-)}
+Add ISR revalidation at the top of the file (outside any function):
+
+```ts
+export const revalidate = 300; // 5-minute ISR cache
 ```
 
-#### Change 4 — Clear errors on new submission
+This ensures a cached response is served on cold starts, eliminating the race condition entirely.
 
-At the start of the submit handler (before the fetch call), reset both error states:
-```typescript
-setError429(false)
-setErrorMessage(null)
+**Acceptance:** `GET /products/tavily` → HTTP 200 on first request to a cold deployment (no 500).
+
+---
+
+## Fix — P1-3 onboarding note (frontend portion)
+
+**Source:** NEXT_VERSION.md Fix 3, item 3.
+
+### Fix — `src/app/connect/page.tsx`
+
+Read the file. Find the section that describes free tier limits (look for existing text about monthly limits or rate limits). Add a visible note in that section:
+
 ```
+Free tier: 3,000 calls/month, 100/day.
+Add a 100 ms delay between calls in integration tests to stay within per-minute burst limits.
+```
+
+Use the existing styling/component pattern on the page (e.g. a `<p>` or info callout component). Do not introduce new components or styles.
 
 ---
 
 ## Verification Checklist
 
-- [ ] `src/app/dashboard/billing/page.tsx` confirmed tracked in git (`git ls-files` returns the path)
-- [ ] `/dashboard/billing` loads without 404 after redeploy
-- [ ] Playground: submitting a query with no valid API key shows a human-readable error message (not blank, not "500")
-- [ ] Playground: 429 response still shows the existing rate-limit message (regression test)
-- [ ] Playground: successful query clears any previous error message
-- [ ] No changes made to any file outside the 2 listed above
+- [ ] `GET /products/tavily` → HTTP 200 on cold start (no unhandled 500)
+- [ ] `export const revalidate = 300` present in `src/app/products/[slug]/page.tsx`
+- [ ] `/connect` page shows free tier note: "3,000 calls/month, 100/day"
+- [ ] No changes made to files owned by TASK_CLAUDE_CODE.md
