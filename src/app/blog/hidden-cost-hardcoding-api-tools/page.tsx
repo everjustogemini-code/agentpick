@@ -123,7 +123,7 @@ class CostTrackedTavily:
             raise
     
     def report(self):
-        print(f"Calls: {self.total_calls}, Cost: ${self.total_cost:.2f}")`}</code></pre>
+        print(f"Calls: {self.total_calls}, Cost: \${self.total_cost:.2f}")`}</code></pre>
           </div>
 
           <p>
