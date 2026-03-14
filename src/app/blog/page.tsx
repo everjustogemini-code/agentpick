@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'haystack-for-ai-agents',
+    title: 'Haystack for AI Agents: Benchmark Results (2026)',
+    description:
+      'Haystack ranks #2 in AgentPick benchmarks with a score of 6.9 — just 1% behind Perplexity. The best structured retrieval API for RAG pipelines.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'exa-search-for-ai-agents',
     title: 'Exa Search API for AI Agents: Benchmark Results (2026)',
     description:

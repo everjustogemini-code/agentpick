@@ -184,6 +184,14 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     latencyBudgetMs: account.latencyBudgetMs,
   });
 
+  // Pre-compute calls_remaining = min(daily, monthly) so both try and catch can use it
+  const _monthlyLimit = ROUTER_PLAN_MONTHLY_LIMITS[account.plan as RouterPlanValue];
+  const _dailyRemaining = Math.max(0, usage.remaining - 1);
+  const _monthlyRemainingAfterCall = _monthlyLimit !== null
+    ? Math.max(0, _monthlyLimit - (usage.monthlyUsed ?? 0) - 1)
+    : _dailyRemaining;
+  const callsRemaining = Math.min(_dailyRemaining, _monthlyRemainingAfterCall);
+
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, modifiedRequest, {
       developerId: account.id,
@@ -204,7 +212,6 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       fallbackChain,
     ).catch((e) => console.error('[recordRouterCall] write failed:', e));
 
-    const monthlyLimit = ROUTER_PLAN_MONTHLY_LIMITS[account.plan as RouterPlanValue];
     const crmMessage = getRouterMessage({
       isFirstCall: (account.totalCalls ?? 0) === 0,
       fallbackUsed: Boolean(response.meta.fallback_used),
@@ -212,7 +219,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       latencyMs: response.meta.latency_ms,
       plan: account.plan,
       monthlyUsed: usage.monthlyUsed ?? 0,
-      monthlyLimit: monthlyLimit ?? null,
+      monthlyLimit: _monthlyLimit ?? null,
       totalFallbacks: account.totalFallbacks ?? 0,
     });
 
@@ -222,7 +229,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         ...response.meta,
         strategy: strategyUsed,
         plan: account.plan,
-        calls_remaining: Math.max(0, usage.remaining - 1),
+        calls_remaining: callsRemaining,
         message: crmMessage,
       },
     };
@@ -230,7 +237,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     const responseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-AgentPick-Plan': account.plan,
-      'X-AgentPick-Remaining': String(Math.max(0, usage.remaining - 1)),
+      'X-AgentPick-Remaining': String(callsRemaining),
     };
     if (extraHeaders) {
       Object.assign(responseHeaders, extraHeaders);
@@ -263,7 +270,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         byok_used: false,
         strategy: strategyUsed,
         plan: account.plan,
-        calls_remaining: Math.max(0, usage.remaining - 1),
+        calls_remaining: callsRemaining,
       },
       results: [],
     };
