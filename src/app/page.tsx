@@ -20,21 +20,24 @@ function fmt(n: number): string {
 }
 
 async function getStats() {
-  try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
 
-    const [totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks] = await Promise.all([
-      prisma.product.count(),
-      prisma.vote.count({ where: { proofVerified: true } }),
-      prisma.agent.count(),
-      prisma.benchmarkRun.count().catch(() => 0),
-      prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
-    ]);
-    return { totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks };
-  } catch {
-    return { totalProducts: 0, totalVotes: 0, totalAgents: 0, totalBenchmarkRuns: 0, todayBenchmarks: 0 };
+      const [totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks] = await Promise.all([
+        prisma.product.count(),
+        prisma.vote.count({ where: { proofVerified: true } }),
+        prisma.agent.count(),
+        prisma.benchmarkRun.count().catch(() => 0),
+        prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
+      ]);
+      return { totalProducts, totalVotes, totalAgents, totalBenchmarkRuns, todayBenchmarks };
+    } catch {
+      if (attempt < 2) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+    }
   }
+  return { totalProducts: 0, totalVotes: 0, totalAgents: 0, totalBenchmarkRuns: 0, todayBenchmarks: 0 };
 }
 
 async function getActivityEvents(): Promise<ActivityEvent[]> {
