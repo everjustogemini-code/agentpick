@@ -58,7 +58,7 @@ export function fastClassify(query: string): QueryContext | null {
 
   // News signals — strong news indicators OR news + time reference
   const newsTerms = /\b(latest|breaking|recent|new|announced|launched|funding|raised|acquired|ipo|merger|regulation|ruling)\b/i;
-  const strongNewsTerms = /\b(breaking|announced|launched|funding|raised|acquired|ipo|merger)\b/i;
+  const strongNewsTerms = /\b(news|breaking|announced|launched|funding|raised|acquired|ipo|merger)\b/i;
   const yearPattern = /\b20(2[4-9]|3[0-9])\b/;
   if (strongNewsTerms.test(lower) || (newsTerms.test(lower) && (yearPattern.test(lower) || /\b(today|this week|this month|yesterday|recently)\b/i.test(lower)))) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
@@ -213,8 +213,9 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
-  // Default: for simple queries, prefer cheap/fast tools (quality >= 3.0 is sufficient)
-  return filterAvailable(['brave-search', 'serper', 'serpapi', 'serpapi-google', 'tavily', 'exa-search'], capability);
+  // Default: for simple queries, prefer cheap/fast tools first; tavily before serpapi-google
+  // since tavily has higher quality (4.0 vs 3.2) and serpapi-google is not meaningfully cheaper.
+  return filterAvailable(['brave-search', 'serper', 'serpapi', 'tavily', 'exa-search', 'serpapi-google'], capability);
 }
 
 /**
