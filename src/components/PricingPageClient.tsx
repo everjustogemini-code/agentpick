@@ -1,92 +1,293 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  PRICING_CARD_PLANS,
+  getRouterPlanLabel,
+  isPlanAtLeast,
+  normalizeUpgradePlan,
+  type RouterPlanCode,
+  type UpgradePlanSlug,
+} from '@/lib/router/plans';
 
-const plans = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: '',
-    calls: '3,000 calls/mo',
-    features: ['All strategies', 'Dashboard', '4 capabilities'],
-    cta: 'Start free',
-    href: '/dashboard/router',
-    primary: false,
-  },
-  {
-    name: 'Pro',
-    price: '$29',
-    period: '/mo',
-    calls: '10K calls/mo',
-    features: ['All strategies', 'Dashboard', '4 capabilities', 'Priority routing'],
-    cta: 'Coming soon',
-    href: '#',
-    primary: true,
-    disabled: true,
-  },
-  {
-    name: 'Growth',
-    price: '$99',
-    period: '/mo',
-    calls: '100K calls/mo',
-    features: ['All strategies', 'Dashboard', '4 capabilities', 'Priority routing', 'SLA'],
-    cta: 'Coming soon',
-    href: '#',
-    primary: false,
-    disabled: true,
-  },
-];
+const STORAGE_KEY = 'agentpick_api_key';
+
+type BillingAccount = {
+  id: string;
+  email: string | null;
+  plan: RouterPlanCode;
+  planLabel?: string;
+};
+
+type UpgradeResponse = {
+  checkoutUrl: string;
+};
 
 export default function PricingPageClient() {
+  const searchParams = useSearchParams();
+  const [draftKey, setDraftKey] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [account, setAccount] = useState<BillingAccount | null>(null);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState('');
+  const [checkoutError, setCheckoutError] = useState('');
+  const [checkoutPlan, setCheckoutPlan] = useState<UpgradePlanSlug | null>(null);
+
+  useEffect(() => {
+    const savedKey = window.localStorage.getItem(STORAGE_KEY);
+    if (!savedKey) return;
+
+    setDraftKey(savedKey);
+    void loadAccount(savedKey, false);
+  }, []);
+
+  async function loadAccount(key: string, persist = true) {
+    setAccountLoading(true);
+    setAccountError('');
+    setCheckoutError('');
+
+    try {
+      const response = await fetch('/api/v1/router/account', {
+        headers: {
+          Authorization: `Bearer ${key}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid API key.');
+      }
+
+      const data = await response.json();
+      setApiKey(key);
+      setAccount(data.account);
+
+      if (persist) {
+        window.localStorage.setItem(STORAGE_KEY, key);
+      }
+    } catch (error) {
+      setAccount(null);
+      setApiKey('');
+      setAccountError(error instanceof Error ? error.message : 'Unable to load billing account.');
+      window.localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleAccountSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!draftKey.trim()) {
+      setAccountError('Paste your AgentPick API key first.');
+      return;
+    }
+
+    await loadAccount(draftKey.trim(), true);
+  }
+
+  async function handleCheckout(plan: UpgradePlanSlug) {
+    if (!apiKey || !account) {
+      setCheckoutError('Load your AgentPick API key before starting checkout.');
+      return;
+    }
+
+    setCheckoutPlan(plan);
+    setCheckoutError('');
+
+    try {
+      const response = await fetch('/api/v1/router/upgrade', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: { message: 'Checkout failed.' } }));
+        throw new Error(data.error?.message ?? 'Checkout failed.');
+      }
+
+      const data = (await response.json()) as UpgradeResponse;
+      window.location.assign(data.checkoutUrl);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Checkout failed.');
+      setCheckoutPlan(null);
+    }
+  }
+
+  const checkoutState = searchParams.get('checkout');
+  const checkoutPlanFromUrl = normalizeUpgradePlan(searchParams.get('plan'));
+  const currentPlanLabel = account?.planLabel ?? (account ? getRouterPlanLabel(account.plan) : null);
+
   return (
-    <section className="mx-auto max-w-[1200px] px-6 py-20">
-      <h1 className="mb-4 text-center text-[36px] font-bold tracking-tight text-white">
-        Pricing
-      </h1>
-      <p className="mb-12 text-center text-[16px] text-gray-400">
-        Start free. Upgrade when you need more calls.
-      </p>
-      <div className="grid gap-6 md:grid-cols-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.name}
-            className={`flex flex-col rounded-xl border p-8 ${
-              plan.primary
-                ? 'border-[#00D4AA]/40 bg-[#00D4AA]/5'
-                : 'border-gray-800 bg-[#0d0d14]'
-            }`}
-          >
-            <h3 className="mb-2 text-[20px] font-semibold text-white">{plan.name}</h3>
-            <div className="mb-1">
-              <span className="font-mono text-[40px] font-bold text-white">{plan.price}</span>
-              {plan.period && (
-                <span className="text-[16px] text-gray-500">{plan.period}</span>
-              )}
-            </div>
-            <p className="mb-6 font-mono text-[14px] text-gray-400">{plan.calls}</p>
-            <ul className="mb-8 flex-1 space-y-3">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-center gap-2 text-[14px] text-gray-300">
-                  <span className="text-[#00D4AA]">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            {plan.disabled ? (
-              <span className="rounded-lg border border-gray-700 bg-transparent px-6 py-3 text-center text-[14px] font-medium text-gray-500 opacity-60">
-                {plan.cta}
-              </span>
-            ) : (
-              <Link
-                href={plan.href}
-                className="rounded-lg bg-white px-6 py-3 text-center text-[14px] font-semibold text-black transition-opacity hover:opacity-90"
-              >
-                {plan.cta}
-              </Link>
-            )}
-          </div>
-        ))}
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-400/90">
+          Router Billing
+        </p>
+        <h1 className="text-4xl font-bold tracking-[-0.04em] text-white sm:text-5xl">
+          Pick the plan that matches your agent traffic
+        </h1>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base">
+          Billing is tied to your AgentPick router API key. Load the key you use in the dashboard,
+          then send that account through Stripe Checkout.
+        </p>
       </div>
-    </section>
+
+      {checkoutState === 'success' && checkoutPlanFromUrl && (
+        <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100">
+          Stripe checkout completed for {checkoutPlanFromUrl === 'pro' ? 'Pro' : 'Growth'}.
+          The webhook should sync your plan in a few seconds.
+        </div>
+      )}
+
+      {checkoutState === 'cancelled' && checkoutPlanFromUrl && (
+        <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+          Stripe checkout was cancelled. Your account is unchanged.
+        </div>
+      )}
+
+      <section className="mx-auto mt-8 max-w-3xl rounded-3xl border border-white/[0.08] bg-white/[0.04] p-6 shadow-glass backdrop-blur-sm">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">
+              Billing Account
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Load your router API key</h2>
+            <p className="mt-2 text-sm text-white/45">
+              The pricing page uses the same API key stored by the router dashboard.
+            </p>
+          </div>
+
+          {currentPlanLabel && (
+            <div className="rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-2 text-sm text-orange-200">
+              Current plan: {currentPlanLabel}
+            </div>
+          )}
+        </div>
+
+        <form className="mt-5 flex flex-col gap-3 md:flex-row" onSubmit={handleAccountSubmit}>
+          <input
+            type="password"
+            value={draftKey}
+            onChange={(event) => setDraftKey(event.target.value)}
+            placeholder="ah_live_sk_..."
+            className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[#050507] px-4 py-3 text-sm font-mono text-white placeholder:text-white/20 focus:border-orange-500/45 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={accountLoading}
+            className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {accountLoading ? 'Loading account...' : 'Load account'}
+          </button>
+        </form>
+
+        {account?.email && (
+          <p className="mt-4 text-sm text-white/55">
+            Billing email: <span className="font-medium text-white">{account.email}</span>
+          </p>
+        )}
+
+        {accountError && <p className="mt-4 text-sm text-red-400">{accountError}</p>}
+        {checkoutError && <p className="mt-4 text-sm text-red-400">{checkoutError}</p>}
+      </section>
+
+      <section className="mt-10 grid gap-5 lg:grid-cols-3">
+        {PRICING_CARD_PLANS.map((plan) => {
+          const upgradePlan = plan.slug === 'free' ? null : plan.slug;
+          const isPaidPlan = plan.slug === 'pro' || plan.slug === 'growth';
+          const exactMatch = account ? account.plan === plan.routerPlan : false;
+          const higherPlan =
+            account && isPaidPlan ? isPlanAtLeast(account.plan, plan.routerPlan) && !exactMatch : false;
+          const isBusy = upgradePlan ? checkoutPlan === upgradePlan : false;
+
+          return (
+            <article
+              key={plan.slug}
+              className={`flex flex-col rounded-3xl border p-7 backdrop-blur-sm ${
+                plan.slug === 'growth'
+                  ? 'border-orange-500/30 bg-gradient-to-b from-orange-500/15 to-white/[0.05]'
+                  : 'border-white/[0.08] bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-semibold text-white">{plan.label}</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/50">{plan.description}</p>
+                </div>
+                {plan.slug === 'growth' && (
+                  <span className="rounded-full border border-orange-400/40 bg-orange-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-200">
+                    Most headroom
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-8 flex items-end gap-1">
+                <span className="text-5xl font-bold tracking-[-0.05em] text-white">
+                  {plan.monthlyPriceUsd === 0 ? '$0' : `$${plan.monthlyPriceUsd}`}
+                </span>
+                <span className="pb-2 text-sm text-white/40">
+                  {plan.monthlyPriceUsd === 0 ? '' : '/month'}
+                </span>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/55">
+                <div>{plan.monthlyCalls.toLocaleString()} routed calls / month</div>
+                <div className="mt-1">{plan.dailyCalls.toLocaleString()} calls / day</div>
+              </div>
+
+              <ul className="mt-6 flex-1 space-y-3 text-sm text-white/70">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <span className="mt-0.5 text-orange-300">+</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {plan.slug === 'free' ? (
+                <Link
+                  href="/dashboard/router"
+                  className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.05] px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-white/[0.08]"
+                >
+                  {exactMatch ? 'Current plan' : plan.ctaLabel}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (upgradePlan) {
+                      void handleCheckout(upgradePlan);
+                    }
+                  }}
+                  disabled={isBusy || !account || exactMatch || higherPlan}
+                  className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isBusy && 'Redirecting to Stripe...'}
+                  {!isBusy && exactMatch && 'Current plan'}
+                  {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
+                  {!isBusy && !exactMatch && !higherPlan && !account && 'Load API key to upgrade'}
+                  {!isBusy && !exactMatch && !higherPlan && account && plan.ctaLabel}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </section>
+
+      <div className="mt-10 text-center text-sm text-white/45">
+        Need a key first?{' '}
+        <Link href="/dashboard/router" className="font-medium text-orange-300 hover:text-orange-200">
+          Create a free router account
+        </Link>
+        .
+      </div>
+    </main>
   );
 }
