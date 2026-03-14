@@ -38,7 +38,7 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
  * This prevents the router from picking tools like Mapbox for search.
  */
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
-  search: ['exa-search', 'tavily', 'serpapi', 'serpapi-google', 'brave-search', 'serper', 'perplexity-search', 'you-search', 'jina-ai', 'bing-web-search'],
+  search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-search', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
   embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
