@@ -158,12 +158,15 @@ export async function applyStrategy(
   };
 
   if (account.strategy === 'MANUAL' && account.priorityTools.length > 0) {
-    if (!modified.tool) {
+    // Only pre-select from account priority tools if the request didn't supply its own priority_tools.
+    // Request-level priority_tools take precedence over account-level (set via PATCH /account).
+    if (!modified.tool && !modified.priority_tools?.length) {
       modified.tool = account.priorityTools[0];
     }
     if (account.fallbackEnabled) {
+      const primaryTool = modified.tool ?? modified.priority_tools?.[0];
       modified.fallback = account.priorityTools
-        .filter((tool) => tool !== modified.tool && !account.excludedTools.includes(tool))
+        .filter((tool) => tool !== primaryTool && !account.excludedTools.includes(tool))
         .slice(0, account.maxFallbacks);
     }
     return modified;

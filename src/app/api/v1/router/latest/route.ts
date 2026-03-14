@@ -15,7 +15,11 @@ export async function GET(request: NextRequest) {
   try {
     const account = await ensureDeveloperAccount(agent.id);
     const call = await prisma.routerCall.findFirst({
-      where: { developerId: account.id },
+      where: {
+        developerId: account.id,
+        // Exclude legacy records where toolUsed was not properly recorded
+        NOT: [{ toolUsed: 'unknown' }, { toolUsed: '' }, { toolUsed: { endsWith: '-unavailable' } }],
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         query: true,
