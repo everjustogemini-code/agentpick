@@ -1,13 +1,13 @@
-# NEXT_VERSION.md — AgentPick v0.4
+# NEXT_VERSION.md — AgentPick v4 (Cycle 4)
 
 **Cycle date:** 2026-03-14
 **PM:** Claude Code
-**QA baseline:** 40/51 (78%) — 9 P1 issues open, 0 P0 blockers
-**Theme:** Premium product, not a hackathon project.
+**QA baseline:** 41/51 (80%) — 7 P1 issues open, 0 P0 blockers
+**Theme:** Premium product. Look like Vercel, not a hackathon project.
 
 ---
 
-## Feature 1 — Full Visual Overhaul: Glassmorphic Design System
+## Feature 1 — Homepage Converted to Dark Glass Design System
 
 **Why:** The current dashboard and `/connect` page are flat, gray, and forgettable. Every card is
 `border border-gray-100 bg-white`. Strategy buttons are `bg-gray-100 text-gray-600`. This reads
@@ -151,15 +151,16 @@ const tools = body.tools ?? body.priority_tools ?? body.search
 if (!tools?.length) throw new ValidationError('Provide tools or priority_tools')
 ```
 
-### 2C. classification_ms > total_latency_ms (`P1 #6`, test 6.4)
+### 2C. `cheapest` strategy routes to Tavily (`P1 #4`)
 
 ```
-classification_ms: 501  vs  total_latency_ms: 233   ← impossible
+POST /api/v1/route/search {"strategy": "cheapest"}  →  toolUsed: "tavily"
+Expected: serper or brave-search
 ```
 
-**Fix** — `total_latency_ms` must be wall-clock from request start to response send.
-Classification is a sub-timer. Assert `total ≥ classification` before serializing; log a
-warning if violated (indicates clock skew or wrong measurement point).
+**Fix** — audit the cost-ranking table in the router strategy logic. Tavily's per-call cost must be ranked higher than serper/brave. The `cheapest` sort should produce `serper` or `brave-search` first.
+
+File: wherever the strategy cost table lives (likely `src/lib/router.ts` or `src/lib/strategies.ts`).
 
 ### 2D. Account fields sparse in usage response (`P1 #8`, test 7.1)
 
@@ -253,11 +254,10 @@ copy-pasteable code that *works*.
 | 1 | `serpapi-google` naming | QA script fix, not product | QA |
 | 2 | Crawl flat payload → 400 | **Fix (2A)** | Codex |
 | 3 | `custom` strategy → 400 | Backlog v0.5 | — |
-| 4 | `cheapest` routes to Tavily | Backlog v0.5 (cost table audit) | — |
+| 4 | `cheapest` routes to Tavily | **Fix (2C)** | Codex |
 | 5 | Priority field name mismatch | **Fix (2B)** | Codex |
-| 6 | classification_ms > total | **Fix (2C)** | Codex |
-| 7 | No `ai_routing_summary` | Backlog v0.5 | — |
-| 8 | Account fields sparse | **Fix (2D)** | Codex |
+| 6 | No `ai_routing_summary` | Backlog v0.5 | — |
+| 7 | Account fields sparse | **Fix (2D)** | Codex |
 | 9 | `jina-embed` naming | QA script fix, not product | QA |
 
 ---
@@ -276,7 +276,7 @@ copy-pasteable code that *works*.
 **F2 — Bugs**
 - [ ] `POST /api/v1/route/crawl {"url": "..."}` → 200 (not 400)
 - [ ] `POST /api/v1/router/priority {"search": [...]}` → 200 (not 400)
-- [ ] `total_latency_ms ≥ classification_ms` in all responses
+- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → serper or brave-search (not Tavily)
 - [ ] `/api/v1/router/usage` returns `monthlyLimit`, `callsThisMonth`, `strategy`
 
 **F3 — Code Generator**

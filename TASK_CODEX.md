@@ -1,70 +1,149 @@
-# TASK_CODEX.md — v0.4 Cycle
+# TASK_CODEX.md — Cycle 4
 
 > Agent: Codex | Date: 2026-03-14 | Difficulty: Medium
-> Feature: F2 — Fix 4 P1 API Contract Bugs
+> Features: Homepage hero animation (F1E) + Fix 4 P1 API bugs (F2)
 
 ---
 
-## Files to Create / Modify
+## Files to Modify
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/lib/router/index.ts` |
-| VERIFY (read-only check) | `src/app/api/v1/route/crawl/route.ts` |
-| VERIFY (read-only check) | `src/app/api/v1/router/priority/route.ts` |
-| VERIFY (read-only check) | `src/app/api/v1/router/usage/route.ts` |
+| MODIFY | `src/app/page.tsx` |
+| MODIFY | `src/app/api/v1/route/crawl/route.ts` |
+| MODIFY | `src/app/api/v1/router/priority/route.ts` |
+| MODIFY | `src/lib/router/handler.ts` *(or wherever the cost table lives — see Task 3)* |
+| MODIFY | `src/app/api/v1/router/usage/route.ts` |
 
-**DO NOT TOUCH:** `src/app/globals.css`, `src/app/page.tsx`, `src/app/connect/page.tsx`, `src/app/dashboard/router/page.tsx`, `src/components/**`
-
----
-
-## Context: What the QA Suite Checks
-
-The QA script (`agentpick-router-qa.py`) is at 40/51 (78%). Four P1 tests are failing. Three already have code fixes in place — verify they're correct. One (Bug 2C) has NOT been fixed — that's your primary task.
+**DO NOT touch:** `src/app/globals.css`, `src/app/dashboard/router/page.tsx`, `src/app/connect/page.tsx`, `src/components/` (any file)
 
 ---
 
-## Bug 2A — Crawl endpoint rejects flat body (test 1.1b)
+## Task 1 — Homepage Hero: Animated Gradient Mesh (`src/app/page.tsx`)
 
-**File:** `src/app/api/v1/route/crawl/route.ts`
+Read the file. Find the `<Hero>` component or the outermost hero section element (a `<section>` or `<div>` that contains the main headline and CTA buttons).
 
-**Read the file.** Verify this fix is already in place:
+### 1A. Add `hero-mesh` class to hero background
+
+The `hero-mesh` CSS class is defined in `globals.css` by Claude Code (cycle 4). It provides the animated radial gradient + grid texture.
+
+Find the hero background element. It likely has classes like `bg-gradient-to-b from-orange-50` or a dark/light background. Replace the background classes with:
+
+```tsx
+className="hero-mesh relative overflow-hidden ..."
+// keep all existing positioning, padding, min-h classes intact
+// only replace background-related classes (bg-*, from-*, to-*, gradient-*)
+```
+
+If the hero currently has an inline `style={{ background: '...' }}`, remove it and rely on the CSS class instead.
+
+### 1B. Style the `<h1>` headline
+
+Find the hero `<h1>`. Replace its text color/gradient classes with:
+
+```tsx
+className="font-extrabold tracking-tight text-transparent bg-clip-text
+           bg-gradient-to-br from-white via-gray-100 to-gray-400
+           [your existing text-size classes, e.g. text-4xl sm:text-6xl]"
+```
+
+Keep all existing `text-*` size classes. Only change the color/gradient classes.
+
+### 1C. Reduced-motion safety
+
+The `hero-mesh` animation is already guarded in CSS (`@media (prefers-reduced-motion: reduce)`). No additional JS changes needed here.
+
+---
+
+## Task 2 — Fix: Crawl flat body → 400 (`src/app/api/v1/route/crawl/route.ts`)
+
+**Bug:** `POST /api/v1/route/crawl {"url": "https://example.com"}` returns 400 because the
+current schema requires `{ params: { url } }`.
+
+**Fix:** Accept both shapes and normalize to `url` before processing.
+
+Read the file. Find the Zod schema that validates the request body. Replace it with a union:
 
 ```ts
+import { z } from 'zod'
+
+// Replace the existing body schema with:
 const CrawlBody = z.union([
   z.object({ params: z.object({ url: z.string().url() }) }),
   z.object({ url: z.string().url() }),
 ])
+
+// After parsing:
+const parsed = CrawlBody.parse(body)
+const url = 'params' in parsed ? parsed.params.url : parsed.url
 ```
 
-And that the handler normalizes `{ url }` → `{ params: { url } }` before passing to `handleRouteRequest`.
+Then use `url` everywhere the parsed URL was previously used (replace `parsed.params.url` or `body.params.url` references with the normalized `url` variable).
 
-If not correct, fix it. If correct, no change needed.
+The canonical shape `{ params: { url } }` is kept in docs. The flat `{ url }` shape is now accepted permanently (non-breaking).
 
 ---
 
-## Bug 2B — Priority field name mismatch (test 2.6)
+## Task 3 — Fix: Priority field name mismatch → 400 (`src/app/api/v1/router/priority/route.ts`)
 
-**File:** `src/app/api/v1/router/priority/route.ts`
+**Bug:** `POST /api/v1/router/priority {"search": ["exa-search"]}` returns 400 with "Provide tools/priority_tools".
 
-**Read the file.** Verify this fix is already in place:
+**Fix:** Normalize the field name before validation. Read the file, then find where `tools` or `priority_tools` is extracted from `body`. Replace that line with:
 
 ```ts
-const toolsValue = body.tools ?? body.priority_tools ?? body.search
+const tools = body.tools ?? body.priority_tools ?? body.search
+if (!tools?.length) {
+  return NextResponse.json(
+    { error: 'Provide tools or priority_tools' },
+    { status: 400 }
+  )
+}
 ```
 
-And that the handler accepts any of the three field names as the priority tool list.
-
-If not correct, fix it. If correct, no change needed.
+Then use `tools` for the rest of the handler (replacing any `body.tools` or `body.priority_tools` references with the normalized `tools` variable).
 
 ---
 
-## Bug 2D — Account fields sparse in usage response (test 7.1)
+## Task 4 — Fix: `cheapest` strategy routes to Tavily
 
-**File:** `src/app/api/v1/router/usage/route.ts`
+**Bug:** `POST /api/v1/route/search {"strategy": "cheapest"}` returns `toolUsed: "tavily"` instead of `serper` or `brave-search`. Tavily is more expensive per call but ranked too low in the cost sort.
 
-**Read the file.** Verify the response includes all four required account fields:
+**Find the cost table.** Search for the word `cheapest` or a cost/price ranking object in:
+- `src/lib/router/handler.ts`
+- `src/lib/router/index.ts`
+- `src/lib/router/sdk-handler.ts`
 
+Look for an object or array like:
+```ts
+const TOOL_COSTS = {
+  tavily: 0.001,
+  serper: 0.002,
+  'brave-search': 0.003,
+  ...
+}
+```
+or a sorted array of tools by cost.
+
+**Fix:** Ensure `tavily`'s cost value is **higher** than `serper` and `brave-search`. The `cheapest` sort picks the lowest cost, so serper/brave must be cheaper (lower number) than tavily.
+
+Correct relative ordering (lower = cheaper):
+```
+serper          ~= 0.001   (cheapest)
+brave-search    ~= 0.002
+tavily          ~= 0.005   (more expensive — must be HIGHER than serper/brave)
+exa             ~= 0.010
+perplexity      ~= 0.010
+```
+
+Do not change any other routing logic — only fix the cost values so the sort order is correct.
+
+---
+
+## Task 5 — Fix: Usage response missing account fields (`src/app/api/v1/router/usage/route.ts`)
+
+**Bug:** `GET /api/v1/router/usage` returns `{ "account": { "plan": "free" } }` — missing `monthlyLimit`, `callsThisMonth`, `strategy`.
+
+**Expected shape:**
 ```json
 {
   "account": {
@@ -76,172 +155,52 @@ If not correct, fix it. If correct, no change needed.
 }
 ```
 
-Specifically check:
-- `monthlyLimit` is populated from a plan→limit map (not null or undefined)
-- `callsThisMonth` is a DB count for the current calendar month
-- `strategy` comes from the user/account row
+Read the file. Find where `account` is assembled in the response. Extend it:
 
-If not correct, fix it. If correct, no change needed.
+```ts
+// monthlyLimit: derive from plan config. Use a simple map:
+const PLAN_LIMITS: Record<string, number> = {
+  free:       10_000,
+  pro:        100_000,
+  enterprise: 1_000_000,
+}
+const monthlyLimit = PLAN_LIMITS[user.plan ?? 'free'] ?? 10_000
+
+// callsThisMonth: count RouterCall rows for this user in the current calendar month
+const now = new Date()
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+const callsThisMonth = await prisma.routerCall.count({
+  where: {
+    userId: user.id,
+    createdAt: { gte: startOfMonth },
+  },
+})
+
+// strategy: read from user row (field may be named defaultStrategy, strategy, or routerStrategy)
+const strategy = user.strategy ?? user.defaultStrategy ?? 'auto'
+
+// Assemble response:
+return NextResponse.json({
+  account: {
+    plan: user.plan ?? 'free',
+    monthlyLimit,
+    callsThisMonth,
+    strategy,
+  },
+  // ... rest of existing response fields
+})
+```
+
+**Note:** If `RouterCall` is not the correct Prisma model name, check `prisma/schema.prisma` for the model that stores API call history and use that model name. The count query pattern stays the same.
 
 ---
 
-## Bug 2C — `classification_ms > total_latency_ms` (test 6.4) ← PRIMARY TASK
+## Acceptance Checklist
 
-**File:** `src/lib/router/index.ts`
-
-**Read the full file first** (it is ~500 lines).
-
-### The Bug
-
-The `routeRequest` function currently returns this in the success response meta:
-
-```ts
-const meta = {
-  tool_used: candidateSlug,
-  latency_ms: result.latencyMs,   // ← BUG: this is the TOOL's latency only
-  ...
-  classification_ms: classificationMs,  // ← can be > latency_ms if AI is slow
-};
-```
-
-`result.latencyMs` is the individual tool call duration (e.g. 233ms). `classificationMs` is the AI classification duration (e.g. 501ms). When AI classification takes longer than the tool call, `classification_ms > latency_ms` — which is impossible by definition and fails QA test 6.4.
-
-### The Fix
-
-`total_latency_ms` (or `latency_ms` — whichever the QA script uses) must be the **wall-clock elapsed time from the start of `routeRequest` to when the response is built**, not the tool call duration alone.
-
-**Step 1 — capture request start time** at the very top of `routeRequest`, before the classification call:
-
-```ts
-// Add this as the FIRST line inside routeRequest():
-const requestStartMs = Date.now();
-```
-
-Note: `routeStartTime` already exists at line ~394 (set just before the for-loop). Repurpose it OR use the new `requestStartMs` — whichever is earlier in the function. The correct anchor is **before** the `getClassification()` call (line ~339).
-
-**Step 2 — compute total elapsed** when building the success meta:
-
-```ts
-const totalLatencyMs = Date.now() - requestStartMs;
-```
-
-**Step 3 — assert total ≥ classification** (log a warning if violated, never clamp silently):
-
-```ts
-if (totalLatencyMs < classificationMs) {
-  console.warn(
-    `[Router] total_latency_ms (${totalLatencyMs}) < classification_ms (${classificationMs}) — clock skew?`
-  );
-}
-```
-
-**Step 4 — update the meta object** in the success return path. The existing meta object at line ~432 is:
-
-```ts
-// Before:
-const meta: RouterResponse['meta'] = {
-  tool_used: candidateSlug,
-  latency_ms: result.latencyMs,
-  fallback_used: isFallbackAttempt,
-  fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
-  trace_id: traceId,
-};
-if (aiClassificationResult) {
-  meta.ai_classification = { ... };
-  meta.classification_ms = classificationMs;
-}
-```
-
-Change to:
-```ts
-// After:
-const totalLatencyMs = Date.now() - requestStartMs;
-
-const meta: RouterResponse['meta'] = {
-  tool_used: candidateSlug,
-  latency_ms: totalLatencyMs,          // wall-clock total, not tool-only
-  total_latency_ms: totalLatencyMs,    // explicit alias for QA test 6.4
-  fallback_used: isFallbackAttempt,
-  fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
-  trace_id: traceId,
-};
-if (aiClassificationResult) {
-  meta.ai_classification = {
-    ...aiClassificationResult,
-    reasoning: buildAiReasoning(aiClassificationResult, candidateSlug),
-  };
-  meta.classification_ms = classificationMs;
-  // Assertion: total must be >= classification
-  if (totalLatencyMs < classificationMs) {
-    console.warn(
-      `[Router] total_latency_ms (${totalLatencyMs}) < classification_ms (${classificationMs}) — clock skew?`
-    );
-  }
-}
-```
-
-**Step 5 — update the `RouterResponse` interface** to include `total_latency_ms`:
-
-```ts
-// In the RouterResponse interface (around line 126):
-export interface RouterResponse {
-  data: unknown;
-  meta: {
-    tool_used: string;
-    latency_ms: number;
-    total_latency_ms?: number;   // ← ADD THIS
-    fallback_used: boolean;
-    fallback_from?: string;
-    trace_id: string;
-    ai_classification?: QueryContext & { reasoning?: string };
-    classification_ms?: number;
-  };
-}
-```
-
-**Step 6 — also fix the "all tools failed" return path** at the bottom of `routeRequest` (around line 461). Apply the same wall-clock total there:
-
-```ts
-// Before:
-meta: {
-  tool_used: toolSlug,
-  latency_ms: lastResult?.latencyMs ?? 0,
-  ...
-}
-
-// After:
-const totalMs = Date.now() - requestStartMs;
-meta: {
-  tool_used: toolSlug,
-  latency_ms: totalMs,
-  total_latency_ms: totalMs,
-  ...
-}
-```
-
-### Exact placement of `requestStartMs`
-
-The function signature is at line 325:
-```ts
-export async function routeRequest(
-  agentId: string,
-  capability: string,
-  request: RouterRequest,
-): Promise<{ response: RouterResponse; headers?: Record<string, string> }> {
-```
-
-Add `const requestStartMs = Date.now();` as the very first line inside the function body (before `const query = extractQuery(request.params);`).
-
----
-
-## Acceptance Criteria
-
-- [ ] `POST /api/v1/route/crawl {"url": "https://example.com"}` → 200 (not 400) — Bug 2A
-- [ ] `POST /api/v1/router/priority {"search": ["exa-search"]}` → 200 (not 400) — Bug 2B
-- [ ] `GET /api/v1/router/usage` → `account` has `plan`, `monthlyLimit`, `callsThisMonth`, `strategy` — Bug 2D
-- [ ] Every router response has `meta.total_latency_ms >= meta.classification_ms` — Bug 2C
-- [ ] `meta.latency_ms` is wall-clock total, not tool-only latency — Bug 2C
-- [ ] Warning is logged if clock skew is detected (never silently clamped)
-- [ ] `RouterResponse` interface includes `total_latency_ms?: number`
-- [ ] No regressions on currently-passing QA tests
-- [ ] QA score moves from 40/51 → 44/51 (these 4 tests now pass)
+- [ ] `POST /api/v1/route/crawl {"url": "https://example.com"}` → HTTP 200 (not 400)
+- [ ] `POST /api/v1/router/priority {"search": ["exa-search"]}` → HTTP 200 (not 400)
+- [ ] `POST /api/v1/route/search {"strategy":"cheapest"}` → `toolUsed` is `serper` or `brave-search` (not `tavily`)
+- [ ] `GET /api/v1/router/usage` returns `monthlyLimit`, `callsThisMonth`, `strategy` in `account` object
+- [ ] Homepage hero section has `hero-mesh` class applied (animated gradient mesh visible)
+- [ ] Hero `<h1>` uses `text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400`
+- [ ] No other files touched outside the 5 listed above
