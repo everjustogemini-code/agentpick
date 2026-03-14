@@ -270,13 +270,15 @@ export function getRankedToolsForCapability(
     }
   });
 
-  // For cheapest strategy: among configured tools (platform or BYOK) pick the cheapest,
-  // then fall back to unconfigured tools (also cost-sorted). deprioritizeUnconfiguredTools
-  // preserves the cost-sorted order within each group, so we route to the cheapest
-  // AVAILABLE tool rather than blindly trying brave-search/serper (which have no platform
-  // key and will always fail), burning fallback slots before reaching tavily.
+  // For cheapest strategy: return the pure cost-sorted list.
+  // brave-search ($0.0001) and serper ($0.0005) are cheaper than tavily ($0.001).
+  // Applying deprioritizeUnconfiguredTools here would put expensive configured tools
+  // (e.g. tavily) ahead of cheap unconfigured ones (e.g. brave-search), defeating the
+  // purpose of the cheapest strategy. If a cheap tool has no key it fails immediately
+  // and the fallback chain escalates to the next cheapest — that is the correct behaviour.
+  // BYOK keys for cheap tools are resolved at call time in callWithKey, not at rank time.
   if (strategy === 'cheapest') {
-    return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
+    return filtered;
   }
 
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
@@ -422,7 +424,18 @@ export async function routeRequest(
   // to configured tools (e.g. exa-search) rather than unconfigured ones (e.g. serpapi-google).
   // Pass storedByokKeys so BYOK-configured tools (e.g. user's own tavily key) are not
   // deprioritized when the platform key isn't set — fixes determinism for BYOK-heavy users.
-  const rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools, options.storedByokKeys) : cbRankedTools;
+  let rankedTools: string[];
+  if (
+    aiRankedTools &&
+    (aiClassificationResult?.type === 'realtime' ||
+      aiClassificationResult?.freshness === 'realtime')
+  ) {
+    // Pin the AI-chosen primary tool; only reorder fallbacks (index >= 1).
+    const [primary, ...rest] = cbRankedTools;
+    rankedTools = [primary, ...deprioritizeUnconfiguredTools(rest, options.storedByokKeys)];
+  } else {
+    rankedTools = aiRankedTools ? deprioritizeUnconfiguredTools(cbRankedTools, options.storedByokKeys) : cbRankedTools;
+  }
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }

@@ -1,7 +1,7 @@
 # TASK_CODEX.md
 **Agent:** Codex
 **Date:** 2026-03-14
-**Source:** NEXT_VERSION.md — Bugfix Cycle 4 (QA Round 8, score 30/37)
+**Source:** NEXT_VERSION.md — bugfix/cycle-21 (QA Round 9, score 49/51)
 
 ---
 
@@ -9,68 +9,88 @@
 
 | Action | File |
 |--------|------|
-| MODIFY | `src/app/products/[slug]/page.tsx` |
-| MODIFY | `src/app/connect/page.tsx` |
+| MODIFY | `src/lib/router/sdk-handler.ts` |
+| MODIFY | `src/lib/auth.ts` |
 
-**DO NOT TOUCH:** `src/lib/router/**`, `src/app/api/**`, `next.config.ts`, `src/middleware.ts`, or any file not listed above.
+**DO NOT TOUCH:** `src/lib/router/index.ts`, `src/lib/router/ai-classify.ts`, or any frontend file. Those are owned by TASK_CLAUDE_CODE.
 
 ---
 
-## Bug P2-1 — `/products/tavily` cold-start 500
+## Bug P1-2 — Auth-missing edge case (`7.5-auth-missing`)
 
-**Root cause:** SSR data fetch throws/times out on first cold-start invocation of a serverless function; unhandled error bubbles up as 500. Self-heals on warm instances.
+**Root cause:**
+1. Early-exit 401 responses in `handleSdkRouteRequest` do not set `Cache-Control: no-store` / `Vary: Authorization`, so an upstream proxy/Vercel Edge cache that cached a prior 200 can serve it to an unauthenticated request.
+2. `authenticateAgent` may return a non-null agent via a cookie-based session or alternate auth vector even when no Authorization header is present — the guard `if (!agent || !agent.id)` does not verify Bearer token authentication.
 
-### Fix 1 — `src/app/products/[slug]/page.tsx`
+---
 
-Read the file first. Wrap the top-level data fetch in a try/catch and return a graceful error response instead of letting it become an unhandled 500:
+### Fix 2a — `src/lib/router/sdk-handler.ts` — early-exit 401 responses (lines ~49–76)
+
+**What to change:** All `apiError('UNAUTHORIZED', ...)` calls (at approximately lines 54, 57, 64, 72, 75) must include `Cache-Control: no-store` and `Vary: Authorization` headers.
+
+Option A — Add a `headers` argument to `apiError` (if it supports an options param):
+```ts
+return apiError('UNAUTHORIZED', 'Missing or invalid API key.', 401, {
+  headers: { 'Cache-Control': 'no-store', 'Vary': 'Authorization' },
+});
+```
+
+Option B — Replace those early-exit calls with explicit Response construction:
+```ts
+return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: 'Missing or invalid API key.' }), {
+  status: 401,
+  headers: {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+    'Vary': 'Authorization',
+  },
+});
+```
+
+Apply whichever option is consistent with how `apiError` is implemented in this file. Every 401 path in the auth section must include these headers.
+
+---
+
+### Fix 2b — `src/lib/router/sdk-handler.ts` — post-`authenticateAgent` guard (line ~74)
+
+**What to change:** After `authenticateAgent` returns, add an explicit check that the resolved agent carries an `ah_`-prefixed API key (i.e. was authenticated via the Bearer token, not a session or alternate vector):
 
 ```ts
-try {
-  // existing data fetch logic
-} catch (err) {
-  return new Response('Service temporarily unavailable', {
-    status: 503,
-    headers: { 'Retry-After': '1' },
-  });
+// Guard: reject if the agent was not authenticated via a valid Bearer token.
+const resolvedKey = agent.apiKey ?? agent.key ?? agent.token ?? '';
+if (!resolvedKey.startsWith('ah_')) {
+  return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401, /* cache headers */);
 }
 ```
 
-Alternatively, if the page uses `notFound()` or `redirect()`, the catch block should call the appropriate Next.js helper rather than returning a raw Response.
-
-### Fix 2 — `src/app/products/[slug]/page.tsx`
-
-Add ISR revalidation at the top of the file (outside any function):
-
-```ts
-export const revalidate = 300; // 5-minute ISR cache
-```
-
-This ensures a cached response is served on cold starts, eliminating the race condition entirely.
-
-**Acceptance:** `GET /products/tavily` → HTTP 200 on first request to a cold deployment (no 500).
+Adjust field name (`apiKey`, `key`, `token`) to match the actual shape returned by `authenticateAgent`. If using Option B above, use the same `new Response(...)` pattern here too.
 
 ---
 
-## Fix — P1-3 onboarding note (frontend portion)
+### Fix 2c — `src/lib/auth.ts` — audit `authenticateAgent` (read + conditional change)
 
-**Source:** NEXT_VERSION.md Fix 3, item 3.
+**What to do:**
+1. Read `src/lib/auth.ts` and locate the `authenticateAgent` function.
+2. Check: can it return a non-null result when `request.headers.get('authorization')` is falsy/absent?
+3. If yes, add an early return at the top of the function:
 
-### Fix — `src/app/connect/page.tsx`
-
-Read the file. Find the section that describes free tier limits (look for existing text about monthly limits or rate limits). Add a visible note in that section:
-
+```ts
+export async function authenticateAgent(request: Request, ...) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return null;
+  // ... rest of existing logic
+}
 ```
-Free tier: 3,000 calls/month, 100/day.
-Add a 100 ms delay between calls in integration tests to stay within per-minute burst limits.
-```
 
-Use the existing styling/component pattern on the page (e.g. a `<p>` or info callout component). Do not introduce new components or styles.
+If the function already returns `null` when the Authorization header is absent, no change is needed — note this in the PR description.
 
 ---
 
 ## Verification Checklist
 
-- [ ] `GET /products/tavily` → HTTP 200 on cold start (no unhandled 500)
-- [ ] `export const revalidate = 300` present in `src/app/products/[slug]/page.tsx`
-- [ ] `/connect` page shows free tier note: "3,000 calls/month, 100/day"
-- [ ] No changes made to files owned by TASK_CLAUDE_CODE.md
+- [ ] `POST /api/v1/router/search` with no Authorization header → HTTP 401, every time, across 10 sequential requests from a cold deployment
+- [ ] Same with `Authorization: ` (empty value) → HTTP 401
+- [ ] Same with `Authorization: Bearer ` (keyword only, no token) → HTTP 401
+- [ ] Valid `Authorization: Bearer ah_live_sk_...` → HTTP 200
+- [ ] All 401 responses include `Cache-Control: no-store` and `Vary: Authorization` headers
+- [ ] No changes made to files owned by TASK_CLAUDE_CODE.md (`index.ts`, `ai-classify.ts`)
