@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const _authHeader = request.headers.get('authorization');
   let _urlForAuth: URL;
   try { _urlForAuth = new URL(request.url); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
-  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 

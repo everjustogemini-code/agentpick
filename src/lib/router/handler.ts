@@ -85,14 +85,14 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
   }
   // Reject whitespace-only or absent auth headers as well as missing ?token= params.
   // This closes an intermittent edge case where a header with only whitespace bypassed the null check.
-  if (!_authHeader?.trim() && !_urlForAuth.searchParams.has('token')) {
+  if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
   // Reject auth headers that are present but use a non-Bearer scheme (e.g. "Token xyz",
   // "APIKey xyz"). These will never produce a valid ah_ token. Returning 401 immediately
   // prevents any DB lookup and eliminates a narrow edge case where a malformed scheme
   // could reach authenticateAgent and produce an unexpected response in edge deployments.
-  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.has('token')) {
+  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
     return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
   }
 
