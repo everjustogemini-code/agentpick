@@ -15,6 +15,7 @@ import {
   resolveStoredByokKeyForSlug,
   touchByokKeyUsage,
 } from './byok';
+import { withSerializedProviderEnv } from './env-lock';
 
 // Map capability names to categories for auto-routing
 const CAPABILITY_TO_CATEGORY: Record<string, string> = {
@@ -126,26 +127,27 @@ async function callWithKey(
   params?: Record<string, unknown>,
   envVarOverride?: string | null,
 ): Promise<ToolCallResult> {
-  const envVar = envVarOverride;
+  const envVar = envVarOverride ?? getByokEnvVarForService(slug);
 
-  if (toolApiKey && envVar) {
-    // BYOK: temporarily inject key for this call
-    const originalValue = process.env[envVar];
-    process.env[envVar] = toolApiKey;
-    try {
-      return await callToolAPI(slug, query, params, { trackUsage: false });
-    } finally {
-      // ALWAYS restore — even on error
-      if (originalValue !== undefined) {
-        process.env[envVar] = originalValue;
-      } else {
-        delete process.env[envVar];
+  return withSerializedProviderEnv(envVar, async () => {
+    if (toolApiKey && envVar) {
+      // BYOK: temporarily inject key for this call without exposing it to overlapping requests.
+      const originalValue = process.env[envVar];
+      process.env[envVar] = toolApiKey;
+      try {
+        return await callToolAPI(slug, query, params, { trackUsage: false });
+      } finally {
+        if (originalValue !== undefined) {
+          process.env[envVar] = originalValue;
+        } else {
+          delete process.env[envVar];
+        }
       }
     }
-  }
 
-  // No BYOK key — use AgentPick's vault key (already in env)
-  return callToolAPI(slug, query, params, { trackUsage: true });
+    // No BYOK key — use AgentPick's vault key (already in env).
+    return callToolAPI(slug, query, params, { trackUsage: true });
+  });
 }
 
 /**

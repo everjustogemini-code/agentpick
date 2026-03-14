@@ -3,9 +3,9 @@ import { getRankedToolsForCapability, CAPABILITY_TOOLS } from '@/lib/router/inde
 
 describe('Capability validation', () => {
   it('returns tools for valid capabilities', () => {
-    expect(getRankedToolsForCapability('search')).toHaveLength(9);
+    expect(getRankedToolsForCapability('search')).toHaveLength(10);
     expect(getRankedToolsForCapability('crawl')).toHaveLength(5);
-    expect(getRankedToolsForCapability('embed')).toHaveLength(4);
+    expect(getRankedToolsForCapability('embed')).toHaveLength(5);
     expect(getRankedToolsForCapability('finance')).toHaveLength(3);
   });
 
@@ -16,9 +16,18 @@ describe('Capability validation', () => {
     expect(getRankedToolsForCapability('storage')).toEqual([]);
   });
 
-  it('CAPABILITY_TOOLS only has search, crawl, embed, finance', () => {
+  it('CAPABILITY_TOOLS includes the supported router capability families', () => {
     const keys = Object.keys(CAPABILITY_TOOLS);
-    expect(keys).toEqual(['search', 'crawl', 'embed', 'finance']);
+    expect(keys).toEqual([
+      'search',
+      'crawl',
+      'embed',
+      'finance',
+      'code',
+      'communication',
+      'translation',
+      'ocr',
+    ]);
   });
 });
 
@@ -52,6 +61,6 @@ describe('Strategy-based ranking', () => {
     const ranked = getRankedToolsForCapability('search', 'balanced', ['serpapi', 'tavily']);
     expect(ranked).not.toContain('serpapi');
     expect(ranked).not.toContain('tavily');
-    expect(ranked.length).toBe(7); // 9 - 2
+    expect(ranked.length).toBe(8); // 10 - 2
   });
 });

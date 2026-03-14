@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'brave-search-api-for-ai-agents',
+    title: 'Brave Search API for AI Agents: Benchmark Results (2026)',
+    description:
+      'Brave has an independent index, costs $0.0008/call (7x cheaper than Perplexity), and leads on news freshness. When Brave beats the #1 search API — and when it does not.',
+    date: '2026-03-14',
+    readTime: '5 min',
+    tag: 'Benchmark',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'linkup-search-api-for-ai-agents',
     title: 'Linkup Search API for AI Agents: How It Compares (2026)',
     description:
