@@ -71,8 +71,15 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     );
   }
 
-  // 1. Authenticate — wrap in try/catch so any DB or URL parse error returns 401
-  // rather than propagating as an unhandled exception (which could be misinterpreted).
+  // 1. Authenticate — short-circuit immediately if there is no Authorization header
+  // and no ?token= query param. This avoids any DB lookup for clearly unauthenticated
+  // requests and closes the window for an intermittent auth-bypass edge case.
+  const _authHeader = request.headers.get('authorization');
+  const _urlForAuth = new URL(request.url);
+  if (!_authHeader && !_urlForAuth.searchParams.has('token')) {
+    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+  }
+
   let agent: Awaited<ReturnType<typeof authenticateAgent>>;
   try {
     agent = await authenticateAgent(request);
