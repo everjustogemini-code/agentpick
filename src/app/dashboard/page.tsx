@@ -2,8 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { FormEvent, useEffect, useState, useMemo } from 'react';
-// useSearchParams removed — read from window.location instead
+import { FormEvent, useEffect, useState } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import { UsagePanel } from '@/components/dashboard/UsagePanel';
 import { ByokPanel } from '@/components/dashboard/ByokPanel';
@@ -263,24 +262,22 @@ export default function DashboardPage() {
               </p>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
                 Plan details, monthly call progress, strategy selection, estimated cost, and
-                budget editing all stay on this page.
+                budget editing stay on this main dashboard view.
               </p>
-              {/* Free plan upgrade one-liner */}
               {showFreeCtas && (
                 <p className="mt-3 text-xs text-slate-500">
                   Free plan · 500 calls/mo{' '}
                   <span className="mx-1 text-slate-300">→</span>
-                  <a
-                    href="/checkout?plan=pro"
+                  <Link
+                    href="/pricing?plan=pro"
                     className="font-medium text-orange-500 hover:text-orange-600 transition-colors"
                   >
-                    Upgrade to Pro for 10K calls →
-                  </a>
+                    Upgrade to Pro for 5,000 calls →
+                  </Link>
                 </p>
               )}
             </section>
 
-            {/* Usage hint — only when >50% consumed on Free plan */}
             {showUsageHint && (
               <p className="px-1 text-xs text-slate-400">
                 You&apos;ve used{' '}
@@ -297,10 +294,10 @@ export default function DashboardPage() {
               </p>
             )}
 
-            {/* Embedded analytics dashboard */}
+            <UsagePanel apiKey={apiKey} onLogout={handleLogout} />
+
             <RouterAnalyticsDashboard />
 
-            {/* Subtle pro banner for Free plan users */}
             {showFreeCtas && (
               <div className="rounded-2xl border border-slate-200 px-5 py-3 text-xs text-slate-400">
                 Pro users get 10× more calls and priority routing.{' '}
@@ -343,7 +340,6 @@ export default function DashboardPage() {
               </section>
             ) : null}
 
-            {/* Always-visible API key section */}
             <section className="rounded-[28px] border border-slate-200 bg-white/70 px-6 py-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] backdrop-blur">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                 Your API Key
@@ -372,7 +368,6 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <UsagePanel apiKey={apiKey} onLogout={handleLogout} />
             <ByokPanel apiKey={apiKey} onAuthError={handleLogout} />
           </div>
         ) : (
