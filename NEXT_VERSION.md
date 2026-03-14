@@ -1,273 +1,291 @@
-# NEXT_VERSION.md — AgentPick Cycle 2
-> PM: Claude Code | Date: 2026-03-14 | Base: 7652836 | QA: 82% (42/51)
+# NEXT_VERSION.md — AgentPick v0.4
 
-**Theme:** AgentPick should look like a product engineers are proud to put in a README.
-No P0/P1 bugs to fix. Four P2 API contract bugs are the quick wins. One major new surface for developer adoption.
+**Cycle date:** 2026-03-14
+**PM:** Claude Code
+**QA baseline:** 40/51 (78%) — 9 P1 issues open, 0 P0 blockers
+**Theme:** Premium product, not a hackathon project.
 
 ---
 
-## Feature 1 — Premium UI System
+## Feature 1 — Full Visual Overhaul: Glassmorphic Design System
 
-**Why:** The homepage is polished (glassmorphism, animated bars, dark bg). The `/connect` page is a flat light-mode card layout that looks like a different product. Product pages have no motion. Close this gap completely.
+**Why:** The current dashboard and `/connect` page are flat, gray, and forgettable. Every card is
+`border border-gray-100 bg-white`. Strategy buttons are `bg-gray-100 text-gray-600`. This reads
+like a prototype. We need it to feel like Linear or Vercel — dark, polished, motion-forward.
 
-### 1A. Aurora Animated Hero (homepage + /connect)
+**Priority surfaces:** `/dashboard/router`, `/connect`, homepage `<Hero>`.
 
-Replace the static gradient hero with a three-blob animated aurora background:
-
-```css
-/* Three blobs animate independently so they feel alive */
-.aurora-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.3;
-}
-.aurora-blob-1 { /* indigo */
-  width: 600px; height: 400px;
-  background: #6366f1;
-  animation: aurora-drift-1 12s ease-in-out infinite alternate;
-}
-.aurora-blob-2 { /* cyan */
-  width: 500px; height: 350px;
-  background: #0ea5e9;
-  animation: aurora-drift-2 8s ease-in-out infinite alternate;
-}
-.aurora-blob-3 { /* emerald */
-  width: 400px; height: 300px;
-  background: #10b981;
-  animation: aurora-drift-3 10s ease-in-out infinite alternate;
-}
-@keyframes aurora-drift-1 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(120px, -60px) rotate(20deg); } }
-@keyframes aurora-drift-2 { from { transform: translate(0, 0); } to { transform: translate(-80px, 80px); } }
-@keyframes aurora-drift-3 { from { transform: translate(0, 0); } to { transform: translate(60px, 40px) rotate(-15deg); } }
-```
-
-Layer a radial vignette mask over blobs to keep text readable: `radial-gradient(ellipse 70% 60% at 50% 40%, transparent 30%, rgba(3,7,18,0.85) 80%)`.
-
-Hero `h1`: `font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400`.
-Eyebrow label above h1: `uppercase tracking-widest text-xs text-cyan-400`.
-
-### 1B. Dark Glassmorphic /connect Page
-
-Port the entire `/connect` page from light mode to dark glass:
-
-| Current | Replace with |
-|---------|-------------|
-| `bg-white` cards | `bg-white/5 border border-white/10 backdrop-blur-md rounded-xl` |
-| `bg-gray-50` page bg | `bg-gray-950` |
-| Blue HTTP badges | `bg-gradient-to-r from-blue-600 to-blue-500 text-white px-2 py-0.5 rounded text-xs font-mono` |
-| Strategy chips | Add `hover:shadow-[0_0_14px_rgba(16,185,129,0.35)]` glow ring |
-
-Terminal code block chrome: add three colored dots (red/yellow/green), a filename tab `agentpick_example.py`, and a copy-to-clipboard button with animated `✓ Copied` confirmation (fade in 200ms, auto-reset 2s).
-
-### 1C. Micro-interactions on All Interactive Cards
-
-Apply to: tool cards, strategy cards, pricing tier cards, benchmark result rows, competitive snapshot card.
+### 1A. Global Design Tokens (`globals.css` + Tailwind config)
 
 ```css
-.card-lift {
-  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
-}
-.card-lift:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
-  border-color: rgba(14, 165, 233, 0.4); /* cyan glow border */
-}
-.card-lift:active { transform: translateY(-1px) scale(1.005); }
+/* Dark base + glass surface */
+--bg-base:           #0a0a0f;
+--bg-surface:        rgba(255,255,255,0.04);
+--bg-surface-hover:  rgba(255,255,255,0.07);
+--border-subtle:     rgba(255,255,255,0.08);
+--border-active:     rgba(249,115,22,0.45);   /* orange glow */
+
+/* Hero gradient mesh */
+--gradient-mesh: radial-gradient(ellipse 80% 60% at 50% -10%,
+                   rgba(249,115,22,0.15) 0%, transparent 70%),
+                 radial-gradient(ellipse 60% 40% at 80% 80%,
+                   rgba(99,102,241,0.08) 0%, transparent 60%);
 ```
 
-All animations must respect `prefers-reduced-motion: reduce` — wrap in `@media (prefers-reduced-motion: no-preference)`.
+Tailwind extension — add these utilities so components stay readable:
 
-### 1D. Animated Metric Counters
+```js
+// tailwind.config.ts
+extend: {
+  backdropBlur: { xs: '4px' },
+  boxShadow: {
+    glass: '0 0 0 1px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)',
+    'glow-orange': '0 0 12px rgba(249,115,22,0.35)',
+    'glow-cyan':   '0 0 12px rgba(14,165,233,0.3)',
+  },
+}
+```
 
-On `/benchmarks`, product pages (`/products/[slug]`), and dashboard stats grid: numbers count up from 0 on first viewport entry using `IntersectionObserver`.
+### 1B. Glass Card Pattern (replace all flat white cards)
 
-- Duration: 1200ms, easing: `cubic-bezier(0.25, 1, 0.5, 1)` (fast-in, ease-out)
-- Integers (calls, agents, count): no decimals
-- Latency (ms): round to integer
-- Scores (0–10): one decimal, e.g. `6.0`
-- Use `requestAnimationFrame` loop, no layout shift, no SSR issues (check `typeof window !== 'undefined'`)
-
-### 1E. Benchmark Score Ring (SVG Component)
-
-Replace raw numeric scores in benchmark result rows and product score cards with a circular SVG ring:
-
+**Before:**
 ```tsx
-// ScoreRing.tsx — ~25 lines
-// Props: score (0–10), size (default 48px)
-// stroke: green (#22c55e) ≥8, amber (#f59e0b) 6–7.9, red (#ef4444) <6
-// Animate stroke-dashoffset on mount: 600ms ease-out
-// Score number centered, JetBrains Mono font-medium
+<div className="rounded-xl border border-gray-100 bg-white p-5">
+```
+**After:**
+```tsx
+<div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm
+                shadow-glass transition-all duration-200
+                hover:border-white/[0.13] hover:bg-white/[0.06]">
 ```
 
-**Acceptance criteria:**
-- Lighthouse Performance ≥ 90 on homepage
-- Glass effects render in Safari 17+ (`-webkit-backdrop-filter` fallback present)
-- Zero CLS from animations (use `will-change: transform` on card-lift elements)
-- All motion off when `prefers-reduced-motion: reduce`
+Applies to: stat cards, tool usage panel, strategy selector, strategy comparison table,
+recent calls panel, settings panel, upgrade CTA on router dashboard.
+
+### 1C. Animated Stat Counters (router dashboard stat grid)
+
+- On dashboard load, stat numbers count up 0 → actual value over **600ms**
+- Easing: `cubic-bezier(0.25, 1, 0.5, 1)` via `requestAnimationFrame`
+- Typography: `text-3xl font-bold tabular-nums bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent`
+- Section labels: `text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30`
+
+### 1D. Tool Usage Bars with Stagger + Glow
+
+- Replace flat `bg-orange-400` with `bg-gradient-to-r from-orange-500 to-amber-400`
+- Add `shadow-glow-orange` on the filled portion
+- Stagger-animate bars in on load: `transition-all duration-500` with `delay: index * 60ms`
+
+### 1E. Homepage Hero: Animated Gradient Mesh
+
+Replace current static background with a slow-shifting gradient mesh:
+
+```css
+@keyframes mesh-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.hero-mesh {
+  background: var(--gradient-mesh),
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 200% 200%, 64px 64px, 64px 64px;
+  animation: mesh-shift 20s ease infinite;
+}
+```
+
+Hero `<h1>`: `font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-100 to-gray-400`
+
+### 1F. Micro-interactions
+
+- Strategy pills: active state → `ring-1 ring-orange-500/50 shadow-glow-orange`
+- Recent call rows: `hover:bg-white/[0.04] transition-colors duration-150`
+- Login/register inputs: focus → `border-orange-500/60 shadow-[0_0_0_3px_rgba(249,115,22,0.1)]`
+- All animated elements wrapped in `@media (prefers-reduced-motion: no-preference)` — no motion for those who opt out
+
+**Acceptance:**
+- No plain `bg-white` cards remain on router dashboard or `/connect`
+- Homepage hero has animated mesh background
+- Safari 17+ renders glass (`-webkit-backdrop-filter` fallback)
+- Lighthouse Performance ≥ 90 on homepage (will-change, no CLS)
 
 ---
 
-## Feature 2 — Fix 4 P2 API Contract Bugs
+## Feature 2 — Fix 4 P1 API Contract Bugs (Developer Unblocking)
 
-**Why:** Silent `400` errors with no clear fix path = developer bounce. All four are input/output normalization — no business logic changes. ~45 min total.
+**Why:** These 4 bugs directly cause `400` errors for developers following the docs. They're the
+highest-friction drop-off points between "interested" and "first successful API call". All are
+input/output normalization — no core routing logic changes. Estimated ~45 min total.
 
-### Bug A — `/api/v1/route/crawl` rejects flat body (test: 1.1b)
+### 2A. Crawl endpoint rejects flat body (`P1 #2`, test 1.1b)
 
-**Current:** `{"url": "https://example.com"}` → `400: params object is required`
-**Fix:** Accept both shapes, normalize internally:
+```
+POST /api/v1/route/crawl {"url": "https://example.com"}  →  400: params object required
+```
+
+**Fix** — accept both shapes, normalize internally before routing:
 
 ```ts
-// In crawl route handler
+// src/app/api/v1/route/crawl/route.ts
 const CrawlBody = z.union([
   z.object({ params: z.object({ url: z.string().url() }) }),
-  z.object({ url: z.string().url() })
+  z.object({ url: z.string().url() }),
 ])
 const parsed = CrawlBody.parse(body)
 const url = 'params' in parsed ? parsed.params.url : parsed.url
 ```
 
-Docs: keep `{ params: { url } }` as canonical. Flat shape silently accepted forever (non-breaking).
+Docs keep `{ params: { url } }` as canonical. Flat shape accepted forever (non-breaking).
 
-### Bug B — `/api/v1/router/priority` wrong field name (test: 2.6)
+### 2B. Priority endpoint field name mismatch (`P1 #5`, test 2.6)
 
-**Current:** `{ "search": ["exa-search", "tavily"] }` → `400: Provide tools/priority_tools`
-**Fix:** Normalize at handler entry, before any validation:
+```
+POST /api/v1/router/priority {"search": ["exa-search"]}  →  400: Provide tools/priority_tools
+```
+
+**Fix** — normalize field name before validation:
 
 ```ts
+// src/app/api/v1/router/priority/route.ts
 const tools = body.tools ?? body.priority_tools ?? body.search
 if (!tools?.length) throw new ValidationError('Provide tools or priority_tools')
 ```
 
-### Bug C — Usage endpoint missing account fields (test: 7.1)
+### 2C. classification_ms > total_latency_ms (`P1 #6`, test 6.4)
 
-**Current:** `account` object only returns `{ "plan": "free" }`
-**Fix:** Extend to full shape (data already in DB):
+```
+classification_ms: 501  vs  total_latency_ms: 233   ← impossible
+```
+
+**Fix** — `total_latency_ms` must be wall-clock from request start to response send.
+Classification is a sub-timer. Assert `total ≥ classification` before serializing; log a
+warning if violated (indicates clock skew or wrong measurement point).
+
+### 2D. Account fields sparse in usage response (`P1 #8`, test 7.1)
+
+```
+GET /api/v1/router/usage  →  { "account": { "plan": "free" } }   ← missing fields
+```
+
+**Fix** — extend serializer to return full shape:
 
 ```json
 {
-  "plan": "free",
-  "monthlyLimit": 10000,
-  "callsThisMonth": 247,
-  "strategy": "auto"
+  "account": {
+    "plan": "free",
+    "monthlyLimit": 10000,
+    "callsThisMonth": 247,
+    "strategy": "auto"
+  }
 }
 ```
 
-Source: `callsThisMonth` = count from calls table for current calendar month, `monthlyLimit` from plan config map, `strategy` from user settings row.
+Source: `callsThisMonth` = DB count for current calendar month, `monthlyLimit` from plan config,
+`strategy` from user row.
 
-### Bug D — `custom` strategy not supported for fallback (test: 1.3)
-
-**Current:** `strategy: "custom"` → `400: Invalid strategy "custom"`
-**Fix:** Add `custom` as a valid strategy alias that reads the user's saved `priority_tools` list, falls back to `auto` if none set. Update the strategy enum and routing switch statement.
-
-**Acceptance:** QA tests 1.1b, 2.6, 7.1, 1.3 all pass. Zero regressions on currently-passing tests.
+**Acceptance:** Tests 1.1b, 2.6, 7.1 pass. `total_latency_ms ≥ classification_ms` on all calls.
+QA score moves from 40 → 44+.
 
 ---
 
-## Feature 3 — Interactive API Playground (`/playground`)
+## Feature 3 — Interactive Code Generator Widget on `/connect`
 
-**Why:** The highest-leverage developer adoption feature. Developers who try an API in-browser convert to signups at 3–5× the rate of those who only read docs. Stripe, Exa, and Tavily all have this. AgentPick's routing intelligence is compelling — let developers *see it work* before committing to an integration.
+**Why:** Time-to-first-call is the #1 developer adoption metric. `/connect` currently shows
+static code snippets. Developers copy them, hit errors because the payload doesn't match their
+use case, and bounce. A live configurator eliminates this — 2 clicks from landing to
+copy-pasteable code that *works*.
 
-**Route:** `/playground` — add `Playground` to main nav between `Router` and `Dashboard`.
-
-### Layout (two-column split on desktop, stacked on mobile)
+### Widget Layout (add above existing code block on `/connect`)
 
 ```
-┌─────────────────────────────┬──────────────────────────────┐
-│   Request Builder (60%)     │   Response Panel (40%)       │
-│                             │                              │
-│  [Search] [Crawl] [Embed]   │  [Response] [cURL] [Python]  │
-│  [Finance]                  │  [Node]                      │
-│                             │                              │
-│  Query: ________________    │  { "tool": "exa-search",     │
-│  ________________________   │    "latency": 247,           │
-│                             │    "results": [...] }        │
-│  Strategy: auto fastest     │                              │
-│            cheapest quality │  247ms  ●  exa-search        │
-│                             │                              │
-│  [▶ Run Query]              │  Sign up to use your key →   │
-└─────────────────────────────┴──────────────────────────────┘
+┌─ Build your request ──────────────────────────────────────────────┐
+│  Language:    [Python]  [JavaScript]  [curl]                      │
+│  Capability:  [search ▼]  [crawl]  [finance]  [embed]             │
+│  Strategy:    [auto ▼]  [balanced]  [cheapest]  [best_performance]│
+└───────────────────────────────────────────────────────────────────┘
+     ↓ live preview updates as user clicks — no Run needed ↓
+┌─ Generated code ─────────────────────────────────── [Copy ✓] ─────┐
+│  import agentpick                                                  │
+│  client = agentpick.Client(api_key="YOUR_KEY")                    │
+│  result = client.search(                                           │
+│    query="your query here",                                        │
+│    strategy="auto"                                                 │
+│  )                                                                 │
+│  print(result)                                                     │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-### Request Builder Details
+### Implementation Details
 
-- **Endpoint tabs:** pill row, switching updates the JSON template in the body preview below
-- **Query textarea:** full-width, JetBrains Mono, 3 rows, placeholder: `"Find the latest research on LLM benchmarks"`
-- **Strategy pills:** `auto` (default) | `fastest` | `cheapest` | `best_quality` — single-select, pill style with active state
-- **Run button:** full-width, dark bg, animated spinner (`animate-spin` border) while loading; disabled when query empty
-- **API key toggle:** "Using demo key (10 req/day)" shown as a muted badge. "Use my own key →" expands an inline input.
+- **Pure client-side React state** — zero API calls on configuration change
+- Templates are strings with `{{STRATEGY}}`, `{{CAPABILITY}}`, `{{QUERY}}` placeholders; 60
+  combinations (3 languages × 4 capabilities × 5 strategies) generated at render time, not
+  hardcoded
+- **Code block styling:** matches existing homepage code block — dark bg, JetBrains Mono,
+  syntax highlighting with orange/blue/green tokens, terminal chrome (•••  dots + filename tab)
+- **[Copy] button:** `navigator.clipboard.writeText()` + 1.5s checkmark animation (`✓ Copied`
+  fades in at 200ms, auto-resets)
+- Widget uses glass card design from Feature 1 — consistent with rest of dark `/connect` page
+- Mobile: configurator stacks vertically, code block full-width below
 
-### Response Panel Details
+### Why This Drives Adoption
 
-- **Response tab:** syntax-highlighted JSON (Shiki or Prism), line numbers, fade-in on new result
-  - Top-right badge row: latency chip (`247ms`), tool name chip (`exa-search`)
-  - Empty state: dashed `border-white/20` box, centered text "Run a query to see live routing"
-- **Code tabs (cURL, Python, Node):** snippets auto-update in real-time as user changes query or strategy — no Run click needed. One-click copy button on each.
+- Developer lands on `/connect`, selects their language + capability in 2 clicks, gets
+  production-ready code
+- Replaces the current static Python snippet that only covers `search`
+- No registration wall before seeing value — code works on demo key immediately
+- Directly addresses the 3 most common support questions: "what's the payload shape?",
+  "which strategy should I use?", "how do I call this in Node?"
 
-Node.js snippet (template updates live):
-```js
-const res = await fetch('https://agentpick.dev/api/v1/route/search', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer {{apiKey}}',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({ query: "{{query}}", strategy: "{{strategy}}" })
-})
-const data = await res.json()
-console.log(data.tool, data.latency + 'ms')
-```
-
-### Demo Key Implementation
-
-- New env var: `PLAYGROUND_DEMO_KEY` — a provisioned API key on a special `demo` plan
-- Rate limit: 10 requests/day per IP, tracked in a new `playground_rate_limits` table (`ip TEXT, date DATE, count INT`)
-- Returns **real routing results** — actual tool calls, not mocked data
-- On 11th request: `429 { "error": "Demo limit reached", "cta": "Sign up free to continue" }`
-- "Get your free API key →" CTA pinned at the bottom of the response panel when in demo mode; hides when user has entered own key
-
-**Acceptance criteria:**
-- Page load < 1s (no API call on mount, code snippets render client-side only)
-- All 4 endpoint types (search, crawl, embed, finance) return real responses on demo key
-- Code snippets update live as query/strategy changes (React state → template string)
-- Rate limit fires at request 11, CTA appears
-- Mobile layout: stacks to single column, no horizontal scroll
-- `Playground` appears in main nav (desktop + mobile drawer)
+**Acceptance:**
+- Widget renders on `/connect` below the nav, above existing endpoint docs
+- All 3 languages × 4 capabilities × 5 strategies generate valid, copy-pasteable code
+- Copy button works and shows animated confirmation
+- No API calls on interaction — purely template rendering
+- Mobile layout correct (stacked, no horizontal scroll)
 
 ---
 
-## P3 Stretch (only if F1–F3 ship clean)
+## P1 Issue Triage Summary
 
-- **ai_routing_summary in usage** (QA 6.5): LLM-generated one-sentence routing summary in `GET /api/v1/router/usage?period=7d`
-- **Fix cheapest strategy** (QA 1.4b): audit tool pricing config; `tavily` wins cheapest over `serper`/`brave-search` — likely a cost-per-call value error in the routing table
+| # | Issue | This cycle | Owner |
+|---|-------|-----------|-------|
+| 1 | `serpapi-google` naming | QA script fix, not product | QA |
+| 2 | Crawl flat payload → 400 | **Fix (2A)** | Codex |
+| 3 | `custom` strategy → 400 | Backlog v0.5 | — |
+| 4 | `cheapest` routes to Tavily | Backlog v0.5 (cost table audit) | — |
+| 5 | Priority field name mismatch | **Fix (2B)** | Codex |
+| 6 | classification_ms > total | **Fix (2C)** | Codex |
+| 7 | No `ai_routing_summary` | Backlog v0.5 | — |
+| 8 | Account fields sparse | **Fix (2D)** | Codex |
+| 9 | `jina-embed` naming | QA script fix, not product | QA |
 
 ---
 
-## Ship Checklist
+## Definition of Done
 
 **F1 — UI**
-- [ ] `globals.css` / Tailwind config: aurora blob keyframes, `.card-lift`, glass tokens
-- [ ] Homepage hero: aurora background + gradient h1 typography
-- [ ] `/connect` page: full dark glassmorphic port
-- [ ] Strategy/tool/pricing cards: `.card-lift` micro-interactions
-- [ ] Code blocks: terminal chrome (dots + filename) + copy button
-- [ ] `ScoreRing.tsx` SVG component — replace numeric scores on benchmarks + product pages
-- [ ] Scroll-reveal metric counters (IntersectionObserver) on benchmarks + product pages
+- [ ] No plain `bg-white` cards on router dashboard or `/connect`
+- [ ] Glass tokens in `globals.css` / Tailwind config
+- [ ] Homepage hero has animated gradient mesh
+- [ ] Stat counters animate on dashboard load (0 → value, 600ms)
+- [ ] Tool usage bars use gradient fill + stagger animation
+- [ ] Strategy pills have glow ring on active state
+- [ ] All motion disabled when `prefers-reduced-motion: reduce`
 
 **F2 — Bugs**
-- [ ] Crawl endpoint: accept flat `{url}` shape (Zod union)
-- [ ] Priority endpoint: normalize `tools` / `priority_tools` / `search` field names
-- [ ] Usage endpoint: return all 4 account fields
-- [ ] Add `custom` strategy → reads user's saved priority_tools
+- [ ] `POST /api/v1/route/crawl {"url": "..."}` → 200 (not 400)
+- [ ] `POST /api/v1/router/priority {"search": [...]}` → 200 (not 400)
+- [ ] `total_latency_ms ≥ classification_ms` in all responses
+- [ ] `/api/v1/router/usage` returns `monthlyLimit`, `callsThisMonth`, `strategy`
 
-**F3 — Playground**
-- [ ] `/app/playground/page.tsx` — request builder + response panel layout
-- [ ] Demo key provisioned (`PLAYGROUND_DEMO_KEY` env var), rate limit table migration
-- [ ] Live code snippet generation (cURL, Python, Node) from React state
-- [ ] `Playground` in main nav (desktop + mobile)
-- [ ] "Sign up" CTA in response panel on demo key mode
+**F3 — Code Generator**
+- [ ] Widget live on `/connect` (language × capability × strategy configurator)
+- [ ] All 60 combinations generate valid code (3 × 4 × 5)
+- [ ] Copy button with animated confirmation
+- [ ] Zero API calls on interaction
+- [ ] Mobile layout correct
 
 **QA**
-- [ ] Re-run `agentpick-router-qa.py` — target ≥ 46/51 (90%)
+- [ ] Re-run `agentpick-router-qa.py` — target ≥ 44/51
 - [ ] Lighthouse Performance ≥ 90 on homepage
-- [ ] Safari 17+ glass effects verified manually
