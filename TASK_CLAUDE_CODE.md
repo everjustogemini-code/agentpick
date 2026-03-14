@@ -1,7 +1,7 @@
 # TASK_CLAUDE_CODE.md
 **Agent:** Claude Code
 **Date:** 2026-03-14
-**Source:** NEXT_VERSION.md — AgentPick v0.24 (bugfix/cycle-23, QA Round 10, score 55/57)
+**Source:** NEXT_VERSION.md — Bugfix Cycle 24 (QA Round 11, score 56/57)
 
 ---
 
@@ -10,116 +10,86 @@
 | Action | File |
 |--------|------|
 | MODIFY | `src/lib/router/ai-classify.ts` |
-| MODIFY | `/Users/pwclaw/.openclaw/workspace/agentpick-benchmark/agentpick-router-qa.py` |
 
-**DO NOT TOUCH:** Any frontend files (`src/app/`, `src/components/`, `src/app/globals.css`). Those are owned by TASK_CODEX.
+**DO NOT TOUCH:** `src/lib/router/index.ts` (owned by TASK_CODEX). No frontend files.
 
 ---
 
 ## Bug P1-1 — Deep-research routing misclassification (`6.1-deep-research`)
 
-**Root cause:** Analytical/socioeconomic queries (e.g. `"comprehensive analysis of global chip shortage causes and solutions with supply chain implications"`) are misclassified as `type=news, depth=shallow`, routing to `tavily` instead of `exa-search` or `perplexity` when `strategy: best_performance`. The classifier conflates "news-adjacent topic framing" with "news query type."
+**Symptom:** Query `"state of large language models 2025 comprehensive analysis"` with `best_performance` or `auto` strategy classifies as `type=news, depth=shallow`, routing to `tavily` instead of `exa-search` or `perplexity`.
+
+**Root cause:** `fastClassify` checks `explicitRecencySignal` (catches bare year patterns like `2025`) **before** `researchTerms`. The existing `analyticalKeywords && multifactorDomains` guard requires a narrow domain list (`supply chain`, `geopolit`, `policy`, etc.) that misses broad research framing like "state of [field] comprehensive analysis".
 
 **File:** `src/lib/router/ai-classify.ts`
 
 ---
 
-### Fix 1a — `fastClassify()` function (lines ~40–124) — add analytical framing rule
+### Fix 1a — Broaden the analytical-research guard (lines ~95–102)
 
-Add a pre-classifier rule that fires **before** the LLM call. If the query matches the analytical pattern, immediately return `type=research, depth=deep`:
+Replace the existing guard that requires `multifactorDomains` with a broader rule that fires without requiring a narrow domain list:
 
 ```ts
-// Analytical/policy/socioeconomic framing → always research/deep
-const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
-const multifactorDomains = /\b(supply chain|geopolit|policy|socioeconomic|chip shortage|semiconductor|trade war|regulation|inflation|macro|systemic)\b/i;
+// Broad analytical/research framing — fires before recency check
+const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|comprehensive|state of|overview of|survey of|in-depth|deep dive)\b/i;
+const depthQualitySignals = /\b(state of|overview of|survey of|in-depth|deep dive|comprehensive)\b/i;
 const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
 
-if (analyticalKeywords.test(query) && multifactorDomains.test(query) && !genuineNewsSignals.test(query)) {
+if (analyticalKeywords.test(query) && depthQualitySignals.test(query) && !genuineNewsSignals.test(query)) {
   return { type: 'research', depth: 'deep' };
 }
 ```
 
-Place this block near the top of `fastClassify()`, after existing realtime/news fast-paths but before any LLM call.
+- Remove the requirement for `multifactorDomains` in this guard — broad analytical framing alone is sufficient
+- Place this block **before** any `explicitRecencySignal` / news fast-path so bare years like `2025` don't short-circuit it
 
 ---
 
-### Fix 1b — `classifyQuery()` LLM prompt (lines ~198–227) — improve classifier prompt
+### Fix 1b — Add `"state of"` to `analyticalKeywords` regex
 
-Expand the Haiku prompt to explicitly distinguish analytical framing from news framing. Add to the system/user prompt:
+`"state of"` must be a standalone analytical signal covering:
+- `"state of the art"`
+- `"state of large language models"`
+- `"state of [any field]"`
 
-1. Instruction text (add to existing prompt):
-   > "If the query contains words like 'analysis', 'causes', 'implications', 'impact of', 'effects of', 'why did', combined with multi-domain framing (supply chain, geopolitics, policy, socioeconomics), classify as `type=research, depth=deep` — regardless of the topic domain. Only classify as `type=news` if the query is explicitly seeking recent/breaking news (contains signals like 'today', 'latest', 'what happened', 'breaking')."
-
-2. Add a few-shot example pair to the prompt (append alongside any existing examples):
-   ```
-   Q: "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
-   A: { "type": "research", "depth": "deep" }
-
-   Q: "what happened with chip shortage today"
-   A: { "type": "news", "depth": "shallow" }
-   ```
+Confirm it is included in the updated `analyticalKeywords` regex (see Fix 1a above).
 
 ---
 
-### Fix 1c — `aiRoute()` function (lines ~233–275) — verify only, no change
+### Fix 1c — Verify check ordering
 
-Confirm that `aiRoute()` already correctly selects `exa-search` or `perplexity` when classification is `type=research, depth=deep` with `strategy=best_performance`. If correct, make no changes. Document this in your PR description.
-
----
-
-### Acceptance criteria for Fix 1
-
-- [ ] Query `"comprehensive analysis of global chip shortage causes and solutions with supply chain implications"` + `strategy: best_performance` → `tool_used: exa-search` or `perplexity`, trace shows `type=research, depth=deep`
-- [ ] `6.1-deep-research` QA test passes 5/5 consecutive runs
-- [ ] Realtime queries (`"what's happening with X right now"`) still route to `tavily` with `type=realtime`
-- [ ] Simple/news queries unchanged — no regressions
+Confirm that `researchTerms` (line ~115) fires **before** `newsTerms`/`strongNewsTerms` for the target query. If not, move the research check earlier in `fastClassify`. The existing `researchTerms` already includes `comprehensive` and `analysis` — ensure they are not being short-circuited by the recency/year check.
 
 ---
 
-## Bug P1-2 — QA script test isolation bug (`7.5-auth-missing`)
+### Fix 1d — Add regression example in `CLASSIFY_SYSTEM` prompt (line ~209)
 
-**Root cause:** The QA script's `http()` helper auto-injects `_dev_key` if it is set globally (`if _dev_key and "Authorization" not in h`). Test `7.5-auth-missing` ran while `_dev_key` was still populated from earlier tests, causing the supposedly-unauthenticated request to carry a valid Bearer token and return HTTP 200 instead of 401.
+Add to the few-shot examples block in the Haiku classifier prompt:
 
-**Note:** Auth enforcement in production is correct (manual re-test confirmed HTTP 401). This is a test isolation bug only.
+```
+Q: "state of large language models 2025 comprehensive analysis"
+A: {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 
-**File:** `/Users/pwclaw/.openclaw/workspace/agentpick-benchmark/agentpick-router-qa.py`
-
----
-
-### Fix 2 — test `7.5-auth-missing` — explicitly clear `_dev_key` before no-auth request
-
-Locate the `7.5-auth-missing` test block (or the equivalent test that asserts HTTP 401 for a missing Authorization header). Wrap the no-auth request with a save/clear/restore pattern:
-
-```python
-# 7.5 — auth-missing: must receive 401 even if _dev_key is set globally
-saved_key = _dev_key
-_dev_key = None  # prevent auto-inject for this test only
-try:
-    r = http("POST", "/api/v1/router/search", {"query": "test"}, auth=False)
-    assert r.status_code == 401, f"Expected 401, got {r.status_code}"
-    log_pass("7.5-auth-missing")
-except AssertionError as e:
-    log_fail("7.5-auth-missing", str(e))
-finally:
-    _dev_key = saved_key  # always restore
+Q: "what's happening with LLMs today"
+A: {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
 ```
 
-Adjust to match the actual structure of the QA script (function names, logging pattern, etc.).
-
 ---
 
-### Acceptance criteria for Fix 2
+### Acceptance criteria
 
-- [ ] Test `7.5-auth-missing` passes (HTTP 401) even when `_dev_key` is populated from earlier test steps
-- [ ] All surrounding QA tests continue to pass (no regression from the save/restore logic)
-- [ ] QA script total passes 51/51 (up from 49/51)
+- [ ] `"state of large language models 2025 comprehensive analysis"` + `strategy: auto` → `type=research, depth=deep`, `tool_used: exa-search` or `perplexity-search`
+- [ ] `6.1-deep-research` passes 5/5 consecutive runs (no Haiku non-determinism)
+- [ ] Existing passing tests (`6.2-realtime`, `6.3-simple`, `6.5-ai-insights`) remain green
+- [ ] Realtime queries (`"what's happening with X right now"`) still route correctly with `type=realtime`
 
 ---
 
 ## Verification Checklist
 
-- [ ] `src/lib/router/ai-classify.ts` — analytical pre-classifier rule added to `fastClassify()`
-- [ ] `src/lib/router/ai-classify.ts` — LLM prompt in `classifyQuery()` updated with analytical/news distinction + few-shot examples
-- [ ] `agentpick-router-qa.py` — test `7.5-auth-missing` uses save/clear/restore for `_dev_key`
+- [ ] `src/lib/router/ai-classify.ts` — analytical guard broadened (no longer requires `multifactorDomains`)
+- [ ] `src/lib/router/ai-classify.ts` — `"state of"` included in `analyticalKeywords`
+- [ ] `src/lib/router/ai-classify.ts` — research check fires before recency/news check
+- [ ] `src/lib/router/ai-classify.ts` — regression example added to `CLASSIFY_SYSTEM` prompt
+- [ ] `src/lib/router/index.ts` NOT touched
 - [ ] No frontend files touched
-- [ ] No files listed in TASK_CODEX.md touched
