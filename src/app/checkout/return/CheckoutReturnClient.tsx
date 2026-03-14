@@ -43,7 +43,7 @@ export default function CheckoutReturnClient() {
           <div className="mb-4 text-4xl">✅</div>
           <h1 className="text-2xl font-bold text-white">You're all set!</h1>
           <p className="mt-3 text-sm text-white/55">
-            Your {plan === 'pro' ? 'Pro' : 'Growth'} plan is now active. The webhook will sync your
+            Your {plan === 'pro' ? 'Pro' : plan === 'growth' ? 'Growth' : 'Scale'} plan is now active. The webhook will sync your
             account within a few seconds.
           </p>
           <div className="mt-6 flex flex-col gap-3">

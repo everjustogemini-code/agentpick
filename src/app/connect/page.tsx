@@ -172,7 +172,7 @@ Also available: /route/crawl, /route/embed, /route/finance`}</pre>
           <div className="mt-3 space-y-3 font-mono text-[13px]">
             <div className="flex items-center justify-between">
               <span className="text-white font-bold">Free</span>
-              <span className="text-white/50">3,000 calls/month</span>
+              <span className="text-white/50">500 calls/month free</span>
               <span className="text-text-dim">$0</span>
             </div>
             <div className="flex items-center justify-between">

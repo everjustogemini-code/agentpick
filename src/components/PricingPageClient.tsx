@@ -121,7 +121,8 @@ export default function PricingPageClient() {
 
       {checkoutState === 'success' && checkoutPlanFromUrl && (
         <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100">
-          Stripe checkout completed for {checkoutPlanFromUrl === 'pro' ? 'Pro' : 'Growth'}.
+          Stripe checkout completed for{' '}
+          {checkoutPlanFromUrl === 'pro' ? 'Pro' : checkoutPlanFromUrl === 'growth' ? 'Growth' : 'Scale'}.
           The webhook should sync your plan in a few seconds.
         </div>
       )}
@@ -248,10 +249,10 @@ export default function PricingPageClient() {
         {checkoutError && <p className="mt-4 text-sm text-red-400">{checkoutError}</p>}
       </section>
 
-      <section className="mt-10 grid gap-5 lg:grid-cols-3">
+      <section className="mt-10 grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
         {PRICING_CARD_PLANS.map((plan) => {
-          const upgradePlan = plan.slug === 'free' ? null : plan.slug;
-          const isPaidPlan = plan.slug === 'pro' || plan.slug === 'growth';
+          const upgradePlan = plan.slug === 'free' ? null : (plan.slug as UpgradePlanSlug);
+          const isPaidPlan = plan.slug === 'pro' || plan.slug === 'growth' || plan.slug === 'scale';
           const exactMatch = account ? account.plan === plan.routerPlan : false;
           const higherPlan =
             account && isPaidPlan ? isPlanAtLeast(account.plan, plan.routerPlan) && !exactMatch : false;
@@ -261,7 +262,7 @@ export default function PricingPageClient() {
             <article
               key={plan.slug}
               className={`flex flex-col rounded-3xl border p-7 backdrop-blur-sm ${
-                plan.slug === 'growth'
+                plan.slug === 'scale'
                   ? 'border-orange-500/30 bg-gradient-to-b from-orange-500/15 to-white/[0.05]'
                   : 'border-white/[0.08] bg-white/[0.04]'
               }`}
@@ -271,9 +272,9 @@ export default function PricingPageClient() {
                   <h3 className="text-2xl font-semibold text-white">{plan.label}</h3>
                   <p className="mt-2 text-sm leading-6 text-white/50">{plan.description}</p>
                 </div>
-                {plan.slug === 'growth' && (
+                {plan.slug === 'scale' && (
                   <span className="rounded-full border border-orange-400/40 bg-orange-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-200">
-                    Most headroom
+                    Best value
                   </span>
                 )}
               </div>
@@ -288,8 +289,13 @@ export default function PricingPageClient() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-white/55">
-                <div>{plan.monthlyCalls.toLocaleString()} routed calls / month</div>
+                <div>{plan.monthlyCalls.toLocaleString()} included calls / month</div>
                 <div className="mt-1">{plan.dailyCalls.toLocaleString()} calls / day</div>
+                {plan.overagePerCall !== null ? (
+                  <div className="mt-1 text-orange-300/80">then ${plan.overagePerCall}/call overage</div>
+                ) : (
+                  <div className="mt-1 text-white/35">hard cap — no overage</div>
+                )}
               </div>
 
               <ul className="mt-6 flex-1 space-y-3 text-sm text-white/70">

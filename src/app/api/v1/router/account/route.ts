@@ -3,6 +3,7 @@ import { authenticateAgent } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   ROUTER_PLAN_MONTHLY_LIMITS,
+  ROUTER_PLAN_OVERAGE_PER_CALL,
   getRouterPlanLabel,
   getRouterPlanSlug,
 } from '@/lib/router/plans';
@@ -18,11 +19,15 @@ export async function GET(request: NextRequest) {
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
     const account = await ensureDeveloperAccount(agent.id);
-    const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? 3000;
+    const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? 500;
+    const overagePerCall = (ROUTER_PLAN_OVERAGE_PER_CALL as Record<string, number | null>)[account.plan] ?? null;
     const billingCycleStart = getBillingPeriodStart(account.billingCycleStart);
     const callsThisMonth = await db.routerCall.count({
       where: { developerId: account.id, createdAt: { gte: billingCycleStart } },
     });
+    const includedCallsUsed = monthlyLimit !== null ? Math.min(callsThisMonth, monthlyLimit) : callsThisMonth;
+    const overageCalls = monthlyLimit !== null ? Math.max(0, callsThisMonth - monthlyLimit) : 0;
+    const overageCostUsd = overagePerCall !== null ? overageCalls * overagePerCall : 0;
 
     return Response.json({
       account: {
@@ -45,7 +50,12 @@ export async function GET(request: NextRequest) {
         usage: {
           monthlyLimit,
           monthlyUsed: callsThisMonth,
-          monthlyRemaining: Math.max(0, monthlyLimit - callsThisMonth),
+          monthlyRemaining: monthlyLimit !== null ? Math.max(0, monthlyLimit - callsThisMonth) : null,
+          includedCallsUsed,
+          overageCalls,
+          overagePerCall,
+          overageCostUsd,
+          hardCapped: overagePerCall === null,
         },
         createdAt: account.createdAt,
       },

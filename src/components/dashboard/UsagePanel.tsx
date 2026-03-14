@@ -14,6 +14,11 @@ interface AccountUsageSummary {
   monthlyLimit: number | null;
   monthlyUsed: number;
   monthlyRemaining: number | null;
+  includedCallsUsed?: number;
+  overageCalls?: number;
+  overagePerCall?: number | null;
+  overageCostUsd?: number;
+  hardCapped?: boolean;
 }
 
 interface AccountResponse {
@@ -58,6 +63,10 @@ interface PanelState {
   callsThisMonth: number;
   monthlyLimit: number | null;
   monthlyRemaining: number | null;
+  overageCalls: number;
+  overagePerCall: number | null;
+  overageCostUsd: number;
+  hardCapped: boolean;
   totalCallsLast30Days: number;
   totalCostLast30Days: number;
   totalToolCostLast30Days: number;
@@ -196,6 +205,10 @@ function createPanelState(accountData: AccountResponse, usageData: UsageResponse
     callsThisMonth,
     monthlyLimit,
     monthlyRemaining,
+    overageCalls: accountData.account.usage?.overageCalls ?? 0,
+    overagePerCall: accountData.account.usage?.overagePerCall ?? null,
+    overageCostUsd: accountData.account.usage?.overageCostUsd ?? 0,
+    hardCapped: accountData.account.usage?.hardCapped ?? false,
     totalCallsLast30Days: usageData.stats.totalCalls,
     totalCostLast30Days: usageData.stats.totalCostUsd,
     totalToolCostLast30Days: usageData.stats.totalToolCostUsd ?? usageData.stats.totalCostUsd,
@@ -529,6 +542,19 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
             <p className="mt-3 text-sm text-slate-300">
               {formatUsageContext(panel.callsThisMonth, panel.monthlyLimit, panel.monthlyRemaining)}
             </p>
+            {panel.hardCapped && panel.monthlyLimit !== null && panel.callsThisMonth >= panel.monthlyLimit && (
+              <p className="mt-2 text-sm font-medium text-amber-400">
+                Hard cap reached — upgrade to continue routing.
+              </p>
+            )}
+            {!panel.hardCapped && panel.overageCalls > 0 && (
+              <div className="mt-2 rounded-xl border border-orange-400/20 bg-orange-400/10 px-3 py-2 text-xs text-orange-200">
+                <span className="font-semibold">{panel.overageCalls.toLocaleString()} overage calls</span>
+                {panel.overagePerCall !== null && (
+                  <span className="ml-1">· ${panel.overageCostUsd.toFixed(4)} at ${panel.overagePerCall}/call</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

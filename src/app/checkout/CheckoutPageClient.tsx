@@ -50,7 +50,7 @@ export default function CheckoutPageClient() {
           AgentPick Billing
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-[-0.04em] text-white">
-          Upgrade to {planParam === 'pro' ? 'Pro' : 'Growth'}
+          Upgrade to {planParam === 'pro' ? 'Pro' : planParam === 'growth' ? 'Growth' : 'Scale'}
         </h1>
         <p className="mt-2 text-sm text-white/45">
           Complete your subscription below. You'll be back to building in minutes.

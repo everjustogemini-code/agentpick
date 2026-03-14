@@ -695,6 +695,7 @@ enum RouterPlan {
   FREE
   STARTER
   PRO
+  SCALE
   ENTERPRISE
 }
 

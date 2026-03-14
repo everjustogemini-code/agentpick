@@ -17,7 +17,7 @@ export const runtime = 'nodejs';
  *
  * Body:
  *   {
- *     plan: "pro" | "growth",
+ *     plan: "pro" | "growth" | "scale",
  *     telegram_chat_id: string,   // e.g. "123456789" or "-100…" for groups
  *     agent_api_key: string       // AgentPick developer API key
  *   }

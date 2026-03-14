@@ -5,7 +5,7 @@
 
 import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
-import { ROUTER_PLAN_DAILY_LIMITS, type RouterPlanCode } from './plans';
+import { ROUTER_PLAN_DAILY_LIMITS, ROUTER_PLAN_MONTHLY_LIMITS, ROUTER_PLAN_OVERAGE_PER_CALL, type RouterPlanCode } from './plans';
 import type { RouterRequest, RouterResponse, Strategy } from './index';
 import { getRankedToolsForCapability } from './index';
 
@@ -91,22 +91,47 @@ export async function ensureDeveloperAccount(agentId: string) {
  * Returns { allowed: boolean, remaining: number, limit: number }.
  */
 export async function checkUsageLimit(developerId: string, plan: RouterPlanValue) {
-  const limit = ROUTER_PLAN_DAILY_LIMITS[plan];
+  const dailyLimit = ROUTER_PLAN_DAILY_LIMITS[plan];
+  const monthlyLimit = ROUTER_PLAN_MONTHLY_LIMITS[plan];
+  const overagePerCall = ROUTER_PLAN_OVERAGE_PER_CALL[plan];
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
 
-  const todayCount = await db.routerCall.count({
-    where: {
-      developerId,
-      createdAt: { gte: todayStart },
-    },
-  });
+  const [todayCount, monthCount] = await Promise.all([
+    db.routerCall.count({
+      where: { developerId, createdAt: { gte: todayStart } },
+    }),
+    db.routerCall.count({
+      where: { developerId, createdAt: { gte: monthStart } },
+    }),
+  ]);
+
+  // Free plan: hard cap at monthly limit
+  if (overagePerCall === null && monthlyLimit !== null && monthCount >= monthlyLimit) {
+    return {
+      allowed: false,
+      remaining: 0,
+      limit: dailyLimit,
+      used: todayCount,
+      monthlyUsed: monthCount,
+      monthlyLimit,
+      isOverage: false,
+      hardCapped: true,
+    };
+  }
 
   return {
-    allowed: todayCount < limit,
-    remaining: Math.max(0, limit - todayCount),
-    limit,
+    allowed: todayCount < dailyLimit,
+    remaining: Math.max(0, dailyLimit - todayCount),
+    limit: dailyLimit,
     used: todayCount,
+    monthlyUsed: monthCount,
+    monthlyLimit,
+    isOverage: monthlyLimit !== null && monthCount >= monthlyLimit,
+    hardCapped: false,
   };
 }
 
@@ -208,6 +233,7 @@ export async function recordRouterCall(
   strategyUsed: RouterStrategyValue,
   byokUsed: boolean,
   fallbackChain: string[],
+  isOverageCall = false,
 ) {
   const meta = response.meta as RouterResponse['meta'] & {
     cost_usd?: number;
@@ -245,6 +271,7 @@ export async function recordRouterCall(
   const currentAccount = await db.developerAccount.findUnique({
     where: { id: developerId },
     select: {
+      plan: true,
       totalCalls: true,
       totalFallbacks: true,
       totalCostUsd: true,
@@ -263,15 +290,22 @@ export async function recordRouterCall(
         : meta.latency_ms;
     const resetMonthlySpend = isNewBillingCycle(currentAccount.billingCycleStart);
 
+    // For overage calls, add the overage charge to monthly spend
+    const toolCost = meta.cost_usd ?? 0;
+    const overageCost = isOverageCall
+      ? (ROUTER_PLAN_OVERAGE_PER_CALL[currentAccount.plan as RouterPlanCode] ?? 0)
+      : 0;
+    const totalCallCost = toolCost + overageCost;
+
     await db.developerAccount.update({
       where: { id: developerId },
       data: {
         totalCalls: { increment: 1 },
         totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
-        totalCostUsd: byokUsed ? undefined : { increment: meta.cost_usd ?? 0 },
+        totalCostUsd: byokUsed ? (overageCost > 0 ? { increment: overageCost } : undefined) : { increment: totalCallCost },
         spentThisMonth: byokUsed
-          ? (resetMonthlySpend ? 0 : currentAccount.spentThisMonth ?? 0)
-          : (resetMonthlySpend ? meta.cost_usd ?? 0 : (currentAccount.spentThisMonth ?? 0) + (meta.cost_usd ?? 0)),
+          ? (resetMonthlySpend ? overageCost : (currentAccount.spentThisMonth ?? 0) + overageCost)
+          : (resetMonthlySpend ? totalCallCost : (currentAccount.spentThisMonth ?? 0) + totalCallCost),
         billingCycleStart: resetMonthlySpend ? new Date() : undefined,
         avgLatencyMs: nextAvgLatency,
       },

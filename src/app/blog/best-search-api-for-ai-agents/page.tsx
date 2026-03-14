@@ -178,7 +178,7 @@ print(result.recommended)  # always the current best`}</pre>
             <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <h3 className="mb-2 font-[650] text-text-primary">Try AgentPick free</h3>
               <p className="mb-3 text-sm text-text-secondary">
-                3,000 calls/month free. No credit card. Routes to the best search API per query automatically.
+                500 calls/month free. No credit card. Routes to the best search API per query automatically.
               </p>
               <Link
                 href="/connect"

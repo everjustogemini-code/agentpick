@@ -227,7 +227,7 @@ export default function DashboardPage() {
               {/* Free plan upgrade one-liner */}
               {showFreeCtas && (
                 <p className="mt-3 text-xs text-slate-500">
-                  Free plan · 3,000 calls/mo{' '}
+                  Free plan · 500 calls/mo{' '}
                   <span className="mx-1 text-slate-300">→</span>
                   <Link
                     href="/checkout?plan=pro"

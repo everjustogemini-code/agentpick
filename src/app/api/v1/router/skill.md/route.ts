@@ -128,12 +128,13 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
 
 ## Plans
 
-| Plan | Daily Limit | BYOK | Features |
-|------|-------------|------|----------|
-| FREE | 100 calls | No | Basic routing + fallback |
-| STARTER | 1,000 calls | Yes | Strategy config |
-| PRO | 10,000 calls | Yes | Priority routing + analytics |
-| ENTERPRISE | Unlimited | Yes | SLA + dedicated support |
+| Plan | Monthly Included | Daily Limit | Overage | BYOK | Features |
+|------|-----------------|-------------|---------|------|----------|
+| FREE | 500 (hard cap) | 100 calls | None | No | Basic routing + fallback |
+| STARTER (Pro) | 5,000 | 1,000 calls | $0.002/call | Yes | Strategy config |
+| PRO (Growth) | 25,000 | 5,000 calls | $0.001/call | Yes | Priority routing + analytics |
+| SCALE | 100,000 | 20,000 calls | $0.0008/call | Yes | High-volume + multi-team |
+| ENTERPRISE | Unlimited | Unlimited | Custom | Yes | SLA + dedicated support |
 
 ## Response Format
 \`\`\`json
@@ -156,7 +157,7 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
 ## Payments
 
 ### Upgrade via Web (Embedded Checkout)
-Navigate the user to: \`https://agentpick.dev/checkout?plan=pro\` or \`?plan=growth\`
+Navigate the user to: \`https://agentpick.dev/checkout?plan=pro\`, \`?plan=growth\`, or \`?plan=scale\`
 The user pays without leaving agentpick.dev using Stripe Embedded Checkout.
 
 ### Upgrade via Telegram (In-Chat Payment)
@@ -177,10 +178,11 @@ Content-Type: application/json
 Telegram will display a payment card in the chat. The user taps "Pay" and completes the Stripe payment inside Telegram. No browser redirect required.
 
 **Plans:**
-| plan | Label | Price |
-|------|-------|-------|
-| \`pro\` | Pro | $29/month |
-| \`growth\` | Growth | $99/month |
+| plan | Label | Price | Included | Overage |
+|------|-------|-------|----------|---------|
+| \`pro\` | Pro | $9/month | 5,000 calls | $0.002/call |
+| \`growth\` | Growth | $29/month | 25,000 calls | $0.001/call |
+| \`scale\` | Scale | $79/month | 100,000 calls | $0.0008/call |
 
 **Response:**
 \`\`\`json

@@ -57,9 +57,10 @@ Tool routing means automatically selecting the best API for each query instead o
 - Blog: /blog/best-search-api-for-ai-agents
 
 ## Plans
-- Free: 3,000 calls/month, no credit card required
-- Pro: $29/month, 10,000 calls, fully managed
-- Growth: $99/month, 100,000 calls + SLA
+- Free: 500 calls/month, hard cap, no credit card required
+- Pro: $9/month, 5,000 calls + $0.002/call overage
+- Growth: $29/month, 25,000 calls + $0.001/call overage
+- Scale: $79/month, 100,000 calls + $0.0008/call overage
 `;
 
   return new Response(content, {

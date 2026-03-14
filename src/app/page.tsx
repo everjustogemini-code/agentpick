@@ -164,7 +164,7 @@ export default async function HomePage() {
           </div>
 
           <p className="mb-8 text-[13px] text-text-tertiary">
-            Free tier — 3,000 routed calls/month, no credit card.
+            Free tier — 500 routed calls/month, no credit card.
           </p>
 
           {/* Data flywheel — explain why the number matters */}

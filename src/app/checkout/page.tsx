@@ -5,7 +5,7 @@ import CheckoutPageClient from './CheckoutPageClient';
 
 export const metadata: Metadata = {
   title: 'Checkout | AgentPick',
-  description: 'Subscribe to AgentPick Pro or Growth — pay without leaving the site.',
+  description: 'Subscribe to AgentPick Pro, Growth, or Scale — pay without leaving the site.',
 };
 
 export default function CheckoutPage() {
