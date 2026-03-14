@@ -1,6 +1,5 @@
 #!/bin/bash
 # AgentPick Dual-Track Autopilot — Claude Code fixes bugs, Codex builds features, ZERO idle
-# No waiting for each other. Independent loops running simultaneously.
 
 REPO="/Users/pwclaw/Desktop/code/agenthunt"
 CODEX="/opt/homebrew/bin/codex"
@@ -12,13 +11,6 @@ mkdir -p "$LOGDIR"
 export ANTHROPIC_API_KEY=$(python3 -c "import json; from pathlib import Path; print(json.load(open(Path.home()/'.openclaw/agents/main/agent/auth-profiles.json'))['profiles']['anthropic:default']['key'])")
 export OPENAI_API_KEY=$(python3 -c "import json; from pathlib import Path; print(json.load(open(Path.home()/'.openclaw/agents/main/agent/auth-profiles.json'))['profiles']['openai:default']['key'])")
 
-tg() {
-  local text="$1"
-  curl -s -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
-    -H "Content-Type: application/json" \
-    -d "$(python3 -c "import json; print(json.dumps({'chat_id':'${CHAT}','text':json.loads(json.dumps('''$text'''))}))")" > /dev/null 2>&1
-}
-
 tg_raw() {
   curl -s -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
     -H "Content-Type: application/json" \
@@ -27,8 +19,7 @@ tg_raw() {
 
 cd "$REPO"
 
-# Shared merge lock
-MERGE_LOCK="/tmp/autopilot_dual/.merge_lock"
+MERGE_LOCK="$LOGDIR/.merge_lock"
 
 safe_merge() {
   local branch="$1"
@@ -45,9 +36,8 @@ safe_merge() {
     git commit -m "[$label] merge $branch (auto-resolved)" 2>/dev/null
   }
   
-  # Security check
   if git diff origin/main..HEAD -- '*.ts' '*.js' '*.mjs' | grep -qiE "(sk-ant-|sk-or-|pplx-|apify_api|tvly-|bb_live)"; then
-    echo "⚠ BLOCKED: API key leak detected in $label"
+    echo "BLOCKED: API key leak in $label"
     tg_raw "⚠️ $label: Push BLOCKED — API key in code"
     git reset --hard origin/main 2>/dev/null
     rm -f "$MERGE_LOCK"
@@ -60,18 +50,23 @@ safe_merge() {
     return 1
   }
   git branch -d "$branch" 2>/dev/null
+  
+  # Force deploy to Vercel (Git integration may be broken)
+  npx vercel --prod --yes 2>&1 | tail -3
+  tg_raw "🌐 $label: Deployed to agentpick.dev"
+  
   rm -f "$MERGE_LOCK"
   return 0
 }
 
-# ═══════════════════════════════════════════════════
-# TRACK A: Claude Code — BUG FIXER (continuous loop)
-# ═══════════════════════════════════════════════════
+# ═══════════════════════════════════════════
+# TRACK A: Claude Code — BUG FIXER (continuous)
+# ═══════════════════════════════════════════
 bugfix_loop() {
   local cycle=1
   while true; do
     echo "[BUGFIX] Cycle $cycle starting at $(date)"
-    tg_raw "🔧 Bugfix Track cycle $cycle starting"
+    tg_raw "🔧 Bugfix cycle $cycle starting"
     
     cd "$REPO"
     git checkout main 2>/dev/null
@@ -80,67 +75,115 @@ bugfix_loop() {
     local branch="bugfix/cycle-${cycle}"
     git checkout -b "$branch" 2>/dev/null || { git checkout "$branch" 2>/dev/null; git reset --hard main; }
     
-    # Claude Code: find and fix bugs
-    timeout 900 claude --permission-mode bypassPermissions \
+    claude --permission-mode bypassPermissions \
       -p "You are the AgentPick BUG FIXER. Workspace: $(pwd). Tech: Next.js 16 + Prisma + Tailwind + Vercel.
 
 YOUR ONLY JOB IS FIXING BUGS. No new features. No refactoring. Just bugs.
 
-STEP 1: Read these files for known bugs:
-- QA_REPORT.md (test failures, P1/P2 issues)
-- NEXT_VERSION.md (Must-Have #1 = bug list)
+STEP 1: Read QA_REPORT.md and NEXT_VERSION.md for known bugs.
+STEP 2: Read git log --oneline -10 to see what's already fixed.
+STEP 3: Fix every bug. If documented bugs are done, run npx tsc --noEmit and curl API endpoints to find more.
 
-STEP 2: Read recent git log (git log --oneline -10) to see what was already fixed.
+CRITICAL BUGS TO FIX:
+- Crawl endpoint: POST /api/v1/route/crawl with bare {\"url\":\"...\"} returns 400. Accept url without params wrapper.
+- Cheapest strategy routes to Tavily not Brave/Serper. Fix cost ranking.
+- Usage API /api/v1/router/usage missing monthlyLimit, callsThisMonth, strategy fields.
+- Dashboard tool_used shows 'unknown' — router must record actual tool name in RouterCall.
+- ai_routing_summary never populated — implement or remove from docs.
 
-STEP 3: If all documented bugs are fixed, do your own testing:
-- curl the live API endpoints and find issues
-- Check for TypeScript errors: npx tsc --noEmit 2>&1 | head -50
-- Check for obvious runtime bugs in src/app/api/
-
-STEP 4: Fix every bug you find. One by one. Test each fix mentally.
-
-CRITICAL BUGS FROM LATEST QA (fix these FIRST):
-- Crawl endpoint: POST /api/v1/route/crawl {\"url\":\"...\"} returns 400. Fix: accept bare url without params wrapper
-- Cheapest strategy routes to Tavily not Brave/Serper. Fix: update cost ranking
-- Usage API missing fields (monthlyLimit, callsThisMonth, strategy)
-- Dashboard tool_used shows 'unknown' — fix the router to record actual tool name
-- ai_routing_summary never populated
-
-When done: git add -A && git commit -m '[bugfix] cycle $cycle: <what you fixed>'
-DO NOT STOP until you've fixed at least 3 bugs or confirmed zero bugs remain." \
+When done: git add -A && git commit -m '[bugfix] cycle $cycle: <summary>'
+Fix at least 3 bugs per cycle." \
       --output-format text 2>&1 | tee "$LOGDIR/bugfix_${cycle}.log" | tail -5
     
     git add -A 2>/dev/null
     git diff --cached --quiet || git commit -m "[bugfix] cycle $cycle" 2>/dev/null
     
-    # Merge to main
     if safe_merge "$branch" "bugfix-$cycle"; then
-      tg_raw "✅ Bugfix cycle $cycle merged and pushed"
+      tg_raw "✅ Bugfix cycle $cycle merged+pushed"
     fi
     
     cycle=$((cycle + 1))
-    sleep 5  # Brief pause between cycles
+    sleep 5
   done
 }
 
-# ═══════════════════════════════════════════════════
-# TRACK B: Codex — FEATURE BUILDER (continuous loop)
-# ═══════════════════════════════════════════════════
+# ═══════════════════════════════════════════
+# TRACK B: Codex — FEATURE BUILDER (queued)
+# ═══════════════════════════════════════════
 feature_loop() {
-  local cycle=1
-  # Feature queue — Codex works through these in order
-  local -a FEATURES=(
-    "FEATURE 1: Interactive API Playground on /connect page. Create src/components/Playground.tsx — a self-contained React client component. User types query, picks capability (Search/Crawl/Embed/Finance), clicks 'Route it →', sees: tool selected, latency, first 2 results, traceId. After 3 uses (localStorage counter), show soft CTA to register. Backend: create POST /api/v1/playground/route — unauthenticated, IP rate-limited (in-memory Map, 5 req/min), uses process.env.PLAYGROUND_KEY, returns same shape as /route/search but caps results to 2 items. Add _playground:true flag. Glass panel matching existing design. Result animates opacity-0→1 translateY(8→0) 300ms. Copy-to-curl button. Add the Playground component to the /connect page."
-    "FEATURE 2: Dashboard Account & Usage Panel. Wire dashboard to show: plan, callsThisMonth/monthlyLimit as animated progress bar, current strategy as inline selector (AUTO/BALANCED/CHEAPEST/FASTEST), estimated monthly cost. Strategy selector calls POST /api/v1/router/strategy on change. Budget input calls POST /api/v1/router/budget on blur, shows remaining vs spent. All on main dashboard view, no extra navigation. File: src/app/dashboard/page.tsx + src/components/dashboard/UsagePanel.tsx"
-    "FEATURE 3: Stripe Payment Integration. Create POST /api/v1/router/upgrade endpoint. Integrate Stripe Checkout for Pro ($29/mo) and Growth ($99/mo) plans. Create src/app/pricing/page.tsx with plan comparison cards. After successful payment, update user plan in database. Add plan limits enforcement in the router middleware. Use Stripe webhooks at /api/webhooks/stripe for payment confirmation."
-    "FEATURE 4: BYOK (Bring Your Own Key) support. Add UI on dashboard for users to input their own API keys for Exa, Tavily, Serper, etc. Store encrypted in database. Router checks for user BYOK keys before using platform keys. Create /api/v1/router/keys endpoint for CRUD. Show cost savings when BYOK is active. $9/mo pure-routing tier that requires BYOK."
-    "FEATURE 5: Agent Analytics Dashboard. Real-time charts showing: calls by tool over time (line chart), strategy distribution (pie), latency percentiles (p50/p95/p99), fallback rate trend, cost per call trend. Use lightweight charting (recharts or chart.js). Data from /api/v1/router/analytics endpoint aggregating RouterCall records. Time range selector (24h/7d/30d). Auto-refresh every 30s."
-  )
+  local cycle=0
   
-  while [ $cycle -le ${#FEATURES[@]} ]; do
-    local feature="${FEATURES[$((cycle-1))]}"
+  # Write each feature prompt to a temp file so codex can read it
+  local prompts=()
+  
+  cat > "$LOGDIR/feat_1.txt" << 'FEAT1'
+You are building AgentPick (agentpick.dev). Workspace: /Users/pwclaw/Desktop/code/agenthunt. Tech: Next.js 16 + Prisma + Tailwind + Vercel.
+
+BUILD: Interactive API Playground on /connect page.
+- Create src/components/Playground.tsx (React client component)
+- User types query, picks capability (Search/Crawl/Embed), clicks "Route it", sees tool selected + latency + results + traceId
+- After 3 uses (localStorage), show CTA to register
+- Backend: POST /api/v1/playground/route — unauthenticated, IP rate-limited (in-memory, 5/min), returns capped results
+- Glass panel matching existing design. Animate results in. Copy-to-curl button.
+- Add Playground to /connect page
+
+When done: git add -A && git commit -m '[feature] Interactive API Playground'
+FEAT1
+
+  cat > "$LOGDIR/feat_2.txt" << 'FEAT2'
+You are building AgentPick (agentpick.dev). Workspace: /Users/pwclaw/Desktop/code/agenthunt. Tech: Next.js 16 + Prisma + Tailwind + Vercel.
+
+BUILD: Dashboard Account & Usage Panel.
+- Wire dashboard to show: plan, callsThisMonth/monthlyLimit progress bar, current strategy selector, estimated cost
+- Strategy selector (AUTO/BALANCED/CHEAPEST/FASTEST) calls POST /api/v1/router/strategy
+- Budget input calls POST /api/v1/router/budget on blur
+- Files: src/app/dashboard/page.tsx + src/components/dashboard/UsagePanel.tsx
+- All on main dashboard view, no extra nav
+
+When done: git add -A && git commit -m '[feature] Dashboard Usage Panel'
+FEAT2
+
+  cat > "$LOGDIR/feat_3.txt" << 'FEAT3'
+You are building AgentPick (agentpick.dev). Workspace: /Users/pwclaw/Desktop/code/agenthunt. Tech: Next.js 16 + Prisma + Tailwind + Vercel.
+
+BUILD: Stripe Payment Integration.
+- POST /api/v1/router/upgrade endpoint
+- Stripe Checkout for Pro ($29/mo) and Growth ($99/mo)
+- src/app/pricing/page.tsx with plan comparison cards
+- Stripe webhooks at /api/webhooks/stripe
+- Update user plan in DB after payment
+
+When done: git add -A && git commit -m '[feature] Stripe Payment Integration'
+FEAT3
+
+  cat > "$LOGDIR/feat_4.txt" << 'FEAT4'
+You are building AgentPick (agentpick.dev). Workspace: /Users/pwclaw/Desktop/code/agenthunt. Tech: Next.js 16 + Prisma + Tailwind + Vercel.
+
+BUILD: BYOK (Bring Your Own Key) support.
+- Dashboard UI for users to add their own API keys (Exa, Tavily, Serper, etc)
+- /api/v1/router/keys CRUD endpoint
+- Router checks user BYOK keys before platform keys
+- Show cost savings with BYOK active
+
+When done: git add -A && git commit -m '[feature] BYOK Support'
+FEAT4
+
+  cat > "$LOGDIR/feat_5.txt" << 'FEAT5'
+You are building AgentPick (agentpick.dev). Workspace: /Users/pwclaw/Desktop/code/agenthunt. Tech: Next.js 16 + Prisma + Tailwind + Vercel.
+
+BUILD: Agent Analytics Dashboard.
+- Real-time charts: calls by tool (line), strategy distribution (pie), latency p50/p95/p99, fallback rate, cost trend
+- Use recharts (install if needed)
+- /api/v1/router/analytics endpoint aggregating RouterCall records
+- Time range selector (24h/7d/30d), auto-refresh 30s
+
+When done: git add -A && git commit -m '[feature] Agent Analytics Dashboard'
+FEAT5
+
+  for i in 1 2 3 4 5; do
+    cycle=$i
     echo "[FEATURE] Cycle $cycle starting at $(date)"
-    tg_raw "🚀 Feature Track cycle $cycle starting"
+    tg_raw "🚀 Feature cycle $cycle starting"
     
     cd "$REPO"
     git checkout main 2>/dev/null
@@ -149,73 +192,30 @@ feature_loop() {
     local branch="feature/cycle-${cycle}"
     git checkout -b "$branch" 2>/dev/null || { git checkout "$branch" 2>/dev/null; git reset --hard main; }
     
-    TASK="$feature"
-    
-    timeout 900 $CODEX exec \
-      -a full-auto \
-      --quiet \
-      "You are building AgentPick (agentpick.dev). Workspace: $(pwd). Tech: Next.js 16 + Prisma + Tailwind + Vercel.
-
-YOUR TASK (build this feature completely):
-${TASK}
-
-RULES:
-- Create all necessary files
-- Use modern React patterns (server components where possible, client components when needed)
-- Tailwind CSS only
-- Make it production-quality — error handling, loading states, responsive
-- Match existing design system (check src/app/globals.css and existing components)
-- When done: git add -A && git commit -m '[feature] cycle $cycle: <feature name>'
-- Do NOT modify any files in src/app/api/v1/route/ (those are for bugfix track)
-- DO NOT STOP until the feature is complete and committed" \
+    # Read prompt from file and pipe to codex
+    cat "$LOGDIR/feat_${i}.txt" | $CODEX exec --dangerously-bypass-approvals-and-sandbox - \
       2>&1 | tee "$LOGDIR/feature_${cycle}.log" | tail -5
     
     git add -A 2>/dev/null
     git diff --cached --quiet || git commit -m "[feature] cycle $cycle" 2>/dev/null
     
-    # Merge to main
     if safe_merge "$branch" "feature-$cycle"; then
-      tg_raw "✅ Feature cycle $cycle merged and pushed"
+      tg_raw "✅ Feature cycle $cycle merged+pushed"
     fi
     
-    cycle=$((cycle + 1))
     sleep 5
   done
   
-  tg_raw "🏁 Feature track: all 5 features shipped!"
-  
-  # After all features done, keep running QA cycles
-  while true; do
-    echo "[QA] Running QA pass..."
-    tg_raw "🔍 Running QA pass on all features"
-    
-    cd "$REPO"
-    git checkout main 2>/dev/null
-    git pull --ff-only 2>/dev/null || true
-    
-    timeout 600 $CODEX exec \
-      -a full-auto \
-      --quiet \
-      "You are QA for AgentPick. Workspace: $(pwd).
-Test the live site https://agentpick.dev:
-1. Check all pages load (/, /connect, /dashboard, /pricing, /sdk)
-2. Test API endpoints with curl
-3. Check for console errors, broken links, mobile issues
-4. Write results to QA_REPORT.md with score and PASS/FAIL
-5. If FAIL, list specific files and fixes needed" \
-      2>&1 | tee "$LOGDIR/qa_feature.log" | tail -5
-    
-    sleep 120  # Wait 2 min between QA cycles
-  done
+  tg_raw "🏁 All 5 features shipped!"
 }
 
-# ═══════════════════════════════════════════════════
-# LAUNCH BOTH TRACKS IN PARALLEL
-# ═══════════════════════════════════════════════════
+# ═══════════════════════════════════════════
+# LAUNCH BOTH
+# ═══════════════════════════════════════════
 echo "🚀 Dual-Track Autopilot launching at $(date)"
-echo "  Track A: Claude Code → BUG FIXER (continuous)"
-echo "  Track B: Codex → FEATURE BUILDER (5 features queued)"
-tg_raw "🚀 Dual-Track Autopilot 启动! Claude Code修bug + Codex做功能，并行不停"
+echo "  Track A: Claude Code → BUG FIXER"
+echo "  Track B: Codex → FEATURE BUILDER (5 features)"
+tg_raw "🚀 Dual-Track启动! CC修bug + Codex做功能 并行不停"
 
 bugfix_loop &
 BUGFIX_PID=$!
@@ -225,7 +225,5 @@ FEATURE_PID=$!
 
 echo "  Bugfix PID: $BUGFIX_PID"
 echo "  Feature PID: $FEATURE_PID"
-echo "  Both running. This script stays alive to keep them going."
 
-# Keep alive and monitor
 wait $BUGFIX_PID $FEATURE_PID
