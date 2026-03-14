@@ -209,7 +209,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       message,
       data: null,
       meta: {
-        tool_used: null,
+        tool_used: body?.tool ?? `${capability}-unavailable`,
         latency_ms: 0,
         fallback_used: false,
         trace_id: `trace_fail_${Date.now()}`,

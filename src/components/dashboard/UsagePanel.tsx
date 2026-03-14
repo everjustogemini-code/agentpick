@@ -39,6 +39,10 @@ interface UsageResponse {
   stats: {
     totalCalls: number;
     totalCostUsd: number;
+    totalToolCostUsd: number;
+    byokSavingsUsd: number;
+    byokCalls: number;
+    byokCoverageRate: number;
     successRate: number;
     avgLatencyMs: number;
   };
@@ -56,6 +60,10 @@ interface PanelState {
   monthlyRemaining: number | null;
   totalCallsLast30Days: number;
   totalCostLast30Days: number;
+  totalToolCostLast30Days: number;
+  byokSavingsLast30Days: number;
+  byokCallsLast30Days: number;
+  byokCoverageRate: number;
   successRate: number;
   avgLatencyMs: number;
 }
@@ -190,6 +198,10 @@ function createPanelState(accountData: AccountResponse, usageData: UsageResponse
     monthlyRemaining,
     totalCallsLast30Days: usageData.stats.totalCalls,
     totalCostLast30Days: usageData.stats.totalCostUsd,
+    totalToolCostLast30Days: usageData.stats.totalToolCostUsd ?? usageData.stats.totalCostUsd,
+    byokSavingsLast30Days: usageData.stats.byokSavingsUsd ?? 0,
+    byokCallsLast30Days: usageData.stats.byokCalls ?? 0,
+    byokCoverageRate: usageData.stats.byokCoverageRate ?? 0,
     successRate: usageData.stats.successRate,
     avgLatencyMs: usageData.stats.avgLatencyMs,
   };
@@ -432,6 +444,8 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
       : panel.monthlyLimit !== null && usagePercent >= 75
         ? 'bg-[linear-gradient(90deg,_#f59e0b_0%,_#fb7185_100%)]'
         : 'bg-[linear-gradient(90deg,_#22d3ee_0%,_#818cf8_45%,_#f472b6_100%)]';
+  const hasByokSavings = panel.byokSavingsLast30Days > 0;
+  const byokCoveragePercent = (panel.byokCoverageRate * 100).toFixed(1);
 
   return (
     <section className="rounded-[32px] border border-white/70 bg-white/88 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
@@ -520,15 +534,21 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
 
         <div className="rounded-[28px] border border-slate-200 bg-slate-50/90 p-6">
           <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Estimated router spend
+            Estimated platform spend
           </p>
           <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">
             {formatCurrency(projectedCost)}
           </p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Projected platform-managed spend from {formatCurrency(panel.spentThisMonth)} routed so
+            Projected platform-billed spend from {formatCurrency(panel.spentThisMonth)} billed so
             far this month.
           </p>
+          {hasByokSavings ? (
+            <p className="mt-3 text-sm leading-6 text-emerald-700">
+              BYOK shifted {formatCurrency(panel.byokSavingsLast30Days)} of the last 30 days of
+              tool spend onto your own vendor accounts.
+            </p>
+          ) : null}
           <p className="mt-3 text-sm text-slate-500">
             {panel.monthlyBudgetUsd === null
               ? 'No budget cap is set.'
@@ -628,7 +648,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-slate-500">
               Last 30d calls
@@ -639,10 +659,28 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-slate-500">
-              Last 30d cost
+              Last 30d platform cost
             </p>
             <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
               {formatCurrency(panel.totalCostLast30Days)}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              {hasByokSavings
+                ? `Total tool spend ${formatCurrency(panel.totalToolCostLast30Days)} including BYOK.`
+                : 'No BYOK-adjusted savings recorded in this window.'}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-emerald-700">
+              30d BYOK savings
+            </p>
+            <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+              {formatCurrency(panel.byokSavingsLast30Days)}
+            </p>
+            <p className="mt-2 text-sm text-emerald-800">
+              {panel.byokCallsLast30Days > 0
+                ? `${panel.byokCallsLast30Days.toLocaleString()} calls via saved keys • ${byokCoveragePercent}% coverage`
+                : 'Save provider keys to shift tool spend onto your own vendor accounts.'}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
