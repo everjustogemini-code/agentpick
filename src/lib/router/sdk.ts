@@ -69,6 +69,7 @@ export async function ensureDeveloperAccount(agentId: string) {
     account = await db.developerAccount.create({
       data: {
         agentId,
+        strategy: 'AUTO',
         priorityTools: [],
         excludedTools: [],
       },
@@ -412,8 +413,8 @@ export async function getUsageStats(developerId: string, days = 7) {
     };
   }
 
-  // AI classification summary (for AUTO strategy calls)
-  const aiCalls = calls.filter((call: { aiClassification: unknown; strategyUsed: string | null }) => call.strategyUsed === 'AUTO');
+  // AI classification summary (for all calls that went through AI classification)
+  const aiCalls = calls.filter((call: { aiClassification: unknown; strategyUsed: string | null }) => call.aiClassification !== null);
   const aiRouting = {
     totalAiRoutedCalls: aiCalls.length,
     byType: {} as Record<string, number>,

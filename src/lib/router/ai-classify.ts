@@ -214,8 +214,8 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
     return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
   }
 
-  // Default balanced (covers simple queries too — AUTO should be >= BALANCED quality)
-  return filterAvailable(['tavily', 'exa-search', 'serpapi-google', 'serpapi'], capability);
+  // Default: for simple queries, prefer cheap/fast tools (quality >= 3.0 is sufficient)
+  return filterAvailable(['brave-search', 'serper', 'serpapi', 'serpapi-google', 'tavily', 'exa-search'], capability);
 }
 
 /**

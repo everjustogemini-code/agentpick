@@ -123,7 +123,7 @@ describe('P1-4: Deep research AI classification', () => {
     const ctx: QueryContext = { type: 'research', domain: 'tech', depth: 'deep', freshness: 'any' };
     const tools = aiRoute(ctx, 'search');
     expect(tools[0]).toBe('exa-search');
-    expect(tools.length).toBe(9); // All search tools as fallbacks
+    expect(tools.length).toBe(10); // All search tools as fallbacks
   });
 
   it('does NOT classify research queries as simple', () => {
@@ -351,14 +351,17 @@ describe('P2-9: Boundary validation', () => {
 // ── P2-10: Doc/endpoint consistency ──
 
 describe('P2-10: Capability list consistency', () => {
-  it('only search, crawl, embed, finance are valid capabilities', () => {
+  it('search, crawl, embed, finance, code, communication, translation, ocr are valid capabilities', () => {
     const capabilities = Object.keys(CAPABILITY_TOOLS);
     expect(capabilities).toContain('search');
     expect(capabilities).toContain('crawl');
     expect(capabilities).toContain('embed');
     expect(capabilities).toContain('finance');
+    expect(capabilities).toContain('code');
+    expect(capabilities).toContain('communication');
+    expect(capabilities).toContain('translation');
+    expect(capabilities).toContain('ocr');
     expect(capabilities).not.toContain('email');
     expect(capabilities).not.toContain('ai');
-    expect(capabilities).not.toContain('code');
   });
 });
