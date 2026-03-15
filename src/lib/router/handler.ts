@@ -234,10 +234,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       MOST_ACCURATE: 'best_performance',
       FASTEST: 'most_stable',
       BALANCED: 'balanced',
-      // MANUAL: use balanced routing on the /route/* surface (no applyStrategy here).
-      // Without this entry, MANUAL accounts get 'balanced' routing but 'MANUAL' recorded —
-      // a strategy recording mismatch in analytics.
-      MANUAL: 'balanced',
+      // MANUAL is intentionally omitted: body.strategy is left undefined so routeRequest
+      // defaults to 'balanced' routing while the recording logic reads the account's stored
+      // 'MANUAL' strategy — matching what sdk-handler.ts records for /router/* calls.
     };
     const coreStrat = ACCOUNT_STRAT_TO_CORE[accountStrat];
     if (coreStrat) {

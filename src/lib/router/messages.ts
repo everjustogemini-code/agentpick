@@ -57,7 +57,9 @@ export function getRouterMessage(ctx: MessageContext): string | null {
   // Free plan usage warnings
   if (ctx.plan === 'FREE' && ctx.monthlyLimit !== null && ctx.monthlyLimit > 0) {
     const pct = ctx.monthlyUsed / ctx.monthlyLimit;
-    const callsLeft = ctx.monthlyLimit - ctx.monthlyUsed;
+    // Subtract 1 to account for the current call (monthlyUsed is pre-call count),
+    // keeping this consistent with calls_remaining in the response meta.
+    const callsLeft = Math.max(0, ctx.monthlyLimit - ctx.monthlyUsed - 1);
 
     if (pct >= 0.9) {
       return (
