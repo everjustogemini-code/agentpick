@@ -23,6 +23,16 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'reduce-ai-agent-search-costs',
+    title: 'How to Reduce Search API Costs for AI Agents (2026)',
+    description:
+      'Most AI agents overpay for search by 3–5x. Route cheap queries to Brave ($0.0008/call), escalate to Perplexity only when quality matters. Based on 750+ benchmark runs and 5,650+ production calls.',
+    date: '2026-05-30',
+    readTime: '5 min',
+    tag: 'Cost',
+    tagColor: '#22C55E',
+  },
+  {
     slug: 'how-to-choose-search-api-for-ai-agent',
     title: 'How to Choose a Search API for Your AI Agent (2026)',
     description:

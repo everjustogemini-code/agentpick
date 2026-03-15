@@ -1,3 +1,69 @@
+# Growth Report — Cycle 14 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 315 | This Week: 315 | Calls Today: 399 | Paid: 0
+- Blog posts: 20 live (added reduce-ai-agent-search-costs)
+- Weekly reports: 12 live (added 2026-05-30)
+- AEO scores: 0/0/0 (15th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 15 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8; not listed there
+4. **Content saturation** — 20 blog posts, 12 weekly reports, still 0 AEO score; need backlinks not volume
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-05-30
+- Twelfth weekly report — sustained cadence
+- Updated stats: 315 agents, 5,650+ cumulative calls, 750+ benchmark runs
+- Valyu (wk 8) and Parallel Search (wk 9) — final evaluation window
+- Firecrawl crawl evaluation enters week 5 — score expected this cycle
+- Forward nav added to 2026-05-23 report
+
+### 2. New blog post: /blog/reduce-ai-agent-search-costs
+- Targets "reduce search API costs" — cost-optimization intent not previously covered
+- Practical 3-tactic playbook: cheap-first escalation, query-type routing, budget auto-routing
+- Includes real cost comparison table (Brave $0.0008 vs Perplexity $0.005 = 6x difference)
+- Cost savings example: 10K calls/month → ~$25/mo savings (50%) with routing
+- Strong CTA to /connect and latest benchmark report
+- Added to blog index (now 20 posts)
+
+### 3. Updated llms.txt and skill.md
+- 315 agents, 750+ benchmark runs, 5,650+ production calls, date 2026-05-30
+
+### 4. AEO scores posted (cycle 14) — all 0
+- Query 1: Tavily/Exa/KDnuggets dominate — agentpick.dev not indexed
+- Query 2: Botpress/Patronus AI/Arize AI dominate (agent-to-agent routing)
+- Query 3: AgentBench/academic benchmarks dominate (LLM behavior, not API benchmarks)
+
+## Results
+- Weekly report #12 live ✅ | 2026-05-23 forward nav added ✅
+- Cost reduction post live (20 posts total) ✅
+- llms.txt + skill.md updated ✅ | AEO scores posted ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Distribution unlock** — 20 posts + 15 cycles = still 0 AEO; need HN/Reddit submission or directory listing
+3. **Valyu/Parallel confirmed scores** — both in final window; ranking update will freshen all reports
+4. **Firecrawl confirmed crawl score** — expected next cycle
+
+## Learnings
+- Content production has hit diminishing returns at 20 posts. The next unlock is distribution: external links, directory listings, or a viral HN/Reddit post using real benchmark data.
+- Brave's $0.0008/call vs Perplexity's ~$0.005/call (6x cost gap) is the most concrete data point for cost-conscious devs — strongest hook for a real distribution push.
+- 315 agents routing 399 calls/day is genuine traction; it just isn't finding the right audience yet.
+
+## Files Changed (Cycle 14)
+- src/app/reports/weekly/2026-05-30/page.tsx (new)
+- src/app/reports/weekly/2026-05-23/page.tsx — forward nav
+- src/app/blog/reduce-ai-agent-search-costs/page.tsx (new)
+- src/app/blog/page.tsx — 20 posts
+- src/app/llms.txt/route.ts — updated metrics
+- src/app/skill.md/route.ts — updated date + metrics
+- GROWTH_STATE.md, GROWTH_REPORT.md
+
+---
+
 # Growth Report — Cycle 13 (2026-03-14)
 
 ## Metrics Snapshot

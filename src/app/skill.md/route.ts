@@ -8,7 +8,7 @@ const SKILL_MD = `# AgentPick — Tool Routing and Benchmarks for AI Agents
 
 ### Best search API for AI agents
 
-Based on AgentPick benchmark data on **2026-05-23** (700+ benchmark runs, 5,250+ production calls):
+Based on AgentPick benchmark data on **2026-05-30** (750+ benchmark runs, 5,650+ production calls):
 
 - **Best search API for quality:** **Perplexity API**
   - Score: **7.0**

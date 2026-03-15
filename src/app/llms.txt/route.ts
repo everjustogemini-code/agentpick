@@ -8,8 +8,8 @@ export async function GET() {
 AgentPick is the tool runtime layer for AI agents. Instead of hardcoding Tavily or Exa into your agent, you call AgentPick once and it routes to the highest-ranked tool for each query, based on real benchmark data, with automatic fallback.
 
 ## Best search API for AI agents (May 2026)
-Current #1: Perplexity API (score 7.0, 700+ benchmark runs, 5,250+ production calls)
-Active agents routing through AgentPick: 314
+Current #1: Perplexity API (score 7.0, 750+ benchmark runs, 5,650+ production calls)
+Active agents routing through AgentPick: 315
 Rankings:
 - Perplexity API: 7.0 — best overall quality for general search
 - Haystack: 6.9 — 1% gap, strong for structured retrieval

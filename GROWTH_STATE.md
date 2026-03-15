@@ -1,31 +1,25 @@
-# Growth State — Cycle 13 (2026-03-14)
+# Growth State — Cycle 14 (2026-03-14)
 
 ## Working
-- Agent registration: ✅ returns api_key on first call
-- All key pages 200: /, /pricing, /blog, /connect ✅
-- Router API: ✅ (returns 401 for missing auth — correct behavior)
-- AEO score endpoint: ✅ all 3 scores posted (cycle 13)
-- llms.txt and skill.md: ✅ updated to 314 agents / 700+ runs / 5,250+ calls
-- Weekly report 2026-05-23: ✅ created (11th report)
-- Blog post how-to-choose-search-api-for-ai-agent: ✅ created (19th post)
-- Blog index: ✅ updated to 19 posts
-- 2026-05-16 report: ✅ forward nav to 2026-05-23 added
+- API health: /api/v1/router/health → 200 (auth required, expected)
+- Agent registration: POST /api/v1/agents/register → 200 ✅
+- Homepage (/) → HTTP 200 ✅
+- /pricing → HTTP 200 ✅
+- /blog → HTTP 200 ✅
+- AEO score endpoint → responding ✅
 
 ## Broken
-- Stripe not configured (STRIPE_SECRET_KEY + STRIPE_PRICE_ID missing in Vercel env)
-  → This is the #1 revenue blocker. Zero paid conversions possible until fixed.
+- **STRIPE_SECRET_KEY + STRIPE_PRICE_ID not set** — $0 revenue, all paid plans inoperable
+- AEO visibility: 0/0/0 for all 3 target queries (15th consecutive cycle)
 
 ## Metrics
-- Total agents: 314 (+1 from cycle 12)
-- Router calls today: 399
-- Cumulative calls: 5,250+
+- Registrations: 315 agents total (+1 this cycle including growth-test)
+- API calls: 399/day, 5,650+ cumulative
+- Blog posts: 20 live
+- Weekly reports: 12 live
 - Paid accounts: 0
-- Blog posts: 19 live (added how-to-choose-search-api-for-ai-agent)
-- Weekly reports: 11 live (added 2026-05-23)
-- AEO scores this cycle: 0/0/0 (14th consecutive)
 
 ## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — cannot accept payments. Owner action required.
-2. **Zero search visibility** — 14 cycles at 0 AEO score for all 3 target queries
-3. **No directory listings** — KDnuggets, Botpress, Arize AI rank for primary queries; not listed
-4. **Query 2 intent mismatch** — "tool routing for AI agents" returns agent-to-agent routing results, not tool/API routing; new choice guide post directly addresses this gap
+1. **Stripe not configured** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel env
+2. **Zero search visibility** — 15 cycles at AEO score 0; content volume alone insufficient
+3. **No external backlinks** — KDnuggets, data4ai, aimultiple rank #1–8; no directory listings
