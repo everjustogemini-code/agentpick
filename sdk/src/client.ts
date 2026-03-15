@@ -108,11 +108,11 @@ export class AgentPickClient {
     });
   }
 
-  /** Configure cost budget limits. */
+  /** Configure monthly cost budget limit. */
   async setBudget(budget: BudgetConfig): Promise<void> {
     await this.request('/api/v1/router/budget', {
       method: 'POST',
-      body: JSON.stringify(budget),
+      body: JSON.stringify({ monthly_budget_usd: budget.monthly_budget_usd }),
     });
   }
 
