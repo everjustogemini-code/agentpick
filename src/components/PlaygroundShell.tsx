@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 type Endpoint = 'search' | 'crawl' | 'embed' | 'finance'
-type Strategy = 'auto' | 'fastest' | 'cheapest' | 'best_performance'
+type Strategy = 'auto' | 'balanced' | 'fastest' | 'cheapest' | 'best_performance'
 
 export default function PlaygroundShell() {
   const [endpoint, setEndpoint] = useState<Endpoint>('search')
@@ -116,6 +116,7 @@ console.log(data.meta.tool_used, data.meta.latency_ms + 'ms')`
 
   const strategyOptions: { value: Strategy; label: string }[] = [
     { value: 'auto', label: 'Auto' },
+    { value: 'balanced', label: 'Balanced' },
     { value: 'fastest', label: 'Fastest' },
     { value: 'cheapest', label: 'Cheapest' },
     { value: 'best_performance', label: 'Best Quality' },

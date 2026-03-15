@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         tool_used: c.toolUsed,
         latency_ms: c.latencyMs,
         classify_ms: null,
-        tool_ms: null,
+        tool_ms: c.latencyMs,
         cost_usd: c.costUsd,
         success: c.success,
         ai_routing_summary,
