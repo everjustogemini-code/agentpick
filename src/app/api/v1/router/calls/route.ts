@@ -22,7 +22,14 @@ export async function GET(request: NextRequest) {
     try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
-    const account = await ensureDeveloperAccount(agent.id);
+    let account: Awaited<ReturnType<typeof ensureDeveloperAccount>>;
+    try {
+      account = await ensureDeveloperAccount(agent.id);
+    } catch (ensureErr) {
+      const reqId2 = request.headers.get('x-request-id') ?? 'unknown';
+      console.error(`[${reqId2}] calls: ensureDeveloperAccount failed:`, ensureErr);
+      return apiError('INTERNAL_ERROR', 'Account lookup failed.', 500);
+    }
     const url = new URL(request.url);
 
     const isExport = url.searchParams.get('export') === 'true';
@@ -82,7 +89,9 @@ export async function GET(request: NextRequest) {
     const where: Prisma.RouterCallWhereInput = andFilters.length === 1 ? andFilters[0] : { AND: andFilters };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const calls: any[] = await (prisma as any).routerCall.findMany({
+    let calls: any[];
+    try {
+      calls = await (prisma as any).routerCall.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -108,7 +117,12 @@ export async function GET(request: NextRequest) {
         responsePreview: true,
         createdAt: true,
       },
-    });
+      });
+    } catch (queryErr) {
+      const reqId2 = request.headers.get('x-request-id') ?? 'unknown';
+      console.error(`[${reqId2}] calls: findMany failed:`, queryErr instanceof Error ? queryErr.message : queryErr);
+      return apiError('INTERNAL_ERROR', 'Query failed.', 500);
+    }
 
     // Normalize to include all 9 drawer fields
     const normalizedCalls = calls.map(call => ({
