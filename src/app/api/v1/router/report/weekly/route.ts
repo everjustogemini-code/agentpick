@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     );
   }
   if (usage.avgLatencyMs > 1000 && account.strategy !== 'FASTEST') {
-    recommendations.push('Average latency is over 1s. Try "FASTEST" strategy, which picks the most stable and low-latency tool.');
+    recommendations.push('Average latency is over 1s. Try "most_stable" strategy, which picks the most stable and low-latency tool.');
   }
   if (recommendations.length === 0) {
     recommendations.push('Everything looks healthy. No changes recommended.');
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const summary = [
     `Weekly Router Report (${usage.period.since.slice(0, 10)} to ${new Date().toISOString().slice(0, 10)})`,
     `${usage.totalCalls} calls | $${usage.totalCostUsd} spent | ${usage.totalCalls > 0 ? Math.round(usage.successRate * 100) + '% success' : 'no data'} | ${usage.avgLatencyMs}ms avg`,
-    topTool ? `Top tool: ${topTool[0]} (${(topTool[1] as any).calls} calls)` : 'No calls this week.',
+    topTool ? `Top tool: ${topTool[0]} (${(topTool[1] as any).calls} calls)` : (usage.totalCalls > 0 ? 'Top tool: no tool data recorded.' : 'No calls this week.'),
     `Fallbacks triggered: ${fallbacks.totalFallbacks}`,
     `Strategy: ${account.strategy} | Plan: ${account.plan}`,
   ].join('\n');
