@@ -50,7 +50,7 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: value >= 100 ? 0 : 2,
+    maximumFractionDigits: value >= 100 ? 0 : 4,
   }).format(value);
 }
 

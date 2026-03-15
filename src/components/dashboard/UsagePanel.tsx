@@ -148,7 +148,7 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: value >= 100 ? 0 : 2,
+    maximumFractionDigits: value >= 100 ? 0 : 4,
   }).format(value);
 }
 
@@ -357,14 +357,14 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
     const currentValue = panel.monthlyBudgetUsd === null ? '' : String(panel.monthlyBudgetUsd);
 
     if (trimmed === currentValue) return;
-    if (trimmed === '') {
-      setBudgetInput(currentValue);
+    // Empty input when no budget is already set: just show a hint.
+    if (trimmed === '' && panel.monthlyBudgetUsd === null) {
       setBudgetMessage('Add a value to set a monthly budget cap.');
       return;
     }
 
-    const nextBudget = Number(trimmed);
-    if (!Number.isFinite(nextBudget) || nextBudget < 0) {
+    const nextBudget = trimmed === '' ? null : Number(trimmed);
+    if (nextBudget !== null && (!Number.isFinite(nextBudget) || nextBudget < 0)) {
       setBudgetInput(currentValue);
       setBudgetMessage('Budget must be a non-negative USD amount.');
       return;
@@ -400,7 +400,7 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
           : current,
       );
       setBudgetInput(formatBudgetInput(nextBudget));
-      setBudgetMessage('Monthly budget updated.');
+      setBudgetMessage(nextBudget === null ? 'Monthly budget cap removed.' : 'Monthly budget updated.');
       await syncPanel();
     } catch (budgetError) {
       setBudgetInput(currentValue);
