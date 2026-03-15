@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
   const summary = [
     `Weekly Router Report (${usage.period.since.slice(0, 10)} to ${new Date().toISOString().slice(0, 10)})`,
-    `${usage.totalCalls} calls | $${usage.totalCostUsd} spent | ${usage.totalCalls > 0 ? Math.round(usage.successRate * 100) + '% success' : 'no data'} | ${usage.avgLatencyMs}ms avg`,
+    `${usage.totalCalls} calls | $${usage.totalCostUsd.toFixed(4)} spent | ${usage.totalCalls > 0 ? Math.round(usage.successRate * 100) + '% success' : 'no data'} | ${usage.avgLatencyMs}ms avg`,
     topTool ? `Top tool: ${topTool[0]} (${(topTool[1] as any).calls} calls)` : (usage.totalCalls > 0 ? 'Top tool: no tool data recorded.' : 'No calls this week.'),
     `Fallbacks triggered: ${fallbacks.totalFallbacks}`,
     `Strategy: ${strategyLabel} | Plan: ${account.plan}`,
