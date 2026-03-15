@@ -101,6 +101,8 @@ export async function GET(request: NextRequest) {
           statusCode: true,
           traceId: true,
           aiClassification: true,
+          totalMs: true,
+          responsePreview: true,
           createdAt: true,
         },
       }),
@@ -125,6 +127,7 @@ export async function GET(request: NextRequest) {
       } else {
         fallback_chain = c.fallbackChain ?? [];
       }
+      const classify_ms = ai && typeof ai.classification_ms === 'number' ? ai.classification_ms : null;
       return {
         id: c.id,
         query: c.query,
@@ -133,13 +136,17 @@ export async function GET(request: NextRequest) {
         tool_requested: c.toolRequested ?? null,
         tool_used: c.toolUsed,
         latency_ms: c.latencyMs,
-        classify_ms: ai && typeof ai.classification_ms === 'number' ? ai.classification_ms : null,
+        classify_ms,
         tool_ms: c.latencyMs,
+        total_ms: c.totalMs ?? null,
         cost_usd: c.costUsd,
         success: c.success,
+        byok_used: c.byokUsed,
+        fallback_used: c.fallbackUsed,
+        fallback_from: c.fallbackFrom ?? null,
         ai_routing_summary,
         fallback_chain,
-        result_preview: null,
+        result_preview: c.responsePreview ?? null,
         trace_id: c.traceId ?? null,
         created_at: c.createdAt.toISOString(),
       };
