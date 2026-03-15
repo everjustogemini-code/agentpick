@@ -8,7 +8,7 @@
 import { prisma } from '@/lib/prisma';
 import { callToolAPI } from '@/lib/benchmark/adapters/index';
 import type { ToolCallResult } from '@/lib/benchmark/adapters/types';
-import { getClassification, aiRoute, type QueryContext } from './ai-classify';
+import { getClassification, aiRoute, fastClassify, type QueryContext } from './ai-classify';
 import {
   getByokEnvVarForService,
   resolveStoredByokKeyForSlug,
@@ -405,6 +405,18 @@ export async function routeRequest(
     aiClassificationResult = classification.context;
     classificationMs = classification.classificationMs;
     aiRankedTools = aiRoute(classification.context, capability);
+  } else if (strategy === 'best_performance') {
+    // Run only the fast (regex) classifier — zero added latency, no Haiku call.
+    // For deep-research queries (e.g. "state of LLMs 2025 comprehensive analysis"),
+    // this ensures the response includes ai_classification metadata and that the
+    // routing prefers research-quality tools (exa-search, perplexity) over tavily,
+    // matching the behavior agents expect from a "best performance" route.
+    const fastResult = fastClassify(query);
+    if (fastResult && (fastResult.type === 'research' || fastResult.depth === 'deep')) {
+      aiClassificationResult = fastResult;
+      classificationMs = 0;
+      aiRankedTools = aiRoute(fastResult, capability);
+    }
   }
 
   // Step 1: Build the ordered tool list for this capability + strategy.

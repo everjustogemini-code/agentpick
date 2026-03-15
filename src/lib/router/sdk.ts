@@ -184,7 +184,12 @@ export async function applyStrategy(
   // CHEAPEST strategy: skip pre-selection — routeRequest handles it with BYOK-aware ranking
   //   so users with BYOK keys for cheap tools (brave-search, serper) get correctly routed
   //   rather than being forced to tavily (cheapest platform-configured tool).
-  if (!modified.tool && !modified.priority_tools?.length && account.strategy !== 'AUTO' && account.strategy !== 'CHEAPEST') {
+  // AUTO: skipped — AI classification handles tool selection.
+  // CHEAPEST: skipped — BYOK-aware cost ranking in routeRequest handles it.
+  // MOST_ACCURATE: skipped — routeRequest runs fastClassify for deep-research queries and
+  //   uses research-quality tool ordering; pre-selecting here would override that logic and
+  //   could pin a lower-quality tool when the preferred high-quality tool is unconfigured.
+  if (!modified.tool && !modified.priority_tools?.length && account.strategy !== 'AUTO' && account.strategy !== 'CHEAPEST' && account.strategy !== 'MOST_ACCURATE') {
     const best = getBestToolForStrategy(capability, account.strategy, account.excludedTools, account.latencyBudgetMs);
     if (best) {
       modified.tool = best;
