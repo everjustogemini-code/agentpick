@@ -177,6 +177,14 @@ function _initPlatformConfigSnapshot(): void {
 _initPlatformConfigSnapshot();
 
 /**
+ * Re-initialize the platform-configured snapshot.
+ * Exported for test use only — call this after stubbing process.env in tests.
+ */
+export function __resetPlatformConfigSnapshot(): void {
+  _initPlatformConfigSnapshot();
+}
+
+/**
  * Move tools without a configured API key to the end of the list.
  * Within each group (configured / unconfigured), the original order is preserved.
  * This prevents strategies like 'cheapest' from routing to tools that will

@@ -4,9 +4,9 @@
  * non-auto strategies, budget enforcement, stable response contract,
  * boundary validation, and strategy naming consistency.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { escapeHtml, sanitizeForJsonLd, stripHtml } from '@/lib/sanitize';
-import { getRankedToolsForCapability, CAPABILITY_TOOLS } from '@/lib/router/index';
+import { getRankedToolsForCapability, CAPABILITY_TOOLS, __resetPlatformConfigSnapshot } from '@/lib/router/index';
 import { aiRoute, fastClassify, type QueryContext } from '@/lib/router/ai-classify';
 import { normalizeStrategy, isRouterStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
@@ -212,10 +212,29 @@ describe('P1-5: Non-auto strategies return valid tools', () => {
     expect(ranked).toContain('exa-search');
   });
 
-  it('cheapest returns tools for search', () => {
-    const ranked = getRankedToolsForCapability('search', 'cheapest');
-    expect(ranked.length).toBeGreaterThan(0);
-    expect(ranked[0]).toBe('brave-search'); // Lowest cost (0.0001)
+  it('cheapest returns tools for search with brave-search ranked lowest-cost', () => {
+    // Stub env so brave-search, serper, and tavily all appear platform-configured.
+    // This lets us verify pure cost ordering without the test being sensitive to
+    // which API keys happen to be set in the current environment.
+    vi.stubEnv('BRAVE_API_KEY', 'test-brave-key');
+    vi.stubEnv('SERPER_API_KEY', 'test-serper-key');
+    vi.stubEnv('TAVILY_API_KEY', 'test-tavily-key');
+    __resetPlatformConfigSnapshot();
+    try {
+      const ranked = getRankedToolsForCapability('search', 'cheapest');
+      expect(ranked.length).toBeGreaterThan(0);
+      // brave-search ($0.0001) is cheapest configured tool with quality ≥ 3.0
+      expect(ranked[0]).toBe('brave-search');
+      // serper ($0.0005) must come before tavily ($0.001)
+      const serperIdx = ranked.indexOf('serper');
+      const tavilyIdx = ranked.indexOf('tavily');
+      expect(serperIdx).toBeGreaterThanOrEqual(0);
+      expect(tavilyIdx).toBeGreaterThanOrEqual(0);
+      expect(serperIdx).toBeLessThan(tavilyIdx);
+    } finally {
+      vi.unstubAllEnvs();
+      __resetPlatformConfigSnapshot();
+    }
   });
 
   it('fastest returns tools for search', () => {
