@@ -23,13 +23,17 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
+
+    const isExport = url.searchParams.get('export') === 'true';
     const parsedLimit = parseInt(url.searchParams.get('limit') ?? '20', 10);
-    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 50);
+    const limit = isExport ? 10000 : Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 50);
+
     const capability = url.searchParams.get('capability') ?? undefined;
     const tool = url.searchParams.get('tool') ?? undefined;
     const strategy = url.searchParams.get('strategy') ?? undefined;
-    const from = url.searchParams.get('from') ?? undefined;
-    const to = url.searchParams.get('to') ?? undefined;
+    // Support both 'from'/'to' and 'date_from'/'date_to' parameter names
+    const from = url.searchParams.get('date_from') ?? url.searchParams.get('from') ?? undefined;
+    const to = url.searchParams.get('date_to') ?? url.searchParams.get('to') ?? undefined;
 
     // Capability names used as last-resort fallback in recordRouterCall — must be filtered
     // here to stay consistent with the analytics.ts and sdk.ts getUsageStats filters.
@@ -95,7 +99,28 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return Response.json({ calls });
+    // Normalize to include all 9 drawer fields
+    const normalizedCalls = calls.map(call => ({
+      ...call,
+      // Drawer fields: classification_ms and total_ms not stored in DB — emit null
+      classification_ms: null as number | null,
+      total_ms: null as number | null,
+      // response_preview not stored in DB — emit null
+      response_preview: null as string | null,
+      // Expose ai_routing_summary as a top-level field from aiClassification JSON
+      ai_routing_summary: call.aiClassification &&
+        typeof call.aiClassification === 'object' &&
+        'reasoning' in (call.aiClassification as Record<string, unknown>)
+          ? (call.aiClassification as Record<string, unknown>).reasoning as string
+          : null,
+    }));
+
+    const headers: Record<string, string> = {};
+    if (isExport) {
+      headers['Content-Disposition'] = 'attachment; filename="calls-export.json"';
+    }
+
+    return Response.json({ calls: normalizedCalls }, { headers });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
     console.error(`[${reqId}] GET /api/v1/router/calls error:`, err);

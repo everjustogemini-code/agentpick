@@ -9,7 +9,7 @@ export class AgentPickError extends Error {
 }
 
 export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
-  const delays = [200, 400, 800];
+  const delays = [200, 400];
   let lastError: AgentPickError | undefined;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
@@ -18,7 +18,7 @@ export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promi
       const apiErr = err instanceof AgentPickError ? err : new AgentPickError(String(err));
       lastError = apiErr;
       if (apiErr.status && apiErr.status < 500) throw apiErr; // don't retry 4xx
-      if (attempt < maxAttempts - 1) await new Promise(r => setTimeout(r, delays[attempt]));
+      if (attempt < maxAttempts - 1) await new Promise(r => setTimeout(r, delays[attempt] ?? 400));
     }
   }
   lastError!.fallback_reported = true;

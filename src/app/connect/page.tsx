@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import { CodeGeneratorWidget } from '@/components/CodeGeneratorWidget';
 import Playground from '@/components/Playground';
+import ConnectTabs from '@/components/ConnectTabs';
 
 export const metadata: Metadata = {
   title: 'Route your API calls through AgentPick',
@@ -16,7 +17,7 @@ const tsExamples = {
 
 const client = new AgentPickClient({ apiKey: process.env.AGENTPICK_API_KEY! });
 
-const result = await client.route('search', 'latest AI benchmarks 2025');
+const result = await client.route('search', 'latest AI benchmarks 2026');
 console.log(result.tool, result.latency_ms);`,
   route: `const result = await client.route('search', 'query', { strategy: 'MOST_ACCURATE' });`,
   account: `const acct = await client.account();`,
@@ -43,6 +44,7 @@ export default function ConnectPage() {
             Interactive code generator
           </p>
           <CodeGeneratorWidget tsExamples={tsExamples} />
+          <ConnectTabs tsExamples={tsExamples} />
         </section>
 
         <section className="mb-8 w-full">
