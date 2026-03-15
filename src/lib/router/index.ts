@@ -274,22 +274,22 @@ export function getRankedToolsForCapability(
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
   // This preserves strategy order within each group (configured / unconfigured).
   //
-  // Exception: cheapest strategy without BYOK keys uses pure cost ordering.
-  // When no (or empty) storedByokKeys are provided, deprioritizing by platform key config would put
+  // Exception: cheapest strategy without BYOK keys for THIS capability's tools uses pure cost ordering.
+  // When no relevant BYOK keys are present, deprioritizing by platform key config would put
   // tavily ($0.001, configured) before brave-search ($0.0001, unconfigured), defeating the
   // cost-first intent. Unconfigured cheap tools fail fast in the router fallback chain
   // (sub-ms key-missing rejection), so the overhead is negligible.
-  // When storedByokKeys are provided, BYOK-configured cheap tools should still be elevated
-  // so a user's own brave-search/serper key beats the more expensive platform-only tavily.
+  // When storedByokKeys are provided for a capability tool, BYOK-configured cheap tools should
+  // still be elevated so a user's own brave-search/serper key beats the more expensive platform-only tavily.
   //
-  // An empty object {} (e.g. after deleting all BYOK keys) must be treated the same as
-  // null/undefined — no actual BYOK entries → pure cost ordering, consistent with a fresh account.
-  const hasByokKeys = storedByokKeys != null
-    && typeof storedByokKeys === 'object'
-    && !Array.isArray(storedByokKeys)
-    && Object.keys(storedByokKeys as object).length > 0;
-  if (strategy === 'cheapest' && !hasByokKeys) {
-    return filtered;
+  // IMPORTANT: Only BYOK keys for tools in this capability are counted. An unrelated BYOK key
+  // (e.g. resend, e2b) must NOT cause cheap unconfigured search tools to be deprioritized behind
+  // expensive platform-configured tools. We check per-slug relevance instead of just key count.
+  if (strategy === 'cheapest') {
+    const hasCapabilityByokKeys = filtered.some(
+      (slug) => resolveStoredByokKeyForSlug(storedByokKeys, slug) !== null,
+    );
+    if (!hasCapabilityByokKeys) return filtered;
   }
   // BYOK-configured tools (e.g. user's own serper key at $0.0005) are treated as configured
   // and correctly beat more expensive platform-only tools.
