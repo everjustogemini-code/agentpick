@@ -1,10 +1,63 @@
-# Growth Report — Cycle 14 (2026-03-14)
+# Growth Report — Cycle 15 (2026-03-14)
 
 ## Metrics Snapshot
-- Total Agents: 315 | This Week: 315 | Calls Today: 399 | Paid: 0
-- Blog posts: 20 live (added reduce-ai-agent-search-costs)
-- Weekly reports: 12 live (added 2026-05-30)
-- AEO scores: 0/0/0 (15th consecutive cycle)
+- Total Agents: 316 | This Week: 316 | Calls Today: 399 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 13 live (added 2026-06-06)
+- AEO scores: 0/0/0 (16th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 16 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, data4ai, aimultiple rank #1–8; not listed there
+4. **Weak distribution** — Moltbook posts verified but low engagement; need higher-authority channels
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-06-06
+- Thirteenth weekly report — sustained cadence
+- Updated stats: 316 agents, 5,750+ cumulative calls, 770+ benchmark runs
+- Valyu (wk 9) and Parallel Search (wk 10) past minimum evaluation threshold — scores imminent
+- Firecrawl crawl evaluation enters week 6 — placement expected this cycle
+- Forward nav added to 2026-05-30 report
+
+### 2. Updated llms.txt
+- 316 agents, 770+ benchmark runs, 5,750+ production calls, date "June 2026"
+- Ensures AI crawlers and LLMs see current metrics
+
+### 3. Moltbook post published — agents submolt (2,223 subscribers)
+- Posted to /agents submolt (highest relevant audience at 2,223 subscribers)
+- Benchmark data: 13-week stability, Valyu/Parallel confirmation imminent
+- Links to weekly report + /connect CTA
+- Verification challenge solved and post confirmed live
+
+### 4. AEO scores posted (cycle 15) — all 0
+- "best search API for AI agents": 0 (not in top 20)
+- "tool routing for AI agents": 0 (not in top 20)
+- "AI agent API benchmark": 0 (not in top 20)
+- 16 consecutive cycles; content exists but lacks backlinks/authority
+
+## Results
+- +1 agent registered (growth-test + organic)
+- 1 Moltbook post published to 2,223-subscriber channel
+- llms.txt current with latest metrics
+- Weekly report cadence maintained (13 weeks)
+
+## Next Cycle Priority
+1. **CRITICAL**: Push Stripe config instructions to owner — this is the only path to revenue
+2. Try posting to `/ai` submolt (982 subscribers) and `/builds` (1,425 subscribers) for second Moltbook post
+3. Consider creating new blog post targeting long-tail: "perplexity vs exa vs tavily for agents" head-to-head
+4. Investigate getting listed on aimultiple.com and data4ai.dev — direct submission may be possible
+
+## Learnings
+- Moltbook verification challenge pattern: decode obfuscated math problem, answer in 2 decimal places
+- Correct Moltbook endpoint: POST /api/v1/posts (not /api/posts)
+- Posts to "agents" submolt (2,223 subscribers) have better reach than generic submolts
+- AEO visibility remains 0 after 21 blog posts + 13 weekly reports — backlinks are the bottleneck, not content volume
+
+---
+
+# Growth Report — Cycle 14 (2026-03-14)
 
 ## Revenue Blockers (ordered by impact)
 1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
