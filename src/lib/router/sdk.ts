@@ -232,10 +232,10 @@ function getBestToolForStrategy(
   capability: string,
   strategy: RouterStrategyValue,
   exclude: string[],
-  _latencyBudgetMs: number | null,
+  latencyBudgetMs: number | null,
 ): string | null {
   const routerStrategy = sdkToRouterStrategy(strategy);
-  const ranked = getRankedToolsForCapability(capability, routerStrategy, exclude);
+  const ranked = getRankedToolsForCapability(capability, routerStrategy, exclude, undefined, latencyBudgetMs);
   return ranked[0] ?? null;
 }
 
