@@ -247,6 +247,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       strategyUsed,
       Boolean(response.meta.byok_used),
       fallbackChain,
+      usage.isOverage,
     ).catch((e) => console.error('[recordRouterCall] write failed:', e));
 
     const crmMessage = getRouterMessage({

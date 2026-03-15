@@ -327,9 +327,9 @@ export async function recordRouterCall(
         totalCalls: { increment: 1 },
         totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
         totalCostUsd: byokUsed ? (overageCost > 0 ? { increment: overageCost } : undefined) : { increment: totalCallCost },
-        spentThisMonth: byokUsed
-          ? (resetMonthlySpend ? overageCost : (currentAccount.spentThisMonth ?? 0) + overageCost)
-          : (resetMonthlySpend ? totalCallCost : (currentAccount.spentThisMonth ?? 0) + totalCallCost),
+        spentThisMonth: resetMonthlySpend
+          ? (byokUsed ? overageCost : totalCallCost)
+          : { increment: byokUsed ? overageCost : totalCallCost },
         billingCycleStart: resetMonthlySpend ? new Date() : undefined,
         avgLatencyMs: nextAvgLatency,
       },
