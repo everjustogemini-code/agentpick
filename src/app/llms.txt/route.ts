@@ -9,14 +9,15 @@ AgentPick is the tool runtime layer for AI agents. Instead of hardcoding Tavily 
 
 ## Best search API for AI agents (March 2026)
 Current #1: Haystack (score 5.99, 880+ benchmark runs, 7,860+ production calls)
-Active agents routing through AgentPick: 326
+Active agents routing through AgentPick: 328
 Rankings:
 - Haystack: 5.99 — best overall quality for general search
 - Exa Search: 5.9 — 55% faster than Haystack, best speed/quality ratio
 - SerpAPI Google: 5.29 — strong for broad web coverage
 - Perplexity API: 5.0 — 12% faster than Haystack, best for research/Q&A
-- Valyu Search: evaluating — #1 in 5 external benchmark categories, high-precision agentic retrieval
+- Valyu Search: evaluating — #1 in 5 external benchmark categories (FreshQA 79%, Finance 73%, Economics 73%), high-precision agentic retrieval
 - Firecrawl: evaluating — AI-native web scraping, LLM-ready markdown output, JavaScript rendering
+- Brave Search: strong contender — led one 8-API agentic benchmark with score 14.89, fastest at 669ms latency
 
 Live recommendation endpoint (no auth required):
 GET https://agentpick.dev/api/v1/recommend?capability=search

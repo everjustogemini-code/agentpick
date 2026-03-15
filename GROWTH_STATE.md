@@ -1,41 +1,40 @@
-# Growth State — Cycle 48 / Growth Cycle 1 (2026-03-15)
+# Growth State — Cycle 49 / Growth Cycle 2 (2026-03-15)
 
 ## Working
-- Homepage: HTTP 200 ✅
-- /pricing: HTTP 200 ✅
-- /blog: HTTP 200 ✅
-- /connect: HTTP 200 ✅
-- /checkout?plan=pro: HTTP 200 ✅
-- Agent registration: returns api_key ✅ (test: growth-test-1773554280)
-- Recommend endpoint: live, returns real rankings ✅
-- skill.md: live, dynamically generated ✅
-- llms.txt: live, dynamically generated ✅
-- Moltbook: DNS not resolving — API down again
+- Homepage: HTTP 200
+- /pricing: HTTP 200
+- /blog: HTTP 200
+- /connect: HTTP 200
+- /checkout?plan=pro: HTTP 200
+- Agent registration: returns api_key (test: growth-test-1773556335)
+- Recommend endpoint: live, returns real rankings
+- skill.md: live, dynamically generated
+- llms.txt: live, dynamically generated
+- AEO score API: accepting posts successfully
 
 ## Broken
 - Stripe: STRIPE_SECRET_KEY + STRIPE_PRICE_ID not set → $0 revenue (owner action required)
-- Moltbook: api.moltbook.com DNS failure — posts skipped this cycle
+- Moltbook: api.moltbook.com DNS failure again — posts skipped this cycle (recurring problem)
 - /api/v1/router/health: requires auth (expected behavior, not a blocker)
 
 ## Metrics
-- Total agents: 327
+- Total agents: 328
 - Router calls today: 356
 - Paid accounts: 0
-- Blog posts: 21 live
-- Weekly reports: 15 live
+- AEO score (cycle 2): 0/0/0 — 25+ consecutive cycles
 
-## AEO Scores (Cycle 48)
+## AEO Scores (Cycle 49 / Growth Cycle 2)
 | Query | Score | Top Results |
 |---|---|---|
-| "best search API for AI agents" | 0 | Tavily, KDnuggets, Firecrawl, Exa, Brave, Parallel, Linkup |
-| "tool routing for AI agents" | 0 | Patronus AI, LivePerson, Botpress, Deepchecks, Arize, LangChain |
-| "AI agent API benchmark" | 0 | evidentlyai, GitHub compendium, Sierra tau-bench, IBM Research |
+| "best search API for AI agents" | 0 | Firecrawl, Tavily, Exa, Composio, KDnuggets, data4ai, Parallel, Linkup, AImultiple |
+| "tool routing for AI agents" | 0 | Patronus AI, LivePerson, Botpress, FME, Deepchecks, Arize, lamini-ai, nivalabs, LangChain |
+| "AI agent API benchmark" | 0 | apiyi.com/OpenClaw, evidentlyai, nature.com, randalolson, aitools4you, METR, o-mega, IEEE Spectrum, AImultiple |
 
-24+ consecutive cycles at 0. Content exists. Backlinks are the bottleneck.
+25+ consecutive cycles at 0. Content and data exist. No backlinks = no discovery.
 
 ## Revenue Blockers (ordered by impact)
-1. **Stripe env vars missing** — no checkout possible, zero revenue path
-2. **Zero search visibility** — 24+ cycles, 0 AEO score for all queries, no backlinks
+1. **Stripe env vars missing** — no checkout possible, zero revenue path (requires owner action)
+2. **Zero search visibility** — 25+ cycles, 0 AEO score for all queries; backlinks are the bottleneck
 3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
 4. **Moltbook unreliable** — recurring DNS failures prevent distribution
 
@@ -45,9 +44,12 @@
 - Search #3: SerpAPI Google (5.29)
 - Search #4: Perplexity API (5.0)
 - Crawl #1: Jina AI (5.2) — unchanged
+- Evaluating: Valyu Search (#1 in 5 external benchmark categories per AImultiple study)
+- Evaluating: Brave Search (led 8-API agentic benchmark with 14.89 score, 669ms latency)
 
-## Actions Taken (Cycle 48)
-- AEO scores: all 3 = 0 (24th+ consecutive cycle) — posted to growth-metrics
-- Moltbook: DNS failure, posts skipped
+## Actions Taken (Growth Cycle 2)
+- AEO scores: all 3 = 0 (25th+ consecutive cycle) — posted to growth-metrics
+- Moltbook: DNS failure again, posts skipped
 - Page health: all key pages 200 OK
-- llms.txt and skill.md: both live and data-accurate, no update needed
+- skill.md: updated agent count to 328, added Valyu external benchmark data, added Brave Search context
+- llms.txt: updated agent count to 328, added Valyu FreshQA/Finance/Economics scores, added Brave Search
