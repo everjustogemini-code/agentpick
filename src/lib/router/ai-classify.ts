@@ -81,7 +81,7 @@ export function fastClassify(query: string): QueryContext | null {
   // Generic topic/domain signal — used to classify "latest X" / "recent X" without requiring
   // a specific company name or year. Prevents these queries from falling through to Haiku
   // where slightly different phrasings can return inconsistent classifications.
-  const genericTopicSignal = /\b(ai|ml|machine learning|deep learning|llm|model|framework|api|tool|platform|startup|market|crypto|blockchain|defi|nft|regulation|law|policy|security|privacy|feature|product|service|update|release|version)\b/i;
+  const genericTopicSignal = /\b(ai|ml|machine learning|deep learning|llm|models?|framework|api|tool|platform|startup|market|crypto|blockchain|defi|nft|regulation|law|policy|security|privacy|feature|product|service|update|release|version)\b/i;
   // "state of X" / "survey of X" → deep research overview.
   // Must fire BEFORE explicitRecencySignal to prevent "state of AI in 2025" being
   // mis-routed as news via the `in \d{4}` pattern (e.g. "in 2025" → news).

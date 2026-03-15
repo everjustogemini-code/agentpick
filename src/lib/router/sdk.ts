@@ -196,7 +196,9 @@ export async function applyStrategy(
     }
   }
 
-  if (account.fallbackEnabled && !(modified.fallback?.length)) {
+  // For AUTO and MOST_ACCURATE strategies, skip injecting account priorityTools as fallbacks.
+  // AI routing selects the best tool chain — stale account priorityTools must not pollute it.
+  if (account.fallbackEnabled && !(modified.fallback?.length) && account.strategy !== 'AUTO' && account.strategy !== 'MOST_ACCURATE') {
     const fallbacks = account.priorityTools
       .filter((tool) => tool !== modified.tool && !account.excludedTools.includes(tool))
       .slice(0, account.maxFallbacks);
