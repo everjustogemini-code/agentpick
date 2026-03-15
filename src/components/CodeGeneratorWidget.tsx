@@ -61,7 +61,7 @@ const result = await client.${cap}({
 console.log(result)`
 
   // curl
-  return `curl -X POST https://agentpick.com/api/v1/${CAP_PATH[cap]} \\
+  return `curl -X POST https://agentpick.dev/api/v1/${CAP_PATH[cap]} \\
   -H "Authorization: Bearer YOUR_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
