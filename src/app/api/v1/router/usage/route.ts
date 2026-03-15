@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     const periodParam = url.searchParams.get('period');
     let days = 7;
     if (daysParam) {
-      days = parseInt(daysParam, 10);
+      const parsed = parseInt(daysParam, 10);
+      if (!isNaN(parsed)) days = parsed;
     } else if (periodParam) {
       const m = periodParam.match(/^(\d+)d$/);
       if (m) days = parseInt(m[1], 10);
