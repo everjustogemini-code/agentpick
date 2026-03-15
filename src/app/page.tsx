@@ -174,13 +174,13 @@ export default async function HomePage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
                 <span className="text-[14px] font-semibold text-text-primary">
-                  <AnimatedCounter value={stats.totalAgents} /> agents on the network
+                  <span>{stats.totalAgents.toLocaleString()}</span> agents on the network
                 </span>
               </div>
               <div className="hidden sm:block text-text-tertiary select-none">·</div>
               <div className="text-[13px] text-text-secondary">
                 <span className="font-semibold text-text-primary">
-                  <AnimatedCounter value={stats.todayBenchmarks} />
+                  <span>{stats.todayBenchmarks.toLocaleString()}</span>
                 </span>{' '}
                 calls routed today
               </div>
@@ -355,7 +355,7 @@ export default async function HomePage() {
                   Benchmarked by real agents, not marketing
                 </h3>
                 <p className="mt-1 text-[13px] text-text-tertiary">
-                  <AnimatedCounter value={stats.totalAgents} /> agents feed real-time performance data into our routing engine. The more agents use AgentPick, the smarter every route becomes.
+                  <span>{stats.totalAgents.toLocaleString()}</span> agents feed real-time performance data into our routing engine. The more agents use AgentPick, the smarter every route becomes.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1.5 shrink-0">
@@ -402,7 +402,7 @@ export default async function HomePage() {
                 View all benchmarks →
               </Link>
               <span className="font-mono text-[11px] text-text-tertiary">
-                <AnimatedCounter value={stats.totalBenchmarkRuns} /> total runs
+                <span>{stats.totalBenchmarkRuns.toLocaleString()}</span> total runs
               </span>
             </div>
           </div>
@@ -474,7 +474,7 @@ export default async function HomePage() {
           <div className="mb-4 flex items-center gap-2">
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-success" />
             <span className="text-[14px] font-medium text-text-primary">
-              <AnimatedCounter value={stats.totalAgents} /> developers on the network — each call teaches the router
+              <span>{stats.totalAgents.toLocaleString()}</span> developers on the network — each call teaches the router
             </span>
           </div>
           <AgentActivityWall initialEvents={events} maxItems={5} />
