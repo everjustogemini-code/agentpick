@@ -5,6 +5,7 @@ import { BROWSE_STATUSES } from '@/lib/product-status';
 import { apiError } from '@/types';
 import { CAPABILITY_TOOLS, TOOL_CHARACTERISTICS, getRankedToolsForCapability } from '@/lib/router/index';
 import { escapeHtml } from '@/lib/sanitize';
+import { ensureDeveloperAccount } from '@/lib/router/sdk';
 
 const db = prisma as any;
 
@@ -24,6 +25,9 @@ export async function GET(request: NextRequest) {
     let agent: Awaited<ReturnType<typeof authenticateAgent>>;
     try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+
+    const account = await ensureDeveloperAccount(agent.id);
+    const storedByokKeys = (account as any).byokKeys;
 
     const url = new URL(request.url);
     const capability = url.searchParams.get('capability') ?? 'search';
@@ -169,8 +173,11 @@ export async function GET(request: NextRequest) {
       const routerStrategy = STRATEGY_TO_ROUTER[strategy];
       // Use getRankedToolsForCapability so both top_pick and top_3 reflect actual routing
       // (key availability, deprioritizeUnconfiguredTools) rather than the raw cost/score sort.
+      // Pass storedByokKeys so BYOK-configured tools (e.g. user's brave-search key) are treated
+      // as "configured" — without this, cheapest strategy incorrectly shows a pricier tool as
+      // top_pick when the user has a cheaper tool configured via BYOK.
       const actualRanked = routerStrategy
-        ? getRankedToolsForCapability(capability, routerStrategy)
+        ? getRankedToolsForCapability(capability, routerStrategy, undefined, storedByokKeys)
         : sorted.map((p) => p.slug);
       const actualTop = actualRanked[0];
       const top3Slugs = actualRanked.slice(0, 3);

@@ -56,12 +56,20 @@ export async function GET(request: NextRequest) {
         strategyUsed: true,
         fallbackUsed: true,
         success: true,
+        totalMs: true,
+        responsePreview: true,
         createdAt: true,
       },
     });
 
+    const normalizedCall = call ? {
+      ...call,
+      total_ms: call.totalMs ?? null,
+      response_preview: call.responsePreview ?? null,
+    } : null;
+
     return Response.json(
-      { call: call ?? null },
+      { call: normalizedCall },
       {
         headers: {
           'Cache-Control': 'private, no-store, max-age=0',
