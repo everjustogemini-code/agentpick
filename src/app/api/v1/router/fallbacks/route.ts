@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
-    const days = Math.min(parseInt(url.searchParams.get('days') ?? '30', 10), 90);
+    const parsedDays = parseInt(url.searchParams.get('days') ?? '30', 10);
+    const days = Math.min(Math.max(isNaN(parsedDays) ? 30 : parsedDays, 1), 90);
 
     const stats = await getFallbackStats(account.id, days);
     return Response.json(stats);

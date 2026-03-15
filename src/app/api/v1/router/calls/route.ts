@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
-    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '20', 10), 1), 50);
+    const parsedLimit = parseInt(url.searchParams.get('limit') ?? '20', 10);
+    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 50);
     const capability = url.searchParams.get('capability') ?? undefined;
     const tool = url.searchParams.get('tool') ?? undefined;
     const strategy = url.searchParams.get('strategy') ?? undefined;
