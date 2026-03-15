@@ -195,9 +195,9 @@ export async function applyStrategy(
     }
   }
 
-  // For AUTO and MOST_ACCURATE strategies, skip injecting account priorityTools as fallbacks.
-  // AI routing selects the best tool chain — stale account priorityTools must not pollute it.
-  if (account.fallbackEnabled && !(modified.fallback?.length) && account.strategy !== 'AUTO' && account.strategy !== 'MOST_ACCURATE') {
+  // For AUTO, MOST_ACCURATE, and CHEAPEST strategies, skip injecting account priorityTools as fallbacks.
+  // AI routing and cost-based routing select the best tool chain — stale account priorityTools must not pollute them.
+  if (account.fallbackEnabled && !(modified.fallback?.length) && account.strategy !== 'AUTO' && account.strategy !== 'MOST_ACCURATE' && account.strategy !== 'CHEAPEST') {
     const fallbacks = account.priorityTools
       .filter((tool) => tool !== modified.tool && !account.excludedTools.includes(tool))
       .slice(0, account.maxFallbacks);
