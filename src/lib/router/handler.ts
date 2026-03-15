@@ -193,6 +193,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
 
   // 4. Budget and plan-limit enforcement — block routing before dispatch
   let preAccount;
+  let preUsageIsOverage = false;
   try {
     preAccount = await ensureDeveloperAccount(agent.id);
     if (
@@ -206,6 +207,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     }
     // Enforce plan daily/monthly limits (same as /router/* surface)
     const usage = await checkUsageLimit(preAccount.id, preAccount.plan as RouterPlanValue, preAccount.billingCycleStart);
+    preUsageIsOverage = usage.isOverage;
     if (!usage.allowed) {
       const isMonthly = usage.hardCapped;
       const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;
@@ -261,6 +263,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         strategyUsed as RouterStrategyValue,
         Boolean(response.meta.byok_used),
         response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [],
+        preUsageIsOverage,
       );
     } catch (recordErr) {
       // Don't fail the request if recording fails
