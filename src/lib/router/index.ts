@@ -284,12 +284,15 @@ export function getRankedToolsForCapability(
     }
   });
 
-  // Within the strategy-sorted list, move tools that lack a platform API key to the end.
+  // For cheapest strategy: return pure cost-ranked order without deprioritizing unconfigured
+  // tools. The router skips the circuit breaker for cheapest and handles missing-key failures
+  // (0ms, statusCode=0) through the normal fallback chain — so brave-search ($0.0001) correctly
+  // ranks first even if its platform key isn't set. Deprioritizing would silently replace it
+  // with tavily ($0.001), defeating the purpose of the cheapest strategy.
+  if (strategy === 'cheapest') return filtered;
+
+  // For all other strategies: move tools without a configured API key to the end.
   // This preserves strategy order within each group (configured / unconfigured).
-  // For cheapest strategy: deprioritize unconfigured tools so the cheapest CONFIGURED
-  // tool is selected first. Without this, unconfigured cheap tools (brave-search, serper)
-  // are tried first, fail with a missing-key error, and the fallback lands on tavily —
-  // making cheapest effectively route to tavily even when serpapi ($0.0005) is configured.
   // BYOK-configured tools are treated as configured and beat more expensive platform-only tools.
   return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
 }
@@ -436,8 +439,9 @@ export async function routeRequest(
   // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
-  // For cheapest: getRankedToolsForCapability applies deprioritizeUnconfiguredTools so the
-  // list is configured tools by ascending cost, then unconfigured tools by ascending cost.
+  // For cheapest: getRankedToolsForCapability returns pure cost-ranked order (no deprioritization).
+  // Unconfigured cheap tools (brave-search $0.0001) rank first; if they fail (missing key),
+  // the fallback chain continues to the next cheapest tool.
   // BYOK keys are resolved at call time, not at ranking time.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys, options.latencyBudgetMs);
   // Skip circuit breaker for AI-ranked tools (per-instance state causes cross-instance non-determinism)
