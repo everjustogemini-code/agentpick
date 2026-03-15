@@ -152,6 +152,9 @@ export async function GET(request: NextRequest) {
       MOST_ACCURATE: [...products].sort((left, right) => (right.avgBenchmarkRelevance ?? 0) - (left.avgBenchmarkRelevance ?? 0)),
     };
 
+    const excludedTools = (account as any).excludedTools as string[] | undefined;
+    const latencyBudgetMs = (account as any).latencyBudgetMs as number | null | undefined;
+
     // Map compare-strategies keys to canonical router strategy names so top_pick reflects
     // what the router would actually select (accounting for unconfigured platform keys).
     const STRATEGY_TO_ROUTER: Record<string, 'balanced' | 'most_stable' | 'cheapest' | 'best_performance'> = {
@@ -176,8 +179,10 @@ export async function GET(request: NextRequest) {
       // Pass storedByokKeys so BYOK-configured tools (e.g. user's brave-search key) are treated
       // as "configured" — without this, cheapest strategy incorrectly shows a pricier tool as
       // top_pick when the user has a cheaper tool configured via BYOK.
+      // Pass excludedTools and latencyBudgetMs so top_pick matches actual router behavior:
+      // accounts with excluded tools or a latency budget won't see those tools as top picks.
       const actualRanked = routerStrategy
-        ? getRankedToolsForCapability(capability, routerStrategy, undefined, storedByokKeys)
+        ? getRankedToolsForCapability(capability, routerStrategy, excludedTools, storedByokKeys, latencyBudgetMs ?? undefined)
         : sorted.map((p) => p.slug);
       const actualTop = actualRanked[0];
       const top3Slugs = actualRanked.slice(0, 3);
