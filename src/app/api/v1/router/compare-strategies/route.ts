@@ -163,22 +163,27 @@ export async function GET(request: NextRequest) {
 
     for (const [strategy, sorted] of Object.entries(strategies)) {
       const routerStrategy = STRATEGY_TO_ROUTER[strategy];
-      // Use getRankedToolsForCapability so top_pick reflects actual routing (key availability,
-      // deprioritizeUnconfiguredTools) rather than the raw cost/score sort above.
-      const actualTop = routerStrategy
-        ? getRankedToolsForCapability(capability, routerStrategy)[0]
-        : undefined;
+      // Use getRankedToolsForCapability so both top_pick and top_3 reflect actual routing
+      // (key availability, deprioritizeUnconfiguredTools) rather than the raw cost/score sort.
+      const actualRanked = routerStrategy
+        ? getRankedToolsForCapability(capability, routerStrategy)
+        : sorted.map((p) => p.slug);
+      const actualTop = actualRanked[0];
+      const top3Slugs = actualRanked.slice(0, 3);
       result[strategy] = {
         top_pick: actualTop ?? sorted[0]?.slug ?? 'none',
-        top_3: sorted.slice(0, 3).map((product) => ({
-          slug: product.slug,
-          name: product.name,
-          score: product.weightedScore ?? undefined,
-          latency: product.avgLatencyMs ?? undefined,
-          cost: product.avgCostUsd ?? undefined,
-          relevance: product.avgBenchmarkRelevance ?? undefined,
-          successRate: product.successRate ?? undefined,
-        })),
+        top_3: top3Slugs.map((slug) => {
+          const product = baseMap.get(slug) ?? { slug, name: slug, weightedScore: 0, avgLatencyMs: 0, avgCostUsd: 0, avgBenchmarkRelevance: 0, successRate: 0 };
+          return {
+            slug: product.slug,
+            name: product.name,
+            score: product.weightedScore ?? undefined,
+            latency: product.avgLatencyMs ?? undefined,
+            cost: product.avgCostUsd ?? undefined,
+            relevance: product.avgBenchmarkRelevance ?? undefined,
+            successRate: product.successRate ?? undefined,
+          };
+        }),
       };
     }
 

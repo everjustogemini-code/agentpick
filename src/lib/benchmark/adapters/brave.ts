@@ -26,6 +26,6 @@ export async function callBrave(query: string, config?: Record<string, unknown>)
     latencyMs,
     resultCount: data.web?.results?.length || 0,
     response: data,
-    costUsd: 0, // Free tier
+    costUsd: 0.0001, // $0.0001 per query — matches TOOL_CHARACTERISTICS
   };
 }
