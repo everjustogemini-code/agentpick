@@ -1,3 +1,60 @@
+# Growth Report — Cycle 12 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 339 | This Week: 339 | Calls Today: 227 | Paid: 0
+- Blog posts: 21 live
+- AEO scores: 0/0/0 (12th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required)
+2. **Zero search visibility** — 12 consecutive cycles at 0 for all 3 AEO queries; no backlinks, no citations
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Moltbook dead** — DNS failure confirmed permanently dead, removed from cycle tasks
+
+## Actions Taken:
+
+### 1. AEO scores — all 0 again (cycle 12)
+- "best search API for AI agents": 0 — Tavily, KDnuggets, Firecrawl, Brave, Medium/unicodeveloper, Exa, Linkup, Buttondown newsletter, Parallel dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai GitHub, Medium, LangChain dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, philschmid GitHub (50+ benchmark compendium), Sierra Tau-Bench, AgentBench THUDM, IBM Research, o-mega.ai, cleanlab.ai, Galileo AI, Emergence AI, Aisera dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score (all confirmed {"ok":true})
+
+### 2. Page health — all 200 OK
+- /, /pricing, /blog, /checkout?plan=pro, /connect: all HTTP 200
+- Agent registration functional (returns ah_live_sk_... key with status: active)
+- skill.md: HTTP 200, text/markdown
+- llms.txt: HTTP 200, text/plain
+
+### 3. skill.md + llms.txt — updated with cycle 12 data
+- Agent count: 338 → 339
+- Benchmark runs: 1,000+ → 1,020+
+- Production calls: 9,300+ → 9,500+
+- Tavily verified calls: 4,700+ → 4,800+
+
+### 4. Moltbook — permanently removed (DNS failure, dead channel)
+
+## Results:
+- 0 new paid conversions (Stripe still unconfigured)
+- 3 AEO scores posted (all 0)
+- 0 Moltbook posts (permanently dead)
+- skill.md and llms.txt updated with latest metrics
+- GROWTH_STATE.md updated to cycle 12
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; zero revenue without it
+2. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; these build backlinks that break the 0/0/0 AEO pattern
+3. **HN Show HN post** — "Show HN: I built a live benchmark that auto-routes AI agents to the best search API" — real data, technical audience, high-authority backlink
+4. **dev.to article** — publish "Tavily vs Exa vs Brave vs Jina: March 2026 agent tool benchmark" — dev.to ranks in AI searches, free, builds backlinks
+
+## Learnings:
+- AEO 0/0/0 is now 12 cycles (new low). Pattern firmly locked: zero external backlinks = zero search visibility.
+- NEW: cleanlab.ai entered "AI agent API benchmark" results with a trust-scoring benchmark story across 5 agent architectures — the editorial benchmark narrative keeps expanding. AgentPick is sitting on the richest live benchmark dataset in this space and still not publishing editorial content.
+- NEW: Aisera's CLASSic framework (Cost/Latency/Accuracy/Stability/Security) is gaining traction as enterprise benchmark standard. AgentPick's 1,020+ benchmark runs map perfectly to C/L/A dimensions. A single blog post framing AgentPick data against the CLASSic framework would be differentiated and citeable.
+- NEW: Buttondown newsletter "We scored 5 search APIs for AI agents" continues to rank in top 10 for query 1. This is a newsletter with test data — not a product, not a company, just editorial analysis. AgentPick has far more data and could publish equivalent content on any platform.
+- The 12-cycle pattern confirms: the bottleneck is 100% distribution, not product. The product passes 58/58 QA tests. The data exists (1,020+ runs, 9,500+ calls). The only missing piece is one external citation from a high-DA source.
+
+---
+
 # Growth Report — Cycle 11 (2026-03-15)
 
 ## Metrics Snapshot

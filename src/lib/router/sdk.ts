@@ -256,6 +256,7 @@ export async function recordRouterCall(
   const meta = response.meta as RouterResponse['meta'] & {
     cost_usd?: number;
     result_count?: number;
+    classification_ms?: number;
   };
 
   // Determine success: trace_id starting with "trace_fail_" means all tools failed
@@ -282,7 +283,7 @@ export async function recordRouterCall(
       latencyMs: meta.latency_ms,
       resultCount: meta.result_count ?? null,
       aiClassification: meta.ai_classification
-        ? (meta.ai_classification as unknown as Prisma.InputJsonValue)
+        ? ({ ...(meta.ai_classification as object), classification_ms: meta.classification_ms ?? 0 } as Prisma.InputJsonValue)
         : undefined,
       costUsd: meta.cost_usd ?? 0,
       success: isSuccess,

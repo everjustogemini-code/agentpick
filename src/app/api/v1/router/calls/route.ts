@@ -109,9 +109,16 @@ export async function GET(request: NextRequest) {
 
     const serializedCalls = calls.map((c) => {
       const ai = c.aiClassification as Record<string, unknown> | null;
-      const ai_routing_summary: string | null = ai
-        ? (typeof ai.reasoning === 'string' ? ai.reasoning : null)
-        : null;
+      let ai_routing_summary: string | null = null;
+      if (ai) {
+        if (typeof ai.reasoning === 'string') {
+          ai_routing_summary = ai.reasoning;
+        } else if (typeof ai.type === 'string' || typeof ai.domain === 'string') {
+          // Fallback for legacy records stored before reasoning field was added
+          const parts = [ai.type, ai.domain].filter((v) => typeof v === 'string' && v.length > 0);
+          ai_routing_summary = parts.length > 0 ? parts.join(' + ') : null;
+        }
+      }
       let fallback_chain: unknown[];
       if (typeof c.fallbackChain === 'string') {
         try { fallback_chain = JSON.parse(c.fallbackChain as string); } catch { fallback_chain = []; }
@@ -126,7 +133,7 @@ export async function GET(request: NextRequest) {
         tool_requested: c.toolRequested ?? null,
         tool_used: c.toolUsed,
         latency_ms: c.latencyMs,
-        classify_ms: null,
+        classify_ms: ai && typeof ai.classification_ms === 'number' ? ai.classification_ms : null,
         tool_ms: c.latencyMs,
         cost_usd: c.costUsd,
         success: c.success,
