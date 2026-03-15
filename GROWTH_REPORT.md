@@ -1,16 +1,51 @@
-# Growth Report — Cycle 17 (2026-03-14)
+# Growth Report — Cycle 18 (2026-03-14)
 
 ## Metrics Snapshot
-- Total Agents: 318 | This Week: 318 | Calls Today: 399 | Paid: 0
+- Total Agents: 322 | This Week: 322 | Calls Today: 420 | Paid: 0
 - Blog posts: 21 live
-- Weekly reports: 15 live (added 2026-06-20)
-- AEO scores: 0/0/0 (18th consecutive cycle)
+- Weekly reports: 15 live
+- AEO scores: 0/0/0 (19th consecutive cycle)
 
 ## Revenue Blockers (ordered by impact)
 1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
-2. **Zero search visibility** — 18 cycles at 0 for all 3 AEO queries
+2. **Zero search visibility** — 19 cycles at 0 for all 3 AEO queries
 3. **No directory listings** — KDnuggets, Tavily, Firecrawl, Exa dominate target queries
-4. **Moltbook permanently down** — DNS failure 8+ cycles
+4. **Moltbook permanently down** — DNS failure 9+ cycles
+
+## Actions Taken
+
+### 1. Updated llms.txt metrics
+- 322 agents, 800+ benchmark runs, 6,420+ production calls, date "March 2026"
+- Ensures AI crawlers and LLMs see current metrics
+
+### 2. Updated skill.md
+- Updated benchmark date to 2026-03-14
+- Updated production calls to 6,420+
+- Updated benchmark runs to 800+
+
+### 3. AEO scores posted (cycle 18) — all 0
+- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup dominate
+- "tool routing for AI agents": 0 — patronus.ai, botpress, deepchecks, arize, langchain dominate
+- "AI agent API benchmark": 0 — evidentlyai, GitHub benchmarks, IBM dominate
+- 19 consecutive cycles; backlinks remain the bottleneck
+
+### 4. Moltbook — skipped (DNS permanently down, 9+ cycles)
+
+## Results
+- +4 agents registered (322 total)
+- llms.txt and skill.md updated with March 2026 metrics
+- AEO scores recorded
+
+## Next Cycle Priority
+1. **Stripe env vars** — owner action required, single biggest revenue unblocker
+2. **HN/Reddit post** — one real post with benchmark data could generate first backlinks
+3. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com
+
+## Learnings
+- +4 agents/cycle organic growth is healthy but not accelerating
+- 420 calls/day (up from 399) shows engagement growing slowly
+- Without backlinks, content-only SEO has a ceiling — need earned media
+- Stripe is the only thing standing between current state and $29 MRR
 
 ## Actions Taken
 

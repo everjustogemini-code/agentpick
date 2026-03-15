@@ -1,4 +1,4 @@
-# Growth State — Cycle 17 (2026-03-14)
+# Growth State — Cycle 18 (2026-03-14)
 
 ## Working
 - API health: /api/v1/router/health → auth required (expected)
@@ -12,12 +12,12 @@
 
 ## Broken
 - **STRIPE_SECRET_KEY + STRIPE_PRICE_ID not set** — $0 revenue, all paid plans inoperable
-- **Moltbook permanently down** — api.moltbook.com DNS failure 8+ consecutive cycles
-- AEO visibility: 0/0/0 for all 3 target queries (18th consecutive cycle)
+- **Moltbook permanently down** — api.moltbook.com DNS failure 9+ consecutive cycles
+- AEO visibility: 0/0/0 for all 3 target queries (19th consecutive cycle)
 
 ## Metrics
-- Registrations: 318 agents total (+1 this cycle)
-- API calls: 399/day, 6,000+ cumulative
+- Registrations: 322 agents total (+4 this cycle)
+- API calls: 420/day, 6,420+ cumulative
 - Benchmark runs: 800+
 - Blog posts: 21 live
 - Weekly reports: 15 live
@@ -25,5 +25,5 @@
 
 ## Revenue Blockers (ordered by impact)
 1. **Stripe not configured** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel env
-2. **Zero search visibility** — 18 cycles at AEO score 0; content volume alone insufficient without backlinks
+2. **Zero search visibility** — 19 cycles at AEO score 0; content volume alone insufficient without backlinks
 3. **No external backlinks** — KDnuggets, Tavily, Firecrawl dominate; need directory listings or HN/Reddit posts
