@@ -13,6 +13,16 @@ export async function POST(request: NextRequest) {
   try {
     const raw = await request.json();
     const parsed = CrawlBody.safeParse(raw);
+    if (!parsed.success) {
+      // If the body has a url key but Zod rejected it, the URL is invalid — return 400.
+      const rawRecord = raw as Record<string, unknown>;
+      const hasUrlKey = typeof rawRecord.url === 'string' ||
+        (rawRecord.params !== null && typeof rawRecord.params === 'object' &&
+         typeof (rawRecord.params as Record<string, unknown>).url === 'string');
+      if (hasUrlKey) {
+        return apiError('VALIDATION_ERROR', 'Invalid URL. Provide a valid absolute URL with protocol, e.g. https://example.com.', 400);
+      }
+    }
     if (parsed.success && !('params' in parsed.data) && 'url' in parsed.data) {
       // Extract SDK control fields; everything else becomes params (url, maxDepth, etc.)
       // This mirrors handler.ts flat-body normalization so extra crawl params are preserved.

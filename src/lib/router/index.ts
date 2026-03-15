@@ -55,9 +55,9 @@ export const CAPABILITY_TOOLS: Record<string, string[]> = {
 export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: number; latency: number; stability: number }> = {
   'exa-search':             { quality: 4.6, cost: 0.002,   latency: 315,  stability: 0.95 },
   tavily:                   { quality: 4.0, cost: 0.001,   latency: 182,  stability: 0.97 },
-  serpapi:                  { quality: 3.0, cost: 0.0005,  latency: 89,   stability: 0.98 },
+  serpapi:                  { quality: 3.0, cost: 0.01,    latency: 89,   stability: 0.98 },
   'brave-search':           { quality: 3.2, cost: 0.0001,  latency: 150,  stability: 0.93 },
-  serper:                   { quality: 3.1, cost: 0.0005,  latency: 100,  stability: 0.97 },
+  serper:                   { quality: 3.1, cost: 0.001,   latency: 100,  stability: 0.97 },
   'perplexity-search':      { quality: 4.2, cost: 0.005,   latency: 500,  stability: 0.90 },
   'you-search':             { quality: 3.0, cost: 0.001,   latency: 200,  stability: 0.92 },
   'jina-ai':                { quality: 3.5, cost: 0.001,   latency: 250,  stability: 0.94 },
