@@ -43,7 +43,7 @@ export default function ConnectPage() {
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/40 mb-4">
             Interactive code generator
           </p>
-          <CodeGeneratorWidget tsExamples={tsExamples} />
+          <CodeGeneratorWidget />
           <ConnectTabs tsExamples={tsExamples} />
         </section>
 
