@@ -49,25 +49,35 @@ export async function GET(request: NextRequest) {
       'search', 'crawl', 'embed', 'finance', 'code', 'communication',
       'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
     ];
-    // Build filter using typed AND array.
-    // NOTE: NOT filter intentionally removed — it was causing findMany to fail in Prisma 7.x.
-    // The NOT: { OR: [...endsWith...] } pattern breaks findMany but not findFirst.
-    // Legacy/failure records are filtered post-query in normalizedCalls map instead.
-    const andFilters: Prisma.RouterCallWhereInput[] = [
-      { developerId: account.id },
-    ];
+    // Build WHERE clause with NOT at the top level (alongside developerId) to avoid the
+    // AND: [{NOT:cond1},{NOT:cond2}] anti-pattern that breaks Prisma 7.x findMany.
+    // NOTE: Do NOT rewrite this to NOT: [{...}] array form or AND:[{NOT:...},{NOT:...}].
+    // NOT: { OR: [...] } at the top level is the documented stable form (NEXT_VERSION.md Fix #1).
+    // Both `in` and `endsWith` conditions must remain here — growth commit 0a1369ce
+    // incorrectly claimed endsWith broke findMany; the real cause was the AND array form
+    // produced when optional filters were combined via andFilters.push(). Top-level NOT is safe.
+    const where: Prisma.RouterCallWhereInput = {
+      developerId: account.id,
+      // Exclude legacy/failure records where toolUsed was not properly recorded.
+      NOT: {
+        OR: [
+          { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+          { toolUsed: { endsWith: '-unavailable' } },
+        ],
+      },
+    };
     if (capability) {
-      andFilters.push({ capability });
+      (where as Record<string, unknown>).capability = capability;
     }
     if (tool) {
-      andFilters.push({ toolUsed: tool });
+      (where as Record<string, unknown>).toolUsed = tool;
     }
     if (strategy) {
       const normalizedStrat = normalizeStrategy(strategy);
       if (!normalizedStrat) {
         return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO (or aliases: best_performance, most_stable, custom)`, 400);
       }
-      andFilters.push({ strategyUsed: normalizedStrat as Prisma.RouterCallWhereInput['strategyUsed'] });
+      (where as Record<string, unknown>).strategyUsed = normalizedStrat;
     }
     if (from || to) {
       const createdAtFilter: Prisma.DateTimeFilter = {};
@@ -80,10 +90,9 @@ export async function GET(request: NextRequest) {
         if (!isNaN(toDate.getTime())) createdAtFilter.lte = toDate;
       }
       if (createdAtFilter.gte || createdAtFilter.lte) {
-        andFilters.push({ createdAt: createdAtFilter });
+        (where as Record<string, unknown>).createdAt = createdAtFilter;
       }
     }
-    const where: Prisma.RouterCallWhereInput = andFilters.length === 1 ? andFilters[0] : { AND: andFilters };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let calls: any[];
@@ -122,13 +131,8 @@ export async function GET(request: NextRequest) {
       return apiError('INTERNAL_ERROR', 'Query failed.', 500);
     }
 
-    // Filter out legacy/failure records post-query (NOT filter removed from DB query due to Prisma 7.x issue)
-    const filteredCalls = calls.filter((call: any) =>
-      call.toolUsed && call.toolUsed !== 'unknown' && !CAPABILITY_NAMES.includes(call.toolUsed) && !call.toolUsed.endsWith('-unavailable')
-    );
-
     // Normalize to include all 9 drawer fields
-    const normalizedCalls = filteredCalls.map(call => ({
+    const normalizedCalls = calls.map(call => ({
       ...call,
       // classification_ms is not stored in DB (computed at classification time only) — emit null
       classification_ms: null as number | null,
