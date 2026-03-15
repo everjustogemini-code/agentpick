@@ -145,6 +145,42 @@ describe('P1-4: Deep research AI classification', () => {
     const tools = aiRoute(ctx, 'search');
     expect(['tavily', 'serpapi']).toContain(tools[0]);
   });
+
+  it('fastClassify: "state of large language models 2025 comprehensive analysis" → research/deep', () => {
+    // Regression test for P1-1 deep-research misclassification.
+    // "state of" (researchTerms) + "comprehensive" (researchTerms) + "analysis" (researchTerms)
+    // must fire before any news path so the query routes to exa-search, not tavily.
+    const result = fastClassify('state of large language models 2025 comprehensive analysis');
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('research');
+    expect(result?.depth).toBe('deep');
+  });
+
+  it('fastClassify: "state of AI in 2025" → research/deep (no comprehensive/analysis needed)', () => {
+    // After adding "state of" to researchTerms, bare "state of X" queries must not fall to Haiku.
+    const result = fastClassify('state of AI in 2025');
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('research');
+    expect(result?.depth).toBe('deep');
+  });
+
+  it('fastClassify: analyticalKeywords+depthQualitySignal guard catches "analysis of...comprehensive" without supply-chain domain', () => {
+    // analyticalKeywords ("analysis") + depthQualitySignal ("comprehensive") + no genuineNewsSignals
+    // → research, even without "supply chain" / geopolitics / other narrowDomain terms.
+    const result = fastClassify('analysis of AI impacts on employment comprehensive review');
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('research');
+    expect(result?.depth).toBe('deep');
+  });
+
+  it('fastClassify: genuine-news signals block the analytical guard', () => {
+    // "latest" is a genuineNewsSignal → analytical guard must NOT fire → falls through to news path.
+    const result = fastClassify('latest analysis of OpenAI funding');
+    // Should be news (or null → Haiku), NOT research (genuineNewsSignal present)
+    if (result !== null) {
+      expect(result.type).not.toBe('research');
+    }
+  });
 });
 
 // ── P1-5: Non-auto strategies return valid routed payloads ──
