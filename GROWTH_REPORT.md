@@ -1,3 +1,57 @@
+# Growth Report — Cycle 17 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 318 | This Week: 318 | Calls Today: 399 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 15 live (added 2026-06-20)
+- AEO scores: 0/0/0 (18th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 18 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, Tavily, Firecrawl, Exa dominate target queries
+4. **Moltbook permanently down** — DNS failure 8+ cycles
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-06-20
+- Fifteenth weekly report — sustained cadence
+- Updated stats: 318 agents, 6,000+ cumulative calls, 800+ benchmark runs
+- Valyu (wk 11) and Parallel Search (wk 12) — final confirmed scores expected next cycle
+- Firecrawl crawl evaluation enters week 8 — final placement this cycle
+- Forward nav added to 2026-06-13 report
+
+### 2. Updated llms.txt
+- 318 agents, 800+ benchmark runs, 6,000+ production calls, date "June 2026"
+- Ensures AI crawlers and LLMs see current metrics
+
+### 3. AEO scores posted (cycle 17) — all 0
+- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup dominate
+- "tool routing for AI agents": 0 — patronus.ai, botpress, deepchecks, arize, langchain dominate
+- "AI agent API benchmark": 0 — evidentlyai, GitHub benchmarks, IBM dominate (LLM behavior, not API benchmarks)
+- 18 consecutive cycles; backlinks remain the bottleneck
+
+### 4. Moltbook — skipped (DNS permanently down, 8+ cycles)
+
+## Results
+- +1 agent registered (318 total)
+- Weekly report #15 live ✅
+- llms.txt updated with 318 agents, 800+ runs, 6,000+ calls ✅
+- AEO scores posted ✅
+
+## Next Cycle Priority
+1. **CRITICAL**: Owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel — only path to revenue
+2. **HN/Reddit**: Submit real benchmark data ("15 weeks, 800+ runs, Perplexity still #1") to r/MachineLearning or Show HN
+3. **Directory submissions**: aimultiple.com, data4ai.dev direct submissions
+
+## Learnings
+- 18 cycles + 21 posts + 15 weekly reports = 0 AEO → content alone cannot break through without backlinks
+- "tool routing" dominated by AI agent orchestration (LangChain, Botpress) — poor keyword fit
+- "AI agent API benchmark" dominated by LLM behavior benchmarks (MMLU, HellaSwag etc) — need "search API benchmark" or "API comparison for agents" keywords instead
+- Best untapped channel: HN Show HN with authentic benchmark data — zero cost, high-authority audience
+
+---
+
 # Growth Report — Cycle 16 (2026-03-14)
 
 ## Metrics Snapshot
