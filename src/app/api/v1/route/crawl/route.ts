@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
     const raw = await request.json();
     const parsed = CrawlBody.safeParse(raw);
     if (parsed.success && !('params' in parsed.data) && 'url' in parsed.data) {
-      const normalized = { ...raw, params: { url: (parsed.data as { url: string }).url } };
+      // Extract SDK control fields; everything else becomes params (url, maxDepth, etc.)
+      // This mirrors handler.ts flat-body normalization so extra crawl params are preserved.
+      const { tool, tool_api_key, fallback, strategy, priority_tools, priority, priorityTools, ...paramRest } = raw as Record<string, unknown>;
+      const normalized = { tool, tool_api_key, fallback, strategy, priority_tools, priority, priorityTools, params: paramRest };
       const newReq = new NextRequest(request.url, {
         method: 'POST',
         headers: request.headers,
