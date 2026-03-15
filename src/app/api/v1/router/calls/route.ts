@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '20', 10), 1), 50);
     const capability = url.searchParams.get('capability') ?? undefined;
+    const tool = url.searchParams.get('tool') ?? undefined;
+    const strategy = url.searchParams.get('strategy') ?? undefined;
+    const from = url.searchParams.get('from') ?? undefined;
+    const to = url.searchParams.get('to') ?? undefined;
 
     const where: Record<string, unknown> = {
       developerId: account.id,
@@ -33,6 +37,26 @@ export async function GET(request: NextRequest) {
     };
     if (capability) {
       where.capability = capability;
+    }
+    if (tool) {
+      where.toolUsed = tool;
+    }
+    if (strategy) {
+      where.strategyUsed = strategy.toUpperCase();
+    }
+    if (from || to) {
+      const createdAt: Record<string, Date> = {};
+      if (from) {
+        const fromDate = new Date(from);
+        if (!isNaN(fromDate.getTime())) createdAt.gte = fromDate;
+      }
+      if (to) {
+        const toDate = new Date(to);
+        if (!isNaN(toDate.getTime())) createdAt.lte = toDate;
+      }
+      if (Object.keys(createdAt).length > 0) {
+        where.createdAt = createdAt;
+      }
     }
 
     const calls = await prisma.routerCall.findMany({

@@ -39,7 +39,7 @@ export class AgentPickClient {
         cost_usd?: number;
         trace_id?: string;
         fallback_chain?: Array<{ tool: string; success: boolean; latency_ms: number; error?: string }>;
-        ai_routing_summary?: string;
+        ai_classification?: { type?: string; domain?: string; depth?: string; reasoning?: string };
       };
     }>(`/api/v1/router/${capability}`, {
       method: 'POST',
@@ -52,7 +52,7 @@ export class AgentPickClient {
       resultCount: raw.meta.result_count ?? 0,
       relevance: 0,
       success,
-      ai_routing_summary: raw.meta.ai_routing_summary,
+      ai_routing_summary: raw.meta.ai_classification?.reasoning,
       fallback_chain: raw.meta.fallback_chain ?? [],
       cost: raw.meta.cost_usd,
       response_preview: typeof raw.data === 'object' && raw.data !== null
@@ -63,7 +63,8 @@ export class AgentPickClient {
 
   /** Get account info for the authenticated API key. */
   async account(): Promise<AccountInfo> {
-    return this.request<AccountInfo>('/api/v1/router/account');
+    const raw = await this.request<{ account: AccountInfo }>('/api/v1/router/account');
+    return raw.account;
   }
 
   /** Get usage statistics for the current billing period. */
