@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
         tool_ms: c.latencyMs,
         total_ms: c.totalMs ?? null,
         cost_usd: c.costUsd,
+        result_count: c.resultCount ?? null,
         success: c.success,
         byok_used: c.byokUsed,
         fallback_used: c.fallbackUsed,
