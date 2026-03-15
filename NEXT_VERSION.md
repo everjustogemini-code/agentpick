@@ -1,85 +1,121 @@
-# NEXT_VERSION — AgentPick v0.34
+# NEXT_VERSION — AgentPick v0.35
 
 **Date:** 2026-03-14
-**QA Round:** 12 — Score: 57/57 (clean, no bugs)
-**Branch base:** bugfix/cycle-33
+**QA Round:** 13 — Score: 58/58 (clean, zero P0/P1/P2 bugs)
+**Branch base:** main (post cycle-1 autopilot merge)
 
 ---
 
 ## Status: No Bugs — Build on Solid Foundation
 
-QA Round 12 passed all 57 tests. No P0, P1, or P2 issues exist.
-Cycle-33 fixes (deep-research misclassification, latency metadata, models plural) are merged and verified.
-No bug-first work required. Proceeding to UI + feature priorities.
+QA Round 13 passed all 58 tests. Cycle-33 fixes are merged. API Bearer auth,
+paid user flow, and visual regression all verified. No bug-first work required.
 
 ---
 
-## Must-Have #1 — Homepage Dark-Mode Overhaul with Glassmorphism + Motion
+## Must-Have #1 — Major UI Upgrade: Glassmorphism + Motion Design
 
-**What:** Rebuild the homepage (and sibling pages `/rankings`, `/benchmarks`, `/agents`, `/live`) with the same premium dark design language already present on `/connect`.
+**What:** The current dark theme is functional but flat. The homepage hero,
+pricing cards, and benchmark table need a premium upgrade to match the quality
+bar set by Vercel/Linear/Resend. First impressions are the primary signup driver.
 
 **Scope:**
-- Replace `#FAFAFA` light hero with a deep dark base (`#08080f`) and an animated radial gradient mesh (purple + blue glow, subtle motion)
-- Apply glassmorphism to all card components: `backdrop-blur-md`, `rgba(255,255,255,0.04)` fill, `1px solid rgba(255,255,255,0.08)` border, `box-shadow` glow on hover
-- Scroll-reveal animations: staggered fade-up for hero text lines, counter animations on live stats (calls routed, tools integrated, uptime %), card lift (`translateY(-4px)`) on hover
-- Typography upgrade: hero headline to 72px/800 weight with one gradient-colored accent word; subheadline to 20px/400 at 1.6 line-height; improved spacing rhythm throughout
-- Dark nav with `backdrop-blur` and no hard border — consistent across all dark pages
-- Apply dark glass treatment to `/rankings`, `/benchmarks`, `/agents`, `/live` (currently inconsistent with the `/connect` aesthetic)
+- **Hero:** Add a slow-moving radial mesh gradient background (purple→blue, 8s
+  CSS animation loop). Headline stagger-in animation per word (CSS
+  `@keyframes`, 40ms delay between words). Bump headline to 72px/800 weight on
+  desktop; one accent word in gradient color.
+- **Glassmorphism cards:** All pricing cards, benchmark rows, and dashboard
+  panels get `backdrop-filter: blur(12px)` + `background: rgba(255,255,255,0.04)`
+  + `border: 1px solid rgba(255,255,255,0.08)` + subtle inner glow on hover.
+  Replace all solid `#111`/`#0A0A0A` card backgrounds.
+- **Frosted nav:** `backdrop-filter: blur(20px)` + `border-bottom:
+  1px solid rgba(255,255,255,0.06)` activates on scroll (currently hard border).
+- **Benchmark table:** Score bars animate in on scroll via IntersectionObserver
+  (600ms ease-out fill). Rank #1 row gets a faint gold shimmer border
+  (`conic-gradient` rotation, 4s loop).
+- **CTA buttons:** Replace flat gradient with animated border shimmer
+  (`conic-gradient` rotation, 3s loop). Add `scale(1.02)` on hover,
+  `transition: 150ms`.
+- **Typography:** Body line-height 1.75 (currently tighter). Subheadings
+  Inter 700 weight. Code blocks keep JetBrains Mono.
+- All animations must respect `prefers-reduced-motion: reduce`.
 
 **Acceptance criteria:**
-- QA script still passes 57/57 after changes
-- Homepage, /rankings, /benchmarks, /agents, /live all render in dark mode with glass card components
-- Lighthouse performance score does not regress below pre-change baseline
+- QA script still passes 58/58 after changes
+- Lighthouse Performance ≥ 85, CLS < 0.1
+- `/`, `/connect`, `/dashboard`, `/products/tavily` all render correctly
+- Visual review confirms glassmorphism on cards in both Chrome and Safari
 
 ---
 
 ## Must-Have #2 — Node.js / TypeScript SDK (`npm install agentpick`)
 
-**What:** Ship a first-class TypeScript SDK on npm mirroring the Python SDK's surface area.
+**What:** Ship a first-class TypeScript SDK on npm. Every JS/TS developer
+building an agent currently must use the REST API manually or switch to Python.
+`npm install agentpick` closes the largest single adoption gap.
 
 **Scope:**
-- Package: `agentpick` on npm, ESM + CJS dual build, full TypeScript types exported
-- Core methods: `route(capability, query, options?)`, `account()`, `usage()`, `calls()`, `setStrategy()`, `setBudget()`, `health()`
-- Auto-retry and fallback reporting behavior matching the Python SDK
-- `/connect` page: add `npm install agentpick` tab alongside existing `pip install agentpick`
-- Homepage code examples: add Node.js tab with TypeScript syntax alongside Python tab
-- JSDoc comments on all public methods; README with copy-paste quick-start
+- Package `agentpick` on npmjs.com, ESM + CJS dual build, full TypeScript
+  types exported.
+- Core methods matching Python SDK parity: `route(capability, query, options?)`,
+  `account()`, `usage()`, `calls()`, `setStrategy()`, `setBudget()`, `health()`
+- Auto-retry on 5xx (max 2 retries, 200ms backoff). Fallback chain reported in
+  response metadata, matching Python SDK behavior.
+- `/connect` page: add "Node.js / TypeScript" tab alongside `pip install`
+  tab. Show `npm install agentpick` as first step, then TypeScript snippet
+  with `fetch()` + Bearer auth.
+- Homepage code block: add Node.js tab with TypeScript syntax.
+- JSDoc on all public methods. README quick-start copy-pasteable in < 30s.
 
 **Acceptance criteria:**
-- `npm install agentpick` installs without errors on Node 18+
-- `route('search', 'latest AI benchmarks 2025')` returns correct tool and latency
-- Listed on `/connect` with full parity to the Python code examples
-- Package published to npmjs.com under `agentpick`
-
-**Why:** Every JS/TS developer building an agent — the primary target audience — currently must use the REST API manually or switch to Python. `npm install agentpick` closes the largest single adoption gap for the biggest developer segment.
+- `npm install agentpick` works on Node 18+ without errors
+- `route('search', 'latest AI benchmarks 2026')` returns correct tool + latency
+- `/connect` TypeScript tab shows correct examples (QA script Part 3 updated
+  to cover new tab)
+- Package published with npm provenance attestation
 
 ---
 
 ## Must-Have #3 — `/dashboard/router` Request Inspector (Per-Call Detail Drawer)
 
-**What:** Add a drill-down call detail panel to the Router Dashboard so developers can self-serve debug individual routing decisions without filing support requests.
+**What:** "Why did my request route to X instead of Y?" is the most common
+developer question. The current dashboard shows aggregates only. Per-call
+visibility turns support requests into self-service debugging and increases
+developer retention.
 
 **Scope:**
-- Clicking any row in the "Recent Calls" table opens a right-side drawer (no page navigation)
-- Drawer fields: raw query, capability detected, AI classification reasoning (`ai_routing_summary`), strategy applied, tool selected, fallback chain attempted (with pass/fail per tool), latency breakdown (classify ms + tool ms + total ms), cost, response preview (truncated at 500 chars with "copy full" button)
-- Filter bar above the calls table: filter by capability, strategy, tool, date range — state persisted in URL params for shareable deep links
-- "Export JSON" button: downloads currently filtered calls as a `.json` file
+- Clicking any row in the "Recent Calls" table opens a right-side drawer
+  (slide-in, no page navigation, `300ms ease`).
+- Drawer fields (9 total): raw query, capability detected, AI classification
+  reasoning (`ai_routing_summary`), strategy applied, tool selected, fallback
+  chain (pass/fail per attempted tool), latency breakdown (classify ms + tool
+  ms + total ms), cost, response preview (500 char truncated + "copy full"
+  button).
+- Filter bar above calls table: filter by capability, strategy, tool, date
+  range. State persisted in URL search params for shareable deep links.
+- "Export JSON" button: downloads currently-filtered calls as `.json` matching
+  the `/api/v1/router/calls` response schema.
 
 **Acceptance criteria:**
-- Any call row click opens the drawer within 200ms (client-side, no extra network request for data already in the calls list)
-- All 9 fields render correctly for a sampled call from the live QA test account
-- Filter URL params are bookmarkable and restore filter state on reload
-- Export produces valid JSON matching the `/api/v1/router/calls` response schema
-
-**Why:** "Why did my request route to X instead of Y?" is the most common developer question. The current dashboard shows only aggregates. Per-call visibility converts support tickets into self-service debugging and directly increases developer trust and retention.
+- Drawer opens within 200ms on click (client-side, no extra network request
+  for data already in the list)
+- All 9 drawer fields render correctly for a sampled call from the QA test
+  account
+- Filter URL params are bookmarkable and restore state on reload
+- Export JSON is valid and passes schema validation
+- Dashboard QA (Part 8) still passes 4/4 after changes
 
 ---
 
-## Out of Scope (defer to v0.35)
+## Out of Scope (defer to v0.36)
 
-- OpenAI-compatible passthrough endpoint (`/v1/chat/completions`) — valuable but requires careful rate-limit design
-- GitHub Actions workflow template — defer until Node SDK ships so the action can use it
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — ongoing Pclaw/OpenClaw collaboration, tracked separately in `/Users/pwclaw/.openclaw/workspace/agentpick-benchmark/`
+- OpenAI-compatible passthrough endpoint (`/v1/chat/completions`) — needs
+  rate-limit design
+- Shareable benchmark embed widgets + SVG badges — good idea, defer
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — ongoing
+  Pclaw/OpenClaw collaboration, tracked separately in
+  `/Users/pwclaw/.openclaw/workspace/agentpick-benchmark/`
+- `npx agentpick init` CLI — defer until npm SDK ships first
 
 ---
 
@@ -87,6 +123,6 @@ No bug-first work required. Proceeding to UI + feature priorities.
 
 | # | Item | Category | Acceptance Gate |
 |---|------|----------|-----------------|
-| 1 | Dark-mode homepage + sibling pages | UI Upgrade | 57/57 QA + visual review |
-| 2 | Node.js / TypeScript npm SDK | Developer Adoption | npm install works + /connect updated |
-| 3 | Request Inspector drawer in dashboard | Developer Adoption | All 9 fields + filter + export |
+| 1 | Glassmorphism + motion design upgrade | UI Upgrade | 58/58 QA + Lighthouse ≥ 85 + visual review |
+| 2 | Node.js / TypeScript npm SDK | Developer Adoption | npm install works + /connect TS tab live |
+| 3 | Request Inspector drawer in dashboard | Developer Retention | 9 fields + filter + export + 58/58 QA |

@@ -1,4 +1,4 @@
-# AgentPick QA Report — Round 12 (2026-03-14)
+# AgentPick QA Report — Round 13 (2026-03-14)
 
 **Target:** https://agentpick.dev
 **Tester:** QA Agent (Claude Sonnet 4.6)
@@ -6,15 +6,15 @@
 
 ---
 
-## Score: 57/57
+## Score: 58/58
 
 | Category | Tests | Passed | Failed |
 |---|---|---|---|
 | Router QA Script (full suite) | 51 | 51 | 0 |
 | Page Load Checks (/, /connect, /dashboard, /products/tavily) | 4 | 4 | 0 |
-| API Bearer Auth Test (manual) | 1 | 1 | 0 |
-| Paid User Flow (register → search → usage check) | 1 | 1 | 0 |
-| **Total** | **57** | **57** | **0** |
+| API Bearer Auth Test (valid key + missing + invalid) | 2 | 2 | 0 |
+| Paid User Flow (register → search → verify results) | 1 | 1 | 0 |
+| **Total** | **58** | **58** | **0** |
 
 ---
 
@@ -30,32 +30,12 @@
 
 ---
 
-## Changes Since Round 11
+## Changes Since Round 12
 
-| Issue | Round 11 | Round 12 | Bugfix Cycle 33 |
-|-------|----------|----------|-----------------|
-| `6.1-deep-research` misclassification | ❌ P1 (unresolved) | ✅ Fixed | ✅ Fixed (effectivePriority excludes MOST_ACCURATE + applyStrategy fallback guard) |
-| Latency metadata inversion | ❌ P1 (data quality) | ✅ Fixed | ✅ Fixed (total_ms added in cycle 32) |
-
----
-
-## Root Cause: `6.1-deep-research` (Bugfix Cycle 33)
-
-The test was failing because the QA run order caused stale `account.priorityTools` to override
-AI research routing for `best_performance` requests:
-
-1. Part 2 test `set-priority` sets `account.priorityTools = ['some-tool']` on the test account.
-2. Part 6 test `6.1-deep-research` sends `{ strategy: "best_performance" }` — the `effectivePriority`
-   calculation applied `account.priorityTools` for `MOST_ACCURATE` (unlike `AUTO` which was already excluded).
-3. The stale `priority_tools` overrode the AI research routing → tool selection ignored fastClassify result.
-
-**Fixes applied (cycle 33):**
-- `sdk-handler.ts`: `effectivePriority` now excludes `MOST_ACCURATE` from account priorityTools,
-  consistent with the existing `AUTO` exclusion. AI routing is now fully in control for `best_performance`.
-- `sdk.ts` `applyStrategy`: fallback injection skips `AUTO` and `MOST_ACCURATE` strategies to prevent
-  stale account `priorityTools` from polluting the AI-selected fallback chain.
-- `ai-classify.ts`: `genericTopicSignal` updated `model` → `models?` to match plural form,
-  preventing "latest large language models" type queries from falling through to non-deterministic Haiku.
+No regressions detected. All 51 automated checks continue to pass. Additional manual verification added this round:
+- API Bearer auth tested with valid key (10 results, has_answer=True), missing key (401), invalid key (401) — all correct.
+- Paid user flow confirmed: registration returns `ah_live_sk_...` with `plan: FREE, monthlyLimit: 500`; search returns real results.
+- Visual regression scan of homepage confirms "500" occurrences are only CSS classes and pricing copy, not errors.
 
 ---
 
