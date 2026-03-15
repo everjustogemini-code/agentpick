@@ -31,10 +31,19 @@ export async function GET(request: NextRequest) {
     const from = url.searchParams.get('from') ?? undefined;
     const to = url.searchParams.get('to') ?? undefined;
 
+    // Capability names used as last-resort fallback in recordRouterCall — must be filtered
+    // here to stay consistent with the analytics.ts and sdk.ts getUsageStats filters.
+    const CAPABILITY_NAMES = [
+      'search', 'crawl', 'embed', 'finance', 'code', 'communication',
+      'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
+    ];
     const where: Record<string, unknown> = {
       developerId: account.id,
       // Exclude legacy/failure records where toolUsed was not properly recorded
-      NOT: [{ toolUsed: 'unknown' }, { toolUsed: '' }, { toolUsed: { endsWith: '-unavailable' } }],
+      NOT: [
+        { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+        { toolUsed: { endsWith: '-unavailable' } },
+      ],
     };
     if (capability) {
       where.capability = capability;

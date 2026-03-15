@@ -1,8 +1,8 @@
 # NEXT_VERSION — AgentPick v0.35
 
-**Date:** 2026-03-14
+**Date:** 2026-03-15
 **QA Round:** 13 — Score: 58/58 (clean, zero P0/P1/P2 bugs)
-**Branch base:** main (post cycle-1 autopilot merge)
+**Branch base:** bugfix/cycle-53
 
 ---
 
