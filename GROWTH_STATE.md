@@ -1,4 +1,4 @@
-# Growth State — Cycle 13 (2026-03-15)
+# Growth State — Cycle 14 (2026-03-15)
 
 ## Working
 - Homepage: HTTP 200
@@ -13,41 +13,41 @@
 
 ## Broken
 - Stripe: not configured — $0 revenue (owner action required)
-- Moltbook: DNS failure (exit code 6) — confirmed permanently dead
-- AEO: 0/0/0 for all queries, 13 consecutive cycles
+- Moltbook: DNS failure (exit code 0/000) — confirmed permanently dead (14 consecutive cycles)
+- AEO: 0/0/0 for all queries, 14 consecutive cycles
 - Router health endpoint: returns UNAUTHORIZED (requires API key — expected behavior)
 
 ## Metrics
-- Total agents: 340 (up from 339)
-- Router calls today: 227
+- Total agents: 341 (up from 340)
+- Router calls today: 178
 - Paid accounts: 0
-- AEO scores cycle 13: 0/0/0
+- AEO scores cycle 14: 0/0/0
 
-## Rankings (cycle 13 — unchanged)
-- Search #1: Tavily (6.4) — highest quality, most production-tested (4,900+ verified calls)
+## Rankings (cycle 14 — unchanged)
+- Search #1: Tavily (6.4) — highest quality, most production-tested (5,000+ verified calls)
 - Search #2: Exa Search (5.9) — 61% faster than Tavily
 - Search #3: Haystack (5.87) — structured retrieval
 - Search #4: SerpAPI Google (5.28)
 - Crawl #1: Jina AI (5.2)
 
-## Notable cycle 13 findings
+## Notable cycle 14 findings
 - Query 1 "best search API for AI agents": Tavily, KDnuggets, Firecrawl, Brave, Medium/unicodeveloper, Exa, Linkup, Buttondown newsletter, Parallel, Parallel blog dominate top 10. agentpick.dev not present.
 - Query 2 "tool routing for AI agents": LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai GitHub, LangChain, Medium dominate. agentpick.dev not present.
 - Query 3 "AI agent API benchmark": EvidentlyAI, philschmid GitHub 50+ compendium, Sierra Tau-Bench, AgentBench THUDM, IBM Research, o-mega.ai, cleanlab.ai, Galileo AI, Emergence AI, tessl.io dominate. agentpick.dev not present.
-- NEW cycle 13: tessl.io published "8 benchmarks shaping the next generation of AI agents" — editorial benchmark roundup entering results. Pattern: editorial roundups beat product pages in benchmark queries.
-- NEW cycle 13: Linkup now claims #1 on SimpleQA factuality benchmark — factuality benchmarks are being used as search copy by the tools themselves. AgentPick should publish its own factuality analysis from live data.
-- Persistent pattern (13 cycles): zero external backlinks = zero AEO visibility. Product is healthy (58/58 QA). Only missing piece is one high-DA external citation.
+- Pattern (14 cycles): zero external backlinks = zero AEO visibility. Product is healthy (58/58 QA). Only missing piece is one high-DA external citation.
+- Valyu Search now claims #1 in 5 benchmark categories; Linkup claims #1 on SimpleQA factuality — all competitors using benchmark claims as search copy.
 
 ## Revenue Blockers (ordered by impact)
 1. Stripe env vars missing — zero revenue ceiling (owner action required: set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard)
-2. Zero search visibility — 13 cycles, 0 AEO score; no backlinks = no discovery
+2. Zero search visibility — 14 cycles, 0 AEO score; no backlinks = no discovery
 3. No directory listings — not submitted to toolify.ai, futurepedia.io, theresanaiforthat.com
 4. No distribution channel — Moltbook dead permanently; HN/Reddit/dev.to posts needed
 
-## Actions Taken (Cycle 13)
+## Actions Taken (Cycle 14)
 - AEO scores: all 3 = 0 posted to growth-metrics (confirmed ok)
-- skill.md updated: 1,040+ benchmark runs, 9,700+ production calls, 340 agents, 4,900+ Tavily calls, added Linkup SimpleQA note
+- skill.md updated: 1,060+ benchmark runs, 9,900+ production calls, 341 agents, 5,000+ Tavily calls
 - llms.txt updated: matching metrics
-- GROWTH_STATE.md: updated to cycle 13
-- GROWTH_REPORT.md: updated to cycle 13
-- Moltbook: permanently dead, not attempted
+- blog/page.tsx meta tags: improved — added keywords field, stronger og:title/description targeting "best search API for AI agents", "tool routing for AI agents", "AI agent API benchmark"
+- GROWTH_STATE.md: updated to cycle 14
+- GROWTH_REPORT.md: updated to cycle 14
+- Moltbook: permanently dead (14 consecutive failures), not attempted

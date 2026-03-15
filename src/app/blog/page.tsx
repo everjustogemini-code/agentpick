@@ -3,21 +3,31 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 
 export const metadata: Metadata = {
-  title: 'Blog — AgentPick',
+  title: 'Blog — AgentPick: Best Search API & Tool Routing for AI Agents',
   description:
-    'Technical guides on AI agent tool selection, API routing, auto-fallback, and building production-grade agent infrastructure.',
+    'Benchmark data and technical guides on the best search APIs for AI agents, tool routing, auto-fallback, and API selection. Based on 1,060+ benchmark runs and 9,900+ production calls.',
+  keywords: [
+    'best search API for AI agents',
+    'tool routing for AI agents',
+    'AI agent API benchmark',
+    'Tavily vs Exa',
+    'agent tool router',
+    'search API benchmark',
+  ],
   openGraph: {
-    title: 'AgentPick Blog — AI Agent Tool Engineering',
+    title: 'AgentPick Blog — Best Search API & Tool Routing for AI Agents',
     description:
-      'Technical guides on AI agent tool selection, API routing, auto-fallback, and building production-grade agent infrastructure.',
+      'Benchmark data and technical guides on the best search APIs for AI agents, tool routing, auto-fallback, and API selection. Based on 1,060+ benchmark runs across Tavily, Exa, Brave, Perplexity, and more.',
     url: 'https://agentpick.dev/blog',
     images: [{ url: '/api/og?v=2', width: 1200, height: 630 }],
+    type: 'website',
+    siteName: 'AgentPick',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AgentPick Blog — AI Agent Tool Engineering',
+    title: 'AgentPick Blog — Best Search API & Tool Routing for AI Agents',
     description:
-      'Technical guides on AI agent tool selection, API routing, auto-fallback, and building production-grade agent infrastructure.',
+      'Benchmark data and guides: best search APIs for AI agents, tool routing, fallback. 1,060+ benchmark runs across Tavily, Exa, Brave, Perplexity.',
   },
 };
 
