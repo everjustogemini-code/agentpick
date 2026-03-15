@@ -1,56 +1,55 @@
-# Growth Report — Cycle 2 (2026-03-15)
+# Growth Report — Cycle 3 (2026-03-15)
 
 ## Metrics Snapshot
-- Total Agents: 328 | This Week: 328 | Calls Today: 356 | Paid: 0
-- Blog posts: 21 live
-- Weekly reports: 15 live
-- AEO scores: 0/0/0 (25th+ consecutive cycle)
+- Total Agents: 329 | This Week: 329 | Calls Today: 356 | Paid: 0
+- Blog posts: 22 live (added 1 this cycle)
+- AEO scores: 0/0/0 (26th+ consecutive cycle at zero)
 
 ## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required, agent cannot fix)
-2. **Zero search visibility** — 25+ cycles at 0 for all 3 AEO queries; no backlinks, no discovery
-3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
-4. **Moltbook unreliable** — api.moltbook.com DNS failing again; recurring pattern, not dependable
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 26+ cycles at 0 for all 3 AEO queries; no backlinks, no discovery
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+4. **Moltbook unreliable** — DNS failing again; recurring pattern, not dependable
 
 ## Actions Taken
 
-### 1. AEO scores — all 0 again (cycle 2)
-- "best search API for AI agents": 0 — Firecrawl, Tavily, Exa, Composio, KDnuggets dominate top 10
-- "tool routing for AI agents": 0 — Patronus AI, LivePerson, Botpress, Arize, LangChain dominate
-- "AI agent API benchmark": 0 — evidentlyai, METR, IEEE Spectrum, AImultiple dominate
-- Key intel from search results: Valyu Search ranks #1 in 5 external benchmark categories (FreshQA 79%, Finance 73%, Economics 73%). Brave Search led one 8-API agentic benchmark at 14.89 score with 669ms latency.
+### 1. AEO scores — all 0 (cycle 3)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Linkup, Parallel.ai dominate top 10
+- "tool routing for AI agents": 0 — Botpress, Patronus AI, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — Evidently AI, Sierra, IBM Research, Galileo AI dominate
+- New insight: Linkup and Parallel.ai now appear in query 1 results — newer but already indexed
 - All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
 
-### 2. Page health — all 200 OK
+### 2. New blog post: Linkup vs Parallel Search API
+- Created /blog/linkup-vs-parallel-search-api-for-ai-agents
+- Targets Linkup and Parallel.ai — both appearing in "best search API for AI agents" results this cycle
+- Full comparison table, routing advice, AgentPick CTA
+- Fresh content about newly-indexed competitors may rank faster than broad positioning content
+
+### 3. skill.md + llms.txt — updated agent count 328 → 329
+
+### 4. Moltbook — DNS failure again, skipped
+- api.moltbook.com: Could not resolve host (Exit code 6)
+- 3rd+ consecutive DNS failure; treating as dead channel
+
+### 5. Page health — all 200 OK
 - /, /pricing, /blog, /connect, /checkout?plan=pro all return HTTP 200
-- Agent registration functional (returns ah_live_sk_ key)
-- Checkout page loads but payment blocked without Stripe env vars
-
-### 3. Moltbook — DNS failure, skipped
-- api.moltbook.com unreachable (Exit code 6 — network failure)
-- Recurring pattern across multiple cycles; treat as opportunistic only
-
-### 4. skill.md + llms.txt — updated with fresh benchmark intel
-- Updated agent count from 326/327 to 328
-- Added Valyu Search external benchmark data (FreshQA 79%, Finance 73%, Economics 73%)
-- Added Brave Search context (led 8-API agentic benchmark, 669ms fastest latency)
-- Date updated to 2026-03-15
 
 ## Results
 - 0 new paid conversions (Stripe still unconfigured)
 - 3 AEO scores posted
-- 0 Moltbook posts (DNS failure)
-- skill.md and llms.txt now contain richer benchmark comparison data from external sources
+- 1 new blog post live (/blog/linkup-vs-parallel-search-api-for-ai-agents — 22 total)
+- skill.md + llms.txt updated to 329 agents
 
 ## Next Cycle Priority
-1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; this is the only path to revenue
-2. **Backlinks** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; this is the only path to AEO visibility
-3. **Content** — "Valyu vs Exa vs Haystack vs Brave: March 2026 Benchmark Comparison" blog post — timely, data-rich, targets exact search queries that dominate results
-4. **Moltbook alternative** — find a working distribution channel; Moltbook DNS has failed multiple cycles in a row
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; single biggest revenue unblocker
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com; owner creates accounts and submits
+3. **Content strategy shift** — target "search API comparison" and "search API leaderboard" (terminology mismatch for query 3)
+4. **External citation** — write a benchmark methodology post with shareable data; get one external site to link to agentpick.dev
 
 ## Learnings
-- AEO competitors (Firecrawl, Tavily, Exa, Brave, Valyu) are all either major funded startups or have large community backlinking networks. AgentPick has the data but zero inbound links.
-- External validation is key: Valyu appears in results BECAUSE it ranked #1 in published research. AgentPick needs to be cited in an external benchmark study or blog to appear.
-- Moltbook is not a reliable distribution channel; it fails more cycles than it works.
-- skill.md and llms.txt are the right format for AI-crawler discovery — keep them accurate and data-rich with external cross-references.
-- The Brave Search AImultiple benchmark study (8 APIs, 4,000 results) gets indexed. Publishing a similar AgentPick benchmark study as a shareable blog post with methodology could generate backlinks.
+- Linkup.so and parallel.ai are now appearing in "best search API for AI agents" results — newer than AgentPick, already indexed. Publishing comparison content about them specifically may rank before broad positioning content.
+- AEO query 3 ("AI agent API benchmark") is dominated by academic benchmarks (AgentBench, GAIA, ToolBench). "Search API comparison" or "search API leaderboard" would be better target phrases.
+- Parallel.ai appears in 2 out of 3 AEO queries — strong content coverage and indexing. Comparison content targeting their traffic is worth pursuing.
+- Moltbook: 3+ consecutive DNS failures — retire from active distribution strategy.
+- skill.md and llms.txt remain best AI-crawler assets — keep accurate, data-rich, updated with agent counts and fresh benchmark data.
