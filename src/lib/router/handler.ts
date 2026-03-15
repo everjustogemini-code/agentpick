@@ -191,6 +191,18 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
   }
 
+  // Validate priority_tools: if provided and ALL are unknown for this capability, return 400.
+  // A mix of known + unknown tools is allowed (unknown ones fail → fallback to next).
+  // This prevents silent fallback when developers typo tool slugs.
+  const priorityTools = body.priority_tools;
+  if (priorityTools?.length) {
+    const validCapabilityTools = new Set(CAPABILITY_TOOLS[capability] ?? []);
+    const allUnknown = priorityTools.every((t) => !validCapabilityTools.has(t));
+    if (allUnknown) {
+      return apiError('INVALID_PRIORITY', `None of the specified priority tools are available for ${capability}: ${priorityTools.join(', ')}. Valid tools: ${[...validCapabilityTools].join(', ')}`, 400);
+    }
+  }
+
   // 4. Budget and plan-limit enforcement — block routing before dispatch
   let preAccount;
   let preUsageIsOverage = false;
@@ -198,7 +210,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     preAccount = await ensureDeveloperAccount(agent.id);
     if (
       typeof preAccount.monthlyBudgetUsd === 'number' &&
-      preAccount.monthlyBudgetUsd >= 0 &&
+      preAccount.monthlyBudgetUsd > 0 &&
       preAccount.spentThisMonth >= preAccount.monthlyBudgetUsd
     ) {
       return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {

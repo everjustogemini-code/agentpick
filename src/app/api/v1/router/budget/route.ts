@@ -29,11 +29,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Accept both field names: limit_usd (actual) and monthly_budget_usd (documented)
-    const budgetValue = body.limit_usd ?? body.monthly_budget_usd;
-    if (typeof budgetValue !== 'number' || budgetValue < 0) {
-      return apiError('VALIDATION_ERROR', 'limit_usd (or monthly_budget_usd) must be a non-negative number.', 400);
+    // null clears the budget (no spending cap). 0 is treated as "no limit" by the
+    // enforcement check (budget > 0 required to trigger enforcement).
+    const budgetValue = body.limit_usd !== undefined ? body.limit_usd : body.monthly_budget_usd;
+    if (budgetValue !== null && (typeof budgetValue !== 'number' || budgetValue < 0)) {
+      return apiError('VALIDATION_ERROR', 'limit_usd (or monthly_budget_usd) must be a non-negative number or null to clear the limit.', 400);
     }
-    if (budgetValue > 100_000) {
+    if (typeof budgetValue === 'number' && budgetValue > 100_000) {
       return apiError('VALIDATION_ERROR', 'Budget cannot exceed $100,000.', 400);
     }
 
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
     const updated = await db.developerAccount.update({
       where: { id: account.id },
       data: {
-        monthlyBudgetUsd: budgetValue,
+        monthlyBudgetUsd: budgetValue ?? null,
       },
     });
 

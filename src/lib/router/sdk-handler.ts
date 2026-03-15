@@ -157,10 +157,20 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     return apiError('VALIDATION_ERROR', `Query exceeds maximum length of ${MAX_QUERY_LENGTH} characters.`, 413);
   }
 
+  // Validate request-level priority_tools: if ALL are unknown for this capability return 400.
+  // A mix of known + unknown tools is allowed (unknown ones fail and trigger normal fallback).
+  if (body.priority_tools?.length) {
+    const validCapabilityTools = new Set(CAPABILITY_TOOLS[capability] ?? []);
+    const allUnknown = body.priority_tools.every((t) => !validCapabilityTools.has(t));
+    if (allUnknown) {
+      return apiError('INVALID_PRIORITY', `None of the specified priority tools are available for ${capability}: ${body.priority_tools.join(', ')}. Valid tools: ${[...validCapabilityTools].join(', ')}`, 400);
+    }
+  }
+
   // P1-6: Hard budget enforcement — block routing before dispatch
   if (
     typeof account.monthlyBudgetUsd === 'number' &&
-    account.monthlyBudgetUsd >= 0 &&
+    account.monthlyBudgetUsd > 0 &&
     account.spentThisMonth >= account.monthlyBudgetUsd
   ) {
     return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
