@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
         query: c.query,
         capability: c.capability,
         strategy: c.strategyUsed,
+        tool_requested: c.toolRequested ?? null,
         tool_used: c.toolUsed,
         latency_ms: c.latencyMs,
         classify_ms: null,

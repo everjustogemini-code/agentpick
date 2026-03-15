@@ -5,7 +5,13 @@ export async function callJina(query: string, config?: Record<string, unknown>):
   if (!apiKey) throw new Error('JINA_API_KEY not set');
 
   const start = performance.now();
-  const response = await fetch('https://s.jina.ai/' + encodeURIComponent(query), {
+  // Use Jina Reader (r.jina.ai) for URL inputs (crawl capability) and
+  // Jina Search (s.jina.ai) for text queries (search capability).
+  const isUrl = query.startsWith('http://') || query.startsWith('https://');
+  const jinaUrl = isUrl
+    ? 'https://r.jina.ai/' + query
+    : 'https://s.jina.ai/' + encodeURIComponent(query);
+  const response = await fetch(jinaUrl, {
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${apiKey}`,
