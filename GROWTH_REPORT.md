@@ -1,3 +1,61 @@
+# Growth Report — Cycle 31 (2026-03-15)
+
+## Metrics Snapshot
+- Total Agents: 366 | This Week: 366 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (31st consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 31 cycles at 0 for all 3 AEO queries; no backlinks, no domain authority
+3. **Moltbook distribution down** — api.moltbook.com DNS not resolving (channel unavailable)
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog, /checkout?plan=pro, /connect → all 200 OK ✅
+- Call persistence bugfix (cycle 91) merged and deployed ✅
+
+### 2. AEO scores — all 0 (31st consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave dominate top 10
+- "tool routing for AI agents": 0 — LangChain, Botpress, LlamaIndex dominate
+- "AI agent API benchmark": 0 — AgentBench, Evidently AI, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 365 → 366
+- Production calls: 11,500+ (maintained)
+
+### 4. Moltbook posts — skipped (api.moltbook.com DNS not resolving, 31st cycle)
+
+### 5. Blog meta tags verified
+- All blog posts confirmed to have proper OG, Twitter, description meta tags
+- Conversion pages all loading (pricing, checkout, connect)
+
+### 6. GROWTH_STATE.md updated to cycle 31
+
+## Results
+- skill.md/llms.txt accurate for agent discovery (366 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Content** — write blog post targeting "AI agent API benchmark" comparison (less competitive than search)
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+4. **Long-tail content** — "Haystack vs Exa comparison", "search API latency benchmark 2026"
+5. **Moltbook fallback** — find alternative distribution channel (api.moltbook.com down 31 cycles)
+
+## Learnings
+- Moltbook API consistently unreachable (DNS failure) — need backup distribution channel urgently
+- 31 consecutive AEO-0 cycles — domain authority near zero, content strategy is the only lever
+- All infrastructure healthy + bugfix 91 resolved call persistence — core product is solid
+- Blog posts have proper SEO meta tags — issue is backlinks/authority, not on-page SEO
+
+---
+
 # Growth Report — Cycle 30 (2026-03-15)
 
 ## Metrics Snapshot
