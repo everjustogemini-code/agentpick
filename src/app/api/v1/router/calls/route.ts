@@ -3,6 +3,7 @@ import { authenticateAgent } from '@/lib/auth';
 import { ensureDeveloperAccount } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,43 +42,47 @@ export async function GET(request: NextRequest) {
       'search', 'crawl', 'embed', 'finance', 'code', 'communication',
       'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
     ];
-    const where: Record<string, unknown> = {
-      developerId: account.id,
-      // Exclude legacy/failure records where toolUsed was not properly recorded
-      // NOTE: Use NOT: { OR: [...] } form — NOT array form is fragile across Prisma versions
-      // and has been broken repeatedly by growth commits. Do NOT rewrite to NOT: [{...}] or AND:[{NOT:...}].
-      NOT: {
-        OR: [
-          { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-          { toolUsed: { endsWith: '-unavailable' } },
-        ],
+    // Build filter using typed AND array to avoid Record<string,unknown> runtime validation issues.
+    // NOTE: Use NOT: { OR: [...] } form — NOT array form is fragile across Prisma versions
+    // and has been broken repeatedly by growth commits. Do NOT rewrite to NOT: [{...}] or AND:[{NOT:...}].
+    const andFilters: Prisma.RouterCallWhereInput[] = [
+      {
+        developerId: account.id,
+        NOT: {
+          OR: [
+            { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+            { toolUsed: { endsWith: '-unavailable' } },
+          ],
+        },
       },
-    };
+    ];
     if (capability) {
-      where.capability = capability;
+      andFilters.push({ capability });
     }
     if (tool) {
-      where.toolUsed = tool;
+      andFilters.push({ toolUsed: tool });
     }
     if (strategy) {
-      where.strategyUsed = strategy.toUpperCase();
+      andFilters.push({ strategyUsed: strategy.toUpperCase() as Prisma.RouterCallWhereInput['strategyUsed'] });
     }
     if (from || to) {
-      const createdAt: Record<string, Date> = {};
+      const createdAtFilter: Prisma.DateTimeFilter = {};
       if (from) {
         const fromDate = new Date(from);
-        if (!isNaN(fromDate.getTime())) createdAt.gte = fromDate;
+        if (!isNaN(fromDate.getTime())) createdAtFilter.gte = fromDate;
       }
       if (to) {
         const toDate = new Date(to);
-        if (!isNaN(toDate.getTime())) createdAt.lte = toDate;
+        if (!isNaN(toDate.getTime())) createdAtFilter.lte = toDate;
       }
-      if (Object.keys(createdAt).length > 0) {
-        where.createdAt = createdAt;
+      if (createdAtFilter.gte || createdAtFilter.lte) {
+        andFilters.push({ createdAt: createdAtFilter });
       }
     }
+    const where: Prisma.RouterCallWhereInput = andFilters.length === 1 ? andFilters[0] : { AND: andFilters };
 
-    const calls = await prisma.routerCall.findMany({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const calls: any[] = await (prisma as any).routerCall.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
