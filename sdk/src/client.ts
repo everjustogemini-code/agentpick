@@ -30,10 +30,35 @@ export class AgentPickClient {
 
   /** Route a query to the best available tool for the given capability. */
   async route(capability: string, query: string, options?: RouteOptions): Promise<RouteResult> {
-    return this.request<RouteResult>(`/api/v1/router/${capability}`, {
+    const raw = await this.request<{
+      data: unknown;
+      meta: {
+        tool_used: string;
+        latency_ms: number;
+        result_count?: number;
+        cost_usd?: number;
+        trace_id?: string;
+        fallback_chain?: Array<{ tool: string; success: boolean; latency_ms: number; error?: string }>;
+        ai_routing_summary?: string;
+      };
+    }>(`/api/v1/router/${capability}`, {
       method: 'POST',
       body: JSON.stringify({ query, ...options }),
     });
+    const success = !raw.meta.trace_id?.startsWith('trace_fail_');
+    return {
+      tool: raw.meta.tool_used,
+      latency_ms: raw.meta.latency_ms,
+      resultCount: raw.meta.result_count ?? 0,
+      relevance: 0,
+      success,
+      ai_routing_summary: raw.meta.ai_routing_summary,
+      fallback_chain: raw.meta.fallback_chain ?? [],
+      cost: raw.meta.cost_usd,
+      response_preview: typeof raw.data === 'object' && raw.data !== null
+        ? JSON.stringify(raw.data).slice(0, 500)
+        : undefined,
+    };
   }
 
   /** Get account info for the authenticated API key. */
@@ -48,8 +73,17 @@ export class AgentPickClient {
 
   /** List recent routing calls, optionally filtered. */
   async calls(filters?: CallFilters): Promise<CallRecord[]> {
-    const params = new URLSearchParams(filters as Record<string, string>);
-    return this.request<CallRecord[]>(`/api/v1/router/calls?${params}`);
+    const params = new URLSearchParams();
+    if (filters) {
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null) {
+          params.set(key, String(value));
+        }
+      }
+    }
+    const qs = params.toString();
+    const raw = await this.request<{ calls: CallRecord[] }>(`/api/v1/router/calls${qs ? `?${qs}` : ''}`);
+    return raw.calls;
   }
 
   /** Set the default routing strategy for this API key. */
