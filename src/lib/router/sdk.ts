@@ -520,13 +520,21 @@ export async function getFallbackStats(developerId: string, days = 30) {
     },
   });
 
+  // Mirrors the filter in analytics.ts and getUsageStats: exclude 'unknown', empty strings,
+  // and capability-name fallbacks (e.g. 'search', 'crawl') from per-tool breakdown so legacy
+  // records don't pollute the recovery stats shown in the weekly report and fallbacks endpoint.
+  const CAPABILITY_NAMES = new Set(['search', 'crawl', 'embed', 'finance', 'code', 'communication', 'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability']);
+  const isValidTool = (t: string | null) => t && t !== 'unknown' && !t.endsWith('-unavailable') && !CAPABILITY_NAMES.has(t);
+
   const triggersByTool: Record<string, number> = {};
   const recoveriesByTool: Record<string, number> = {};
   for (const call of fallbackCalls) {
-    if (call.fallbackFrom) {
+    if (call.fallbackFrom && isValidTool(call.fallbackFrom)) {
       triggersByTool[call.fallbackFrom] = (triggersByTool[call.fallbackFrom] ?? 0) + 1;
     }
-    recoveriesByTool[call.toolUsed] = (recoveriesByTool[call.toolUsed] ?? 0) + 1;
+    if (isValidTool(call.toolUsed)) {
+      recoveriesByTool[call.toolUsed] = (recoveriesByTool[call.toolUsed] ?? 0) + 1;
+    }
   }
 
   return {

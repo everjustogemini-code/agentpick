@@ -65,7 +65,10 @@ export async function GET(request: NextRequest) {
           overageCalls,
           overagePerCall,
           overageCostUsd,
-          hardCapped: overagePerCall === null,
+          // Hard cap means requests are blocked once the monthly limit is reached.
+          // ENTERPRISE has no monthly limit (null), so it cannot be hard-capped even though
+          // overagePerCall is also null. Only plans with a finite limit and no overage billing qualify.
+          hardCapped: overagePerCall === null && monthlyLimit !== null,
         },
         createdAt: account.createdAt,
       },

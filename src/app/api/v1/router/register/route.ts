@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateApiKey, hashApiKey } from '@/lib/auth';
-import { ROUTER_PLAN_MONTHLY_LIMITS } from '@/lib/router/plans';
+import { ROUTER_PLAN_MONTHLY_LIMITS, isRouterPlanCode } from '@/lib/router/plans';
 import { checkRateLimit, registerLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 
@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
       });
 
       const plan = existingAgent.developerAccount.plan;
-      const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[plan] ?? ROUTER_PLAN_MONTHLY_LIMITS.FREE;
+      // Use isRouterPlanCode to avoid null ?? fallback coercing ENTERPRISE's null limit to 500
+      const monthlyLimit = isRouterPlanCode(plan) ? ROUTER_PLAN_MONTHLY_LIMITS[plan] : ROUTER_PLAN_MONTHLY_LIMITS.FREE;
 
       return Response.json({
         apiKey,
