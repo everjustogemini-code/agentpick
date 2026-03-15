@@ -358,7 +358,12 @@ function extractQueryFromParams(params: Record<string, unknown>): string {
   return '';
 }
 
-function buildFallbackChain(request: RouterRequest, response: { meta: { tool_used: string; fallback_used: boolean; fallback_from?: string } }) {
+function buildFallbackChain(request: RouterRequest, response: { meta: { tool_used: string; fallback_used: boolean; fallback_from?: string; tried_chain?: string[] } }) {
+  // Prefer the complete tried_chain (includes all intermediate fallback attempts) when available.
+  if (response.meta.tried_chain?.length) {
+    return [...new Set(response.meta.tried_chain)];
+  }
+
   if (response.meta.fallback_used) {
     const chain = [response.meta.fallback_from, response.meta.tool_used].filter(Boolean) as string[];
     return [...new Set(chain)];

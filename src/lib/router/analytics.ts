@@ -259,12 +259,19 @@ export function buildRouterAnalytics(
 
   let latestCallAt: Date | null = null;
 
+  // Capability names stored as toolUsed fallback in recordRouterCall must not appear as
+  // phantom tool entries in analytics (e.g. 'search', 'crawl'). Mirrors the filter in sdk.ts.
+  const CAPABILITY_NAMES = new Set([
+    'search', 'crawl', 'embed', 'finance', 'code', 'communication',
+    'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
+  ]);
+
   for (const call of calls) {
     if (call.createdAt < since || call.createdAt > now) {
       continue;
     }
     // Skip legacy/failure DB records where toolUsed was not properly recorded
-    if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable')) {
+    if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable') || CAPABILITY_NAMES.has(call.toolUsed)) {
       continue;
     }
 
