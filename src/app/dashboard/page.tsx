@@ -339,6 +339,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(newKey)}
+                    title={newKey}
                     className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:border-white/30 hover:bg-white/8"
                   >
                     Copy key
@@ -464,21 +465,17 @@ export default function DashboardPage() {
                     </button>
                   </form>
 
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <a
+                    href="/pricing"
+                    onClick={(e) => {
+                      e.preventDefault();
                       setError('');
                       setShowRegister(true);
                     }}
-                    className="mt-5 text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
+                    className="mt-5 inline-block text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
                   >
                     Need a key? Create a free account.
-                  </button>
-                  <noscript>
-                    <a href="/pricing" className="mt-3 block text-sm font-medium text-orange-500 underline">
-                      Get a free API key on the pricing page →
-                    </a>
-                  </noscript>
+                  </a>
                 </>
               ) : (
                 <>
@@ -532,16 +529,17 @@ export default function DashboardPage() {
                     </button>
                   </form>
 
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <a
+                    href="/dashboard"
+                    onClick={(e) => {
+                      e.preventDefault();
                       setError('');
                       setShowRegister(false);
                     }}
-                    className="mt-5 text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
+                    className="mt-5 inline-block text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-slate-950"
                   >
                     Already have a key? Use it here.
-                  </button>
+                  </a>
                 </>
               )}
             </section>
