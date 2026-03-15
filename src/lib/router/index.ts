@@ -57,7 +57,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   tavily:                   { quality: 4.0, cost: 0.001,   latency: 182,  stability: 0.97 },
   serpapi:                  { quality: 3.0, cost: 0.01,    latency: 89,   stability: 0.98 },
   'brave-search':           { quality: 3.2, cost: 0.0001,  latency: 150,  stability: 0.93 },
-  serper:                   { quality: 3.1, cost: 0.001,   latency: 100,  stability: 0.97 },
+  serper:                   { quality: 3.1, cost: 0.0005,  latency: 100,  stability: 0.97 },
   'perplexity-search':      { quality: 4.2, cost: 0.005,   latency: 500,  stability: 0.90 },
   'you-search':             { quality: 3.0, cost: 0.001,   latency: 200,  stability: 0.92 },
   'jina-ai':                { quality: 3.5, cost: 0.001,   latency: 250,  stability: 0.94 },
@@ -279,8 +279,7 @@ export function getRankedToolsForCapability(
         if (ca.quality < 3.0 && cb.quality >= 3.0) return 1;
         if (cb.quality < 3.0 && ca.quality >= 3.0) return -1;
         if (ca.cost !== cb.cost) return ca.cost - cb.cost;
-        // Equal cost: prefer higher quality (e.g. jina-ai 3.5 over you-search 3.0 at same $0.001;
-        // serper 3.1 over serpapi 3.0 at same $0.0005 — same price should mean better tool)
+        // Equal cost: prefer higher quality (e.g. jina-ai 3.5 over you-search 3.0 at same $0.001)
         return cb.quality - ca.quality;
       case 'balanced':
       default: {
