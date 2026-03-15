@@ -1,81 +1,82 @@
-# NEXT_VERSION.md — AgentPick Bugfix Cycle 24
+# NEXT_VERSION.md — AgentPick Bugfix Cycle 33
 
 **Date:** 2026-03-14
-**QA Round:** 11
-**QA Score entering cycle:** 56/57
+**QA Round:** 12
+**QA Score entering cycle:** 56/57 (Round 11)
 **P0 blockers:** None
 **Scope:** Bug fixes only. Zero new features.
 
 ---
 
-## Fix #1 — Deep-research routing misclassification (QA Issue: P1-1, `6.1-deep-research`)
+## Fix #1 — `effectivePriority` applies stale account `priorityTools` for `MOST_ACCURATE` strategy
 
-**Symptom:** Query `"state of large language models 2025 comprehensive analysis"` with `best_performance` strategy
-(or `auto`) classifies as `type=news, depth=shallow` and routes to `tavily` instead of `exa-search` or `perplexity`.
+**Symptom:** `best_performance` requests route to account's stale `priorityTools` tool (e.g. `tavily`)
+instead of the AI-classified research-quality tool (`exa-search` or `perplexity-search`). The QA test
+`6.1-deep-research` fails because the `set-priority` test (Part 2) sets `account.priorityTools` on
+the test account, which is then applied by `effectivePriority` for the subsequent `best_performance`
+request in Part 6.
 
-**Root cause:** `fastClassify` in `ai-classify.ts` checks `explicitRecencySignal` (which catches year patterns like
-`in 2024`) before `researchTerms`. Queries containing analytical keywords (`comprehensive`, `analysis`) alongside
-a bare year (`2025`) can fall into the news/recency path before the research path fires. Additionally, the
-`analyticalKeywords && multifactorDomains` guard that was added for supply-chain queries requires a narrow domain
-list (`supply chain`, `geopolit`, `policy`, etc.) that misses broader research framing like "state of [field]
-comprehensive analysis".
+**Root cause:** `effectivePriority` in `sdk-handler.ts` excluded `AUTO` from applying account
+`priorityTools` but NOT `MOST_ACCURATE`. Since `MOST_ACCURATE` uses `fastClassify` for AI-based
+deep-research routing (same as `AUTO`), stale account `priorityTools` override the AI tool selection,
+routing to the stale tool rather than the AI-selected research tool.
 
-**File:** `src/lib/router/ai-classify.ts`
+**File:** `src/lib/router/sdk-handler.ts`
 
-**What to change:**
-1. In `fastClassify`, broaden the analytical-research guard (currently lines 95–102) so that a query containing
-   `analyticalKeywords` (`analysis`, `causes`, `implications`, `impact of`, `effects of`, `why did`, `comprehensive`)
-   combined with ANY depth/quality signal (`state of`, `overview of`, `survey of`, `in-depth`, `deep dive`,
-   `comprehensive`) classifies as `type=research, depth=deep` — without requiring the narrow `multifactorDomains`
-   list. Only skip this rule when `genuineNewsSignals` are present (`today`, `right now`, `just happened`,
-   `breaking`, `latest`, `this week`, `yesterday`, `last night`).
-2. Add `"state of"` as a standalone analytical signal in `analyticalKeywords` regex (covers "state of the art",
-   "state of large language models", etc.).
-3. Confirm: `researchTerms` (line 115) already includes `comprehensive` and `analysis`; verify the regex fires
-   before `newsTerms`/`strongNewsTerms` for this query, or move the research check earlier in the function.
-4. Add the specific query as a regression test case in `CLASSIFY_SYSTEM` examples (line ~209):
-   `"state of large language models 2025 comprehensive analysis"` → `{"type":"research","domain":"tech","depth":"deep","freshness":"any"}`
+**Fix:** Added `strategyUsed !== 'MOST_ACCURATE'` to the `effectivePriority` condition, consistent
+with the existing `AUTO` exclusion. The comment was also updated to document both excluded strategies.
 
 **Acceptance criteria:**
-- Query `"state of large language models 2025 comprehensive analysis"` + `strategy: auto` → `type=research,
-  depth=deep` in `ai_classification`, `tool_used: exa-search` or `perplexity-search`.
-- Existing passing tests (`6.2-realtime`, `6.3-simple`, `6.5-ai-insights`) remain green.
-- `6.1-deep-research` passes 5/5 consecutive runs (no Haiku non-determinism).
+- `best_performance` request with stale `account.priorityTools = ['tavily']` routes to research-quality
+  tool (exa-search or perplexity), not to tavily.
+- `MANUAL` and `BALANCED` strategies continue to apply account `priorityTools` correctly.
+- QA test `6.1-deep-research` passes 5/5 consecutive runs.
 
 ---
 
-## Fix #2 — Latency metadata inversion in `/router/search` response (QA Issue: P1-2, `6.4-latency`)
+## Fix #2 — `applyStrategy` injects stale `priorityTools` as fallbacks for AUTO/MOST_ACCURATE
 
-**Symptom:** Response meta contains `classification_ms=500` and `latency_ms=65`, which is logically impossible:
-classification cannot take longer than the total observed request latency. Dashboards and alerting built on these
-fields will produce incorrect measurements.
+**Symptom:** Even after fixing `effectivePriority`, `applyStrategy` could still pollute the fallback
+chain with stale `account.priorityTools` for `AUTO` and `MOST_ACCURATE` strategies when
+`account.fallbackEnabled = true`. This adds tools to `request.fallback` that bypass the AI-ranked
+fallback order.
 
-**Root cause:** `latency_ms` in the response (field `result.latencyMs`) reflects only the tool call latency, not
-the end-to-end request time. `classification_ms` reflects the Haiku classification attempt including the 500ms
-timeout. There is no `total_ms` field that represents true end-to-end time. When Haiku times out,
-`classification_ms ≈ 500` while `latency_ms` for a fast tool call can be 65ms — making `classification_ms >
-latency_ms` appear to violate causality.
+**Root cause:** The fallback injection block in `applyStrategy` (sdk.ts) lacked the strategy guard
+that the pre-selection block has. Pre-selection correctly skips AUTO/MOST_ACCURATE/CHEAPEST, but
+the fallback block always ran for all strategies when `fallbackEnabled = true`.
 
-**Files:**
-- `src/lib/router/index.ts` — where the `meta` object is assembled and returned
-- `src/lib/router/index.ts:488` — `routeStartTime` is set after classification; move it before classification
-  call so `latency_ms` captures total routing time, OR add a separate `total_ms` field
+**File:** `src/lib/router/sdk.ts`
 
-**What to change:**
-1. In `routeRequest` (`index.ts`), record `const requestStartTime = Date.now()` at the top of the function,
-   before the `if (strategy === 'auto')` classification block (currently ~line 400).
-2. In the success meta assembly (~line 539), add:
-   ```ts
-   total_ms: Date.now() - requestStartTime,
-   ```
-   so consumers have an unambiguous end-to-end latency field that always satisfies
-   `total_ms >= classification_ms` and `total_ms >= latency_ms`.
-3. Add `total_ms?: number` to the `RouterResponse['meta']` interface (~line 105 in `index.ts`).
-4. Do NOT rename or remove `latency_ms` (breaking change) — leave it as tool-call latency for backward compat
-   and document the distinction via the new `total_ms` field presence.
+**Fix:** Added `account.strategy !== 'AUTO' && account.strategy !== 'MOST_ACCURATE'` guard to the
+fallback injection block in `applyStrategy`, preventing stale `priorityTools` from polluting the
+AI-ranked fallback chain.
 
 **Acceptance criteria:**
-- `total_ms >= classification_ms` always holds in the response.
-- `total_ms >= latency_ms` always holds.
-- When Haiku times out (500ms), `total_ms ≈ 500 + tool_latency`, not 65.
-- Existing tests that check `classification_ms` field exists continue to pass.
+- `AUTO` and `MOST_ACCURATE` requests with `account.fallbackEnabled = true` and stale `priorityTools`
+  do NOT have those tools injected into `request.fallback`.
+- `MANUAL` and `BALANCED` strategies with `fallbackEnabled` continue to use account `priorityTools`
+  as fallbacks correctly.
+
+---
+
+## Fix #3 — `genericTopicSignal` missing plural `models` form
+
+**Symptom:** Queries like `"latest large language models 2025"` fall through `fastClassify` to Haiku
+because `genericTopicSignal` uses `\bmodel\b` (singular only) and `"models"` (plural) does not match.
+Without a `genericTopicSignal` match, `hasNewsWithDomain` is FALSE, so the query is not auto-classified
+as `news`. Haiku then handles it non-deterministically.
+
+**Root cause:** `genericTopicSignal` regex had `model` (singular) but not `models?` (matching both
+singular and plural). The `stateOfPattern` domain detection at line 95 already had `models?`, but
+this different regex (`genericTopicSignal`) used in `hasNewsWithDomain` was left with singular-only.
+
+**File:** `src/lib/router/ai-classify.ts`
+
+**Fix:** Changed `model` to `models?` in `genericTopicSignal` so both singular and plural forms match.
+Queries like `"latest large language models 2025"` now correctly classify as `news` via `hasNewsWithDomain`
+without falling through to Haiku.
+
+**Acceptance criteria:**
+- `"latest large language models 2025"` → `fastClassify` returns `type=news` (via `hasNewsWithDomain`).
+- `"latest model release 2025"` → still routes as news (singular form still matches).
+- Existing passing QA tests remain green.

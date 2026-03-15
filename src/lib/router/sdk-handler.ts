@@ -194,13 +194,14 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   const coreStrategy: Strategy = SDK_TO_CORE[strategyUsed.toUpperCase()] ?? 'balanced';
 
   // P1-3: Priority precedence: request-level priority_tools > account-level priorityTools > strategy
-  // For AUTO strategy, skip account-level priorityTools: AI routing must be free to select the
-  // best tool. Account priorityTools are set for MANUAL/BALANCED use cases and must not override
-  // AI classification results (which caused non-determinism when the account had stale priorityTools
-  // from a previous MANUAL/compare-strategies test cycle).
+  // For AUTO and MOST_ACCURATE strategies, skip account-level priorityTools: AI routing must be
+  // free to select the best tool. Account priorityTools are set for MANUAL/BALANCED use cases and
+  // must not override AI classification results (which caused non-determinism when the account had
+  // stale priorityTools from a previous MANUAL/compare-strategies test cycle).
+  // MOST_ACCURATE uses fastClassify for deep-research routing — same concern as AUTO applies.
   const effectivePriority = body.priority_tools?.length
     ? body.priority_tools
-    : (strategyUsed !== 'AUTO' && account.priorityTools?.length ? account.priorityTools : undefined);
+    : (strategyUsed !== 'AUTO' && strategyUsed !== 'MOST_ACCURATE' && account.priorityTools?.length ? account.priorityTools : undefined);
 
   const routeBody: RouterRequest = {
     tool: body.tool,
