@@ -263,18 +263,25 @@ export function getRankedToolsForCapability(
 
     switch (strategy) {
       case 'best_performance':
-        // Highest quality first
-        return cb.quality - ca.quality;
+        // Highest quality first; equal quality: prefer higher stability (e.g. serpapi 0.98
+        // over you-search 0.92 when both have quality 3.0)
+        if (cb.quality !== ca.quality) return cb.quality - ca.quality;
+        return cb.stability - ca.stability;
       case 'most_stable':
         // Highest stability first, with quality floor
         if (ca.quality < 2.5 && cb.quality >= 2.5) return 1;
         if (cb.quality < 2.5 && ca.quality >= 2.5) return -1;
-        return cb.stability - ca.stability;
+        if (cb.stability !== ca.stability) return cb.stability - ca.stability;
+        // Equal stability: prefer higher quality (e.g. tavily 4.0 over serper 3.1 at same 0.97)
+        return cb.quality - ca.quality;
       case 'cheapest':
         // Lowest cost first, but must have quality >= 3.0
         if (ca.quality < 3.0 && cb.quality >= 3.0) return 1;
         if (cb.quality < 3.0 && ca.quality >= 3.0) return -1;
-        return ca.cost - cb.cost;
+        if (ca.cost !== cb.cost) return ca.cost - cb.cost;
+        // Equal cost: prefer higher quality (e.g. jina-ai 3.5 over you-search 3.0 at same $0.001;
+        // serper 3.1 over serpapi 3.0 at same $0.0005 — same price should mean better tool)
+        return cb.quality - ca.quality;
       case 'balanced':
       default: {
         // Prefer quality-tier tools (≥4.0) first, then sort by cost-efficiency within each tier.

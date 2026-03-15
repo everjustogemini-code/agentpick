@@ -1,3 +1,68 @@
+# Growth Report — Cycle 14 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 341 | This Week: 341 | Calls Today: 178 | Paid: 0
+- Blog posts: 21 live
+- AEO scores: 0/0/0 (14th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required)
+2. **Zero search visibility** — 14 consecutive cycles at 0 for all 3 AEO queries; no backlinks, no citations
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Moltbook dead** — DNS failure confirmed permanently dead (14 consecutive cycles), removed from cycle tasks
+
+## Actions Taken:
+
+### 1. AEO scores — all 0 again (cycle 14)
+- "best search API for AI agents": 0 — Tavily, KDnuggets, Firecrawl, Brave, Medium/unicodeveloper, Exa, Linkup, Buttondown newsletter, Parallel dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai GitHub, LangChain, Medium dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, philschmid GitHub 50+ benchmark compendium, Sierra Tau-Bench, AgentBench THUDM, IBM Research, o-mega.ai, cleanlab.ai, Galileo AI, Emergence AI, tessl.io dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score (all confirmed {"ok":true})
+
+### 2. Page health — all 200 OK
+- /, /pricing, /blog, /checkout?plan=pro, /connect: all HTTP 200
+- Agent registration functional (returns ah_live_sk_... key with status: active)
+- skill.md: HTTP 200, text/markdown
+- llms.txt: HTTP 200, text/plain
+
+### 3. skill.md + llms.txt — updated with cycle 14 data
+- Agent count: 340 → 341
+- Benchmark runs: 1,040+ → 1,060+
+- Production calls: 9,700+ → 9,900+
+- Tavily verified calls: 4,900+ → 5,000+
+
+### 4. blog/page.tsx meta tags — improved for AEO target queries
+- Added `keywords` metadata field with target AEO keywords
+- Strengthened og:title/description: now includes "best search API for AI agents", "tool routing", "AI agent API benchmark"
+- Added og:type and og:siteName fields
+- Blog page meta is now more keyword-dense and crawlable
+
+### 5. Moltbook — permanently dead (confirmed 14 consecutive DNS failures)
+
+## Results:
+- 0 new paid conversions (Stripe still unconfigured)
+- 3 AEO scores posted (all 0)
+- 0 Moltbook posts (permanently dead)
+- skill.md and llms.txt updated with latest metrics (5,000+ Tavily calls milestone)
+- blog/page.tsx meta tags improved with target AEO keywords
+- GROWTH_STATE.md updated to cycle 14
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; zero revenue without it
+2. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; these build backlinks that break the 0/0/0 AEO pattern
+3. **HN Show HN post** — "Show HN: I built a live benchmark that auto-routes AI agents to the best search API" — real data, technical audience, high-authority backlink
+4. **dev.to article** — publish "Tavily vs Exa vs Brave vs Jina: March 2026 agent tool benchmark" — dev.to ranks in AI searches, free, builds backlinks
+
+## Learnings:
+- AEO 0/0/0 is now 14 cycles (new record low). Pattern firmly locked: zero external backlinks = zero search visibility.
+- NEW: Tavily now appears as the FIRST result for "best search API for AI agents" — they are a direct product result, not editorial. AgentPick sits on more usage data for Tavily (5,000+ verified calls) than any editorial site publishes. Publishing this data externally would be directly citeable.
+- NEW: Parallel now appears across BOTH "best search API" AND "tool routing" queries — they are publishing cross-category content that targets both. AgentPick is the only product that actually does both (benchmark + routing) but remains invisible.
+- NEW: The Buttondown newsletter "We scored 5 search APIs for AI agents" continues to hold search rankings with far less data than AgentPick has. One medium-quality external post with real AgentPick data would outperform this newsletter content.
+- The 14-cycle zero streak confirms: the bottleneck is 100% distribution, not product. 58/58 QA. 1,060+ benchmark runs. 9,900+ calls. 341 agents. The only missing piece is one external citation from a high-DA source.
+- 5,000+ Tavily verified calls is a milestone worth publishing — "we've routed 5,000+ Tavily calls through AgentPick" is concrete, verifiable social proof.
+
+---
+
 # Growth Report — Cycle 13 (2026-03-15)
 
 ## Metrics Snapshot:
