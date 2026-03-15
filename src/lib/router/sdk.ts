@@ -256,13 +256,19 @@ export async function recordRouterCall(
   const isSuccess = !meta.trace_id.startsWith('trace_fail_');
   const statusCode = isSuccess ? 200 : 502;
 
+  // Sanitize toolUsed: never write null/empty/undefined — fall back to capability name
+  // so the DB never accumulates records with toolUsed='unknown' or '' that break dashboard queries.
+  const sanitizedToolUsed = (meta.tool_used && meta.tool_used !== 'unknown')
+    ? meta.tool_used
+    : capability;
+
   const call = await db.routerCall.create({
     data: {
       developerId,
       capability,
       query,
       toolRequested: request.tool ?? null,
-      toolUsed: meta.tool_used,
+      toolUsed: sanitizedToolUsed,
       fallbackUsed: meta.fallback_used,
       fallbackFrom: meta.fallback_from ?? null,
       fallbackChain,
@@ -416,8 +422,14 @@ export async function getUsageStats(developerId: string, days = 7) {
     };
   }
 
-  // AI classification summary (for all calls that went through AI classification)
-  const aiCalls = calls.filter((call: { aiClassification: unknown; strategyUsed: string | null }) => call.aiClassification !== null);
+  // AI classification summary (for all calls that went through AI classification).
+  // Filter: aiClassification must be a non-null object (not Prisma.JsonNull sentinel or plain null).
+  // We check typeof === 'object' && !== null to guard against both SQL NULL (returns null)
+  // and the rare Prisma.JsonNull sentinel that may appear with certain Prisma versions.
+  const aiCalls = calls.filter((call) => {
+    const v = call.aiClassification;
+    return v !== null && typeof v === 'object';
+  });
   // Always return a populated summary (with zeros when no AUTO calls have been made)
   // so callers can rely on ai_routing_summary always being an object, never null.
   const aiRouting: { totalAiRoutedCalls: number; byType: Record<string, number>; byDomain: Record<string, number> } = {
@@ -426,12 +438,14 @@ export async function getUsageStats(developerId: string, days = 7) {
     byDomain: {} as Record<string, number>,
   };
   for (const call of aiCalls) {
-    const classification = call.aiClassification as { type?: string; domain?: string } | null;
-    if (classification?.type) {
-      aiRouting.byType[classification.type] = (aiRouting.byType[classification.type] ?? 0) + 1;
+    const classification = call.aiClassification as Record<string, unknown> | null;
+    const queryType = typeof classification?.['type'] === 'string' ? classification['type'] : null;
+    const queryDomain = typeof classification?.['domain'] === 'string' ? classification['domain'] : null;
+    if (queryType) {
+      aiRouting.byType[queryType] = (aiRouting.byType[queryType] ?? 0) + 1;
     }
-    if (classification?.domain) {
-      aiRouting.byDomain[classification.domain] = (aiRouting.byDomain[classification.domain] ?? 0) + 1;
+    if (queryDomain) {
+      aiRouting.byDomain[queryDomain] = (aiRouting.byDomain[queryDomain] ?? 0) + 1;
     }
   }
 
