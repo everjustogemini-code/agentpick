@@ -107,7 +107,7 @@ export default function PlaygroundRequestBuilder({ onResultChange, onStateChange
         return;
       }
 
-      onResultChange(data.result, data.latency_ms, data.tool_used, null);
+      onResultChange(data.data ?? data, data.latency_ms, data.tool_used, null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Network error';
       onResultChange(null, null, null, message);

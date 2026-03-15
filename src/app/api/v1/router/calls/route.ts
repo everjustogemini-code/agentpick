@@ -112,9 +112,12 @@ export async function GET(request: NextRequest) {
       const ai_routing_summary: string | null = ai
         ? (typeof ai.reasoning === 'string' ? ai.reasoning : null)
         : null;
-      const fallback_chain = typeof c.fallbackChain === 'string'
-        ? JSON.parse(c.fallbackChain as string)
-        : (c.fallbackChain ?? []);
+      let fallback_chain: unknown[];
+      if (typeof c.fallbackChain === 'string') {
+        try { fallback_chain = JSON.parse(c.fallbackChain as string); } catch { fallback_chain = []; }
+      } else {
+        fallback_chain = c.fallbackChain ?? [];
+      }
       return {
         id: c.id,
         query: c.query,
