@@ -482,16 +482,17 @@ export function RouterAnalyticsDashboard({
                     Generate a free router account and land straight in the analytics dashboard.
                   </p>
 
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <a
+                    href="/pricing"
+                    onClick={(e) => {
+                      e.preventDefault();
                       setError('');
                       setShowRegister(true);
                     }}
-                    className="mt-6 rounded-full border border-slate-200 px-5 py-3 text-sm font-medium text-slate-950 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="mt-6 inline-block rounded-full border border-slate-200 px-5 py-3 text-sm font-medium text-slate-950 transition hover:border-slate-300 hover:bg-slate-50"
                   >
                     Create router key
-                  </button>
+                  </a>
                   <a
                     href="/pricing"
                     className="mt-3 block text-sm text-slate-500 underline hover:text-slate-700"
@@ -640,6 +641,7 @@ export function RouterAnalyticsDashboard({
                     <button
                       type="button"
                       onClick={() => navigator.clipboard.writeText(newKey)}
+                      title={newKey}
                       className="rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-medium text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-100/60"
                     >
                       Copy key

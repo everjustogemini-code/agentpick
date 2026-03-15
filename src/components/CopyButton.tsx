@@ -19,7 +19,7 @@ export default function CopyButton({ text, dark }: { text: string; dark?: boolea
           ? 'text-gray-500 hover:bg-gray-800 hover:text-gray-300'
           : 'text-text-tertiary hover:bg-bg-secondary hover:text-text-secondary'
       }`}
-      title="Copy to clipboard"
+      title={`Copy: ${text}`}
     >
       {copied ? '✓' : '📋'}
     </button>

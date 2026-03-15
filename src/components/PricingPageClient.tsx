@@ -221,9 +221,10 @@ export default function PricingPageClient() {
         {!apiKey && !accountLoading && (
           <div className="mt-4 flex items-center gap-3">
             <span className="text-sm text-white/40">Don&apos;t have a key?</span>
-            <button
-              type="button"
-              onClick={async () => {
+            <a
+              href="/dashboard"
+              onClick={async (e) => {
+                e.preventDefault();
                 setAccountLoading(true);
                 setAccountError('');
                 try {
@@ -251,7 +252,7 @@ export default function PricingPageClient() {
               className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-medium text-orange-300 transition-colors hover:bg-orange-500/20"
             >
               Get a free API key instantly →
-            </button>
+            </a>
           </div>
         )}
 
@@ -266,6 +267,7 @@ export default function PricingPageClient() {
               onClick={() => {
                 void navigator.clipboard.writeText(apiKey);
               }}
+              title={apiKey}
               className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:bg-white/5 hover:text-white/80"
             >
               Copy
@@ -357,22 +359,27 @@ export default function PricingPageClient() {
                   {exactMatch ? 'Current plan' : plan.ctaLabel}
                 </Link>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (upgradePlan) {
+                <a
+                  href={`/checkout?plan=${plan.slug}`}
+                  onClick={(e) => {
+                    if (upgradePlan && !isBusy && !exactMatch && !higherPlan) {
+                      e.preventDefault();
                       void handleCheckout(upgradePlan);
+                    } else {
+                      e.preventDefault();
                     }
                   }}
-                  disabled={isBusy || exactMatch || higherPlan}
-                  className="mt-8 rounded-2xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-disabled={isBusy || exactMatch || higherPlan}
+                  className={`mt-8 block rounded-2xl bg-orange-500 px-5 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-orange-400 ${
+                    isBusy || exactMatch || higherPlan ? 'cursor-not-allowed opacity-60' : ''
+                  }`}
                 >
                   {isBusy && 'Opening checkout...'}
                   {!isBusy && exactMatch && 'Current plan'}
                   {!isBusy && higherPlan && `Included in ${currentPlanLabel}`}
                   {!isBusy && !exactMatch && !higherPlan && !account && 'Continue to checkout'}
                   {!isBusy && !exactMatch && !higherPlan && account && plan.ctaLabel}
-                </button>
+                </a>
               )}
             </article>
           );
