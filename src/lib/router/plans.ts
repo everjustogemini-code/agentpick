@@ -26,7 +26,7 @@ export const ROUTER_PLAN_MONTHLY_LIMITS: Record<RouterPlanCode, number | null> =
   STARTER: 5000,
   PRO: 25000,
   SCALE: 100000,
-  ENTERPRISE: 1_000_000,
+  ENTERPRISE: null,
 };
 
 export const ROUTER_PLAN_OVERAGE_PER_CALL: Record<RouterPlanCode, number | null> = {

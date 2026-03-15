@@ -451,9 +451,11 @@ export function UsagePanel({ apiKey, onLogout }: UsagePanelProps) {
   }
 
   const usagePercent =
-    panel.monthlyLimit === null || panel.monthlyLimit === 0
-      ? 100
-      : Math.min((panel.callsThisMonth / panel.monthlyLimit) * 100, 100);
+    panel.monthlyLimit === null
+      ? 0
+      : panel.monthlyLimit === 0
+        ? 100
+        : Math.min((panel.callsThisMonth / panel.monthlyLimit) * 100, 100);
   const projectedCost = projectedMonthlyCost(panel.spentThisMonth);
   const usageToneClass =
     panel.monthlyLimit !== null && usagePercent >= 90

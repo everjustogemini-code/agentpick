@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
     const account = await ensureDeveloperAccount(agent.id);
-    const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? 500;
+    const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null;
     const overagePerCall = (ROUTER_PLAN_OVERAGE_PER_CALL as Record<string, number | null>)[account.plan] ?? null;
     const billingCycleStart = getBillingPeriodStart(account.billingCycleStart);
     const callsThisMonth = await db.routerCall.count({
@@ -127,6 +127,12 @@ export async function PATCH(request: NextRequest) {
       update.latencyBudgetMs = body.latency_budget_ms !== null ? Math.trunc(body.latency_budget_ms) : null;
     }
     if (typeof body.monthly_budget_usd === 'number' || body.monthly_budget_usd === null) {
+      if (body.monthly_budget_usd !== null && body.monthly_budget_usd < 0) {
+        return apiError('VALIDATION_ERROR', 'monthly_budget_usd must be a non-negative number or null to clear the limit.', 400);
+      }
+      if (typeof body.monthly_budget_usd === 'number' && body.monthly_budget_usd > 100_000) {
+        return apiError('VALIDATION_ERROR', 'Budget cannot exceed $100,000.', 400);
+      }
       update.monthlyBudgetUsd = body.monthly_budget_usd;
     }
 
