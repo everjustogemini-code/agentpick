@@ -76,7 +76,7 @@ export default function SiteHeader() {
         {/* Mobile hamburger with rotation animation */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-text-primary hover:bg-bg-secondary md:hidden"
+          className="relative z-50 flex h-12 w-12 items-center justify-center rounded-lg text-text-primary hover:bg-bg-secondary md:hidden"
           style={{ transition: 'transform 0.3s ease' }}
           aria-label="Menu"
         >
