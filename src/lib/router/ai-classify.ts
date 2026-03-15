@@ -89,7 +89,7 @@ export function fastClassify(query: string): QueryContext | null {
   // so queries like "state of AI: latest advances 2025" still classify as research.
   // "latest" alone in a "state of" query is often a quality adjective, not a news signal;
   // only hard recency words (today, breaking, right now, etc.) should suppress the research route.
-  const stateOfPattern = /\bstate of\b|\bsurvey of\b/i;
+  const stateOfPattern = /\bstate of\b|\bsurvey of\b|\boverview of\b/i;
   const stateOfBreakingSignals = /\b(today|right now|just happened|breaking|this week|yesterday|last night)\b/i;
   if (stateOfPattern.test(lower) && !stateOfBreakingSignals.test(lower)) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|models?|llm|machine learning)\b/i.test(lower) ? 'tech' : 'general';
@@ -102,7 +102,7 @@ export function fastClassify(query: string): QueryContext | null {
   //   "comprehensive analysis of global chip shortage in 2025" → mis-routed as news via "in 2025"
   // Guard fires when the query has an analytical keyword AND a depth/quality signal,
   // but NOT when it contains genuine breaking-news signals (today, right now, latest, etc.).
-  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
+  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause|state of|comprehensive)\b/i;
   const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|implications of|effects of|drivers of)\b/i;
   const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
 

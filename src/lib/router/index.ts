@@ -274,10 +274,16 @@ export function getRankedToolsForCapability(
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
   // This preserves strategy order within each group (configured / unconfigured).
   //
-  // For cheapest strategy: sort by cost first (above), then deprioritize unconfigured tools.
-  // Result: [configured tools by cost asc] + [unconfigured tools by cost asc].
-  // This prevents wasting all MAX_ATTEMPTS slots on unconfigured cheap tools (brave-search,
-  // serpapi, serper) before reaching the cheapest configured tool (e.g. tavily at $0.001).
+  // Exception: cheapest strategy without BYOK keys uses pure cost ordering.
+  // When no storedByokKeys are provided, deprioritizing by platform key config would put
+  // tavily ($0.001, configured) before brave-search ($0.0001, unconfigured), defeating the
+  // cost-first intent. Unconfigured cheap tools fail fast in the router fallback chain
+  // (sub-ms key-missing rejection), so the overhead is negligible.
+  // When storedByokKeys are provided, BYOK-configured cheap tools should still be elevated
+  // so a user's own brave-search/serper key beats the more expensive platform-only tavily.
+  if (strategy === 'cheapest' && !storedByokKeys) {
+    return filtered;
+  }
   // BYOK-configured tools (e.g. user's own serper key at $0.0005) are treated as configured
   // and correctly beat more expensive platform-only tools.
   return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
