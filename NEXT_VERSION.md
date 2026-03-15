@@ -1,128 +1,188 @@
-# NEXT_VERSION — AgentPick v0.79
+# NEXT_VERSION — AgentPick v0.80
 
 **Date:** 2026-03-15
-**QA Round:** 13 — Score: 58/58 (clean, zero P0/P1/P2 bugs)
-**Branch base:** bugfix/cycle-79
+**QA Round:** 14 — Score: 62/67 (5 failures: 1 P0, 3 P1)
+**Branch base:** bugfix/cycle-80
+**Cycle type:** BUG FIX ONLY — zero new features
 
 ---
 
-## Status: No Bugs — Build on Solid Foundation
+## Mandate
 
-QA Round 13 passed all 58 tests. Cycles 71–78 fixes are merged. API Bearer auth,
-paid user flow, and visual regression all verified. No bug-first work required.
-
----
-
-## Must-Have #1 — Major UI Upgrade: Glassmorphism + Motion Design
-
-**What:** The current dark theme is functional but flat. The homepage hero,
-pricing cards, and benchmark table need a premium upgrade to match the quality
-bar set by Vercel/Linear/Resend. First impressions are the primary signup driver.
-
-**Scope:**
-- **Hero:** Add a slow-moving radial mesh gradient background (purple→blue, 8s
-  CSS animation loop). Headline stagger-in animation per word (CSS
-  `@keyframes`, 40ms delay between words). Bump headline to 72px/800 weight on
-  desktop; one accent word in gradient color.
-- **Glassmorphism cards:** All pricing cards, benchmark rows, and dashboard
-  panels get `backdrop-filter: blur(12px)` + `background: rgba(255,255,255,0.04)`
-  + `border: 1px solid rgba(255,255,255,0.08)` + subtle inner glow on hover.
-  Replace all solid `#111`/`#0A0A0A` card backgrounds.
-- **Frosted nav:** `backdrop-filter: blur(20px)` + `border-bottom:
-  1px solid rgba(255,255,255,0.06)` activates on scroll (currently hard border).
-- **Benchmark table:** Score bars animate in on scroll via IntersectionObserver
-  (600ms ease-out fill). Rank #1 row gets a faint gold shimmer border
-  (`conic-gradient` rotation, 4s loop).
-- **CTA buttons:** Replace flat gradient with animated border shimmer
-  (`conic-gradient` rotation, 3s loop). Add `scale(1.02)` on hover,
-  `transition: 150ms`.
-- **Typography:** Body line-height 1.75 (currently tighter). Subheadings
-  Inter 700 weight. Code blocks keep JetBrains Mono.
-- All animations must respect `prefers-reduced-motion: reduce`.
-
-**Acceptance criteria:**
-- QA script still passes 58/58 after changes
-- Lighthouse Performance ≥ 85, CLS < 0.1
-- `/`, `/connect`, `/dashboard`, `/products/tavily` all render correctly
-- Visual review confirms glassmorphism on cards in both Chrome and Safari
+QA Round 14 found 5 regressions vs Round 13 (which was 58/58 clean).
+Every issue below MUST be fixed before any growth work resumes.
+Fixes must not be reverted by subsequent growth commits.
 
 ---
 
-## Must-Have #2 — Node.js / TypeScript SDK (`npm install agentpick`)
+## Fix #1 — P0 · QA Issue #1: `GET /api/v1/router/calls` → HTTP 500
 
-**What:** Ship a first-class TypeScript SDK on npm. Every JS/TS developer
-building an agent currently must use the REST API manually or switch to Python.
-`npm install agentpick` closes the largest single adoption gap.
+**QA tests failed:** `1.5-calls-recorded`, `7.2-call-fields`
+**Error:** `{"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred."}}`
 
-**Scope:**
-- Package `agentpick` on npmjs.com, ESM + CJS dual build, full TypeScript
-  types exported.
-- Core methods matching Python SDK parity: `route(capability, query, options?)`,
-  `account()`, `usage()`, `calls()`, `setStrategy()`, `setBudget()`, `health()`
-- Auto-retry on 5xx (max 2 retries, 200ms backoff). Fallback chain reported in
-  response metadata, matching Python SDK behavior.
-- `/connect` page: add "Node.js / TypeScript" tab alongside `pip install`
-  tab. Show `npm install agentpick` as first step, then TypeScript snippet
-  with `fetch()` + Bearer auth.
-- Homepage code block: add Node.js tab with TypeScript syntax.
-- JSDoc on all public methods. README quick-start copy-pasteable in < 30s.
+**Root cause:**
+`src/app/api/v1/router/calls/route.ts` lines 47–50 use Prisma `NOT` with an array:
+```ts
+NOT: [
+  { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+  { toolUsed: { endsWith: '-unavailable' } },
+],
+```
+This syntax is fragile across Prisma versions and was broken by the growth-17 commit
+which rewrote it as `AND: [{ NOT: {cond1} }, { NOT: {cond2} }]`. The array form
+of `NOT` must not be touched by growth commits. The fix is to use the explicit
+`NOT: { OR: [...] }` form which is unambiguous and stable:
 
-**Acceptance criteria:**
-- `npm install agentpick` works on Node 18+ without errors
-- `route('search', 'latest AI benchmarks 2026')` returns correct tool + latency
-- `/connect` TypeScript tab shows correct examples (QA script Part 3 updated
-  to cover new tab)
-- Package published with npm provenance attestation
+**Fix — `src/app/api/v1/router/calls/route.ts` lines 47–50:**
+```ts
+// BEFORE (fragile — growth commits keep breaking this):
+NOT: [
+  { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+  { toolUsed: { endsWith: '-unavailable' } },
+],
 
----
+// AFTER (explicit, stable, cannot be misread):
+NOT: {
+  OR: [
+    { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+    { toolUsed: { endsWith: '-unavailable' } },
+  ],
+},
+```
 
-## Must-Have #3 — `/dashboard/router` Request Inspector (Per-Call Detail Drawer)
-
-**What:** "Why did my request route to X instead of Y?" is the most common
-developer question. The current dashboard shows aggregates only. Per-call
-visibility turns support requests into self-service debugging and increases
-developer retention.
-
-**Scope:**
-- Clicking any row in the "Recent Calls" table opens a right-side drawer
-  (slide-in, no page navigation, `300ms ease`).
-- Drawer fields (9 total): raw query, capability detected, AI classification
-  reasoning (`ai_routing_summary`), strategy applied, tool selected, fallback
-  chain (pass/fail per attempted tool), latency breakdown (classify ms + tool
-  ms + total ms), cost, response preview (500 char truncated + "copy full"
-  button).
-- Filter bar above calls table: filter by capability, strategy, tool, date
-  range. State persisted in URL search params for shareable deep links.
-- "Export JSON" button: downloads currently-filtered calls as `.json` matching
-  the `/api/v1/router/calls` response schema.
-
-**Acceptance criteria:**
-- Drawer opens within 200ms on click (client-side, no extra network request
-  for data already in the list)
-- All 9 drawer fields render correctly for a sampled call from the QA test
-  account
-- Filter URL params are bookmarkable and restore state on reload
-- Export JSON is valid and passes schema validation
-- Dashboard QA (Part 8) still passes 4/4 after changes
+**Why this is stable:** `NOT: { OR: [A, B] }` = NOT (A OR B) = NOT A AND NOT B.
+Same semantics as the array form, but explicit. No Prisma version ambiguity.
+Growth commits must not rewrite this pattern.
 
 ---
 
-## Out of Scope (defer to v0.70)
+## Fix #2 — P1 · QA Issue #2: `POST /api/v1/router/priority` → HTTP 400
 
-- OpenAI-compatible passthrough endpoint (`/v1/chat/completions`) — needs
-  rate-limit design
-- Shareable benchmark embed widgets + SVG badges — good idea, defer
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — ongoing
-  Pclaw/OpenClaw collaboration, tracked separately in
-  `/Users/pwclaw/.openclaw/workspace/agentpick-benchmark/`
-- `npx agentpick init` CLI — defer until npm SDK ships first
+**QA test failed:** `2.6-set-priority`
+**Error:** `{"error": {"code": "VALIDATION_ERROR", "message": "Provide tools/priority_tools ..."}}`
+
+**Root cause:**
+`src/app/api/v1/router/priority/route.ts` line 43 matches the request body against
+a fixed list of field aliases. QA test `2.6-set-priority` sends a capability-keyed
+payload (e.g. `{"search": ["tavily", "exa-search"]}`). Growth commits have repeatedly
+removed the capability-name aliases (`body.search`, `body.crawl`, etc.) while
+"cleaning up" the handler, causing `Object.keys(update).length === 0` → 400.
+
+**Fix — `src/app/api/v1/router/priority/route.ts` line 43:**
+```ts
+// MUST accept ALL of these aliases — QA test 2.6 sends capability-keyed payload:
+const toolsValue =
+  body.tools ??
+  body.priority_tools ??
+  body.search ??      // QA test 2.6-set-priority sends {"search": [...]}
+  body.crawl ??
+  body.embed ??
+  body.finance;
+```
+
+**Guard comment to prevent future regression (add above line 43):**
+```ts
+// NOTE: Do NOT remove body.search / body.crawl / body.embed / body.finance.
+// QA test 2.6-set-priority sends capability-keyed payloads (e.g. {"search": [...]}).
+// Removing these aliases causes HTTP 400 — this has regressed 3 times already.
+```
 
 ---
 
-## Summary Table
+## Fix #3 — P1 · QA Issue #3: `GET /api/v1/router/account` returns nulls for new users
 
-| # | Item | Category | Acceptance Gate |
-|---|------|----------|-----------------|
-| 1 | Glassmorphism + motion design upgrade | UI Upgrade | 58/58 QA + Lighthouse ≥ 85 + visual review |
-| 2 | Node.js / TypeScript npm SDK | Developer Adoption | npm install works + /connect TS tab live |
-| 3 | Request Inspector drawer in dashboard | Developer Retention | 9 fields + filter + export + 58/58 QA |
+**QA test failed:** Paid User Flow — account info check
+**Observed:** `plan: None, monthlyLimit: None, strategy: None` on fresh account
+
+**Root cause:**
+`src/app/api/v1/router/account/route.ts` GET handler returns the account data nested
+under `account.usage`. The QA Paid User Flow checks `data.plan`, `data.strategy`,
+`data.monthlyLimit` at the TOP LEVEL of the JSON response. When these top-level
+fields are absent, Python parses them as `None`.
+
+**Fix — `src/app/api/v1/router/account/route.ts` line 42+:**
+The response must expose `plan`, `strategy`, `monthlyLimit`, and `callsThisMonth`
+as top-level keys alongside the nested `account` object:
+```ts
+return Response.json({
+  // Top-level fields — QA Paid User Flow reads data.plan / data.strategy directly:
+  plan: account.plan,           // "FREE" | "STARTER" | "PRO" | "ENTERPRISE"
+  strategy: account.strategy,   // "AUTO" | "BALANCED" | ...
+  monthlyLimit,                 // 500 for FREE, null for ENTERPRISE
+  callsThisMonth,
+  account: { ... },             // full nested object unchanged
+});
+```
+
+**Guard comment (add before the return statement):**
+```ts
+// NOTE: plan/strategy/monthlyLimit/callsThisMonth MUST remain as top-level fields.
+// QA Paid User Flow checks data.plan and data.strategy directly on this response.
+// Do NOT nest them under account.* only — this has broken onboarding multiple times.
+```
+
+---
+
+## Fix #4 — P1 · QA Issue #4: `GET /api/v1/router/health` → 401 without auth
+
+**QA test failed:** `1.4-health-no-auth` (Bearer Auth Test suite)
+**Observed:** `{"error": {"code": "UNAUTHORIZED", ...}}` instead of `{"status": "healthy"}`
+
+**Root cause:**
+`src/app/api/v1/router/health/route.ts` is a public endpoint — no auth required.
+Growth commits that add auth guards to `/api/v1/router/*` handlers (to fix security
+issues on other endpoints) have inadvertently added auth checks to this handler as well.
+
+**Fix — `src/app/api/v1/router/health/route.ts`:**
+The handler must NOT have any early-return 401 block. The correct pattern is:
+1. Parse auth header but do NOT return 401 if missing
+2. If auth header present and valid → return personalized health data
+3. If no auth or invalid auth → return public health response (HTTP 200)
+
+```ts
+// CORRECT — unauthenticated callers get public response, NOT 401:
+if (!agent) {
+  return Response.json({ status: 'healthy', message: 'AgentPick router is operational.' });
+}
+```
+
+The `hasAuth` guard (lines 16–17) must never be replaced with a mandatory auth check.
+External uptime monitors and status pages hit this endpoint without keys.
+
+**Guard comment (add at top of GET handler):**
+```ts
+// PUBLIC ENDPOINT — no auth required. Do NOT add mandatory auth checks here.
+// Unauthenticated requests receive basic status; authenticated requests get per-account stats.
+// This endpoint must return 200 for requests with no Authorization header.
+```
+
+---
+
+## Regression Prevention Rules
+
+These 5 failures are all regressions from Round 13. To prevent recurrence:
+
+| Rule | Applies to |
+|------|------------|
+| `NOT: { OR: [...] }` form is canonical — do NOT rewrite to `NOT: [{...}]` or `AND: [{NOT:...}]` | `calls/route.ts` |
+| All 6 body aliases in priority handler are required — do NOT remove `body.search/crawl/embed/finance` | `priority/route.ts` |
+| `plan`/`strategy`/`monthlyLimit`/`callsThisMonth` must remain top-level in account response | `account/route.ts` |
+| Health endpoint must return 200 with no auth — never add mandatory auth guards here | `health/route.ts` |
+
+---
+
+## Acceptance Criteria
+
+- [ ] `GET /api/v1/router/calls` → HTTP 200 (tests `1.5-calls-recorded` + `7.2-call-fields`)
+- [ ] `POST /api/v1/router/priority` → HTTP 200 (test `2.6-set-priority`)
+- [ ] `GET /api/v1/router/account` → `plan: "FREE"`, `monthlyLimit: 500`, `strategy: "AUTO"` for new user
+- [ ] `GET /api/v1/router/health` with no auth → HTTP 200 `{"status": "healthy"}`
+- [ ] Full QA suite: 67/67 (or ≥ 63/67 with no P0/P1 failures)
+- [ ] No growth features merged until QA passes
+
+---
+
+## Out of Scope This Cycle
+
+Everything from previous NEXT_VERSION.md (Glassmorphism UI, Node.js SDK, Request Inspector)
+is deferred. Zero new features until QA is clean.
