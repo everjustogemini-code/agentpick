@@ -52,7 +52,12 @@ export async function GET(request: NextRequest) {
       where.toolUsed = tool;
     }
     if (strategy) {
-      where.strategyUsed = strategy.toUpperCase();
+      // Normalize canonical router strategy names to stored SDK enum names
+      const CANONICAL_TO_SDK: Record<string, string> = {
+        most_stable: 'FASTEST',
+        best_performance: 'MOST_ACCURATE',
+      };
+      where.strategyUsed = CANONICAL_TO_SDK[strategy.toLowerCase()] ?? strategy.toUpperCase();
     }
     if (from || to) {
       const createdAt: Record<string, Date> = {};
