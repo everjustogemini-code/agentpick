@@ -1,4 +1,4 @@
-# Growth State — Cycle 17 (2026-03-15)
+# Growth State — Cycle 18 (2026-03-15)
 
 ## Working
 - Agent registration: functional (returns ah_live_sk_ key)
