@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import { apiError } from '@/types';
 import { CAPABILITY_TOOLS, TOOL_CHARACTERISTICS } from '@/lib/router/index';
+import { escapeHtml } from '@/lib/sanitize';
 
 const db = prisma as any;
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const capability = url.searchParams.get('capability') ?? 'search';
 
     if (!VALID_CAPABILITIES.includes(capability)) {
-      return apiError('VALIDATION_ERROR', `Unknown capability: ${capability}. Valid: ${VALID_CAPABILITIES.join(', ')}`, 400);
+      return apiError('VALIDATION_ERROR', `Unknown capability: ${escapeHtml(capability)}. Valid: ${VALID_CAPABILITIES.join(', ')}`, 400);
     }
 
     // Only include tools that the router can actually use for this capability
@@ -170,6 +171,11 @@ export async function GET(request: NextRequest) {
       capability,
       strategies: result,
       recommendation: 'Use BALANCED for general use. Switch to FASTEST for uptime, CHEAPEST for batch jobs, MOST_ACCURATE for research.',
+    }, {
+      headers: {
+        'Cache-Control': 'no-store',
+        'Vary': 'Authorization',
+      },
     });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
