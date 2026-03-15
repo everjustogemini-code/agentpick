@@ -114,6 +114,9 @@ export interface RouterResponse {
 interface RouteRequestOptions {
   developerId?: string;
   storedByokKeys?: unknown;
+  excludedTools?: string[];
+  latencyBudgetMs?: number | null;
+  maxFallbacks?: number | null;
 }
 
 /**
@@ -222,13 +225,21 @@ export function getRankedToolsForCapability(
   strategy: Strategy = 'balanced',
   exclude?: string[],
   storedByokKeys?: unknown,
+  latencyBudgetMs?: number | null,
 ): string[] {
   const allowedSlugs = CAPABILITY_TOOLS[capability];
   if (!allowedSlugs) return [];
 
-  const filtered = exclude?.length
-    ? allowedSlugs.filter(s => !exclude.includes(s))
-    : [...allowedSlugs];
+  // Filter excluded tools and, when a latency budget is set, tools whose known latency
+  // exceeds the budget (so the router never attempts a tool that is likely to timeout).
+  const filtered = allowedSlugs.filter((s) => {
+    if (exclude?.length && exclude.includes(s)) return false;
+    if (latencyBudgetMs != null) {
+      const chars = TOOL_CHARACTERISTICS[s];
+      if (chars && chars.latency > latencyBudgetMs) return false;
+    }
+    return true;
+  });
 
   if (filtered.length === 0) return [];
 
@@ -441,7 +452,7 @@ export async function routeRequest(
   // For cheapest: getRankedToolsForCapability applies deprioritizeUnconfiguredTools so the
   // list is configured tools by ascending cost, then unconfigured tools by ascending cost.
   // BYOK keys are resolved at call time, not at ranking time.
-  const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys);
+  const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys, options.latencyBudgetMs);
   // Skip circuit breaker for AI-ranked tools (per-instance state causes cross-instance non-determinism)
   // and for cheapest strategy (unconfigured cheap tools fail with sub-ms key-missing errors, not real
   // outages; the circuit breaker incorrectly marks them degraded, routing to pricier configured tools
@@ -465,6 +476,23 @@ export async function routeRequest(
   } else {
     rankedTools = cbRankedTools;
   }
+  // Filter out account-excluded tools and latency-budget-busting tools from the fallback
+  // chain. Excluded tools must not appear as auto-fallbacks even if they rank well for the
+  // strategy. The latency budget filter applies to AI-ranked tools too (which bypass
+  // getRankedToolsForCapability). The explicit request tool (if any) is still allowed
+  // through since callers who supply tool= are making an intentional choice.
+  if (options.excludedTools?.length || options.latencyBudgetMs != null) {
+    const excluded = new Set(options.excludedTools ?? []);
+    rankedTools = rankedTools.filter((t) => {
+      if (excluded.has(t)) return false;
+      if (options.latencyBudgetMs != null) {
+        const chars = TOOL_CHARACTERISTICS[t];
+        if (chars && chars.latency > options.latencyBudgetMs) return false;
+      }
+      return true;
+    });
+  }
+
   if (rankedTools.length === 0) {
     throw new Error(`No tools available for capability: ${capability}`);
   }
@@ -506,8 +534,9 @@ export async function routeRequest(
   }
 
   // Step 4: Try each tool in order until one succeeds.
-  // Cap at 3 fallbacks max to prevent unbounded latency.
-  const MAX_ATTEMPTS = 4; // 1 primary + 3 fallbacks
+  // Respect account maxFallbacks (0–5); default to 3 if not set. Hard cap at 5 fallbacks.
+  const accountMaxFallbacks = options.maxFallbacks != null ? Math.min(Math.max(options.maxFallbacks, 0), 5) : 3;
+  const MAX_ATTEMPTS = 1 + accountMaxFallbacks; // 1 primary + N fallbacks
   let firstFailedTool: string | undefined;
   let lastResult: ToolCallResult | undefined;
   let lastAttemptUsedByok = false;

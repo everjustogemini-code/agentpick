@@ -233,6 +233,9 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, modifiedRequest, {
       developerId: account.id,
       storedByokKeys: account.byokKeys,
+      excludedTools: account.excludedTools as string[] | undefined,
+      latencyBudgetMs: account.latencyBudgetMs,
+      maxFallbacks: account.maxFallbacks,
     });
     const query = extractQueryFromParams(routeBody.params);
     const fallbackChain = buildFallbackChain(modifiedRequest, response);

@@ -254,6 +254,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body, {
       developerId: preAccount?.id,
       storedByokKeys: preAccount?.byokKeys,
+      excludedTools: preAccount?.excludedTools as string[] | undefined,
+      latencyBudgetMs: preAccount?.latencyBudgetMs,
+      maxFallbacks: preAccount?.maxFallbacks,
     });
 
     // Record the call for analytics
