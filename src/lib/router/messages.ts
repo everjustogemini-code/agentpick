@@ -30,8 +30,9 @@ export function getRouterMessage(ctx: MessageContext): string | null {
   // First call ever — aha moment
   if (ctx.isFirstCall) {
     const remaining = ctx.monthlyLimit !== null ? ctx.monthlyLimit - 1 : null;
+    const callsLabel = ctx.plan === 'FREE' ? 'free calls' : 'calls';
     const remainingStr = remaining !== null
-      ? 'You have ' + remaining + ' free calls remaining this month.'
+      ? 'You have ' + remaining + ' ' + callsLabel + ' remaining this month.'
       : '';
     return (
       'Welcome! AgentPick routed your first query through ' +
