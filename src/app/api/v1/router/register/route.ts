@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
       return Response.json({
         apiKey,
-        plan: plan.toLowerCase(),
+        plan,
         monthlyLimit,
         message: 'Existing account found. New API key issued.',
       }, { status: 200 });
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     return Response.json({
       apiKey,
-      plan: 'free',
+      plan: 'FREE',
       monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
     }, { status: 201 });
   } catch (err) {
