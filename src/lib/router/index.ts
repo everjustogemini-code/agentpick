@@ -596,10 +596,15 @@ export async function routeRequest(
     );
   }
 
-  // All tools failed — return last failure
+  // All tools failed — return last failure.
+  // Use the last tool that was actually attempted as tool_used (most informative for debugging).
+  // fallback_from remains firstFailedTool (the original primary tool) so callers can distinguish
+  // what was tried first vs what was tried last — previously both were toolSlug, making the
+  // fallback chain indistinguishable from a single-tool failure.
+  const lastTriedTool = triedTools[triedTools.length - 1] ?? toolSlug;
   const traceId = `trace_fail_${Date.now()}`;
   const failureMeta: RouterResponse['meta'] = {
-    tool_used: toolSlug,
+    tool_used: lastTriedTool,
     latency_ms: lastResult?.latencyMs ?? 0,
     total_ms: Date.now() - requestStartMs,
     fallback_used: triedTools.length > 1,
@@ -613,7 +618,7 @@ export async function routeRequest(
   if (aiClassificationResult) {
     failureMeta.ai_classification = {
       ...aiClassificationResult,
-      reasoning: buildAiReasoning(aiClassificationResult, toolSlug),
+      reasoning: buildAiReasoning(aiClassificationResult, lastTriedTool),
     };
     failureMeta.classification_ms = classificationMs;
   }

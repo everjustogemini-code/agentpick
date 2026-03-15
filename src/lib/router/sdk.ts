@@ -392,10 +392,15 @@ export async function getUsageStats(developerId: string, days = 7) {
     };
   }
 
+  // Capability names are used as last-resort fallback in recordRouterCall when tool_used is
+  // missing. Filter them here to prevent phantom "tool" entries (e.g. 'search', 'crawl') from
+  // appearing in byTool analytics for accounts with any legacy or edge-case records.
+  const CAPABILITY_NAMES = new Set(['search', 'crawl', 'embed', 'finance', 'code', 'communication', 'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability']);
+
   const byTool: Record<string, { calls: number; avgLatency: number }> = {};
   const toolGroups = new Map<string, typeof calls>();
   for (const call of calls) {
-    if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable')) continue;
+    if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable') || CAPABILITY_NAMES.has(call.toolUsed)) continue;
     const group = toolGroups.get(call.toolUsed) ?? [];
     group.push(call);
     toolGroups.set(call.toolUsed, group);
