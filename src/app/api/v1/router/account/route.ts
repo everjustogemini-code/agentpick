@@ -40,6 +40,11 @@ export async function GET(request: NextRequest) {
     const overageCostUsd = overagePerCall !== null ? overageCalls * overagePerCall : 0;
 
     return Response.json({
+      // Top-level convenience fields for clients that check data.plan / data.strategy directly
+      plan: account.plan,
+      strategy: account.strategy,
+      monthlyLimit,
+      callsThisMonth,
       account: {
         id: account.id,
         email: agent.ownerEmail ?? null,

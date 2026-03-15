@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
   const update: Record<string, unknown> = {};
 
   // Accept both field names: tools (actual) and priority_tools (documented)
-  const toolsValue = body.tools ?? body.priority_tools;
+  // Also accept capability-keyed payloads e.g. {"search": [...]} from QA and SDK clients
+  const toolsValue = body.tools ?? body.priority_tools ?? body.search ?? body.crawl ?? body.embed ?? body.finance;
   if (Array.isArray(toolsValue)) {
     update.priorityTools = toolsValue.filter((t: unknown): t is string => typeof t === 'string');
   }
