@@ -292,16 +292,9 @@ export async function recordRouterCall(
       strategyUsed,
       byokUsed,
       traceId: meta.trace_id,
-      totalMs: meta.total_ms ?? null,
-      responsePreview: (() => {
-        if (!response.data) return null;
-        try {
-          const str = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-          return str.slice(0, 500);
-        } catch {
-          return null;
-        }
-      })(),
+      // totalMs + responsePreview omitted: migration 20260315_add_total_ms_response_preview
+      // has NOT been applied to production DB — inserting these columns throws P2010 and
+      // silently breaks all call recording via the .catch() handler. Remove once migration applied.
     },
   });
 
