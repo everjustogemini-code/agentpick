@@ -474,6 +474,11 @@ export default function DashboardPage() {
                   >
                     Need a key? Create a free account.
                   </button>
+                  <noscript>
+                    <a href="/pricing" className="mt-3 block text-sm font-medium text-orange-500 underline">
+                      Get a free API key on the pricing page →
+                    </a>
+                  </noscript>
                 </>
               ) : (
                 <>

@@ -119,10 +119,12 @@ export async function PATCH(request: NextRequest) {
       update.fallbackEnabled = body.fallback_enabled;
     }
     if (typeof body.max_fallbacks === 'number') {
-      update.maxFallbacks = Math.min(Math.max(body.max_fallbacks, 0), 5);
+      // Truncate to integer — Prisma Int column rejects floats with a 500 instead of a 400
+      update.maxFallbacks = Math.min(Math.max(Math.trunc(body.max_fallbacks), 0), 5);
     }
     if (typeof body.latency_budget_ms === 'number' || body.latency_budget_ms === null) {
-      update.latencyBudgetMs = body.latency_budget_ms;
+      // Truncate to integer — Prisma Int? column rejects floats with a 500 instead of a 400
+      update.latencyBudgetMs = body.latency_budget_ms !== null ? Math.trunc(body.latency_budget_ms) : null;
     }
     if (typeof body.monthly_budget_usd === 'number' || body.monthly_budget_usd === null) {
       update.monthlyBudgetUsd = body.monthly_budget_usd;
