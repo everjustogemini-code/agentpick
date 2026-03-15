@@ -104,19 +104,40 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     const fallbackParam = url.searchParams.get('fallback');
     const strategyParam = url.searchParams.get('strategy');
     const priorityParam = url.searchParams.get('priority_tools') ?? url.searchParams.get('priority');
+    let resolvedGetStrategy: RouterStrategyValue | undefined;
+    if (strategyParam) {
+      if (isRouterStrategy(strategyParam)) {
+        resolvedGetStrategy = strategyParam.toUpperCase() as RouterStrategyValue;
+      } else {
+        const normalized = normalizeStrategy(strategyParam);
+        if (!normalized) {
+          return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(strategyParam)}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO`, 400);
+        }
+        resolvedGetStrategy = normalized;
+      }
+    }
     body = {
       tool: url.searchParams.get('tool') ?? undefined,
       tool_api_key: url.searchParams.get('tool_api_key') ?? undefined,
       params,
       fallback: fallbackParam ? fallbackParam.split(',').map((item) => item.trim()).filter(Boolean) : undefined,
-      strategy: strategyParam
-        ? (isRouterStrategy(strategyParam) ? strategyParam as RouterStrategyValue : (normalizeStrategy(strategyParam) ?? undefined))
-        : undefined,
+      strategy: resolvedGetStrategy,
       priority_tools: priorityParam ? priorityParam.split(',').map(s => s.trim()).filter(Boolean) : undefined,
     };
   } else {
     try {
       const parsed = await request.json();
+      // Validate strategy before further processing
+      if (parsed.strategy) {
+        const rawStrat = String(parsed.strategy);
+        if (!isRouterStrategy(rawStrat)) {
+          const normalized = normalizeStrategy(rawStrat);
+          if (!normalized) {
+            return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(rawStrat)}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO`, 400);
+          }
+          parsed.strategy = normalized;
+        }
+      }
       // Accept priority_tools, priority, and priorityTools as aliases
       const rawPriority = parsed.priority_tools ?? parsed.priority ?? parsed.priorityTools;
       if (Array.isArray(rawPriority)) {
@@ -135,7 +156,8 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         parsed.fallback = fallback;
       }
       body = parsed;
-    } catch {
+    } catch (e) {
+      if (e instanceof Response) return e;
       return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
     }
   }
