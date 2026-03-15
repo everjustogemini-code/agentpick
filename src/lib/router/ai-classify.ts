@@ -105,8 +105,15 @@ export function fastClassify(query: string): QueryContext | null {
   // but NOT when it contains HARD breaking-news signals (stateOfBreakingSignals).
   // "latest" alone does NOT block this guard: "comprehensive analysis of latest AI trends"
   // is research, not news. Only immediate/real-time signals (today, breaking, right now, etc.) block it.
-  const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause|state of|comprehensive)\b/i;
-  const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|implications of|effects of|drivers of)\b/i;
+  const analyticalKeywords = /\b(analysis|analyze|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause|state of|comprehensive)\b/i;
+  // depthQualitySignal must cover ALL terms in analyticalKeywords that lack their own standalone
+  // depth-of-query indicator, so the combined guard fires when the query asks for explanatory/analytical
+  // depth (analysis, why-questions, impact-of, consequences-of, etc.) rather than just breaking news.
+  // Gap fix (cycle 32): added analyze/analysis, impact of, consequences of, factors behind,
+  // why did/does/is, how did, causes of — these were in analyticalKeywords but absent from
+  // depthQualitySignal, causing queries like "analyze X in 2024" or "impact of AI in 2024" to
+  // fall through to explicitRecencySignal and be wrongly classified as news.
+  const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|causes of|implications of|effects of|impact of|consequences of|factors behind|why did|why does|why is|how did|drivers of|analysis|analyze)\b/i;
 
   if (analyticalKeywords.test(query) && depthQualitySignal.test(query) && !stateOfBreakingSignals.test(query)) {
     const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
@@ -231,6 +238,10 @@ Examples:
 "state of large language models 2025 comprehensive analysis" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 "state of AI in enterprise 2025" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 "causes of inflation in 2024 comprehensive overview" → {"type":"research","domain":"finance","depth":"deep","freshness":"any"}
+"analyze the impact of AI regulation in 2024" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"why did AI stocks decline in 2024" → {"type":"research","domain":"finance","depth":"deep","freshness":"any"}
+"impact of large language models on employment in 2025" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"consequences of GDPR on SaaS companies in 2024" → {"type":"research","domain":"legal","depth":"deep","freshness":"any"}
 
 No explanation. JSON only.`;
 
