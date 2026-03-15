@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest) {
     if (body.strategy && typeof body.strategy === 'string') {
       const normalized = normalizeStrategy(body.strategy);
       if (!normalized) {
-        return apiError('VALIDATION_ERROR', 'strategy must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO', 400);
+        return apiError('VALIDATION_ERROR', 'strategy must be one of: AUTO, BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL (or aliases: best_performance, most_stable, custom)', 400);
       }
       update.strategy = normalized;
     }
