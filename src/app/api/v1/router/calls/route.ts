@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {
       developerId: account.id,
       // Exclude legacy/failure records where toolUsed was not properly recorded
-      NOT: [
-        { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-        { toolUsed: { endsWith: '-unavailable' } },
+      AND: [
+        { NOT: { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } } },
+        { NOT: { toolUsed: { endsWith: '-unavailable' } } },
       ],
     };
     if (capability) {

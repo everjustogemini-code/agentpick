@@ -7,22 +7,25 @@ import { apiError } from '@/types';
 const db = prisma as any;
 
 export async function GET(request: NextRequest) {
-  // Short-circuit before any DB lookup for clearly unauthenticated requests.
-  // Wrap URL parsing: a malformed URL must yield 401, not an unhandled 500.
+  // Health endpoint is public — no auth required for basic status.
+  // If a valid API key is provided, return personalized account health data.
   const _authHeader = request.headers.get('authorization');
   let _urlForAuth: URL;
-  try { _urlForAuth = new URL(request.url); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
-  if (!_authHeader?.trim() && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
-    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
-  }
-  if (_authHeader && !_authHeader.trim().toLowerCase().startsWith('bearer ') && !_urlForAuth.searchParams.get('token')?.startsWith('ah_')) {
-    return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
-  }
+  try { _urlForAuth = new URL(request.url); } catch { _urlForAuth = new URL('https://placeholder.local/'); }
+
+  const hasAuth = (_authHeader?.trim() && _authHeader.trim().toLowerCase().startsWith('bearer ')) ||
+    _urlForAuth.searchParams.get('token')?.startsWith('ah_');
 
   try {
-    let agent: Awaited<ReturnType<typeof authenticateAgent>>;
-    try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
-    if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
+    let agent: Awaited<ReturnType<typeof authenticateAgent>> | null = null;
+    if (hasAuth) {
+      try { agent = await authenticateAgent(request); } catch { /* unauthenticated — return public health */ }
+    }
+
+    // If no valid auth, return a basic public health response
+    if (!agent) {
+      return Response.json({ status: 'healthy', message: 'AgentPick router is operational.' });
+    }
 
     const account = await ensureDeveloperAccount(agent.id);
     const since = new Date();

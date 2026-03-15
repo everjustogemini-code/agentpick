@@ -68,6 +68,7 @@ export async function ensureDeveloperAccount(agentId: string) {
     account = await db.developerAccount.create({
       data: {
         agentId,
+        plan: 'FREE',
         strategy: 'AUTO',
         priorityTools: [],
         excludedTools: [],
