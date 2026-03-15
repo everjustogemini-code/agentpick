@@ -8,19 +8,21 @@ export interface RouteOptions {
 export interface FallbackAttempt {
   tool: string;
   success: boolean;
-  latency_ms: number;
+  latency_ms?: number;
   error?: string;
 }
 
 export interface RouteResult {
   tool: string;
   latency_ms: number;
+  classify_ms: number | null;
+  tool_ms: number | null;
   resultCount: number;
   relevance: number;
   success: boolean;
   ai_routing_summary?: string;
   fallback_chain: FallbackAttempt[];
-  cost?: number;
+  cost_usd?: number;
   response_preview?: string;
 }
 
@@ -28,21 +30,28 @@ export interface CallRecord {
   id: string;
   query: string;
   capability: string;
-  toolRequested: string | null;
-  toolUsed: string;
-  strategyUsed: string;
-  latencyMs: number;
-  costUsd: number;
-  resultCount: number | null;
-  byokUsed: boolean;
+  strategy: Strategy;
+  tool_used: string;
+  latency_ms: number;
+  classify_ms: number | null;
+  tool_ms: number | null;
+  cost_usd?: number;
   success: boolean;
-  fallbackUsed: boolean;
-  fallbackFrom: string | null;
-  fallbackChain: string[];
-  statusCode: number;
-  traceId: string;
-  aiClassification: Record<string, unknown> | null;
-  createdAt: string;
+  ai_routing_summary?: string | null;
+  fallback_chain: FallbackAttempt[];
+  created_at: string;
+  trace_id?: string | null;
+  result_preview?: string | null;
+}
+
+export interface CallFilters {
+  capability?: string;
+  strategy?: Strategy;
+  tool?: string;
+  dateFrom?: string;  // ISO date string
+  dateTo?: string;    // ISO date string
+  limit?: number;
+  page?: number;
 }
 
 export interface AccountInfo {
@@ -114,19 +123,12 @@ export interface UsageInfo {
 export interface HealthStatus {
   status: 'ok' | 'degraded';
   latency_ms: number;
+  version: string;
 }
 
 export interface BudgetConfig {
-  monthly_budget_usd: number;
-}
-
-export interface CallFilters {
-  capability?: string;
-  strategy?: Strategy;
-  tool?: string;
-  from?: string;  // ISO date
-  to?: string;    // ISO date
-  limit?: number;
+  monthly_usd: number;
+  alert_at_pct: number;
 }
 
 export interface AgentPickClientOptions {

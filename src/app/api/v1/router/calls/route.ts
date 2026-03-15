@@ -23,13 +23,16 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
-    const parsedLimit = parseInt(url.searchParams.get('limit') ?? '20', 10);
-    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 50);
+    const parsedLimit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+    const pageSize = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 50);
+    const parsedPage = parseInt(url.searchParams.get('page') ?? '1', 10);
+    const pageNum = Math.max(isNaN(parsedPage) ? 1 : parsedPage, 1);
     const capability = url.searchParams.get('capability') ?? undefined;
     const tool = url.searchParams.get('tool') ?? undefined;
     const strategy = url.searchParams.get('strategy') ?? undefined;
-    const from = url.searchParams.get('from') ?? undefined;
-    const to = url.searchParams.get('to') ?? undefined;
+    // Support both dateFrom/dateTo (SDK spec) and from/to (legacy)
+    const from = url.searchParams.get('dateFrom') ?? url.searchParams.get('from') ?? undefined;
+    const to = url.searchParams.get('dateTo') ?? url.searchParams.get('to') ?? undefined;
 
     // Capability names used as last-resort fallback in recordRouterCall — must be filtered
     // here to stay consistent with the analytics.ts and sdk.ts getUsageStats filters.
@@ -74,41 +77,69 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const calls = await prisma.routerCall.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      select: {
-        id: true,
-        capability: true,
-        query: true,
-        toolRequested: true,
-        toolUsed: true,
-        strategyUsed: true,
-        latencyMs: true,
-        costUsd: true,
-        resultCount: true,
-        byokUsed: true,
-        success: true,
-        fallbackUsed: true,
-        fallbackFrom: true,
-        fallbackChain: true,
-        statusCode: true,
-        traceId: true,
-        aiClassification: true,
-        createdAt: true,
-      },
-    });
+    const [calls, totalCount] = await Promise.all([
+      prisma.routerCall.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: pageSize,
+        skip: (pageNum - 1) * pageSize,
+        select: {
+          id: true,
+          capability: true,
+          query: true,
+          toolRequested: true,
+          toolUsed: true,
+          strategyUsed: true,
+          latencyMs: true,
+          costUsd: true,
+          resultCount: true,
+          byokUsed: true,
+          success: true,
+          fallbackUsed: true,
+          fallbackFrom: true,
+          fallbackChain: true,
+          statusCode: true,
+          traceId: true,
+          aiClassification: true,
+          createdAt: true,
+        },
+      }),
+      prisma.routerCall.count({ where }),
+    ]);
 
-    const callsWithSummary = calls.map((c) => {
+    const serializedCalls = calls.map((c) => {
       const ai = c.aiClassification as Record<string, unknown> | null;
       const ai_routing_summary: string | null = ai
         ? (typeof ai.reasoning === 'string' ? ai.reasoning : null)
         : null;
-      return { ...c, ai_routing_summary };
+      const fallback_chain = typeof c.fallbackChain === 'string'
+        ? JSON.parse(c.fallbackChain as string)
+        : (c.fallbackChain ?? []);
+      return {
+        id: c.id,
+        query: c.query,
+        capability: c.capability,
+        strategy: c.strategyUsed,
+        tool_used: c.toolUsed,
+        latency_ms: c.latencyMs,
+        classify_ms: null,
+        tool_ms: null,
+        cost_usd: c.costUsd,
+        success: c.success,
+        ai_routing_summary,
+        fallback_chain,
+        result_preview: null,
+        trace_id: c.traceId ?? null,
+        created_at: c.createdAt.toISOString(),
+      };
     });
 
-    return Response.json({ calls: callsWithSummary });
+    return Response.json({
+      calls: serializedCalls,
+      total: totalCount,
+      page: pageNum,
+      pageSize,
+    });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
     console.error(`[${reqId}] GET /api/v1/router/calls error:`, err);
