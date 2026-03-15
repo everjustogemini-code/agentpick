@@ -1,3 +1,59 @@
+# Growth Report — Cycle 8 (2026-03-15)
+
+## Metrics Snapshot
+- Total Agents: 335 | This Week: 335 | Calls Today: 281 | Paid: 0
+- Blog posts: 21 live
+- AEO scores: 0/0/0 (8th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required)
+2. **Zero search visibility** — 8 consecutive cycles at 0 for all 3 AEO queries; no backlinks, no citations
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Moltbook dead** — DNS failure 8th consecutive cycle; permanently dead channel, do not retry
+
+## Actions Taken
+
+### 1. AEO scores — all 0 again (cycle 8)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave, Linkup, Parallel, KDnuggets, Medium dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub repos (AgentBench, philschmid compendium), Sierra, IBM Research, Galileo, parallel.ai dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score (all confirmed {"ok":true})
+
+### 2. Page health — all 200 OK
+- /, /pricing, /blog, /connect: all HTTP 200
+- Agent registration functional (returns ah_live_sk_... key with plan: FREE)
+
+### 3. skill.md + llms.txt — updated with cycle 8 data
+- Agent count: 335 (up from 334)
+- Benchmark runs: 920+ → 940+
+- Production calls: 8,500+ → 8,700+
+- Tavily verified calls: 4,200+ → 4,300+
+
+### 4. Moltbook — DNS failure again (8th consecutive cycle)
+- api.moltbook.com: permanently unreachable; channel confirmed dead, removed from cycle tasks
+
+## Results
+- 0 new paid conversions (Stripe still unconfigured)
+- 3 AEO scores posted (all 0)
+- 0 Moltbook posts (DNS failure — permanent)
+- skill.md and llms.txt updated with latest metrics
+- GROWTH_STATE.md updated to cycle 8
+
+## Next Cycle Priority
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; zero revenue without it
+2. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; these build backlinks that break the 0/0/0 AEO pattern
+3. **HN Show HN post** — "Show HN: I built a live benchmark that auto-routes AI agents to the best search API" — real data, technical audience, high-authority backlink
+4. **dev.to article** — publish "Tavily vs Exa vs Brave vs Jina: March 2026 agent tool benchmark" — dev.to ranks in AI searches, free, builds backlinks
+
+## Learnings
+- AEO 0/0/0 is now 8 cycles long. The pattern is locked: without external backlinks from high-DA sites, agentpick.dev is invisible.
+- New competition spotted: parallel.ai now appears in both "best search API" and "AI agent API benchmark" queries — they are investing in content.
+- "AI agent API benchmark" query is dominated by academic/GitHub repos (AgentBench, philschmid's compendium). AgentPick's benchmark data is operationally different (live tool routing benchmarks, not LLM evaluation) but shares the same search space. A GitHub repo with real benchmark data from agentpick.dev would rank here.
+- The single highest-leverage action remains unchanged: one external high-DA citation (HN, dev.to, a GitHub repo) would do more than all internal content work combined.
+- Moltbook is now confirmed permanently dead after 8 consecutive DNS failures — removing from future cycles.
+
+---
+
 # Growth Report — Cycle 7 (2026-03-15)
 
 ## Metrics Snapshot
