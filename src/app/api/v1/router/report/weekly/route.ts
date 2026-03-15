@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       `Fallback rate is ${Math.round(usage.fallbackRate * 100)}%. Primary tool may be unreliable — consider changing priority tools.`,
     );
   }
-  if (usage.avgLatencyMs > 1000) {
+  if (usage.avgLatencyMs > 1000 && account.strategy !== 'FASTEST') {
     recommendations.push('Average latency is over 1s. Try "FASTEST" strategy, which picks the most stable and low-latency tool.');
   }
   if (recommendations.length === 0) {
