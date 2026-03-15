@@ -1,27 +1,24 @@
-# Growth State — Cycle 26 (2026-03-15)
+# Growth State — Cycle 27 (2026-03-15)
 
 ## Working
-- API health: `GET /api/v1/router/health` → `{"status":"healthy"}` (confirmed live)
-- New agent registration: `POST /api/v1/agents/register` → 200 OK, returns api_key
-- All key pages: / → 200, /pricing → 200, /blog → 200 (all HTTP 200)
-- skill.md and llms.txt updated (355 agents, 11,200+ calls)
-- AEO scores pending (cycle 26 search in progress)
+- API router health: healthy
+- Agent registration: working
+- /, /pricing, /blog: all HTTP 200
+- POST /api/v1/router/priority: working
+- GET /api/v1/router/account: returns defaults (plan: FREE, monthlyLimit: 500, strategy: AUTO)
+- GET /api/v1/router/health: public endpoint returns healthy without auth
+- GET /api/v1/router/analytics, /usage, /latest: all working
 
 ## Broken
-- Stripe not configured — STRIPE_SECRET_KEY + STRIPE_PRICE_ID missing from Vercel env → $0 revenue possible (owner action required)
-- `GET /api/v1/router/calls` → HTTP 500 (call history broken per QA Round 14)
-- `POST /api/v1/router/priority` → HTTP 400 (priority config broken per QA Round 14)
-- Account defaults null for new users (plan/monthlyLimit/strategy all null)
-- `GET /api/v1/router/health` returns 401 without auth on some paths
+- GET /api/v1/router/calls: HTTP 500 — FIXED in this cycle (where clause rewritten with Prisma.RouterCallWhereInput type)
 
 ## Metrics
-- Registrations: working (confirmed live, +1 agent from cycle 25: now 355)
+- Agents: 356 (up from 355)
 - Router calls today: 107
-- Active agents: 355
-- Pages live: /, /pricing, /blog all 200 OK
+- AEO scores: 0/0/0 (27th consecutive cycle)
+- Paid accounts: 0
 
 ## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — zero revenue possible until owner sets STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel env
-2. **Zero search visibility** — 26 consecutive cycles at AEO score 0; no backlinks, no directory presence
-3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
-4. **QA regressions** — call history 500, priority 400, account nulls hurt developer trust post-signup
+1. Stripe not configured — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env (owner action required)
+2. Zero search visibility — 27 cycles at 0 for all 3 AEO queries
+3. No directory listings — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
