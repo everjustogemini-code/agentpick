@@ -1,4 +1,4 @@
-export type Strategy = 'MOST_ACCURATE' | 'FASTEST' | 'CHEAPEST' | 'auto';
+export type Strategy = 'MOST_ACCURATE' | 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'AUTO' | 'MANUAL';
 
 export interface RouteOptions {
   strategy?: Strategy;
@@ -29,29 +29,78 @@ export interface CallRecord {
   id: string;
   query: string;
   capability: string;
-  strategy: Strategy;
-  tool_used: string;
-  latency_ms: number;
-  classification_ms: number;
-  total_ms: number;
-  cost?: number;
+  toolRequested: string | null;
+  toolUsed: string;
+  strategyUsed: string;
+  latencyMs: number;
+  costUsd: number;
+  byokUsed: boolean;
   success: boolean;
-  ai_routing_summary?: string;
-  fallback_chain: FallbackAttempt[];
-  created_at: string;
+  fallbackUsed: boolean;
+  fallbackFrom: string | null;
+  fallbackChain: string[];
+  statusCode: number;
+  traceId: string;
+  createdAt: string;
 }
 
 export interface AccountInfo {
   id: string;
-  email: string;
+  email: string | null;
   plan: string;
-  calls_remaining: number;
+  planLabel: string;
+  planSlug: string;
+  strategy: string;
+  priorityTools: string[];
+  excludedTools: string[];
+  fallbackEnabled: boolean;
+  maxFallbacks: number;
+  latencyBudgetMs: number | null;
+  monthlyBudgetUsd: number | null;
+  spentThisMonth: number;
+  totalCalls: number;
+  totalFallbacks: number;
+  billingCycleStart: string;
+  usage: {
+    monthlyLimit: number | null;
+    monthlyUsed: number;
+    monthlyRemaining: number | null;
+    includedCallsUsed: number;
+    overageCalls: number;
+    overagePerCall: number | null;
+    overageCostUsd: number;
+    hardCapped: boolean;
+  };
+  createdAt: string;
 }
 
 export interface UsageInfo {
-  calls_today: number;
-  calls_this_month: number;
-  cost_this_month: number;
+  plan: string;
+  plan_label: string;
+  daily_limit: number;
+  daily_used: number;
+  daily_remaining: number;
+  monthlyLimit: number | null;
+  callsThisMonth: number;
+  strategy: string;
+  stats: {
+    period: { days: number; since: string };
+    totalCalls: number;
+    successRate: number;
+    fallbackRate: number;
+    avgLatencyMs: number;
+    totalCostUsd: number;
+    byokSavingsUsd: number;
+    byokCalls: number;
+    byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }>;
+    byTool: Record<string, { calls: number; avgLatency: number }>;
+    byStrategy: Record<string, { calls: number; avgLatency: number; successRate: number }>;
+  };
+  ai_routing_summary: {
+    totalAiRoutedCalls: number;
+    byType: Record<string, number>;
+    byDomain: Record<string, number>;
+  };
 }
 
 export interface HealthStatus {
