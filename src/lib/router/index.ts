@@ -438,9 +438,10 @@ export async function routeRequest(
   // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
-  // For cheapest: getRankedToolsForCapability returns pure cost-ranked order (no deprioritization).
-  // Unconfigured cheap tools (brave-search $0.0001) rank first; if they fail (missing key),
-  // the fallback chain continues to the next cheapest tool.
+  // For all strategies (including cheapest): getRankedToolsForCapability applies
+  // deprioritizeUnconfiguredTools so configured tools rank ahead of unconfigured ones.
+  // Within each group (configured / unconfigured) cost-sorted order is preserved, so
+  // cheapest picks the cheapest available configured tool (e.g. serper before tavily).
   // BYOK keys are resolved at call time, not at ranking time.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys, options.latencyBudgetMs);
   // Skip circuit breaker for AI-ranked tools (per-instance state causes cross-instance non-determinism)

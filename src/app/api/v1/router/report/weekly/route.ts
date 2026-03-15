@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     );
   }
   if (usage.avgLatencyMs > 1000) {
-    recommendations.push('Average latency is over 1s. Try "FASTEST" strategy (picks the most stable, lowest-latency tool) or "CHEAPEST" for cost-efficient routing.');
+    recommendations.push('Average latency is over 1s. Try "FASTEST" strategy (picks the most stable tool by reliability score) or "CHEAPEST" for cost-efficient routing.');
   }
   if (recommendations.length === 0) {
     recommendations.push('Everything looks healthy. No changes recommended.');

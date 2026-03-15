@@ -446,25 +446,25 @@ export async function getUsageStats(developerId: string, days = 7) {
   // so callers can rely on ai_routing_summary always being an object, never null.
   // byTool shows which tools were selected for AI-classified queries, enabling developers
   // to see routing patterns (e.g. tavily for realtime, exa-search for deep research).
-  const aiRouting: { totalAiRoutedCalls: number; byType: Record<string, number>; byDomain: Record<string, number>; byTool: Record<string, number> } = {
-    totalAiRoutedCalls: aiCalls.length,
-    byType: {} as Record<string, number>,
-    byDomain: {} as Record<string, number>,
-    byTool: {} as Record<string, number>,
+  const aiRouting: { total_ai_routed_calls: number; by_type: Record<string, number>; by_domain: Record<string, number>; by_tool: Record<string, number> } = {
+    total_ai_routed_calls: aiCalls.length,
+    by_type: {} as Record<string, number>,
+    by_domain: {} as Record<string, number>,
+    by_tool: {} as Record<string, number>,
   };
   for (const call of aiCalls) {
     const classification = call.aiClassification as Record<string, unknown> | null;
     const queryType = typeof classification?.['type'] === 'string' ? classification['type'] : null;
     const queryDomain = typeof classification?.['domain'] === 'string' ? classification['domain'] : null;
     if (queryType) {
-      aiRouting.byType[queryType] = (aiRouting.byType[queryType] ?? 0) + 1;
+      aiRouting.by_type[queryType] = (aiRouting.by_type[queryType] ?? 0) + 1;
     }
     if (queryDomain) {
-      aiRouting.byDomain[queryDomain] = (aiRouting.byDomain[queryDomain] ?? 0) + 1;
+      aiRouting.by_domain[queryDomain] = (aiRouting.by_domain[queryDomain] ?? 0) + 1;
     }
     // Record which tool handled each AI-routed call (exclude capability-name fallbacks)
     if (call.toolUsed && call.toolUsed !== 'unknown' && !call.toolUsed.endsWith('-unavailable') && !CAPABILITY_NAMES.has(call.toolUsed)) {
-      aiRouting.byTool[call.toolUsed] = (aiRouting.byTool[call.toolUsed] ?? 0) + 1;
+      aiRouting.by_tool[call.toolUsed] = (aiRouting.by_tool[call.toolUsed] ?? 0) + 1;
     }
   }
 
