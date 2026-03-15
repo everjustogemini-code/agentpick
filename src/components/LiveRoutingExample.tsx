@@ -124,8 +124,12 @@ export default function LiveRoutingExample() {
 
   const display = data || STATIC_EXAMPLE;
   const classification = display.aiClassification;
+  // Exclude 'reasoning' — it's a full sentence, not a short classification tag
   const tags = classification
-    ? Object.values(classification).filter(Boolean)
+    ? Object.entries(classification)
+        .filter(([key]) => key !== 'reasoning')
+        .map(([, value]) => value)
+        .filter(Boolean)
     : ['financial research', 'deep', 'recent'];
 
   return (
