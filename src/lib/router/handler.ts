@@ -58,6 +58,10 @@ const CORE_TO_SDK: Record<string, string> = {
   FASTEST: 'FASTEST',
   AUTO: 'AUTO',
   MANUAL: 'MANUAL',
+  // Lowercase versions of SDK enum names for the accountDefaultStrategy fallback path.
+  // Without these, accounts with FASTEST/MOST_ACCURATE strategy fall back to recording as BALANCED.
+  most_accurate: 'MOST_ACCURATE',
+  fastest: 'FASTEST',
 };
 
 export async function handleRouteRequest(request: NextRequest, capability: string) {
