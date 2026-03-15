@@ -39,6 +39,8 @@ export default function PlaygroundShell() {
       if (res.status === 429) {
         setError429(true)
         setResult(null)
+        setLatency(null)
+        setToolUsed(null)
       } else {
         setResult(data)
         setLatency(data.latency_ms ?? data.latency ?? Date.now() - t0)

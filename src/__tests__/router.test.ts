@@ -40,7 +40,14 @@ describe('Strategy-based ranking', () => {
 
   it('cheapest ranks lowest cost first (with quality floor)', () => {
     const ranked = getRankedToolsForCapability('search', 'cheapest');
-    expect(ranked[0]).toBe('brave-search'); // cost 0.0001
+    // Unconfigured tools are deprioritized to avoid "key not set" failures.
+    // Within the unconfigured group, cost order is preserved:
+    // brave-search ($0.0001) must appear before serper ($0.0005).
+    const braveIdx = ranked.indexOf('brave-search');
+    const serperIdx = ranked.indexOf('serper');
+    expect(braveIdx).toBeGreaterThanOrEqual(0);
+    expect(serperIdx).toBeGreaterThanOrEqual(0);
+    expect(braveIdx).toBeLessThan(serperIdx);
   });
 
   it('most_stable ranks highest stability first (with quality floor)', () => {

@@ -48,12 +48,23 @@ export async function GET(request: NextRequest) {
     recommendations.push('Everything looks healthy. No changes recommended.');
   }
 
+  // Convert stored SDK enum (e.g. 'FASTEST') to canonical name (e.g. 'most_stable') for display
+  const SDK_TO_CANONICAL: Record<string, string> = {
+    BALANCED: 'balanced',
+    FASTEST: 'most_stable',
+    CHEAPEST: 'cheapest',
+    MOST_ACCURATE: 'best_performance',
+    AUTO: 'auto',
+    MANUAL: 'manual',
+  };
+  const strategyLabel = SDK_TO_CANONICAL[account.strategy as string] ?? (account.strategy as string ?? 'auto');
+
   const summary = [
     `Weekly Router Report (${usage.period.since.slice(0, 10)} to ${new Date().toISOString().slice(0, 10)})`,
     `${usage.totalCalls} calls | $${usage.totalCostUsd} spent | ${usage.totalCalls > 0 ? Math.round(usage.successRate * 100) + '% success' : 'no data'} | ${usage.avgLatencyMs}ms avg`,
     topTool ? `Top tool: ${topTool[0]} (${(topTool[1] as any).calls} calls)` : (usage.totalCalls > 0 ? 'Top tool: no tool data recorded.' : 'No calls this week.'),
     `Fallbacks triggered: ${fallbacks.totalFallbacks}`,
-    `Strategy: ${account.strategy} | Plan: ${account.plan}`,
+    `Strategy: ${strategyLabel} | Plan: ${account.plan}`,
   ].join('\n');
 
   return Response.json({
