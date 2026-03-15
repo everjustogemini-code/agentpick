@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
     // null clears the budget (no spending cap). 0 is treated as "no limit" by the
     // enforcement check (budget > 0 required to trigger enforcement).
     const budgetValue = body.limit_usd !== undefined ? body.limit_usd : body.monthly_budget_usd;
+    if (budgetValue === undefined) {
+      return apiError('VALIDATION_ERROR', 'Provide limit_usd or monthly_budget_usd.', 400);
+    }
     if (budgetValue !== null && (typeof budgetValue !== 'number' || budgetValue < 0)) {
       return apiError('VALIDATION_ERROR', 'limit_usd (or monthly_budget_usd) must be a non-negative number or null to clear the limit.', 400);
     }

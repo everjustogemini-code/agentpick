@@ -126,7 +126,7 @@ export async function PATCH(request: NextRequest) {
     if (typeof body.fallback_enabled === 'boolean') {
       update.fallbackEnabled = body.fallback_enabled;
     }
-    if (typeof body.max_fallbacks === 'number') {
+    if (typeof body.max_fallbacks === 'number' && !isNaN(body.max_fallbacks)) {
       // Truncate to integer — Prisma Int column rejects floats with a 500 instead of a 400
       update.maxFallbacks = Math.min(Math.max(Math.trunc(body.max_fallbacks), 0), 5);
     }

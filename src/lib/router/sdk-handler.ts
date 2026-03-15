@@ -81,6 +81,19 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   }
 
   const account = await ensureDeveloperAccount(agent.id);
+
+  // P1-6: Hard budget enforcement — check before usage limit so over-budget accounts get
+  // BUDGET_EXCEEDED (402) not USAGE_LIMIT (429), matching handler.ts ordering.
+  if (
+    typeof account.monthlyBudgetUsd === 'number' &&
+    account.monthlyBudgetUsd > 0 &&
+    account.spentThisMonth >= account.monthlyBudgetUsd
+  ) {
+    return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
+      details: { budget: account.monthlyBudgetUsd, spent: account.spentThisMonth },
+    });
+  }
+
   const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue, account.billingCycleStart);
   if (!usage.allowed) {
     const isMonthly = usage.hardCapped;
@@ -187,17 +200,6 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     if (allUnknown) {
       return apiError('INVALID_PRIORITY', `None of the specified priority tools are available for ${capability}: ${body.priority_tools.join(', ')}. Valid tools: ${[...validCapabilityTools].join(', ')}`, 400);
     }
-  }
-
-  // P1-6: Hard budget enforcement — block routing before dispatch
-  if (
-    typeof account.monthlyBudgetUsd === 'number' &&
-    account.monthlyBudgetUsd > 0 &&
-    account.spentThisMonth >= account.monthlyBudgetUsd
-  ) {
-    return apiError('BUDGET_EXCEEDED', 'Monthly budget exceeded for this developer account.', 402, {
-      details: { budget: account.monthlyBudgetUsd, spent: account.spentThisMonth },
-    });
   }
 
   // Normalize strategy to uppercase canonical form for consistent SDK_TO_CORE mapping
