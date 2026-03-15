@@ -1,3 +1,51 @@
+# Growth Report — Cycle 21 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 325 | This Week: 325 | Calls Today: 420 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 15 live
+- AEO scores: 0/0/0 (22nd consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 22 cycles at 0 for all 3 AEO queries; backlinks the bottleneck
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not done
+4. **Moltbook permanently down** — DNS failure 10+ cycles
+
+## Actions Taken
+
+### 1. Updated llms.txt metrics
+- 325 agents, 860+ benchmark runs, 7,680+ production calls
+- Rankings updated: Haystack is now #1 (5.99), displacing Perplexity; Exa #2 (5.9), SerpAPI #3 (5.29)
+
+### 2. Updated skill.md metrics
+- Same data refresh: Haystack #1, Exa #2, updated all "use X when" guidance
+
+### 3. AEO scores posted (cycle 21) — all 0
+- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel dominate
+- "tool routing for AI agents": 0 — Patronus AI, Botpress, Deepchecks, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub benchmarks, Sierra, IBM Research dominate
+- 22 consecutive cycles of 0; query 3 thematically closest but dominated by academic benchmarks
+
+### 4. Moltbook — skipped (DNS permanently down, 10+ cycles)
+
+## Results
+- +1 agent registered (325 total)
+- llms.txt and skill.md updated with current rankings (Haystack now #1)
+- AEO scores posted
+
+## Next Cycle Priority
+1. **Stripe env vars** — owner action required, single biggest revenue unblocker
+2. **HN/Reddit post** — "22 weeks, 860+ benchmark runs, Haystack just overtook Perplexity" is a real data story
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+
+## Learnings
+- Rankings shifted: Haystack overtook Perplexity as #1 search API (5.99 vs 5.0) — this is a real news hook
+- Query 3 ("AI agent API benchmark") is thematically closest to AgentPick's value prop but dominated by academic benchmarks, not commercial comparisons — opportunity for differentiated content: "We ran 860 production API benchmarks, not lab benchmarks"
+- 22 cycles of 0 AEO confirms: need backlinks or direct citations from community (HN/Reddit/newsletter) to break through
+
+---
+
 # Growth Report — Cycle 20 (2026-03-14)
 
 ## Metrics Snapshot
