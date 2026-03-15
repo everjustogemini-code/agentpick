@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { callToolAPI, BENCHMARKABLE_SLUGS } from '@/lib/benchmark/adapters';
+import { callToolAPI, BENCHMARKABLE_SLUGS, resolveProductSlug } from '@/lib/benchmark/adapters';
 import { evaluateResult } from '@/lib/benchmark/evaluator';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import { recalculateProductScore } from '@/lib/voting';
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
 
   const batchId = randomUUID();
 
-  // Resolve tool slugs: use provided list or fall back to all benchmarkable products
-  const toolSlugs = tools && tools.length > 0 ? tools : BENCHMARKABLE_SLUGS;
+  // Resolve tool slugs: use provided list (resolving aliases) or fall back to all benchmarkable products
+  const toolSlugs = tools && tools.length > 0 ? tools.map((s: string) => resolveProductSlug(s)) : BENCHMARKABLE_SLUGS;
 
   const products = await prisma.product.findMany({
     where: { slug: { in: toolSlugs }, status: { in: BROWSE_STATUSES } },
