@@ -682,6 +682,8 @@ model RouterCall {
 
   traceId       String?
   aiClassification Json?
+  totalMs       Int?
+  responsePreview String?
 
   createdAt     DateTime       @default(now())
 

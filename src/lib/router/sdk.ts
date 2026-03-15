@@ -257,6 +257,7 @@ export async function recordRouterCall(
     cost_usd?: number;
     result_count?: number;
     classification_ms?: number;
+    total_ms?: number;
   };
 
   // Determine success: trace_id starting with "trace_fail_" means all tools failed
@@ -290,6 +291,16 @@ export async function recordRouterCall(
       strategyUsed,
       byokUsed,
       traceId: meta.trace_id,
+      totalMs: meta.total_ms ?? null,
+      responsePreview: (() => {
+        if (!response.data) return null;
+        try {
+          const str = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+          return str.slice(0, 500);
+        } catch {
+          return null;
+        }
+      })(),
     },
   });
 
