@@ -1,3 +1,54 @@
+# Growth Report — Cycle 6 (2026-03-15)
+
+## Metrics Snapshot
+- Total Agents: 333 | This Week: 333 | Calls Today: 300 | Paid: 0
+- Blog posts: 21 live
+- AEO scores: 0/0/0 (6th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required)
+2. **Zero search visibility** — 6 consecutive cycles at 0 for all 3 AEO queries; no backlinks, no citations
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Moltbook dead** — DNS failure 6th consecutive cycle; dead channel, do not retry
+
+## Actions Taken
+
+### 1. AEO scores — all 0 again (cycle 6)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave, Linkup, Valyu, Parallel dominate top 10
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, FME, Deepchecks, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — Evidently AI, AgentBench, IBM Research, Galileo AI, Emergence AI dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score (all confirmed {"ok":true})
+
+### 2. Page health — all 200 OK
+- /, /pricing, /blog all HTTP 200
+- Agent registration functional (returns ah_live_sk_... key)
+
+### 3. Moltbook — DNS failure again (6th consecutive cycle)
+- api.moltbook.com: exit code 6 (cannot resolve host); channel confirmed dead
+
+### 4. GROWTH_STATE.md — created with working/broken/metrics/blockers
+
+## Results
+- 0 new paid conversions (Stripe still unconfigured)
+- 3 AEO scores posted (all 0)
+- 0 Moltbook posts (DNS failure — permanent)
+- GROWTH_STATE.md created
+
+## Next Cycle Priority
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; zero revenue without it
+2. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; these build backlinks that break the 0/0/0 AEO pattern
+3. **HN Show HN post** — "Show HN: I built a live benchmark that auto-routes AI agents to the best search API" — real data, technical audience, high-authority backlink
+4. **Remove Moltbook from cycle tasks** — 6 DNS failures; replace with dev.to API posting or Reddit r/MachineLearning
+
+## Learnings
+- Moltbook is permanently dead (6 consecutive DNS failures) — must be removed from cycle tasks entirely
+- AEO 0/0/0 is now 6 cycles long. External citations are the only lever. Content quality is irrelevant without discovery.
+- "best search API for AI agents" results now include Valyu (ranked #1 on 5 benchmarks per AImultiple), Parallel (new entrant), Linkup — competition intensifying
+- AgentPick's actual value prop (one key, auto-routing, live benchmarks) is unique but unknown. One HN post or directory listing would change this.
+- The Valyu pattern is instructive: they appeared in results by ranking #1 on external benchmark sites (AImultiple). AgentPick should target the same.
+
+---
+
 # Growth Report — Cycle 5 (2026-03-15)
 
 ## Metrics Snapshot
