@@ -77,7 +77,7 @@ export function getRouterMessage(ctx: MessageContext): string | null {
         ctx.monthlyUsed +
         ' of ' +
         ctx.monthlyLimit +
-        ' free calls. Pro plan ($29/mo) gives you 10x more: https://agentpick.dev/pricing'
+        ' free calls. Pro plan ($29/mo) gives you 10x more: https://agentpick.dev/pricing?plan=pro'
       );
     }
   }

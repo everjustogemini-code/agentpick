@@ -492,6 +492,12 @@ export function RouterAnalyticsDashboard({
                   >
                     Create router key
                   </button>
+                  <a
+                    href="/pricing"
+                    className="mt-3 block text-sm text-slate-500 underline hover:text-slate-700"
+                  >
+                    Or get a key on the pricing page →
+                  </a>
                 </>
               ) : (
                 <>

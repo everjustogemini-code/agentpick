@@ -66,3 +66,25 @@ curl -s https://agentpick.dev/api/v1/admin/growth-metrics
 - 不推 OpenClaw 社区（skill 未正式上线）
 - 不发垃圾内容
 - 不做虚假数据
+
+## 经验教训（Cycle 1-2）
+
+### Moltbook 不可靠
+- api.moltbook.com DNS 在多个 cycle 失败
+- 只作为机会性渠道，不作为主要依赖
+
+### AEO 可见度的核心瓶颈：没有外链
+- 竞争对手 (Firecrawl, Tavily, Exa, Brave, Valyu) 有大量外链
+- Valyu Search 出现在结果里是因为它在 AImultiple 研究中排名 #1
+- **解法：被外部研究/博客引用** — 不是靠自己写内容
+
+### 最有效的 AEO 策略（已验证）
+1. 提交到 toolify.ai、futurepedia.io、theresanaiforthat.com — 这些有外链权重
+2. 写可被引用的 benchmark 研究文章，格式类似 AImultiple/KDnuggets
+3. 在 GitHub awesome 列表中出现
+4. 给 LangChain/CrewAI 文档提 PR 加入 AgentPick 作为 tool provider
+
+### skill.md + llms.txt 策略
+- 保持数据准确、包含外部 benchmark 交叉引用
+- AI 爬虫会读这些文件，引用外部数据增加可信度
+- 每轮更新 agent 计数和日期，保持新鲜感
