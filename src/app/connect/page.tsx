@@ -9,6 +9,20 @@ export const metadata: Metadata = {
   description: 'One key. Every tool. Auto-fallback. AI-powered routing. Search, crawl, embed, finance — all through one API.',
 };
 
+const tsExamples = {
+  install: `npm install agentpick`,
+  quickstart:
+`import { AgentPickClient } from 'agentpick';
+
+const client = new AgentPickClient({ apiKey: process.env.AGENTPICK_API_KEY! });
+
+const result = await client.route('search', 'latest AI benchmarks 2025');
+console.log(result.tool, result.latency_ms);`,
+  route: `const result = await client.route('search', 'query', { strategy: 'MOST_ACCURATE' });`,
+  account: `const acct = await client.account();`,
+  usage:   `const stats = await client.usage();`,
+};
+
 export default function ConnectPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -28,7 +42,7 @@ export default function ConnectPage() {
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/40 mb-4">
             Interactive code generator
           </p>
-          <CodeGeneratorWidget />
+          <CodeGeneratorWidget tsExamples={tsExamples} />
         </section>
 
         <section className="mb-8 w-full">
