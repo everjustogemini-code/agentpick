@@ -1,8 +1,8 @@
-# NEXT_VERSION — AgentPick v0.80
+# NEXT_VERSION — AgentPick v0.90
 
 **Date:** 2026-03-15
 **QA Round:** 14 — Score: 62/67 (5 failures: 1 P0, 3 P1)
-**Branch base:** bugfix/cycle-80
+**Branch base:** bugfix/cycle-90
 **Cycle type:** BUG FIX ONLY — zero new features
 
 ---
