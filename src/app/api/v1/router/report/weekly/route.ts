@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   const recommendations: string[] = [];
 
-  if (usage.successRate < 0.95) {
+  if (usage.totalCalls > 0 && usage.successRate < 0.95) {
     recommendations.push('Success rate is below 95%. Consider enabling fallback or switching strategy.');
   }
   if (usage.fallbackRate > 0.1) {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   const summary = [
     `Weekly Router Report (${usage.period.since.slice(0, 10)} to ${new Date().toISOString().slice(0, 10)})`,
-    `${usage.totalCalls} calls | $${usage.totalCostUsd} spent | ${Math.round(usage.successRate * 100)}% success | ${usage.avgLatencyMs}ms avg`,
+    `${usage.totalCalls} calls | $${usage.totalCostUsd} spent | ${usage.totalCalls > 0 ? Math.round(usage.successRate * 100) + '% success' : 'no data'} | ${usage.avgLatencyMs}ms avg`,
     topTool ? `Top tool: ${topTool[0]} (${(topTool[1] as any).calls} calls)` : 'No calls this week.',
     `Fallbacks triggered: ${fallbacks.totalFallbacks}`,
     `Strategy: ${account.strategy} | Plan: ${account.plan}`,
