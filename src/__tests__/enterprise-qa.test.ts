@@ -173,13 +173,26 @@ describe('P1-4: Deep research AI classification', () => {
     expect(result?.depth).toBe('deep');
   });
 
-  it('fastClassify: genuine-news signals block the analytical guard', () => {
-    // "latest" is a genuineNewsSignal → analytical guard must NOT fire → falls through to news path.
+  it('fastClassify: guard fails for "latest analysis of OpenAI funding" — missing depthQualitySignal', () => {
+    // "latest analysis of OpenAI funding" has analyticalKeyword ("analysis") but NOT a
+    // depthQualitySignal ("comprehensive", "in-depth", etc.) — so the analytical guard does not fire.
+    // Falls through to strongNewsTerms ("funding") → news. "latest" is no longer the blocker;
+    // the absence of a depth/quality signal is why the guard skips this query.
     const result = fastClassify('latest analysis of OpenAI funding');
-    // Should be news (or null → Haiku), NOT research (genuineNewsSignal present)
     if (result !== null) {
       expect(result.type).not.toBe('research');
     }
+  });
+
+  it('fastClassify: "comprehensive analysis of latest AI trends" → research/deep (latest does not block)', () => {
+    // After fix: stateOfBreakingSignals (not genuineNewsSignals) is the blocker for the
+    // analyticalKeywords guard. "latest" is NOT a breaking signal, so the guard fires:
+    // analyticalKeywords ("comprehensive", "analysis") + depthQualitySignal ("comprehensive")
+    // → research/deep, even though "latest AI" would match the news path if the guard failed.
+    const result = fastClassify('comprehensive analysis of latest AI trends');
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe('research');
+    expect(result?.depth).toBe('deep');
   });
 });
 

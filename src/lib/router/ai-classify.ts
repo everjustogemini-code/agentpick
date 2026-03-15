@@ -100,13 +100,15 @@ export function fastClassify(query: string): QueryContext | null {
   // Must fire BEFORE explicitRecencySignal AND strongNewsTerms. Without this, queries like:
   //   "causes of inflation in 2024 comprehensive overview"  → mis-routed as news via "in 2024"
   //   "comprehensive analysis of global chip shortage in 2025" → mis-routed as news via "in 2025"
+  //   "comprehensive analysis of latest AI trends" → mis-routed as news via "latest" + genericTopicSignal
   // Guard fires when the query has an analytical keyword AND a depth/quality signal,
-  // but NOT when it contains genuine breaking-news signals (today, right now, latest, etc.).
+  // but NOT when it contains HARD breaking-news signals (stateOfBreakingSignals).
+  // "latest" alone does NOT block this guard: "comprehensive analysis of latest AI trends"
+  // is research, not news. Only immediate/real-time signals (today, breaking, right now, etc.) block it.
   const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause|state of|comprehensive)\b/i;
   const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|implications of|effects of|drivers of)\b/i;
-  const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
 
-  if (analyticalKeywords.test(query) && depthQualitySignal.test(query) && !genuineNewsSignals.test(query)) {
+  if (analyticalKeywords.test(query) && depthQualitySignal.test(query) && !stateOfBreakingSignals.test(query)) {
     const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
@@ -206,7 +208,7 @@ Rules:
 - stocks/crypto/forex/earnings → finance domain
 - AI/ML/framework/API/code → tech domain
 - court/SEC/regulation/law → legal domain
-- If the query contains words like "analysis", "causes", "implications", "impact of", "effects of", "why did", combined with multi-domain framing (supply chain, geopolitics, policy, socioeconomics), classify as type=research, depth=deep — regardless of the topic domain. Only classify as type=news if the query is explicitly seeking recent/breaking news (contains signals like "today", "latest", "what happened", "breaking").
+- If the query contains analytical framing ("analysis", "causes", "implications", "impact of", "effects of", "why did", "comprehensive", "in-depth", "overview of", "state of") combined with a depth/quality signal, classify as type=research, depth=deep — regardless of topic domain or whether "latest" appears. Only classify as type=news if the query is explicitly seeking breaking/immediate news (contains signals like "today", "right now", "breaking", "just happened").
 
 Examples:
 "NVDA stock price" → {"type":"realtime","domain":"finance","depth":"shallow","freshness":"realtime"}
