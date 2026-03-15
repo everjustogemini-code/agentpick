@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
           agentId: existingAgent.id,
           plan: 'FREE',
           strategy: 'AUTO',
+          priorityTools: [],
+          excludedTools: [],
         },
       });
 
