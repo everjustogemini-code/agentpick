@@ -1,121 +1,76 @@
 # TASK_CLAUDE_CODE.md
 **Agent:** Claude Code
-**Date:** 2026-03-14
-**Cycle:** 34
-**Source:** NEXT_VERSION.md — QA Round 12, score 57/57 (no bugs)
+**Date:** 2026-03-15
+**Cycle:** 68
+**Source:** NEXT_VERSION.md v0.69 — QA Round 13, score 58/58 (no bugs)
 
 ---
 
 ## Bug Fixes
 
-None. QA 57/57 clean. No P0/P1/P2 issues.
+None. QA 58/58 clean. No P0/P1/P2 issues.
 
 ---
 
-## Must-Have #2 — Node.js / TypeScript SDK (`npm install agentpick`)
+## Must-Have #2 — Complete Node.js / TypeScript SDK (`npm install agentpick`)
 
-**Scope owned by CLAUDE_CODE:** Create the entire SDK package + wire backend data in `/connect`.
+**Scope owned by CLAUDE_CODE:** The entire `sdk/` package — source, types, retry, build config, README. No frontend files.
 
-**DO NOT TOUCH:**
-- `src/app/page.tsx` (owned by TASK_CODEX)
-- `src/app/rankings/page.tsx`, `src/app/benchmarks/page.tsx`, `src/app/agents/page.tsx`, `src/app/live/page.tsx` (owned by TASK_CODEX)
-- `src/components/dashboard/RouterAnalyticsDashboard.tsx` (owned by TASK_CODEX)
-- `src/components/SiteHeader.tsx` (owned by TASK_CODEX)
+**DO NOT TOUCH (owned by TASK_CODEX):**
+- `src/app/page.tsx`
+- `src/app/connect/page.tsx`
+- `src/app/globals.css`
+- `src/components/SiteHeader.tsx`
+- `src/components/PricingSection.tsx`
+- `src/components/PricingPageClient.tsx`
+- `src/components/dashboard/RouterAnalyticsDashboard.tsx`
+- Any file under `src/app/products/`
+- Any file under `src/app/dashboard/`
 
 ---
 
-### Task 2A — Create `sdk/` package directory
+### Task 2A — SDK: Complete missing methods + wire auto-retry + JSDoc
 
-Create all files below as a new top-level `sdk/` directory (sibling to `src/`, `prisma/`).
+The SDK scaffold is at `sdk/` (already exists). Current methods: `route()`, `account()`, `usage()`, `calls()`.
+**Three methods are missing:** `setStrategy()`, `setBudget()`, `health()`.
+Auto-retry exists in `sdk/src/retry.ts` but is **not yet wired** into the client's `request()` wrapper.
 
-#### `sdk/package.json`
+#### `sdk/src/types.ts` — Verify / extend
 
-```json
-{
-  "name": "agentpick",
-  "version": "0.1.0",
-  "description": "Official Node.js / TypeScript SDK for AgentPick router",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "engines": { "node": ">=18" },
-  "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
-  },
-  "devDependencies": {
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
-  }
-}
-```
-
-#### `sdk/tsconfig.json`
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "declaration": true,
-    "outDir": "./dist"
-  },
-  "include": ["src"]
-}
-```
-
-#### `sdk/tsup.config.ts`
+Read the file first. Ensure the following types are exported (add if missing):
 
 ```ts
-import { defineConfig } from 'tsup';
-export default defineConfig({
-  entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],
-  dts: true,
-  clean: true,
-});
-```
+export type Strategy = 'MOST_ACCURATE' | 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'AUTO' | 'MANUAL';
 
----
+export interface HealthStatus {
+  status: 'ok' | 'degraded';
+  latency_ms: number;
+  version: string;
+}
 
-#### `sdk/src/types.ts`
-
-Define all public TypeScript interfaces. Mirror the `/api/v1/router/calls` response schema exactly:
-
-```ts
-export type Strategy = 'MOST_ACCURATE' | 'FASTEST' | 'CHEAPEST' | 'auto';
-
-export interface RouteOptions {
-  strategy?: Strategy;
-  budget?: number;
-  tools?: string[];
+export interface BudgetConfig {
+  monthly_usd: number;
+  alert_at_pct: number;
 }
 
 export interface FallbackAttempt {
   tool: string;
   success: boolean;
-  latency_ms: number;
+  latency_ms?: number;
   error?: string;
 }
 
 export interface RouteResult {
   tool: string;
   latency_ms: number;
+  classify_ms: number;
+  tool_ms: number;
   resultCount: number;
   relevance: number;
   success: boolean;
   ai_routing_summary?: string;
   fallback_chain: FallbackAttempt[];
-  cost?: number;
+  cost_usd?: number;
   response_preview?: string;
 }
 
@@ -126,232 +81,209 @@ export interface CallRecord {
   strategy: Strategy;
   tool_used: string;
   latency_ms: number;
-  classification_ms: number;
-  total_ms: number;
-  cost?: number;
+  classify_ms: number;
+  tool_ms: number;
+  cost_usd?: number;
   success: boolean;
   ai_routing_summary?: string;
   fallback_chain: FallbackAttempt[];
   created_at: string;
-}
-
-export interface AccountInfo {
-  id: string;
-  email: string;
-  plan: string;
-  calls_remaining: number;
-}
-
-export interface UsageInfo {
-  calls_today: number;
-  calls_this_month: number;
-  cost_this_month: number;
-}
-
-export interface HealthStatus {
-  status: 'ok' | 'degraded';
-  latency_ms: number;
-}
-
-export interface BudgetConfig {
-  max_cost_per_call?: number;
-  max_cost_per_day?: number;
+  trace_id?: string;
 }
 
 export interface CallFilters {
   capability?: string;
   strategy?: Strategy;
   tool?: string;
-  from?: string;  // ISO date
-  to?: string;    // ISO date
+  dateFrom?: string;  // ISO date string
+  dateTo?: string;    // ISO date string
   limit?: number;
-}
-
-export interface AgentPickClientOptions {
-  apiKey: string;
-  baseUrl?: string;
+  page?: number;
 }
 ```
 
----
+#### `sdk/src/retry.ts` — Verify / extend
 
-#### `sdk/src/retry.ts`
+Read the file. Ensure:
+- `AgentPickError` has `statusCode: number` property (rename from `status` if needed, or add `statusCode` alias)
+- Retry fires only on `statusCode >= 500` — pass-through 4xx immediately without retrying
+- Max 2 retries (3 total attempts), delays 200ms then 400ms
+- Export: `AgentPickError`, `withRetry`
 
-```ts
-export class AgentPickError extends Error {
-  status?: number;
-  fallback_reported = false;
-  constructor(message: string, status?: number) {
-    super(message);
-    this.name = 'AgentPickError';
-    this.status = status;
-  }
-}
+#### `sdk/src/client.ts` — Add 3 missing methods + wire retry + add JSDoc
 
-export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
-  const delays = [200, 400, 800];
-  let lastError: AgentPickError | undefined;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err: unknown) {
-      const apiErr = err instanceof AgentPickError ? err : new AgentPickError(String(err));
-      lastError = apiErr;
-      if (apiErr.status && apiErr.status < 500) throw apiErr; // don't retry 4xx
-      if (attempt < maxAttempts - 1) await new Promise(r => setTimeout(r, delays[attempt]));
-    }
-  }
-  lastError!.fallback_reported = true;
-  throw lastError;
-}
-```
+Read the file first. Make these changes:
 
----
+1. Inside `private async request<T>(...)`:
+   - Wrap the fetch call with `withRetry(async () => { ... }, 3)` if not already done
+   - Throw `new AgentPickError(await res.text(), res.status)` on `!res.ok`
 
-#### `sdk/src/client.ts`
+2. Add `setStrategy` method (after `calls()`):
+   ```ts
+   /**
+    * Set the default routing strategy for all calls made with this API key.
+    * @param strategy - One of MOST_ACCURATE | FASTEST | CHEAPEST | BALANCED | AUTO | MANUAL
+    */
+   async setStrategy(strategy: Strategy): Promise<void> {
+     await this.request('/api/v1/router/strategy', {
+       method: 'POST',
+       body: JSON.stringify({ strategy }),
+     });
+   }
+   ```
 
-Implement `AgentPickClient` with all 7 public methods. Each method must have JSDoc:
+3. Add `setBudget` method:
+   ```ts
+   /**
+    * Configure monthly cost budget and alert threshold for this API key.
+    * @param config - { monthly_usd, alert_at_pct } where alert_at_pct is 0–100
+    */
+   async setBudget(config: BudgetConfig): Promise<void> {
+     await this.request('/api/v1/router/budget', {
+       method: 'POST',
+       body: JSON.stringify(config),
+     });
+   }
+   ```
 
-```ts
-import type {
-  AgentPickClientOptions, RouteOptions, RouteResult, AccountInfo,
-  UsageInfo, CallRecord, CallFilters, HealthStatus, BudgetConfig, Strategy
-} from './types';
-import { withRetry, AgentPickError } from './retry';
+4. Add `health` method:
+   ```ts
+   /**
+    * Check API health and measure authenticated round-trip latency.
+    * Returns status 'ok' or 'degraded', plus measured latency_ms and server version.
+    */
+   async health(): Promise<HealthStatus> {
+     return this.request<HealthStatus>('/api/v1/router/health');
+   }
+   ```
 
-export class AgentPickClient {
-  private apiKey: string;
-  private baseUrl: string;
+5. Add JSDoc to existing methods if not already present:
+   - `route()`: "Route a query to the best available tool for the given capability."
+   - `account()`: "Get account info for the authenticated API key."
+   - `usage()`: "Get usage statistics for the current billing period."
+   - `calls(filters?)`: "List recent routing calls, optionally filtered by capability, strategy, tool, or date."
 
-  constructor(options: AgentPickClientOptions) {
-    this.apiKey = options.apiKey;
-    this.baseUrl = options.baseUrl ?? 'https://agentpick.io';
-  }
+#### `sdk/src/index.ts` — Verify re-exports
 
-  private async request<T>(path: string, options?: RequestInit): Promise<T> {
-    return withRetry(async () => {
-      const res = await fetch(`${this.baseUrl}${path}`, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          ...(options?.headers ?? {}),
-        },
-      });
-      if (!res.ok) throw new AgentPickError(await res.text(), res.status);
-      return res.json() as Promise<T>;
-    });
-  }
-
-  /** Route a query to the best available tool for the given capability. */
-  async route(capability: string, query: string, options?: RouteOptions): Promise<RouteResult> {
-    return this.request<RouteResult>(`/api/v1/router/${capability}`, {
-      method: 'POST',
-      body: JSON.stringify({ query, ...options }),
-    });
-  }
-
-  /** Get account info for the authenticated API key. */
-  async account(): Promise<AccountInfo> {
-    return this.request<AccountInfo>('/api/v1/router/account');
-  }
-
-  /** Get usage statistics for the current billing period. */
-  async usage(): Promise<UsageInfo> {
-    return this.request<UsageInfo>('/api/v1/router/usage');
-  }
-
-  /** List recent routing calls, optionally filtered. */
-  async calls(filters?: CallFilters): Promise<CallRecord[]> {
-    const params = new URLSearchParams(filters as Record<string, string>);
-    return this.request<CallRecord[]>(`/api/v1/router/calls?${params}`);
-  }
-
-  /** Set the default routing strategy for this API key. */
-  async setStrategy(strategy: Strategy): Promise<void> {
-    await this.request('/api/v1/router/strategy', {
-      method: 'POST',
-      body: JSON.stringify({ strategy }),
-    });
-  }
-
-  /** Configure cost budget limits. */
-  async setBudget(budget: BudgetConfig): Promise<void> {
-    await this.request('/api/v1/router/budget', {
-      method: 'POST',
-      body: JSON.stringify(budget),
-    });
-  }
-
-  /** Check API health and measure round-trip latency. */
-  async health(): Promise<HealthStatus> {
-    return this.request<HealthStatus>('/api/v1/router/health');
-  }
-}
-```
-
----
-
-#### `sdk/src/index.ts`
-
+Ensure ALL of these are re-exported:
 ```ts
 export { AgentPickClient } from './client';
 export { AgentPickError } from './retry';
 export type {
-  RouteResult, RouteOptions, CallRecord, CallFilters,
-  AccountInfo, UsageInfo, HealthStatus, BudgetConfig,
-  Strategy, FallbackAttempt, AgentPickClientOptions
+  Strategy, RouteOptions, RouteResult, FallbackAttempt,
+  CallRecord, CallFilters, AccountInfo, UsageInfo,
+  HealthStatus, BudgetConfig, AgentPickClientOptions
 } from './types';
 ```
 
----
+#### `sdk/package.json` — Verify / fix
 
-#### `sdk/README.md`
+Read the file. Ensure:
+- `"name": "agentpick"`
+- `"version": "0.1.0"`
+- `"engines": { "node": ">=18" }`
+- `"exports"` covers `import`, `require`, `types` for `.`
+- `"files": ["dist", "README.md"]`
+- `"prepublishOnly": "npm run build"` in scripts
+- `tsup` in devDependencies
 
-Include:
-- `npm install agentpick` install command
-- 5-line TypeScript quick-start example using `client.route('search', 'latest AI benchmarks 2025')`
-- Table of all 7 public methods with TypeScript signatures
-- Links to agentpick.io/connect for full docs
+#### `sdk/tsconfig.json` — Verify / create
 
----
+Must have: `target: ES2020`, `module: ESNext`, `moduleResolution: bundler`, `strict: true`, `declaration: true`.
 
-### Task 2B — Wire `/connect` page with TypeScript examples data
+#### `sdk/tsup.config.ts` — Verify / create
 
-**File to MODIFY:** `src/app/connect/page.tsx`
+Must have: `format: ['esm', 'cjs']`, `dts: true`, `clean: true`.
 
-Read the file first. Find where the Python code examples are defined (likely a constant named `pyExamples` or similar, or inline JSX strings). Add a parallel `tsExamples` constant with the TypeScript equivalents:
+#### `sdk/README.md` — Create or update
 
-```ts
-const tsExamples = {
-  install: `npm install agentpick`,
-  quickstart:
-`import { AgentPickClient } from 'agentpick';
+Must include (copy-pasteable quick-start in < 30s):
+```markdown
+## Installation
+npm install agentpick
 
-const client = new AgentPickClient({ apiKey: process.env.AGENTPICK_API_KEY! });
+## Quick Start
+import { AgentPickClient } from 'agentpick';
+const client = new AgentPickClient({ apiKey: process.env.AGENTPICK_API_KEY });
+const result = await client.route('search', 'latest AI benchmarks 2026');
+console.log(result.tool, result.latency_ms);
 
-const result = await client.route('search', 'latest AI benchmarks 2025');
-console.log(result.tool, result.latency_ms);`,
-  route: `const result = await client.route('search', 'query', { strategy: 'MOST_ACCURATE' });`,
-  account: `const acct = await client.account();`,
-  usage:   `const stats = await client.usage();`,
-};
+## Methods
+| Method | Description |
+|--------|-------------|
+| route(capability, query, options?) | Route a query to the best tool |
+| account() | Get account info |
+| usage() | Get usage stats |
+| calls(filters?) | List recent calls |
+| setStrategy(strategy) | Set default routing strategy |
+| setBudget(config) | Set monthly cost budget |
+| health() | Check API health |
 ```
 
-Pass `tsExamples` as a prop to whatever client component renders the code block. The tab-switching UI and styling are handled by CODEX in `src/components/ConnectTabs.tsx` (new component). Do not add any JSX tab-switching logic in this file.
+---
+
+## Must-Have #3 — Request Inspector: Calls API completeness
+
+The drawer UI is built by Codex in `RouterAnalyticsDashboard.tsx`. The drawer requires all 9 fields
+on each call record. Verify the API returns them; add missing fields if needed.
+
+### Task 3A — `src/app/api/v1/router/calls/route.ts`
+
+Read the file. Verify the Prisma select and JSON response include ALL of these fields:
+
+| Field | Purpose |
+|-------|---------|
+| `id` | Row identity |
+| `query` | Raw query string |
+| `capability` | AI-detected capability |
+| `ai_routing_summary` | AI classification reasoning (the "why") |
+| `strategy` | Applied strategy name |
+| `tool` (or `tool_used`) | Tool selected |
+| `fallback_chain` | JSON array `[{ tool, success, latency_ms? }]` |
+| `classify_ms` | Classification latency |
+| `tool_ms` | Tool execution latency |
+| `latency_ms` | Total latency |
+| `cost_usd` | Cost of the call |
+| `result_preview` | First 500 chars of response (if stored) |
+| `success` | Boolean |
+| `created_at` | Timestamp |
+| `trace_id` | Trace ID |
+
+Specific fixes to make if fields are missing:
+- If `ai_routing_summary` is nested inside a `metadata` JSON column, extract it: `ai_routing_summary: call.metadata?.ai_routing_summary ?? null`
+- If `fallback_chain` is stored as a JSON string, parse it: `fallback_chain: typeof call.fallback_chain === 'string' ? JSON.parse(call.fallback_chain) : (call.fallback_chain ?? [])`
+- If `classify_ms` / `tool_ms` are not separate columns but `latency_ms` is total, keep as-is and set `classify_ms: null, tool_ms: null`
+
+Also verify **all four filters** work correctly in the Prisma `where` clause:
+- `?capability=search` → `WHERE capability = 'search'`
+- `?strategy=FASTEST` → `WHERE strategy = 'FASTEST'`
+- `?tool=tavily` → `WHERE tool = 'tavily'`
+- `?dateFrom=2026-03-01&dateTo=2026-03-15` → `WHERE created_at >= dateFrom AND created_at <= dateTo`
+
+Add `dateFrom` / `dateTo` filter support if missing. Add pagination fields to response if missing:
+```ts
+return NextResponse.json({
+  calls: serializedCalls,
+  total: totalCount,  // from prisma count query
+  page: pageNum,
+  pageSize: 50,
+});
+```
+
+If `total` count is missing, add a `prisma.routerCall.count({ where })` call (same where clause, separate query).
 
 ---
 
 ## Verification Checklist
 
-- [ ] `sdk/package.json` — name `agentpick`, ESM+CJS exports, engines node>=18
-- [ ] `sdk/src/types.ts` — all 10 interfaces exported, `CallRecord` mirrors `/api/v1/router/calls` schema
-- [ ] `sdk/src/retry.ts` — `AgentPickError` exported, max 3 retries, 200/400/800ms backoff, `fallback_reported` on final fail
-- [ ] `sdk/src/client.ts` — all 7 methods with JSDoc (`route`, `account`, `usage`, `calls`, `setStrategy`, `setBudget`, `health`)
-- [ ] `sdk/src/index.ts` — re-exports all public symbols
-- [ ] `sdk/README.md` — quick-start present
-- [ ] `src/app/connect/page.tsx` — `tsExamples` constant added, passed to child component
-- [ ] No files under `src/app/page.tsx`, `src/app/rankings/`, `src/app/benchmarks/`, `src/app/agents/`, `src/app/live/`, `src/components/SiteHeader.tsx`, or `src/components/dashboard/RouterAnalyticsDashboard.tsx` touched
+- [ ] `sdk/src/types.ts` — `HealthStatus`, `BudgetConfig`, `FallbackAttempt`, `Strategy` (6 values), `CallRecord` (all fields), `CallFilters` (dateFrom/dateTo) all exported
+- [ ] `sdk/src/retry.ts` — `AgentPickError` with `statusCode`, max 2 retries, 200/400ms delays, no retry on 4xx
+- [ ] `sdk/src/client.ts` — `setStrategy()`, `setBudget()`, `health()` added; auto-retry wired; JSDoc on all 7 methods
+- [ ] `sdk/src/index.ts` — all public symbols re-exported
+- [ ] `sdk/package.json` — name/version/engines/exports/files/prepublishOnly correct
+- [ ] `sdk/README.md` — quick-start + methods table present
+- [ ] `src/app/api/v1/router/calls/route.ts` — all 9 drawer fields in response; all 4 filters work; pagination fields present
+- [ ] No Codex-owned files touched
 
 ---
 
@@ -366,5 +298,5 @@ sdk/src/index.ts
 sdk/src/client.ts
 sdk/src/types.ts
 sdk/src/retry.ts
-src/app/connect/page.tsx
+src/app/api/v1/router/calls/route.ts
 ```

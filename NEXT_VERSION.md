@@ -1,8 +1,8 @@
-# NEXT_VERSION — AgentPick v0.35
+# NEXT_VERSION — AgentPick v0.69
 
 **Date:** 2026-03-15
 **QA Round:** 13 — Score: 58/58 (clean, zero P0/P1/P2 bugs)
-**Branch base:** bugfix/cycle-53
+**Branch base:** bugfix/cycle-68
 
 ---
 
@@ -107,7 +107,7 @@ developer retention.
 
 ---
 
-## Out of Scope (defer to v0.36)
+## Out of Scope (defer to v0.70)
 
 - OpenAI-compatible passthrough endpoint (`/v1/chat/completions`) — needs
   rate-limit design
