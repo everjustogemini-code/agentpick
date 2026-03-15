@@ -362,11 +362,15 @@ export default function PricingPageClient() {
                 <a
                   href={`/checkout?plan=${plan.slug}`}
                   onClick={(e) => {
-                    if (upgradePlan && !isBusy && !exactMatch && !higherPlan) {
+                    // Block clicks when visually disabled
+                    if (isBusy || exactMatch || higherPlan) {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Use JS checkout flow when account is loaded; otherwise fall through to href
+                    if (upgradePlan) {
                       e.preventDefault();
                       void handleCheckout(upgradePlan);
-                    } else {
-                      e.preventDefault();
                     }
                   }}
                   aria-disabled={isBusy || exactMatch || higherPlan}
