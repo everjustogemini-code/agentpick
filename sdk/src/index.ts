@@ -1,4 +1,5 @@
 export { AgentPickClient } from './client';
+export { AgentPickClient as default } from './client';
 export { AgentPickError } from './retry';
 export type {
   Strategy, RouteOptions, RouteResult, FallbackAttempt,

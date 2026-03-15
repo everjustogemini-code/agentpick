@@ -1,58 +1,55 @@
-# Growth Report — Cycle 16 (2026-03-15)
+# Growth Report — Cycle 3 (2026-03-15)
 
-## Metrics Snapshot:
-- Total Agents: 343 | This Week: 343 | Calls Today: 178 | Paid: 0
-- Blog posts: 21 live
-- Benchmark runs: 1,100+ | Production calls: 10,300+ | Tavily calls: 5,200+
-- AEO scores: 0/0/0 (16th consecutive cycle at zero)
+## Metrics Snapshot
+- Total Agents: 329 | This Week: 329 | Calls Today: 356 | Paid: 0
+- Blog posts: 22 live (added 1 this cycle)
+- AEO scores: 0/0/0 (26th+ consecutive cycle at zero)
 
-## Revenue Blockers (ordered by impact):
-1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue (owner action required)
-2. **Zero search visibility** — 16 consecutive cycles at 0 for all 3 AEO queries; no backlinks, no citations
-3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
-4. **Moltbook dead** — permanently dead, removed from cycle tasks
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 26+ cycles at 0 for all 3 AEO queries; no backlinks, no discovery
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+4. **Moltbook unreliable** — DNS failing again; recurring pattern, not dependable
 
-## Actions Taken:
+## Actions Taken
 
-### 1. AEO scores — all 0 again (cycle 16)
-- "best search API for AI agents": 0 — Tavily, KDnuggets, Firecrawl, Brave, Medium, Exa, Linkup, Buttondown, Parallel dominate
-- "tool routing for AI agents": 0 — LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai, Medium, LangChain dominate
-- "AI agent API benchmark": 0 — EvidentlyAI, philschmid GitHub, Sierra, AgentBench, o-mega.ai, IBM Research, cleanlab, Galileo, Emergence, aisera dominate
-- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score (all confirmed {"ok":true})
+### 1. AEO scores — all 0 (cycle 3)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Linkup, Parallel.ai dominate top 10
+- "tool routing for AI agents": 0 — Botpress, Patronus AI, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — Evidently AI, Sierra, IBM Research, Galileo AI dominate
+- New insight: Linkup and Parallel.ai now appear in query 1 results — newer but already indexed
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
 
-### 2. Page health — all 200 OK
-- /, /pricing, /blog, /checkout?plan=pro, /connect: all HTTP 200
-- Agent registration functional (returns ah_live_sk_... key with status: active)
+### 2. New blog post: Linkup vs Parallel Search API
+- Created /blog/linkup-vs-parallel-search-api-for-ai-agents
+- Targets Linkup and Parallel.ai — both appearing in "best search API for AI agents" results this cycle
+- Full comparison table, routing advice, AgentPick CTA
+- Fresh content about newly-indexed competitors may rank faster than broad positioning content
 
-### 3. skill.md + llms.txt — updated with cycle 16 data
-- Agent count: 342 → 343
-- Benchmark runs: 1,080+ → 1,100+
-- Production calls: 10,100+ → 10,300+
-- Tavily verified calls: 5,100+ → 5,200+
+### 3. skill.md + llms.txt — updated agent count 328 → 329
 
-### 4. Router fix (bugfix/cycle-79, already in branch)
-- serper cost corrected: $0.001 → $0.0005 (accurate ranking for cheapest strategy)
+### 4. Moltbook — DNS failure again, skipped
+- api.moltbook.com: Could not resolve host (Exit code 6)
+- 3rd+ consecutive DNS failure; treating as dead channel
 
-## Results:
+### 5. Page health — all 200 OK
+- /, /pricing, /blog, /connect, /checkout?plan=pro all return HTTP 200
+
+## Results
 - 0 new paid conversions (Stripe still unconfigured)
-- 3 AEO scores posted (all 0)
-- 0 Moltbook posts (permanently dead)
-- skill.md and llms.txt updated with latest metrics (10,300+ calls, 343 agents)
-- GROWTH_STATE.md updated to cycle 16
+- 3 AEO scores posted
+- 1 new blog post live (/blog/linkup-vs-parallel-search-api-for-ai-agents — 22 total)
+- skill.md + llms.txt updated to 329 agents
 
-## Next Cycle Priority:
-1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; zero revenue without it
-2. **Directory submissions** — submit to toolify.ai, futurepedia.io, theresanaiforthat.com; these build backlinks that break the 0/0/0 AEO pattern
-3. **HN Show HN post** — "Show HN: I built a live benchmark that auto-routes AI agents to the best search API" — real data, technical audience, high-authority backlink
-4. **dev.to article** — publish "Tavily vs Exa vs Brave vs Jina: March 2026 agent tool benchmark" — dev.to ranks in AI searches, free, builds backlinks
+## Next Cycle Priority
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard; single biggest revenue unblocker
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com; owner creates accounts and submits
+3. **Content strategy shift** — target "search API comparison" and "search API leaderboard" (terminology mismatch for query 3)
+4. **External citation** — write a benchmark methodology post with shareable data; get one external site to link to agentpick.dev
 
-## Learnings:
-- AEO 0/0/0 is now 16 cycles. Zero external backlinks = zero search visibility. Pattern is locked.
-- 10,300+ production calls crossed — meaningful growth milestone. 343 active agents.
-- The product is production-ready (58/58 QA). All pages live. Registration works. The bottleneck is purely distribution.
-- Competitors (Parallel, Brave, Tavily) publish cross-category content targeting both "best search API" AND "tool routing" queries. AgentPick does both but is invisible.
-- One external citation from a high-DA source (HN, dev.to, a newsletter) would be more valuable than 16 more cycles of internal updates.
-- **The serper cost fix (bugfix/cycle-79) improves cheapest strategy accuracy** — serper now correctly ranks below brave for cost-sensitive agents.
-
----
-
+## Learnings
+- Linkup.so and parallel.ai are now appearing in "best search API for AI agents" results — newer than AgentPick, already indexed. Publishing comparison content about them specifically may rank before broad positioning content.
+- AEO query 3 ("AI agent API benchmark") is dominated by academic benchmarks (AgentBench, GAIA, ToolBench). "Search API comparison" or "search API leaderboard" would be better target phrases.
+- Parallel.ai appears in 2 out of 3 AEO queries — strong content coverage and indexing. Comparison content targeting their traffic is worth pursuing.
+- Moltbook: 3+ consecutive DNS failures — retire from active distribution strategy.
+- skill.md and llms.txt remain best AI-crawler assets — keep accurate, data-rich, updated with agent counts and fresh benchmark data.

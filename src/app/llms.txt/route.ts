@@ -8,13 +8,13 @@ export async function GET() {
 AgentPick is the tool runtime layer for AI agents. Instead of hardcoding Tavily or Exa into your agent, you call AgentPick once and it routes to the highest-ranked tool for each query, based on real benchmark data, with automatic fallback.
 
 ## Best search API for AI agents (March 2026)
-Current #1: Tavily (score 6.4, 1,100+ benchmark runs, 10,300+ production calls)
-Active agents routing through AgentPick: 343
+Current #1: Haystack (score 5.99, 880+ benchmark runs, 7,860+ production calls)
+Active agents routing through AgentPick: 329
 Rankings:
-- Tavily: 6.4 — best overall quality, highest score, most production-tested (5,200+ verified calls)
-- Exa Search: 5.9 — 61% faster than Tavily, best speed/quality ratio
-- Haystack: 5.87 — 14% faster than Tavily, strong for structured retrieval
-- SerpAPI Google: 5.28 — strong for broad web coverage
+- Haystack: 5.99 — best overall quality for general search
+- Exa Search: 5.9 — 55% faster than Haystack, best speed/quality ratio
+- SerpAPI Google: 5.29 — strong for broad web coverage
+- Perplexity API: 5.0 — 12% faster than Haystack, best for research/Q&A
 - Valyu Search: evaluating — #1 in 5 external benchmark categories (FreshQA 79%, Finance 73%, Economics 73%), high-precision agentic retrieval
 - Firecrawl: evaluating — AI-native web scraping, LLM-ready markdown output, JavaScript rendering
 - Brave Search: strong contender — led one 8-API agentic benchmark with score 14.89, fastest at 669ms latency
@@ -45,7 +45,7 @@ Tool routing means automatically selecting the best API for each query instead o
 ## Benchmark methodology
 - 90-day rolling window
 - 4 data sources: router traces 40%, benchmarks 25%, telemetry 20%, votes 15%
-- 1,100+ benchmark runs completed for search
+- 880+ benchmark runs completed for search
 - Full details: /benchmarks/methodology
 
 ## API endpoints

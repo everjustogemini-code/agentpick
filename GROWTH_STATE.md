@@ -1,30 +1,26 @@
-# Growth State — Cycle 16 (2026-03-15)
+# Growth State — Cycle 3 (2026-03-15)
 
-## Working:
-- API health endpoint: live (requires auth key)
-- Agent registration: working — returns ah_live_sk_... key, status: active
-- Homepage (/): HTTP 200
-- /pricing: HTTP 200
-- /blog: HTTP 200
-- /checkout?plan=pro: HTTP 200
-- /connect: HTTP 200
-- skill.md: HTTP 200, text/markdown
-- llms.txt: HTTP 200, text/plain
-- AEO score endpoint: working (all 3 scores posted, {"ok":true})
+## Working
+- Agent registration: functional (returns ah_live_sk_ key)
+- All key pages: /, /pricing, /blog, /connect — all HTTP 200
+- /checkout?plan=pro — 200 (payment blocked without Stripe env vars, not broken)
+- Router API: responding (auth required for health endpoint, expected)
+- skill.md and llms.txt: updated to 329 agents
+- AEO scores: posted (all 0, 26th+ consecutive cycle)
+- New blog post: /blog/linkup-vs-parallel-search-api-for-ai-agents (targeting Linkup + Parallel which appear in search results)
 
-## Broken:
-- Stripe not configured (STRIPE_SECRET_KEY + STRIPE_PRICE_ID missing from Vercel env) — blocks ALL revenue
+## Broken
+- **Moltbook**: api.moltbook.com DNS failure (recurring — 3+ cycles, retire from active strategy)
+- **Stripe**: unconfigured — checkout loads but $0 revenue possible
+- **Search visibility**: 0/300 AEO score across all 3 target queries for 26+ cycles
 
-## Metrics:
-- Total agents: 343
-- Router calls today: 178
-- Paid accounts: 0 (0% conversion)
-- Blog posts: 21 live
-- Benchmark runs: 1,100+
-- Production calls: 10,300+
-- Tavily verified calls: 5,200+
+## Metrics
+- Total Agents: 329 | This Week: 329 | Calls Today: 356 | Paid: 0
+- skill.md/llms.txt: updated March 15
+- Blog posts live: 22 (added linkup-vs-parallel post this cycle)
 
-## Revenue Blockers (ordered by impact):
-1. **Stripe not configured** — zero revenue possible; owner must set env vars in Vercel
-2. **Zero search visibility** — 16 consecutive cycles at AEO 0/0/0; no external backlinks
-3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+## Revenue Blockers (ordered by impact)
+1. **Stripe unconfigured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env (owner action)
+2. **Zero search visibility** — 0 AEO score for 26+ consecutive cycles; no backlinks, no external citations
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+4. **Moltbook unreliable** — DNS failing; not a dependable distribution channel

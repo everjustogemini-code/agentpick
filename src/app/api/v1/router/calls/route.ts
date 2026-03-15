@@ -23,16 +23,17 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
-    const parsedLimit = parseInt(url.searchParams.get('limit') ?? '50', 10);
-    const pageSize = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 50);
-    const parsedPage = parseInt(url.searchParams.get('page') ?? '1', 10);
-    const pageNum = Math.max(isNaN(parsedPage) ? 1 : parsedPage, 1);
+
+    const isExport = url.searchParams.get('export') === 'true';
+    const parsedLimit = parseInt(url.searchParams.get('limit') ?? '20', 10);
+    const limit = isExport ? 10000 : Math.min(Math.max(isNaN(parsedLimit) ? 20 : parsedLimit, 1), 50);
+
     const capability = url.searchParams.get('capability') ?? undefined;
     const tool = url.searchParams.get('tool') ?? undefined;
     const strategy = url.searchParams.get('strategy') ?? undefined;
-    // Support both dateFrom/dateTo (SDK spec) and from/to (legacy)
-    const from = url.searchParams.get('dateFrom') ?? url.searchParams.get('from') ?? undefined;
-    const to = url.searchParams.get('dateTo') ?? url.searchParams.get('to') ?? undefined;
+    // Support both 'from'/'to' and 'date_from'/'date_to' parameter names
+    const from = url.searchParams.get('date_from') ?? url.searchParams.get('from') ?? undefined;
+    const to = url.searchParams.get('date_to') ?? url.searchParams.get('to') ?? undefined;
 
     // Capability names used as last-resort fallback in recordRouterCall — must be filtered
     // here to stay consistent with the analytics.ts and sdk.ts getUsageStats filters.
@@ -55,12 +56,7 @@ export async function GET(request: NextRequest) {
       where.toolUsed = tool;
     }
     if (strategy) {
-      // Normalize canonical router strategy names to stored SDK enum names
-      const CANONICAL_TO_SDK: Record<string, string> = {
-        most_stable: 'FASTEST',
-        best_performance: 'MOST_ACCURATE',
-      };
-      where.strategyUsed = CANONICAL_TO_SDK[strategy.toLowerCase()] ?? strategy.toUpperCase();
+      where.strategyUsed = strategy.toUpperCase();
     }
     if (from || to) {
       const createdAt: Record<string, Date> = {};
@@ -77,88 +73,54 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const [calls, totalCount] = await Promise.all([
-      prisma.routerCall.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: pageSize,
-        skip: (pageNum - 1) * pageSize,
-        select: {
-          id: true,
-          capability: true,
-          query: true,
-          toolRequested: true,
-          toolUsed: true,
-          strategyUsed: true,
-          latencyMs: true,
-          costUsd: true,
-          resultCount: true,
-          byokUsed: true,
-          success: true,
-          fallbackUsed: true,
-          fallbackFrom: true,
-          fallbackChain: true,
-          statusCode: true,
-          traceId: true,
-          aiClassification: true,
-          totalMs: true,
-          responsePreview: true,
-          createdAt: true,
-        },
-      }),
-      prisma.routerCall.count({ where }),
-    ]);
-
-    const serializedCalls = calls.map((c) => {
-      const ai = c.aiClassification as Record<string, unknown> | null;
-      let ai_routing_summary: string | null = null;
-      if (ai) {
-        if (typeof ai.reasoning === 'string') {
-          ai_routing_summary = ai.reasoning;
-        } else if (typeof ai.type === 'string' || typeof ai.domain === 'string') {
-          // Fallback for legacy records stored before reasoning field was added
-          const parts = [ai.type, ai.domain].filter((v) => typeof v === 'string' && v.length > 0);
-          ai_routing_summary = parts.length > 0 ? parts.join(' + ') : null;
-        }
-      }
-      let fallback_chain: unknown[];
-      if (typeof c.fallbackChain === 'string') {
-        try { fallback_chain = JSON.parse(c.fallbackChain as string); } catch { fallback_chain = []; }
-      } else {
-        fallback_chain = c.fallbackChain ?? [];
-      }
-      const classify_ms = ai && typeof ai.classification_ms === 'number' ? ai.classification_ms : null;
-      return {
-        id: c.id,
-        query: c.query,
-        capability: c.capability,
-        strategy: c.strategyUsed,
-        tool_requested: c.toolRequested ?? null,
-        tool_used: c.toolUsed,
-        latency_ms: c.latencyMs,
-        classify_ms,
-        tool_ms: c.latencyMs,
-        total_ms: c.totalMs ?? null,
-        cost_usd: c.costUsd,
-        result_count: c.resultCount ?? null,
-        success: c.success,
-        byok_used: c.byokUsed,
-        fallback_used: c.fallbackUsed,
-        fallback_from: c.fallbackFrom ?? null,
-        ai_routing_summary,
-        fallback_chain,
-        result_preview: c.responsePreview ?? null,
-        trace_id: c.traceId ?? null,
-        created_at: c.createdAt.toISOString(),
-      };
+    const calls = await prisma.routerCall.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        capability: true,
+        query: true,
+        toolRequested: true,
+        toolUsed: true,
+        strategyUsed: true,
+        latencyMs: true,
+        costUsd: true,
+        resultCount: true,
+        byokUsed: true,
+        success: true,
+        fallbackUsed: true,
+        fallbackFrom: true,
+        fallbackChain: true,
+        statusCode: true,
+        traceId: true,
+        aiClassification: true,
+        createdAt: true,
+      },
     });
 
-    return Response.json({
-      calls: serializedCalls,
-      total: totalCount,
-      page: pageNum,
-      pageSize,
-    });
+    // Normalize to include all 9 drawer fields
+    const normalizedCalls = calls.map(call => ({
+      ...call,
+      // Drawer fields: classification_ms and total_ms not stored in DB — emit null
+      classification_ms: null as number | null,
+      total_ms: null as number | null,
+      // response_preview not stored in DB — emit null
+      response_preview: null as string | null,
+      // Expose ai_routing_summary as a top-level field from aiClassification JSON
+      ai_routing_summary: call.aiClassification &&
+        typeof call.aiClassification === 'object' &&
+        'reasoning' in (call.aiClassification as Record<string, unknown>)
+          ? (call.aiClassification as Record<string, unknown>).reasoning as string
+          : null,
+    }));
+
+    const headers: Record<string, string> = {};
+    if (isExport) {
+      headers['Content-Disposition'] = 'attachment; filename="calls-export.json"';
+    }
+
+    return Response.json({ calls: normalizedCalls }, { headers });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
     console.error(`[${reqId}] GET /api/v1/router/calls error:`, err);
