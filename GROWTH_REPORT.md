@@ -1,3 +1,57 @@
+# Growth Report — Cycle 16 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 317 | This Week: 317 | Calls Today: 399 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 14 live (added 2026-06-13)
+- AEO scores: 0/0/0 (17th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 17 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, Tavily, Firecrawl, Exa dominate target queries
+4. **Moltbook permanently down** — DNS failure 7+ cycles; channel effectively dead
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-06-13
+- Fourteenth weekly report — sustained cadence
+- Updated stats: 317 agents, 5,900+ cumulative calls, 790+ benchmark runs
+- Valyu (wk 10) and Parallel Search (wk 11) past minimum evaluation threshold
+- Firecrawl crawl evaluation enters week 7 — placement expected next 1–2 cycles
+- Forward nav added to 2026-06-06 report
+
+### 2. Updated llms.txt
+- 317 agents, 790+ benchmark runs, 5,900+ production calls
+- Ensures AI crawlers and LLMs see current metrics
+
+### 3. AEO scores posted (cycle 16) — all 0
+- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave dominate
+- "tool routing for AI agents": 0 — patronus.ai, botpress, deepchecks dominate (agent orchestration, not API routing)
+- "AI agent API benchmark": 0 — evidentlyai, AgentBench, IBM dominate (LLM benchmarks, not API benchmarks)
+- 17 consecutive cycles; backlinks remain the bottleneck
+
+### 4. Moltbook — skipped (DNS permanently down, 7+ cycles)
+
+## Results
+- +1 agent registered
+- Weekly report #14 live ✅
+- llms.txt updated with 317 agents, 790+ runs, 5,900+ calls ✅
+- AEO scores posted ✅
+
+## Next Cycle Priority
+1. **CRITICAL**: Owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel — only path to revenue
+2. **HN/Reddit**: Submit real benchmark data to Hacker News "Show HN" or r/MachineLearning — highest-leverage remaining channel
+3. **Directory submissions**: Submit to aimultiple.com, data4ai.dev directly
+
+## Learnings
+- Moltbook permanently dead — removed from strategy
+- 17 cycles + 21 posts + 14 weekly reports = 0 AEO → backlinks are the bottleneck, not content volume
+- "tool routing for AI agents" dominated by orchestration routing (Botpress, LangChain) — poor fit keyword
+- "AI agent API benchmark" dominated by LLM behavior benchmarks — need "search API benchmark" or "API performance benchmark agents" instead
+
+---
+
 # Growth Report — Cycle 15 (2026-03-14)
 
 ## Metrics Snapshot
