@@ -105,7 +105,7 @@ const STRATEGY_OPTIONS: Array<{
   {
     value: 'FASTEST',
     label: 'Fastest',
-    description: 'Favor the quickest available route.',
+    description: 'Bias toward the most stable and reliable tool.',
   },
 ];
 

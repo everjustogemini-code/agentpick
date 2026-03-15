@@ -21,7 +21,7 @@ const STATIC_EXAMPLE: RoutingData = {
   latencyMs: 320,
   costUsd: 0.002,
   capability: 'search',
-  aiClassification: { type: 'research', domain: 'finance', depth: 'deep', freshness: 'recent' },
+  aiClassification: { type: 'research', domain: 'finance', depth: 'deep', freshness: 'any' },
   strategyUsed: 'AUTO',
   fallbackUsed: false,
   success: true,
@@ -30,7 +30,7 @@ const STATIC_EXAMPLE: RoutingData = {
 
 const ALTERNATIVES = [
   { name: 'Tavily', quality: '4.0/5', latency: '182ms', cost: '$0.001' },
-  { name: 'Serper', quality: '3.0/5', latency: '89ms', cost: '$0.0005' },
+  { name: 'Serper', quality: '3.1/5', latency: '100ms', cost: '$0.0005' },
 ];
 
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
