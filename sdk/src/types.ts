@@ -2,7 +2,6 @@ export type Strategy = 'MOST_ACCURATE' | 'FASTEST' | 'CHEAPEST' | 'BALANCED' | '
 
 export interface RouteOptions {
   strategy?: Strategy;
-  budget?: number;
   tools?: string[];
 }
 

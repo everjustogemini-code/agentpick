@@ -113,7 +113,7 @@ export function fastClassify(query: string): QueryContext | null {
   // why did/does/is, how did, causes of — these were in analyticalKeywords but absent from
   // depthQualitySignal, causing queries like "analyze X in 2024" or "impact of AI in 2024" to
   // fall through to explicitRecencySignal and be wrongly classified as news.
-  const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|causes of|implications of|effects of|impact of|consequences of|factors behind|why did|why does|why is|how did|drivers of|analysis|analyze)\b/i;
+  const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|causes of|implications of|effects of|impact of|consequences of|factors behind|why did|why does|why is|how did|drivers of)\b/i;
 
   if (analyticalKeywords.test(query) && depthQualitySignal.test(query) && !stateOfBreakingSignals.test(query)) {
     const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
