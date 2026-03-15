@@ -18,34 +18,40 @@ export async function POST(request: NextRequest) {
   try { agent = await authenticateAgent(request); } catch { return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401); }
   if (!agent) return apiError('UNAUTHORIZED', 'Invalid or missing API key.', 401);
 
-  const account = await ensureDeveloperAccount(agent.id);
-
-  let body: Record<string, unknown>;
   try {
-    body = await request.json();
-  } catch {
-    return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
-  }
+    const account = await ensureDeveloperAccount(agent.id);
 
-  // Accept both field names: limit_usd (actual) and monthly_budget_usd (documented)
-  const budgetValue = body.limit_usd ?? body.monthly_budget_usd;
-  if (typeof budgetValue !== 'number' || budgetValue < 0) {
-    return apiError('VALIDATION_ERROR', 'limit_usd (or monthly_budget_usd) must be a non-negative number.', 400);
-  }
-  if (budgetValue > 100_000) {
-    return apiError('VALIDATION_ERROR', 'Budget cannot exceed $100,000.', 400);
-  }
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
+    }
 
-  const db = prisma as any;
-  const updated = await db.developerAccount.update({
-    where: { id: account.id },
-    data: {
-      monthlyBudgetUsd: budgetValue,
-    },
-  });
+    // Accept both field names: limit_usd (actual) and monthly_budget_usd (documented)
+    const budgetValue = body.limit_usd ?? body.monthly_budget_usd;
+    if (typeof budgetValue !== 'number' || budgetValue < 0) {
+      return apiError('VALIDATION_ERROR', 'limit_usd (or monthly_budget_usd) must be a non-negative number.', 400);
+    }
+    if (budgetValue > 100_000) {
+      return apiError('VALIDATION_ERROR', 'Budget cannot exceed $100,000.', 400);
+    }
 
-  return Response.json({
-    message: 'Budget updated.',
-    monthlyBudgetUsd: updated.monthlyBudgetUsd,
-  });
+    const db = prisma as any;
+    const updated = await db.developerAccount.update({
+      where: { id: account.id },
+      data: {
+        monthlyBudgetUsd: budgetValue,
+      },
+    });
+
+    return Response.json({
+      message: 'Budget updated.',
+      monthlyBudgetUsd: updated.monthlyBudgetUsd,
+    });
+  } catch (err) {
+    const reqId = request.headers.get('x-request-id') ?? 'unknown';
+    console.error(`[${reqId}] POST /api/v1/router/budget error:`, err);
+    return apiError('INTERNAL_ERROR', 'An unexpected error occurred.', 500);
+  }
 }
