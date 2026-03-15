@@ -1,3 +1,15 @@
+# Bugfix Report — Cycle 90 (2026-03-15)
+
+## QA Status
+- All 5 QA Round 14 regressions confirmed fixed (P0 + 4 P1)
+- GET /api/v1/router/calls → 200 ✅ (NOT: { OR: [...] } form stable)
+- POST /api/v1/router/priority → 200 ✅ (all 14 capability aliases present)
+- GET /api/v1/router/account → plan/strategy/monthlyLimit top-level ✅
+- GET /api/v1/router/health → 200 without auth ✅
+- tsc --noEmit: 0 errors ✅
+
+---
+
 # Growth Report — Cycle 29 (2026-03-15)
 
 ## Metrics Snapshot
