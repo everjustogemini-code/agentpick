@@ -50,7 +50,6 @@ export function normalizeStrategy(value: string): RouterStrategyValue | null {
   // Map canonical API names to Prisma enum values
   const aliases: Record<string, RouterStrategyValue> = {
     CUSTOM: 'MANUAL',
-    custom: 'MANUAL',
     BEST_PERFORMANCE: 'MOST_ACCURATE',
     MOST_STABLE: 'FASTEST',
   };
