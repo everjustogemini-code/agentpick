@@ -284,16 +284,15 @@ export function getRankedToolsForCapability(
     }
   });
 
-  // For cheapest strategy: return pure cost-ranked order without deprioritizing unconfigured
-  // tools. The router skips the circuit breaker for cheapest and handles missing-key failures
-  // (0ms, statusCode=0) through the normal fallback chain — so brave-search ($0.0001) correctly
-  // ranks first even if its platform key isn't set. Deprioritizing would silently replace it
-  // with tavily ($0.001), defeating the purpose of the cheapest strategy.
-  if (strategy === 'cheapest') return filtered;
-
-  // For all other strategies: move tools without a configured API key to the end.
-  // This preserves strategy order within each group (configured / unconfigured).
-  // BYOK-configured tools are treated as configured and beat more expensive platform-only tools.
+  // For all strategies (including cheapest): move tools without a configured API key to the end.
+  // Within each group (configured / unconfigured), the cost-sorted order is preserved so that
+  // cheapest still picks the cheapest AVAILABLE tool — e.g. serper ($0.0005) before tavily
+  // ($0.001) when both have platform keys. Unconfigured cheap tools (brave-search at $0.0001)
+  // are moved to the fallback tail rather than being tried first and immediately failing with a
+  // missing-key error, which caused cheapest strategy to fall through to tavily after exhausting
+  // all cheaper-but-unconfigured tools.
+  // BYOK-configured tools count as "configured" so a user with their own brave-search key
+  // still gets brave-search as the primary cheapest pick (before platform-only tools like tavily).
   return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
 }
 
@@ -445,9 +444,8 @@ export async function routeRequest(
   // BYOK keys are resolved at call time, not at ranking time.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys, options.latencyBudgetMs);
   // Skip circuit breaker for AI-ranked tools (per-instance state causes cross-instance non-determinism)
-  // and for cheapest strategy (unconfigured cheap tools fail with sub-ms key-missing errors, not real
-  // outages; the circuit breaker incorrectly marks them degraded, routing to pricier configured tools
-  // like tavily instead of preserving the cost-first order).
+  // and for cheapest strategy (we want to keep trying the cheapest configured tool even if it has
+  // recent failures, rather than skip it in favour of a more expensive tool).
   const cbRankedTools = (aiRankedTools || strategy === 'cheapest') ? rawRankedTools : applyCircuitBreaker(rawRankedTools);
   // Apply key-availability filter to AI-ranked lists too: ensures realtime routing falls back
   // to configured tools (e.g. exa-search) rather than unconfigured ones (e.g. serpapi-google).

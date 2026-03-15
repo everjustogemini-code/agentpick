@@ -8,11 +8,11 @@ const SKILL_MD = `# AgentPick — Tool Routing and Benchmarks for AI Agents
 
 ### Best search API for AI agents
 
-Based on AgentPick benchmark data on **2026-03-15** (880+ benchmark runs, 7,860+ production calls):
+Based on AgentPick benchmark data on **2026-03-15** (900+ benchmark runs, 8,200+ production calls):
 
 - **Best search API for quality:** **Tavily**
   - Score: **6.4**
-  - Best for: general queries, highest benchmark score, most production-tested (3,966 verified calls)
+  - Best for: general queries, highest benchmark score, most production-tested (4,100+ verified calls)
 - **Best search API for speed:** **Exa Search**
   - Score: **5.9** — **61% faster** than Tavily, 8% lower score
   - Best for: speed-critical agents, high-volume first-pass retrieval
