@@ -92,15 +92,7 @@ function CodeLine({ text, lang }: { text: string; lang: Language }) {
   return <span className={color}>{text}</span>
 }
 
-interface TsExamples {
-  install: string;
-  quickstart: string;
-  route: string;
-  account: string;
-  usage: string;
-}
-
-export function CodeGeneratorWidget({ tsExamples }: { tsExamples?: TsExamples }) {
+export function CodeGeneratorWidget() {
   const [lang, setLang]         = useState<Language>('python')
   const [cap, setCap]           = useState<Capability>('search')
   const [strategy, setStrategy] = useState<Strategy>('auto')

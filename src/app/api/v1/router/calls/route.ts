@@ -100,7 +100,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return Response.json({ calls });
+    const callsWithSummary = calls.map((c) => {
+      const ai = c.aiClassification as Record<string, unknown> | null;
+      const ai_routing_summary: string | null = ai
+        ? (typeof ai.reasoning === 'string' ? ai.reasoning : null)
+        : null;
+      return { ...c, ai_routing_summary };
+    });
+
+    return Response.json({ calls: callsWithSummary });
   } catch (err) {
     const reqId = request.headers.get('x-request-id') ?? 'unknown';
     console.error(`[${reqId}] GET /api/v1/router/calls error:`, err);
