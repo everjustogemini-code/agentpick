@@ -34,6 +34,7 @@ export interface CallRecord {
   strategyUsed: string;
   latencyMs: number;
   costUsd: number;
+  resultCount: number | null;
   byokUsed: boolean;
   success: boolean;
   fallbackUsed: boolean;
@@ -41,6 +42,7 @@ export interface CallRecord {
   fallbackChain: string[];
   statusCode: number;
   traceId: string;
+  aiClassification: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -97,6 +99,11 @@ export interface UsageInfo {
     byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }>;
     byTool: Record<string, { calls: number; avgLatency: number }>;
     byStrategy: Record<string, { calls: number; avgLatency: number; successRate: number }>;
+    aiRouting: {
+      totalAiRoutedCalls: number;
+      byType: Record<string, number>;
+      byDomain: Record<string, number>;
+    };
   };
   ai_routing_summary: {
     totalAiRoutedCalls: number;
@@ -111,8 +118,7 @@ export interface HealthStatus {
 }
 
 export interface BudgetConfig {
-  max_cost_per_call?: number;
-  max_cost_per_day?: number;
+  monthly_budget_usd: number;
 }
 
 export interface CallFilters {

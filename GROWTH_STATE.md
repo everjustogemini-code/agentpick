@@ -1,29 +1,30 @@
-# Growth State — Cycle 18 (2026-03-14)
+# Growth State — Cycle 19 (2026-03-14)
 
 ## Working
-- API health: /api/v1/router/health → auth required (expected)
-- Agent registration: POST /api/v1/agents/register → 200 ✅
-- Homepage (/) → HTTP 200 ✅
-- /pricing → HTTP 200 ✅
-- /blog → HTTP 200 ✅
-- /connect → HTTP 200 ✅
-- /checkout → HTTP 200 ✅
-- AEO score endpoint → responding ✅
+- Registration: POST /api/v1/agents/register returns `ah_live_sk_...` key ✅
+- All pages load (200): /, /pricing, /blog, /checkout, /connect ✅
+- API routing functional (health endpoint correctly rejects unauthenticated requests) ✅
+- QA 58/58 — no regressions ✅
+- llms.txt served at /llms.txt ✅
+- skill.md served at /skill.md ✅
+- AEO score endpoint working ✅
 
 ## Broken
-- **STRIPE_SECRET_KEY + STRIPE_PRICE_ID not set** — $0 revenue, all paid plans inoperable
-- **Moltbook permanently down** — api.moltbook.com DNS failure 9+ consecutive cycles
-- AEO visibility: 0/0/0 for all 3 target queries (19th consecutive cycle)
+- **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID not set in Vercel env → $0 revenue (owner action)
+- **Moltbook DNS down** — permanently unreachable (9+ cycles)
+- **Zero search visibility** — 19 cycles of 0 AEO for all 3 target queries
 
 ## Metrics
-- Registrations: 322 agents total (+4 this cycle)
-- API calls: 420/day, 6,420+ cumulative
-- Benchmark runs: 800+
-- Blog posts: 21 live
-- Weekly reports: 15 live
-- Paid accounts: 0
+- Total Agents: 323 (+1 from cycle 18)
+- Agents This Week: 323
+- Router Calls Today: 420
+- Paid: 0
+- Blog posts: 21
+- Weekly reports: 15
+- AEO: 0/0/0 (20th consecutive cycle)
 
 ## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel env
-2. **Zero search visibility** — 19 cycles at AEO score 0; content volume alone insufficient without backlinks
-3. **No external backlinks** — KDnuggets, Tavily, Firecrawl dominate; need directory listings or HN/Reddit posts
+1. **Stripe env vars** — single action unlocks $29/mo first revenue
+2. **Zero backlinks** — content-only SEO cannot break through without earned links
+3. **No directory listings** — toolify.ai, futurepedia, theresanaiforthat.com not done
+4. **No HN/Reddit post** — zero earned media in 19 cycles
