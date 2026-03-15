@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -15,7 +15,6 @@ const NAV_ITEMS = [
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header
@@ -73,55 +72,33 @@ export default function SiteHeader() {
           </Link>
         </nav>
 
-        {/* Mobile hamburger with rotation animation */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="relative z-50 flex h-12 w-12 items-center justify-center rounded-lg text-text-primary hover:bg-bg-secondary md:hidden"
-          style={{ transition: 'transform 0.3s ease' }}
-          aria-label="Menu"
-        >
-          <span
-            style={{
-              display: 'inline-block',
-              transition: 'transform 0.3s ease',
-              transform: menuOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-              fontSize: '16px',
-            }}
-          >
-            {menuOpen ? '\u2715' : '\u2630'}
-          </span>
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="border-t border-border bg-bg-primary/95 px-6 py-3 md:hidden" style={{ backdropFilter: 'blur(12px)' }}>
-          <nav className="flex flex-col gap-2">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
+        {/* Mobile menu — pure HTML details/summary, no JS needed */}
+        <details className="relative md:hidden">
+          <summary className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg text-text-primary hover:bg-bg-secondary list-none [&::-webkit-details-marker]:hidden">
+            <span className="text-[16px]">☰</span>
+          </summary>
+          <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-bg-primary shadow-lg" style={{ backdropFilter: 'blur(12px)' }}>
+            <nav className="flex flex-col gap-1 p-3">
+              {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.key}
                   href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`rounded-lg px-3 py-2 text-[13px] font-medium ${
-                    isActive ? 'bg-bg-secondary text-text-primary' : 'text-text-secondary'
-                  }`}
+                  className="rounded-lg px-3 py-2 text-[13px] font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
                 >
                   {item.label}
                 </Link>
-              );
-            })}
-            <Link
-              href="/dashboard"
-              onClick={() => setMenuOpen(false)}
-              className="btn-primary mt-2 text-center"
-            >
-              Dashboard
-            </Link>
-          </nav>
-        </div>
-      )}
+              ))}
+              <Link
+                href="/dashboard"
+                className="btn-primary mt-2 text-center"
+              >
+                Dashboard
+              </Link>
+            </nav>
+          </div>
+        </details>
+      </div>
     </header>
   );
 }
+
