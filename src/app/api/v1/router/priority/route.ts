@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
   // Accept both field names: tools (actual) and priority_tools (documented)
   // Also accept capability-keyed payloads e.g. {"search": [...]} from QA and SDK clients
   // NOTE: Do NOT remove any of these aliases — QA test 2.6-set-priority sends capability-keyed
-  // payloads (e.g. {"search": [...]}). All 8 CAPABILITY_TOOLS keys must be covered here.
+  // payloads (e.g. {"search": [...]}). All CAPABILITY_TOOLS keys plus extended capabilities
+  // (storage, payments, auth, scheduling, ai, observability) must be covered here.
   // Removing these aliases causes HTTP 400 — this has regressed multiple times already.
   const toolsValue =
     body.tools ??
@@ -53,7 +54,13 @@ export async function POST(request: NextRequest) {
     body.code ??
     body.communication ??
     body.translation ??
-    body.ocr;
+    body.ocr ??
+    body.storage ??
+    body.payments ??
+    body.auth ??
+    body.scheduling ??
+    body.ai ??
+    body.observability;
   if (Array.isArray(toolsValue)) {
     update.priorityTools = toolsValue.filter((t: unknown): t is string => typeof t === 'string');
   }

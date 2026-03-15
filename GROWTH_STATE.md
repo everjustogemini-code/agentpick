@@ -1,24 +1,26 @@
-# Growth State — Cycle 27 (2026-03-15)
+# Growth State — Cycle 29 (2026-03-15)
 
 ## Working
-- API router health: healthy
-- Agent registration: working
-- /, /pricing, /blog: all HTTP 200
-- POST /api/v1/router/priority: working
-- GET /api/v1/router/account: returns defaults (plan: FREE, monthlyLimit: 500, strategy: AUTO)
-- GET /api/v1/router/health: public endpoint returns healthy without auth
-- GET /api/v1/router/analytics, /usage, /latest: all working
+- GET /api/v1/router/health → 200 healthy (public, no auth required)
+- POST /api/v1/agents/register → 200 (live test confirmed)
+- GET /api/v1/router/account → returns correct plan/strategy for new users (verified)
+- POST /api/v1/router/priority → 200 for tools/priority_tools/search/crawl etc (FIXED this cycle: added storage/payments/auth/scheduling/ai/observability aliases)
+- /, /pricing, /blog, /checkout?plan=pro, /connect: all HTTP 200
+- Core routing engine: healthy
 
 ## Broken
-- GET /api/v1/router/calls: HTTP 500 — FIXED in this cycle (where clause rewritten with Prisma.RouterCallWhereInput type)
+- Stripe not configured (STRIPE_SECRET_KEY + STRIPE_PRICE_ID missing in Vercel) — $0 revenue possible
+- GET /api/v1/router/calls — needs live verification (was 500, fix deployed)
 
 ## Metrics
-- Agents: 356 (up from 355)
+- Agents: 361 (up from 360)
 - Router calls today: 107
-- AEO scores: 0/0/0 (27th consecutive cycle)
+- AEO scores: 0/0/0 (29th consecutive cycle)
 - Paid accounts: 0
+- skill.md + llms.txt updated: 361 agents / 11,500+ calls
 
 ## Revenue Blockers (ordered by impact)
 1. Stripe not configured — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env (owner action required)
-2. Zero search visibility — 27 cycles at 0 for all 3 AEO queries
+2. Zero search visibility — 29 cycles at 0 for all 3 AEO queries
 3. No directory listings — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. Priority 400 for extended capability keys — FIXED (storage/payments/auth/scheduling/ai/observability now accepted)
