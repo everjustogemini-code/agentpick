@@ -23,10 +23,20 @@ export const metadata: Metadata = {
 
 const POSTS = [
   {
+    slug: 'how-to-choose-search-api-for-ai-agent',
+    title: 'How to Choose a Search API for Your AI Agent (2026)',
+    description:
+      'A practical decision framework based on 700+ benchmark runs: quality vs speed vs cost vs domain. When to hardcode Perplexity, Exa, Tavily, or Brave — and when to use auto-routing instead.',
+    date: '2026-05-23',
+    readTime: '6 min',
+    tag: 'Guide',
+    tagColor: '#0EA5E9',
+  },
+  {
     slug: 'how-we-benchmark-search-apis-for-ai-agents',
     title: 'How We Benchmark Search APIs for AI Agents (2026)',
     description:
-      'The methodology behind AgentPick\'s 680+ benchmark runs: 4 data sources, continuous scoring, 90-day rolling window. Why Perplexity leads at 7.0 and how to use rankings in production routing.',
+      'The methodology behind AgentPick\'s 700+ benchmark runs: 4 data sources, continuous scoring, 90-day rolling window. Why Perplexity leads at 7.0 and how to use rankings in production routing.',
     date: '2026-05-16',
     readTime: '7 min',
     tag: 'Methodology',

@@ -1,3 +1,68 @@
+# Growth Report — Cycle 13 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 314 | This Week: 314 | Calls Today: 399 | Paid: 0
+- Blog posts: 19 live (added how-to-choose-search-api-for-ai-agent)
+- Weekly reports: 11 live (added 2026-05-23)
+- AEO scores: 0/0/0 (14th consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 14 cycles at 0 for all 3 AEO queries
+3. **No directory listings** — KDnuggets, Botpress, Arize AI rank #1–8 for main queries; not listed
+4. **Query 2 intent mismatch** — "tool routing for AI agents" SERP returns agent-to-agent routing frameworks; new decision guide directly targets this intent gap
+
+## Actions Taken
+
+### 1. New weekly report: /reports/weekly/2026-05-23
+- Eleventh weekly report — 11-week cadence for crawl signals
+- Updated stats: 314 agents, 5,250+ cumulative calls, 700+ benchmark runs
+- Valyu (wk 7) and Parallel Search (wk 8) — confirmed scores imminent next cycle
+- Firecrawl crawl evaluation enters week 4 — score expected next cycle
+- Forward nav added to 2026-05-16 report
+
+### 2. New blog post: /blog/how-to-choose-search-api-for-ai-agent
+- Targets the "how to choose" decision intent behind all 3 AEO queries
+- Practical decision framework: quality vs speed vs cost vs domain
+- Key insight: Query 2 SERP ("tool routing for AI agents") returns agent-to-agent routing results — post directly addresses the tool/API selection framing that existing results miss
+- Includes decision summary table, code example, and CTAs to /connect
+- Added to blog index (now 19 posts)
+
+### 3. Updated llms.txt and skill.md
+- 314 agents, 700+ benchmark runs, 5,250+ production calls, date 2026-05-23
+
+### 4. AEO scores posted (cycle 13) — all 0
+- Query 1: Tavily/Exa/KDnuggets dominate — agentpick.dev not indexed
+- Query 2: Botpress/Patronus AI/Arize AI dominate (agent-to-agent routing, not API routing)
+- Query 3: AgentBench/academic benchmarks dominate (LLM behavior, not API benchmarks)
+
+## Results
+- Weekly report #11 live ✅ | 2026-05-16 forward nav added ✅
+- Decision guide post live (19 posts total) ✅
+- llms.txt + skill.md updated ✅ | AEO scores posted ✅
+
+## Next Cycle Priority
+1. **Stripe** — owner action required: STRIPE_SECRET_KEY + STRIPE_PRICE_ID on Vercel
+2. **Valyu/Parallel confirmed scores** — both in final evaluation window, will update rankings
+3. **Firecrawl confirmed crawl score** — expected next cycle
+4. **Watch "how-to-choose" post** — directly targets decision intent across all 3 queries
+
+## Learnings
+- Query 2 SERP insight: "tool routing for AI agents" returns agent-to-agent routing frameworks (Botpress, Patronus AI, Arize AI). AgentPick's concept — routing between API providers — is not represented. Decision guide post reframes the use case correctly.
+- 19 blog posts still yield 0 AEO visibility. Volume alone is insufficient. Need external authority signals (backlinks from KDnuggets/data4ai/aimultiple) or direct editorial outreach.
+- Valyu/Parallel/Firecrawl entering confirmed-score window is a content opportunity: ranking updates will freshen all existing reports.
+
+## Files Changed (Cycle 13)
+- src/app/reports/weekly/2026-05-23/page.tsx (new)
+- src/app/reports/weekly/2026-05-16/page.tsx — forward nav
+- src/app/blog/how-to-choose-search-api-for-ai-agent/page.tsx (new)
+- src/app/blog/page.tsx — 19 posts
+- src/app/llms.txt/route.ts — updated metrics
+- src/app/skill.md/route.ts — updated date + metrics
+- GROWTH_STATE.md, GROWTH_REPORT.md
+
+---
+
 # Growth Report — Cycle 12 (2026-03-14)
 
 ## Metrics Snapshot

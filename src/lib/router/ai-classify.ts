@@ -19,8 +19,7 @@ export interface QueryContext {
 }
 
 // When Haiku classification times out or fails, default to 'news' type so the router
-// selects a quality realtime tool (tavily) rather than the simple-query default ordering
-// which can route to serpapi-google in some key-availability configurations.
+// selects a quality realtime tool (tavily) rather than the simple-query default ordering.
 const DEFAULT_CONTEXT: QueryContext = {
   type: 'news',
   domain: 'general',
@@ -89,24 +88,16 @@ export function fastClassify(query: string): QueryContext | null {
   const stateOfPattern = /\bstate of\b|\bsurvey of\b/i;
   const breakingNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
   if (stateOfPattern.test(lower) && !breakingNewsSignals.test(lower)) {
-    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model|llm|machine learning)\b/i.test(lower) ? 'tech' : 'general';
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|models?|llm|machine learning)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
 
-  // Explicit recency terms always trigger news classification — avoids LLM non-determinism
-  if (explicitRecencySignal.test(lower)) {
-    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
-    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
-  }
   // Analytical framing → always research/deep
-  // Must fire BEFORE the strongNewsTerms block because queries like
-  // "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
-  // match strongNewsTerms ("shortage") and get mis-routed to news/tavily without this guard.
+  // Must fire BEFORE explicitRecencySignal AND strongNewsTerms. Without this, queries like:
+  //   "causes of inflation in 2024 comprehensive overview"  → mis-routed as news via "in 2024"
+  //   "comprehensive analysis of global chip shortage in 2025" → mis-routed as news via "in 2025"
   // Guard fires when the query has an analytical keyword AND a depth/quality signal,
   // but NOT when it contains genuine breaking-news signals (today, right now, latest, etc.).
-  // Previously required narrow `multifactorDomains` (supply chain, geopolit, etc.) —
-  // replaced with broader `depthQualitySignal` so analytical queries about any domain
-  // (e.g. "analysis of AI impacts on employment") are correctly classified as research.
   const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
   const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|implications of|effects of|drivers of)\b/i;
   const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
@@ -116,13 +107,19 @@ export function fastClassify(query: string): QueryContext | null {
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
 
+  // Explicit recency terms always trigger news classification — avoids LLM non-determinism
+  if (explicitRecencySignal.test(lower)) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|models?)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
+  }
+
   const hasNewsWithDomain = newsTerms.test(lower) && (
     yearPattern.test(lower) ||
-    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|model|product)\b/i.test(lower)) ||
+    (techCompanySignal.test(lower) && /\b(ai|tech|software|startup|developer|api|framework|models?|product)\b/i.test(lower)) ||
     genericTopicSignal.test(lower)  // "latest AI tools", "recent ML updates", "latest crypto news" etc.
   );
   if (strongNewsTerms.test(lower) || hasNewsWithDomain) {
-    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|models?)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
 
@@ -131,7 +128,7 @@ export function fastClassify(query: string): QueryContext | null {
   // "state of large language models 2025" that lack explicit "analysis"/"comprehensive" keywords.
   const researchTerms = /\b(explain|how does|how do|how to|architecture|in.?depth|compare|comparison|vs|versus|tutorial|deep dive|comprehensive|detailed|analysis|analyze|review|pros and cons|tradeoffs?|trade.?offs?|benchmark|evaluation|implement|implementation|guide|walkthrough|overview of|state of|survey of|step.?by.?step|under the hood)\b/i;
   if (researchTerms.test(lower)) {
-    const domain = /\b(ai|ml|machine learning|neural|transformer|llm|gpt|bert|model|algorithm|framework|api|sdk|library|database|kubernetes|docker|cloud|aws|azure|gcp|react|python|rust|golang)\b/i.test(lower) ? 'tech' : financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : 'general';
+    const domain = /\b(ai|ml|machine learning|neural|transformer|llm|gpt|bert|models?|algorithm|framework|api|sdk|library|database|kubernetes|docker|cloud|aws|azure|gcp|react|python|rust|golang)\b/i.test(lower) ? 'tech' : financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
 
@@ -146,7 +143,7 @@ export function fastClassify(query: string): QueryContext | null {
   // Treat as 'news' so quality-first routing applies regardless of Haiku classification.
   const currentSignal = /\bcurrent\s+\w/i;
   if (currentSignal.test(lower) && !simpleTerms.test(lower)) {
-    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|models?)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
 
@@ -281,7 +278,6 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
   // oscillates between classifying a query as type='news' vs type='research' across
   // different runs — both should prefer fresh-data tools (tavily, exa-search).
   // tavily is primary; exa-search is secondary (high-quality, reliably configured).
-  // serpapi-google is last: it was causing non-determinism when primary tools were unconfigured.
   if (
     context.type === 'realtime' ||
     context.freshness === 'realtime' ||
@@ -298,7 +294,7 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
 
   // Finance domain search → domain-aware tools
   if (context.domain === 'finance') {
-    return filterAvailable(['exa-search', 'tavily', 'serpapi-google', 'serpapi'], capability);
+    return filterAvailable(['exa-search', 'tavily', 'serpapi'], capability);
   }
 
   // Default: for simple queries, use quality-first ordering (same as news/realtime).
