@@ -83,20 +83,35 @@ export function fastClassify(query: string): QueryContext | null {
   // a specific company name or year. Prevents these queries from falling through to Haiku
   // where slightly different phrasings can return inconsistent classifications.
   const genericTopicSignal = /\b(ai|ml|machine learning|deep learning|llm|model|framework|api|tool|platform|startup|market|crypto|blockchain|defi|nft|regulation|law|policy|security|privacy|feature|product|service|update|release|version)\b/i;
+  // "state of X" / "survey of X" → deep research overview.
+  // Must fire BEFORE explicitRecencySignal to prevent "state of AI in 2025" being
+  // mis-routed as news via the `in \d{4}` pattern (e.g. "in 2025" → news).
+  const stateOfPattern = /\bstate of\b|\bsurvey of\b/i;
+  const breakingNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
+  if (stateOfPattern.test(lower) && !breakingNewsSignals.test(lower)) {
+    const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model|llm|machine learning)\b/i.test(lower) ? 'tech' : 'general';
+    return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
+  }
+
   // Explicit recency terms always trigger news classification — avoids LLM non-determinism
   if (explicitRecencySignal.test(lower)) {
     const domain = financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|sec|regulation|ruling|compliance)\b/i.test(lower) ? 'legal' : /\b(ai|tech|software|startup|developer|api|framework|model)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'news', domain: domain as QueryContext['domain'], depth: 'shallow', freshness: 'recent' };
   }
-  // Analytical/policy/socioeconomic framing → always research/deep
+  // Analytical framing → always research/deep
   // Must fire BEFORE the strongNewsTerms block because queries like
   // "comprehensive analysis of global chip shortage causes and solutions with supply chain implications"
   // match strongNewsTerms ("shortage") and get mis-routed to news/tavily without this guard.
+  // Guard fires when the query has an analytical keyword AND a depth/quality signal,
+  // but NOT when it contains genuine breaking-news signals (today, right now, latest, etc.).
+  // Previously required narrow `multifactorDomains` (supply chain, geopolit, etc.) —
+  // replaced with broader `depthQualitySignal` so analytical queries about any domain
+  // (e.g. "analysis of AI impacts on employment") are correctly classified as research.
   const analyticalKeywords = /\b(analysis|causes|implications|impact of|effects of|why did|why does|why is|how did|consequences of|drivers of|factors behind|root cause)\b/i;
-  const multifactorDomains = /\b(supply chain|geopolit|policy|socioeconomic|chip shortage|semiconductor|trade war|regulation|inflation|macro|systemic)\b/i;
+  const depthQualitySignal = /\b(comprehensive|in.?depth|deep dive|state of|overview of|survey of|systematic|thorough|detailed analysis|full analysis|root cause|multi.?factor|causes and|implications of|effects of|drivers of)\b/i;
   const genuineNewsSignals = /\b(today|right now|just happened|breaking|latest|this week|yesterday|last night)\b/i;
 
-  if (analyticalKeywords.test(query) && multifactorDomains.test(query) && !genuineNewsSignals.test(query)) {
+  if (analyticalKeywords.test(query) && depthQualitySignal.test(query) && !genuineNewsSignals.test(query)) {
     const domain = /\b(finance|economic|market|gdp)\b/i.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : /\b(tech|chip|semiconductor|ai|software)\b/i.test(lower) ? 'tech' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
   }
@@ -112,7 +127,9 @@ export function fastClassify(query: string): QueryContext | null {
   }
 
   // Research signals — catches detailed/technical explanation requests (P1-4)
-  const researchTerms = /\b(explain|how does|how do|how to|architecture|in.?depth|compare|comparison|vs|versus|tutorial|deep dive|comprehensive|detailed|analysis|analyze|review|pros and cons|tradeoffs?|trade.?offs?|benchmark|evaluation|implement|implementation|guide|walkthrough|overview of|step.?by.?step|under the hood)\b/i;
+  // "state of" / "survey of" added to capture deep-research queries like
+  // "state of large language models 2025" that lack explicit "analysis"/"comprehensive" keywords.
+  const researchTerms = /\b(explain|how does|how do|how to|architecture|in.?depth|compare|comparison|vs|versus|tutorial|deep dive|comprehensive|detailed|analysis|analyze|review|pros and cons|tradeoffs?|trade.?offs?|benchmark|evaluation|implement|implementation|guide|walkthrough|overview of|state of|survey of|step.?by.?step|under the hood)\b/i;
   if (researchTerms.test(lower)) {
     const domain = /\b(ai|ml|machine learning|neural|transformer|llm|gpt|bert|model|algorithm|framework|api|sdk|library|database|kubernetes|docker|cloud|aws|azure|gcp|react|python|rust|golang)\b/i.test(lower) ? 'tech' : financeTerms.test(lower) ? 'finance' : /\b(legal|law|court|regulation|compliance)\b/i.test(lower) ? 'legal' : 'general';
     return { type: 'research', domain: domain as QueryContext['domain'], depth: 'deep', freshness: 'any' };
@@ -208,6 +225,9 @@ Examples:
 "Y Combinator W26 batch companies" → {"type":"news","domain":"tech","depth":"shallow","freshness":"recent"}
 "comprehensive analysis of global chip shortage causes and solutions with supply chain implications" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
 "what happened with chip shortage today" → {"type":"news","domain":"general","depth":"shallow","freshness":"recent"}
+"state of large language models 2025 comprehensive analysis" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"state of AI in enterprise 2025" → {"type":"research","domain":"tech","depth":"deep","freshness":"any"}
+"causes of inflation in 2024 comprehensive overview" → {"type":"research","domain":"finance","depth":"deep","freshness":"any"}
 
 No explanation. JSON only.`;
 
