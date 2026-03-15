@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 
-type PlanCode = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE';
+type PlanCode = 'FREE' | 'STARTER' | 'PRO' | 'SCALE' | 'ENTERPRISE';
 
 interface AccountData {
   plan: PlanCode;
@@ -25,6 +25,7 @@ const PLAN_PRICES: Record<string, number> = {
   FREE: 0,
   STARTER: 29,
   PRO: 99,
+  SCALE: 249,
   ENTERPRISE: 0,
 };
 
@@ -32,6 +33,7 @@ const UPGRADE_TARGETS: Record<string, { slug: string; label: string; price: numb
   FREE: { slug: 'pro', label: 'Pro', price: 29 },
   STARTER: { slug: 'growth', label: 'Growth', price: 99 },
   PRO: null,
+  SCALE: null,
   ENTERPRISE: null,
 };
 
