@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { ensureDeveloperAccount } from '@/lib/router/sdk';
+import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
@@ -70,7 +70,11 @@ export async function GET(request: NextRequest) {
       andFilters.push({ toolUsed: tool });
     }
     if (strategy) {
-      andFilters.push({ strategyUsed: strategy.toUpperCase() as Prisma.RouterCallWhereInput['strategyUsed'] });
+      const normalizedStrat = normalizeStrategy(strategy);
+      if (!normalizedStrat) {
+        return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO (or aliases: best_performance, most_stable, custom)`, 400);
+      }
+      andFilters.push({ strategyUsed: normalizedStrat as Prisma.RouterCallWhereInput['strategyUsed'] });
     }
     if (from || to) {
       const createdAtFilter: Prisma.DateTimeFilter = {};

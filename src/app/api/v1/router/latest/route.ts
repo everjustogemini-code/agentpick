@@ -45,17 +45,23 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: 'desc' },
       select: {
+        id: true,
+        capability: true,
         query: true,
+        toolRequested: true,
         toolUsed: true,
+        strategyUsed: true,
         latencyMs: true,
         costUsd: true,
         resultCount: true,
         byokUsed: true,
-        capability: true,
-        aiClassification: true,
-        strategyUsed: true,
-        fallbackUsed: true,
         success: true,
+        fallbackUsed: true,
+        fallbackFrom: true,
+        fallbackChain: true,
+        statusCode: true,
+        traceId: true,
+        aiClassification: true,
         totalMs: true,
         responsePreview: true,
         createdAt: true,
@@ -64,8 +70,16 @@ export async function GET(request: NextRequest) {
 
     const normalizedCall = call ? {
       ...call,
+      // classification_ms is not stored in DB — emit null for API consistency with /calls
+      classification_ms: null as number | null,
       total_ms: call.totalMs ?? null,
       response_preview: call.responsePreview ?? null,
+      // Expose ai_routing_summary as a top-level field from aiClassification JSON
+      ai_routing_summary: call.aiClassification &&
+        typeof call.aiClassification === 'object' &&
+        'reasoning' in (call.aiClassification as Record<string, unknown>)
+          ? (call.aiClassification as Record<string, unknown>).reasoning as string
+          : null,
     } : null;
 
     return Response.json(
