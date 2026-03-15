@@ -92,7 +92,7 @@ res = requests.post(
     headers={"Authorization": "Bearer ${effectiveKey}"},
     json={"${paramKey}": "${paramValue}", "strategy": "${strategy}"}
 )
-print(res.json()["tool"], res.json()["latency"])`
+print(res.json()["meta"]["tool_used"], res.json()["meta"]["latency_ms"])`
 
   const nodeSnippet = `const res = await fetch('https://agentpick.dev/api/v1/route/${endpoint}', {
   method: 'POST',
@@ -103,7 +103,7 @@ print(res.json()["tool"], res.json()["latency"])`
   body: JSON.stringify({ ${paramKey}: "${paramValue}", strategy: "${strategy}" })
 })
 const data = await res.json()
-console.log(data.tool, data.latency + 'ms')`
+console.log(data.meta.tool_used, data.meta.latency_ms + 'ms')`
 
   const endpointOptions: { value: Endpoint; label: string }[] = [
     { value: 'search', label: 'Search' },
