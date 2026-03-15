@@ -10,7 +10,7 @@ export class AgentPickClient {
 
   constructor(options: AgentPickClientOptions) {
     this.apiKey = options.apiKey;
-    this.baseUrl = options.baseUrl ?? 'https://agentpick.io';
+    this.baseUrl = options.baseUrl ?? 'https://agentpick.dev';
   }
 
   private async request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -38,14 +38,27 @@ export class AgentPickClient {
         result_count?: number;
         cost_usd?: number;
         trace_id?: string;
-        fallback_chain?: Array<{ tool: string; success: boolean; latency_ms: number; error?: string }>;
+        fallback_used?: boolean;
+        fallback_from?: string;
         ai_classification?: { type?: string; domain?: string; depth?: string; reasoning?: string };
       };
     }>(`/api/v1/router/${capability}`, {
       method: 'POST',
-      body: JSON.stringify({ query, ...options }),
+      body: JSON.stringify({
+        query,
+        ...(options?.strategy && { strategy: options.strategy }),
+        ...(options?.tools?.length && { priority_tools: options.tools }),
+      }),
     });
     const success = !raw.meta.trace_id?.startsWith('trace_fail_');
+    // Build fallback_chain from the API's fallback_used/fallback_from fields.
+    // The API does not return a pre-built fallback_chain array; derive it here.
+    const fallback_chain = raw.meta.fallback_used
+      ? [
+          ...(raw.meta.fallback_from ? [{ tool: raw.meta.fallback_from, success: false, latency_ms: 0 }] : []),
+          { tool: raw.meta.tool_used, success: true, latency_ms: raw.meta.latency_ms },
+        ]
+      : [];
     return {
       tool: raw.meta.tool_used,
       latency_ms: raw.meta.latency_ms,
@@ -53,7 +66,7 @@ export class AgentPickClient {
       relevance: 0,
       success,
       ai_routing_summary: raw.meta.ai_classification?.reasoning,
-      fallback_chain: raw.meta.fallback_chain ?? [],
+      fallback_chain,
       cost: raw.meta.cost_usd,
       response_preview: typeof raw.data === 'object' && raw.data !== null
         ? JSON.stringify(raw.data).slice(0, 500)

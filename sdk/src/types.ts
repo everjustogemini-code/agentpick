@@ -90,8 +90,10 @@ export interface UsageInfo {
     fallbackRate: number;
     avgLatencyMs: number;
     totalCostUsd: number;
+    totalToolCostUsd: number;
     byokSavingsUsd: number;
     byokCalls: number;
+    byokCoverageRate: number;
     byCapability: Record<string, { calls: number; avgLatency: number; successRate: number }>;
     byTool: Record<string, { calls: number; avgLatency: number }>;
     byStrategy: Record<string, { calls: number; avgLatency: number; successRate: number }>;
