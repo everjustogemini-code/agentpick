@@ -275,7 +275,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         response,
         strategyUsed as RouterStrategyValue,
         Boolean(response.meta.byok_used),
-        response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [response.meta.tool_used].filter(Boolean),
+        response.meta.tried_chain?.length
+          ? [...new Set(response.meta.tried_chain)]
+          : (response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [response.meta.tool_used].filter(Boolean)),
         preUsageIsOverage,
       );
     } catch (recordErr) {

@@ -101,6 +101,8 @@ export interface RouterResponse {
     total_ms?: number;
     fallback_used: boolean;
     fallback_from?: string;
+    /** Complete ordered list of all tools attempted (primary + every fallback), including failed ones. */
+    tried_chain?: string[];
     trace_id: string;
     ai_classification?: QueryContext & { reasoning?: string };
     classification_ms?: number;
@@ -284,26 +286,11 @@ export function getRankedToolsForCapability(
 
   // Within the strategy-sorted list, move tools that lack a platform API key to the end.
   // This preserves strategy order within each group (configured / unconfigured).
-  //
-  // Exception: cheapest strategy without BYOK keys for THIS capability's tools uses pure cost ordering.
-  // When no relevant BYOK keys are present, deprioritizing by platform key config would put
-  // tavily ($0.001, configured) before brave-search ($0.0001, unconfigured), defeating the
-  // cost-first intent. Unconfigured cheap tools fail fast in the router fallback chain
-  // (sub-ms key-missing rejection), so the overhead is negligible.
-  // When storedByokKeys are provided for a capability tool, BYOK-configured cheap tools should
-  // still be elevated so a user's own brave-search/serper key beats the more expensive platform-only tavily.
-  //
-  // IMPORTANT: Only BYOK keys for tools in this capability are counted. An unrelated BYOK key
-  // (e.g. resend, e2b) must NOT cause cheap unconfigured search tools to be deprioritized behind
-  // expensive platform-configured tools. We check per-slug relevance instead of just key count.
-  if (strategy === 'cheapest') {
-    const hasCapabilityByokKeys = filtered.some(
-      (slug) => resolveStoredByokKeyForSlug(storedByokKeys, slug) !== null,
-    );
-    if (!hasCapabilityByokKeys) return filtered;
-  }
-  // BYOK-configured tools (e.g. user's own serper key at $0.0005) are treated as configured
-  // and correctly beat more expensive platform-only tools.
+  // For cheapest strategy: deprioritize unconfigured tools so the cheapest CONFIGURED
+  // tool is selected first. Without this, unconfigured cheap tools (brave-search, serper)
+  // are tried first, fail with a missing-key error, and the fallback lands on tavily —
+  // making cheapest effectively route to tavily even when serpapi ($0.0005) is configured.
+  // BYOK-configured tools are treated as configured and beat more expensive platform-only tools.
   return deprioritizeUnconfiguredTools(filtered, storedByokKeys);
 }
 
@@ -598,6 +585,7 @@ export async function routeRequest(
         total_ms: Date.now() - requestStartMs,
         fallback_used: isFallbackAttempt,
         fallback_from: isFallbackAttempt ? firstFailedTool : undefined,
+        tried_chain: [...triedTools],
         trace_id: traceId,
         cost_usd: result.costUsd,
         result_count: result.resultCount,
@@ -638,6 +626,7 @@ export async function routeRequest(
     total_ms: Date.now() - requestStartMs,
     fallback_used: triedTools.length > 1,
     fallback_from: firstFailedTool,
+    tried_chain: [...triedTools],
     trace_id: traceId,
     cost_usd: lastResult?.costUsd ?? 0,
     result_count: lastResult?.resultCount ?? 0,
