@@ -4,7 +4,10 @@ import { RANKING_STATUSES } from '@/lib/product-status';
 import { hashApiKey } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  const apiKey = request.headers.get('authorization')?.replace('Bearer ', '');
+  const authHeader = request.headers.get('authorization');
+  const apiKey = authHeader?.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7)
+    : undefined;
 
   if (!apiKey) {
     return NextResponse.json({ error: 'Authorization required' }, { status: 401 });
