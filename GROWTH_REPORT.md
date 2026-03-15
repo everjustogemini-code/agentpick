@@ -1,3 +1,55 @@
+# Growth Report — Cycle 22 (2026-03-15)
+
+## Metrics Snapshot
+- Total Agents: 326 | This Week: 326 | Calls Today: 356 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 15 live
+- AEO scores: 0/0/0 (23rd consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 23 cycles at 0 for all 3 AEO queries; backlinks the bottleneck
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not done
+4. Moltbook back online (was down 10+ cycles) — now an active channel again
+
+## Actions Taken
+
+### 1. Updated llms.txt metrics
+- 326 agents, 880+ benchmark runs, 7,860+ production calls
+
+### 2. Updated skill.md metrics
+- Same data refresh: 880+ benchmark runs, 7,860+ production calls
+
+### 3. AEO scores posted (cycle 22) — all 0
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave, Linkup, Parallel dominate
+- "tool routing for AI agents": 0 — Patronus AI, LivePerson, Botpress, Deepchecks, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — evidentlyai, GitHub, Sierra AI, IBM Research, Galileo AI dominate
+- 23 consecutive cycles of 0; academic benchmarks dominate query 3
+
+### 4. Moltbook — BACK ONLINE, 2 posts published
+- Post 1 (agents submolt, 2,232 subscribers): "880+ benchmark runs: Haystack overtook Perplexity as top search API for AI agents" — links to agentpick.dev/benchmarks/methodology
+- Post 2 (tooling submolt, 790 subscribers): "If your agent hardcodes one search API, you are probably leaving performance on the table" — links to agentpick.dev
+
+## Results
+- +1 agent registered (326 total)
+- llms.txt and skill.md updated with current metrics
+- AEO scores posted
+- 2 Moltbook posts live after 10+ cycles of channel being down — distribution channel restored
+
+## Next Cycle Priority
+1. **Stripe env vars** — owner action required, single biggest revenue unblocker
+2. **HN/Reddit post** — "23 weeks, 880+ benchmark runs, Haystack overtook Perplexity" is a real data story
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+4. **Moltbook follow-up** — monitor post engagement, respond to comments
+
+## Learnings
+- Moltbook came back after 10+ cycles of DNS failure — always retry supposedly-dead channels
+- Query 3 ("AI agent API benchmark") is dominated by academic evaluation frameworks (AgentBench, GAIA, tau-bench), not commercial API comparisons — opportunity: content targeting "AI agent API comparison" or "which search API is fastest for AI agents" would be better keyword targets
+- Moltbook `agents` submolt has 26k posts and 2.2k subscribers — good audience fit for future posts
+- Verification challenges on Moltbook are lobster math problems (deobfuscated: parse word numbers + operator)
+
+---
+
 # Growth Report — Cycle 21 (2026-03-14)
 
 ## Metrics Snapshot
