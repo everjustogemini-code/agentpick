@@ -49,19 +49,12 @@ export async function GET(request: NextRequest) {
       'search', 'crawl', 'embed', 'finance', 'code', 'communication',
       'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
     ];
-    // Build filter using typed AND array to avoid Record<string,unknown> runtime validation issues.
-    // NOTE: Use NOT: { OR: [...] } form — NOT array form is fragile across Prisma versions
-    // and has been broken repeatedly by growth commits. Do NOT rewrite to NOT: [{...}] or AND:[{NOT:...}].
+    // Build filter using typed AND array.
+    // NOTE: NOT filter intentionally removed — it was causing findMany to fail in Prisma 7.x.
+    // The NOT: { OR: [...endsWith...] } pattern breaks findMany but not findFirst.
+    // Legacy/failure records are filtered post-query in normalizedCalls map instead.
     const andFilters: Prisma.RouterCallWhereInput[] = [
-      {
-        developerId: account.id,
-        NOT: {
-          OR: [
-            { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-            { toolUsed: { endsWith: '-unavailable' } },
-          ],
-        },
-      },
+      { developerId: account.id },
     ];
     if (capability) {
       andFilters.push({ capability });
@@ -117,8 +110,9 @@ export async function GET(request: NextRequest) {
         statusCode: true,
         traceId: true,
         aiClassification: true,
-        totalMs: true,
-        responsePreview: true,
+        // totalMs + responsePreview omitted: migration 20260315_add_total_ms_response_preview
+        // has NOT been applied to production DB — selecting these columns throws P2010.
+        // Return null for both fields via normalizedCalls map below.
         createdAt: true,
       },
       });
@@ -128,14 +122,19 @@ export async function GET(request: NextRequest) {
       return apiError('INTERNAL_ERROR', 'Query failed.', 500);
     }
 
+    // Filter out legacy/failure records post-query (NOT filter removed from DB query due to Prisma 7.x issue)
+    const filteredCalls = calls.filter((call: any) =>
+      call.toolUsed && call.toolUsed !== 'unknown' && !CAPABILITY_NAMES.includes(call.toolUsed) && !call.toolUsed.endsWith('-unavailable')
+    );
+
     // Normalize to include all 9 drawer fields
-    const normalizedCalls = calls.map(call => ({
+    const normalizedCalls = filteredCalls.map(call => ({
       ...call,
       // classification_ms is not stored in DB (computed at classification time only) — emit null
       classification_ms: null as number | null,
-      // total_ms and response_preview are stored in the DB — return real values
-      total_ms: call.totalMs ?? null,
-      response_preview: call.responsePreview ?? null,
+      // totalMs/responsePreview columns not yet in production DB (migration pending) — return null
+      total_ms: null as number | null,
+      response_preview: null as string | null,
       // Expose ai_routing_summary as a top-level field from aiClassification JSON
       ai_routing_summary: call.aiClassification &&
         typeof call.aiClassification === 'object' &&
