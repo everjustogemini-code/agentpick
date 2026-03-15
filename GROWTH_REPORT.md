@@ -1,3 +1,58 @@
+# Growth Report — Cycle 1 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 327 | This Week: 327 | Calls Today: 356 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 15 live
+- AEO scores: 0/0/0 (24th+ consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 24+ cycles at 0 for all 3 AEO queries; backlinks the bottleneck
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Moltbook unreliable** — api.moltbook.com DNS failing again, no distribution this cycle
+
+## Actions Taken
+
+### 1. AEO scores posted (cycle 48 / growth cycle 1) — all 0
+- "best search API for AI agents": 0 — Tavily, KDnuggets, Firecrawl, Exa, Brave, Linkup, Parallel dominate
+- "tool routing for AI agents": 0 — Patronus AI, LivePerson, Botpress, Deepchecks, Arize, LangChain dominate
+- "AI agent API benchmark": 0 — evidentlyai, GitHub compendium, Sierra tau-bench, IBM Research dominate
+- 24+ consecutive cycles of 0; content exists but no backlinks driving discovery
+
+### 2. Conversion check — all pages 200 OK
+- /, /pricing, /blog, /connect, /checkout?plan=pro all return HTTP 200
+- Agent registration functional (returns api_key with plan: FREE)
+- Stripe checkout page loads but payment won't complete without Stripe env vars configured
+
+### 3. Moltbook — DNS failure, posts skipped
+- api.moltbook.com could not be resolved — API down again
+- Channel unreliable; treat as opportunistic, not dependable
+
+### 4. llms.txt and skill.md — both live and accurate
+- Both served dynamically with current data (327 agents, 880+ runs, 7860+ calls)
+- No update needed; content is current
+
+## Results
+- AEO scores posted to growth-metrics endpoint
+- No new registrations detected beyond existing 327
+- No Moltbook distribution (channel down)
+- Product is fully functional (QA 58/58), no P0 blockers
+
+## Next Cycle Priority
+1. **Stripe env vars** — owner action required; this is the only thing blocking $0 → revenue
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com are free and high-impact
+3. **HN/Reddit post** — "880+ benchmark runs, Haystack overtook Perplexity" is real data for developer community
+4. **Backlink acquisition** — AEO scores will not improve until external sites link to agentpick.dev
+
+## Learnings
+- Moltbook availability is inconsistent (was online cycle 22, down again now). Do not rely on it as primary distribution.
+- All 3 AEO target queries are dominated by well-established brands and academic frameworks. Content quality is not the gap — distribution and backlinks are.
+- The product (routing, benchmarks, dashboard) is technically healthy with 58/58 QA score. The only blockers are distribution and Stripe configuration.
+- Query 3 ("AI agent API benchmark") is dominated by academic LLM evaluation frameworks — a separate keyword strategy targeting "API performance benchmark for AI agents" or "search API speed test" could find less-competed space.
+
+---
+
 # Growth Report — Cycle 22 (2026-03-15)
 
 ## Metrics Snapshot
