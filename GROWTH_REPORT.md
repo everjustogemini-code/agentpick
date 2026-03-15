@@ -1,3 +1,55 @@
+# Growth Report — Cycle 30 (2026-03-15)
+
+## Metrics Snapshot
+- Total Agents: 365 | This Week: 365 | Calls Today: 96 | Paid: 0
+- AEO scores: 0/0/0 (30th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 30 cycles at 0 for all 3 AEO queries; no backlinks, no domain authority
+3. **Moltbook distribution down** — api.moltbook.com DNS not resolving (channel unavailable)
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog, /checkout?plan=pro, /connect → all 200 OK ✅
+
+### 2. AEO scores — all 0 (30th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave dominate top 10
+- "tool routing for AI agents": 0 — LangChain, Botpress, Patronus AI dominate
+- "AI agent API benchmark": 0 — AgentBench, Evidently AI, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 361 → 365
+- Production calls: 11,500+ (maintained)
+
+### 4. Moltbook posts — skipped (api.moltbook.com DNS not resolving)
+
+### 5. GROWTH_STATE.md updated to cycle 30
+
+## Results
+- skill.md/llms.txt accurate for agent discovery (365 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Content** — write blog post targeting "best search API for AI agents" (owned by Tavily/Exa/Firecrawl)
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+4. **Long-tail content** — "Tavily vs Exa comparison", "search API latency benchmark 2026"
+5. **Moltbook fallback** — find alternative distribution channel (api.moltbook.com is down)
+
+## Learnings
+- Moltbook API consistently unreachable (DNS failure) — need backup distribution channel
+- 30 consecutive AEO-0 cycles — domain authority near zero, content strategy critical
+- All infrastructure healthy — the bottleneck is purely discovery and payment config
+
+---
+
 # Bugfix Report — Cycle 90 (2026-03-15)
 
 ## QA Status

@@ -1,8 +1,8 @@
-# NEXT_VERSION — AgentPick v0.90
+# NEXT_VERSION — AgentPick v0.91
 
 **Date:** 2026-03-15
-**QA Round:** 14 — Score: 62/67 (5 failures: 1 P0, 3 P1)
-**Branch base:** bugfix/cycle-90
+**QA Round:** 14 — Score: 62/67 (5 regressions fixed in cycle 90; cycle 91 verifies all fixes hold)
+**Branch base:** bugfix/cycle-91
 **Cycle type:** BUG FIX ONLY — zero new features
 
 ---
@@ -179,6 +179,37 @@ These 5 failures are all regressions from Round 13. To prevent recurrence:
 - [x] `GET /api/v1/router/health` with no auth → HTTP 200 `{"status": "healthy"}` — fixed cycle 17/80 (public endpoint, optional auth)
 - [x] Full QA suite: ≥ 63/67 with no P0/P1 failures — all 5 regressions resolved
 - [x] No growth features merged until QA passes — verified cycle 90
+
+---
+
+## Cycle 91 Fixes
+
+### Fix #5 — P1 · QA Round 15: calls not persisted to DB (trace_id generated but write never commits)
+
+**Root cause:**
+`src/lib/router/sdk.ts` `recordRouterCall` uses `db.routerCall.create({data:{...}})` without a
+`select` clause. Without `select`, Prisma auto-SELECTs ALL columns after INSERT including
+`totalMs` and `responsePreview`, which do not exist in production DB (migration
+`20260315_add_total_ms_response_preview` pending). This causes a silent P2010 error
+that is swallowed by the `.catch()` handler — calls appear to succeed but nothing is
+recorded in DB. Affects call history, usage analytics, and dashboard tool_used display.
+
+**Fix — `src/lib/router/sdk.ts` `recordRouterCall`:**
+Added explicit `select: { id: true, traceId: true }` to the `db.routerCall.create` call.
+This prevents Prisma from auto-querying the missing columns after INSERT.
+
+### Fix #6 — Documentation: NEXT_VERSION.md header had wrong version (v0.80 → v0.91)
+
+The branch `bugfix/cycle-91` had an outdated NEXT_VERSION.md header (v0.80, branch base
+bugfix/cycle-80 instead of v0.91, bugfix/cycle-91).
+
+---
+
+## Cycle 91 Acceptance Criteria
+
+- [x] All 5 QA Round 14 regressions confirmed still fixed (verified cycle 91, no code regressions)
+- [x] `recordRouterCall` P2010 fix: `db.routerCall.create` uses explicit `select` to avoid querying missing columns
+- [x] TypeScript passes clean (`npx tsc --noEmit` → no errors)
 
 ---
 

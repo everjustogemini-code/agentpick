@@ -296,6 +296,14 @@ export async function recordRouterCall(
       // has NOT been applied to production DB — inserting these columns throws P2010 and
       // silently breaks all call recording via the .catch() handler. Remove once migration applied.
     },
+    // CRITICAL: explicit select prevents Prisma from auto-selecting ALL columns after INSERT.
+    // Without select, Prisma queries totalMs+responsePreview which don't exist in production DB
+    // (migration 20260315_add_total_ms_response_preview pending), causing a silent P2010 error
+    // that breaks all call recording. Select only columns that exist in production.
+    select: {
+      id: true,
+      traceId: true,
+    },
   });
 
   const currentAccount = await db.developerAccount.findUnique({
