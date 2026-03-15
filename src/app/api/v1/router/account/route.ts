@@ -131,6 +131,9 @@ export async function PATCH(request: NextRequest) {
       update.maxFallbacks = Math.min(Math.max(Math.trunc(body.max_fallbacks), 0), 5);
     }
     if (typeof body.latency_budget_ms === 'number' || body.latency_budget_ms === null) {
+      if (body.latency_budget_ms !== null && body.latency_budget_ms < 1) {
+        return apiError('VALIDATION_ERROR', 'latency_budget_ms must be a positive integer (milliseconds) or null to clear the limit.', 400);
+      }
       // Truncate to integer — Prisma Int? column rejects floats with a 500 instead of a 400
       update.latencyBudgetMs = body.latency_budget_ms !== null ? Math.trunc(body.latency_budget_ms) : null;
     }

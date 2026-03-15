@@ -99,6 +99,8 @@ export async function GET(request: NextRequest) {
         statusCode: true,
         traceId: true,
         aiClassification: true,
+        totalMs: true,
+        responsePreview: true,
         createdAt: true,
       },
     });
@@ -106,11 +108,11 @@ export async function GET(request: NextRequest) {
     // Normalize to include all 9 drawer fields
     const normalizedCalls = calls.map(call => ({
       ...call,
-      // Drawer fields: classification_ms and total_ms not stored in DB — emit null
+      // classification_ms is not stored in DB (computed at classification time only) — emit null
       classification_ms: null as number | null,
-      total_ms: null as number | null,
-      // response_preview not stored in DB — emit null
-      response_preview: null as string | null,
+      // total_ms and response_preview are stored in the DB — return real values
+      total_ms: call.totalMs ?? null,
+      response_preview: call.responsePreview ?? null,
       // Expose ai_routing_summary as a top-level field from aiClassification JSON
       ai_routing_summary: call.aiClassification &&
         typeof call.aiClassification === 'object' &&

@@ -34,10 +34,14 @@ export async function GET(request: NextRequest) {
       where: {
         developerId: account.id,
         // Exclude legacy/failure records where toolUsed was not properly recorded
-        NOT: [
-          { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-          { toolUsed: { endsWith: '-unavailable' } },
-        ],
+        // NOTE: Use NOT: { OR: [...] } form — NOT array form is fragile across Prisma versions.
+        // Do NOT rewrite to NOT: [{...}] or AND:[{NOT:...}].
+        NOT: {
+          OR: [
+            { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+            { toolUsed: { endsWith: '-unavailable' } },
+          ],
+        },
       },
       orderBy: { createdAt: 'desc' },
       select: {
