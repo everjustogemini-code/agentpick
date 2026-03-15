@@ -234,10 +234,20 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       MOST_ACCURATE: 'best_performance',
       FASTEST: 'most_stable',
       BALANCED: 'balanced',
+      // MANUAL: use balanced routing on the /route/* surface (no applyStrategy here).
+      // Without this entry, MANUAL accounts get 'balanced' routing but 'MANUAL' recorded —
+      // a strategy recording mismatch in analytics.
+      MANUAL: 'balanced',
     };
     const coreStrat = ACCOUNT_STRAT_TO_CORE[accountStrat];
     if (coreStrat) {
       body = { ...body, strategy: coreStrat };
+    }
+    // For MANUAL strategy, apply account priority tools when not already provided at request level.
+    // This mirrors applyStrategy() in sdk-handler.ts so MANUAL accounts get their configured
+    // tool ordering on the /route/* surface, not just generic balanced routing.
+    if (accountStrat === 'MANUAL' && preAccount.priorityTools?.length && !body.tool && !body.priority_tools?.length) {
+      body = { ...body, priority_tools: preAccount.priorityTools as string[] };
     }
   }
   try {
