@@ -133,7 +133,16 @@ console.log(data.meta.tool_used, data.meta.latency_ms + 'ms')`
           {endpointOptions.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setEndpoint(opt.value)}
+              onClick={() => {
+                setEndpoint(opt.value)
+                setQuery('')
+                setResult(null)
+                setLatency(null)
+                setToolUsed(null)
+                setError429(false)
+                setCopied(false)
+                setActiveTab('response')
+              }}
               className={`${pillBase} ${endpoint === opt.value ? pillActive : pillInactive}`}
             >
               {opt.label}
