@@ -1,14 +1,14 @@
-# NEXT_VERSION — AgentPick v0.69
+# NEXT_VERSION — AgentPick v0.79
 
 **Date:** 2026-03-15
 **QA Round:** 13 — Score: 58/58 (clean, zero P0/P1/P2 bugs)
-**Branch base:** bugfix/cycle-68
+**Branch base:** bugfix/cycle-79
 
 ---
 
 ## Status: No Bugs — Build on Solid Foundation
 
-QA Round 13 passed all 58 tests. Cycle-33 fixes are merged. API Bearer auth,
+QA Round 13 passed all 58 tests. Cycles 71–78 fixes are merged. API Bearer auth,
 paid user flow, and visual regression all verified. No bug-first work required.
 
 ---

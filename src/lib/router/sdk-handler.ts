@@ -366,7 +366,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       headers: {
         'Content-Type': 'application/json',
         'X-AgentPick-Plan': account.plan,
-        'X-AgentPick-Remaining': String(Math.max(0, usage.remaining - 1)),
+        'X-AgentPick-Remaining': String(callsRemaining),
         'Cache-Control': 'no-store',
         'Vary': 'Authorization',
       },
