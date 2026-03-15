@@ -184,7 +184,7 @@ export default function LiveRoutingExample() {
       <div className="mb-3">
         <div className="mb-1 text-[12px] font-medium text-text-tertiary">Alternatives considered:</div>
         <div className="flex flex-wrap gap-3 font-mono text-[12px] text-text-secondary">
-          {ALTERNATIVES.map((alt) => (
+          {ALTERNATIVES.filter((alt) => alt.name.toLowerCase() !== toolDisplayName(display.toolUsed).toLowerCase()).map((alt) => (
             <span key={alt.name}>
               {alt.name} {alt.quality} {alt.latency} {alt.cost}
             </span>
