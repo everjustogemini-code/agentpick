@@ -33,16 +33,62 @@ const ALTERNATIVES = [
   { name: 'Serper', quality: '3.0/5', latency: '89ms', cost: '$0.0005' },
 ];
 
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  'exa-search': 'Exa',
+  'tavily': 'Tavily',
+  'serper': 'Serper',
+  'serpapi': 'SerpAPI',
+  'brave-search': 'Brave',
+  'perplexity-search': 'Perplexity',
+  'you-search': 'You.com',
+  'bing-web-search': 'Bing',
+  'firecrawl': 'Firecrawl',
+  'jina-ai': 'Jina',
+  'jina-reader': 'Jina',
+  'apify': 'Apify',
+  'scrapingbee': 'ScrapingBee',
+  'browserbase': 'Browserbase',
+  'polygon-io': 'Polygon',
+  'alpha-vantage': 'Alpha Vantage',
+  'financial-modeling-prep': 'FMP',
+  'openai-embed': 'OpenAI Embed',
+  'cohere-embed': 'Cohere',
+  'voyage-embed': 'Voyage',
+  'jina-embed': 'Jina Embed',
+  'edenai-embed': 'EdenAI',
+  'e2b': 'E2B',
+  'resend': 'Resend',
+};
+
+const TOOL_QUALITY_SCORES: Record<string, number> = {
+  'exa-search': 4.6,
+  'tavily': 4.0,
+  'serpapi': 3.0,
+  'brave-search': 3.2,
+  'serper': 3.1,
+  'perplexity-search': 4.2,
+  'you-search': 3.0,
+  'jina-ai': 3.5,
+  'jina-reader': 3.5,
+  'bing-web-search': 3.0,
+  'firecrawl': 4.0,
+  'apify': 3.5,
+  'scrapingbee': 3.0,
+  'browserbase': 3.8,
+  'polygon-io': 4.5,
+  'alpha-vantage': 3.5,
+  'financial-modeling-prep': 3.8,
+  'openai-embed': 4.5,
+  'cohere-embed': 4.0,
+  'voyage-embed': 4.2,
+  'jina-embed': 3.8,
+  'edenai-embed': 3.5,
+  'e2b': 4.5,
+  'resend': 4.8,
+};
+
 function toolDisplayName(tool: string): string {
-  const map: Record<string, string> = {
-    'exa-search': 'Exa',
-    'tavily': 'Tavily',
-    'serper': 'Serper',
-    'brave-search': 'Brave',
-    'firecrawl': 'Firecrawl',
-    'jina-reader': 'Jina',
-  };
-  return map[tool] || tool;
+  return TOOL_DISPLAY_NAMES[tool] || tool;
 }
 
 function timeAgo(date: string): string {
@@ -119,7 +165,7 @@ export default function LiveRoutingExample() {
             {toolDisplayName(display.toolUsed)}
           </span>
           <span className="font-mono text-[13px] text-text-secondary">
-            quality: <span className="font-semibold text-text-primary">4.6</span>
+            quality: <span className="font-semibold text-text-primary">{(TOOL_QUALITY_SCORES[display.toolUsed] ?? 4.0).toFixed(1)}</span>
           </span>
           <span className="font-mono text-[13px] text-text-secondary">
             latency: <span className="font-semibold text-text-primary">{display.latencyMs}ms</span>
