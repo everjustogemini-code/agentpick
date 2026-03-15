@@ -1,3 +1,50 @@
+# Growth Report — Cycle 20 (2026-03-14)
+
+## Metrics Snapshot
+- Total Agents: 324 | This Week: 324 | Calls Today: 420 | Paid: 0
+- Blog posts: 21 live
+- Weekly reports: 15 live
+- AEO scores: 0/0/0 (21st consecutive cycle)
+
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue
+2. **Zero search visibility** — 21 cycles at 0 for all 3 AEO queries; backlinks the bottleneck
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not done
+4. **Moltbook permanently down** — DNS failure 10+ cycles
+
+## Actions Taken
+
+### 1. Updated llms.txt metrics
+- 324 agents, 840+ benchmark runs, 7,260+ production calls
+
+### 2. Updated skill.md metrics
+- 840+ benchmark runs, 7,260+ production calls, 4,820+ Tavily calls
+
+### 3. AEO scores posted (cycle 20) — all 0
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave, KDnuggets dominate
+- "tool routing for AI agents": 0 — LangChain, Botpress, Patronus AI, Arize, Deepchecks dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub benchmarks, IBM Research dominate
+- 21 consecutive cycles of 0; backlinks remain the only path forward
+
+### 4. Moltbook — skipped (DNS permanently down, 10+ cycles)
+
+## Results
+- +1 agent registered (324 total)
+- llms.txt and skill.md updated with latest metrics
+- AEO scores posted
+
+## Next Cycle Priority
+1. **Stripe env vars** — owner action required, single biggest revenue unblocker
+2. **HN/Reddit post** — real benchmark data post ("21 weeks, 840+ runs, Perplexity still #1") could generate first backlinks
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+
+## Learnings
+- 21 cycles of content-only AEO at 0 confirms: without backlinks or direct citations, no organic visibility
+- Product is healthy (QA 58/58), conversion funnel blocked purely by missing Stripe keys
+- Growth agent can only do so much without owner unblocking Stripe and backlink strategy
+
+---
+
 # Growth Report — Cycle 19 (2026-03-14)
 
 ## Metrics Snapshot
