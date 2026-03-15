@@ -211,7 +211,7 @@ console.log(data.meta.tool_used, data.meta.latency_ms + 'ms')`
         {/* Tab row */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {(['response', 'curl', 'python', 'node'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+            <button key={tab} onClick={() => { setActiveTab(tab); setCopied(false); }}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 activeTab === tab
                   ? 'bg-cyan-500 text-white'
@@ -240,7 +240,7 @@ console.log(data.meta.tool_used, data.meta.latency_ms + 'ms')`
           ) : (
             <div className="relative">
               <div className="flex gap-2 mb-2">
-                {latency && (
+                {latency !== null && (
                   <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono">
                     {latency}ms
                   </span>

@@ -3,7 +3,7 @@ import { authenticateAgent } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import { apiError } from '@/types';
-import { CAPABILITY_TOOLS, TOOL_CHARACTERISTICS } from '@/lib/router/index';
+import { CAPABILITY_TOOLS, TOOL_CHARACTERISTICS, getRankedToolsForCapability } from '@/lib/router/index';
 import { escapeHtml } from '@/lib/sanitize';
 
 const db = prisma as any;
@@ -144,6 +144,15 @@ export async function GET(request: NextRequest) {
       MOST_ACCURATE: [...products].sort((left, right) => (right.avgBenchmarkRelevance ?? 0) - (left.avgBenchmarkRelevance ?? 0)),
     };
 
+    // Map compare-strategies keys to canonical router strategy names so top_pick reflects
+    // what the router would actually select (accounting for unconfigured platform keys).
+    const STRATEGY_TO_ROUTER: Record<string, 'balanced' | 'most_stable' | 'cheapest' | 'best_performance'> = {
+      BALANCED: 'balanced',
+      FASTEST: 'most_stable',
+      CHEAPEST: 'cheapest',
+      MOST_ACCURATE: 'best_performance',
+    };
+
     const result: Record<
       string,
       {
@@ -153,8 +162,14 @@ export async function GET(request: NextRequest) {
     > = {};
 
     for (const [strategy, sorted] of Object.entries(strategies)) {
+      const routerStrategy = STRATEGY_TO_ROUTER[strategy];
+      // Use getRankedToolsForCapability so top_pick reflects actual routing (key availability,
+      // deprioritizeUnconfiguredTools) rather than the raw cost/score sort above.
+      const actualTop = routerStrategy
+        ? getRankedToolsForCapability(capability, routerStrategy)[0]
+        : undefined;
       result[strategy] = {
-        top_pick: sorted[0]?.slug ?? 'none',
+        top_pick: actualTop ?? sorted[0]?.slug ?? 'none',
         top_3: sorted.slice(0, 3).map((product) => ({
           slug: product.slug,
           name: product.name,
