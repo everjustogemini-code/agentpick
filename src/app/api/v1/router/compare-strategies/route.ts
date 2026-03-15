@@ -139,7 +139,11 @@ export async function GET(request: NextRequest) {
         const rq = right.weightedScore ?? 0;
         if (lq < QUALITY_FLOOR && rq >= QUALITY_FLOOR) return 1;
         if (rq < QUALITY_FLOOR && lq >= QUALITY_FLOOR) return -1;
-        return (left.avgCostUsd ?? 9999) - (right.avgCostUsd ?? 9999);
+        const lc = left.avgCostUsd ?? 9999;
+        const rc = right.avgCostUsd ?? 9999;
+        if (lc !== rc) return lc - rc;
+        // Equal cost: prefer higher quality (mirrors router cheapest tiebreaker)
+        return rq - lq;
       }),
       MOST_ACCURATE: [...products].sort((left, right) => (right.avgBenchmarkRelevance ?? 0) - (left.avgBenchmarkRelevance ?? 0)),
     };
