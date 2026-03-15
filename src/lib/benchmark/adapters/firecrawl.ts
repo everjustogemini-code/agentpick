@@ -5,26 +5,28 @@ export async function callFirecrawl(query: string, config?: Record<string, unkno
   if (!apiKey) throw new Error('FIRECRAWL_API_KEY not set');
 
   const start = performance.now();
-  const response = await fetch('https://api.firecrawl.dev/v1/search', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      query,
-      limit: (config?.limit as number) || 5,
-      scrapeOptions: { formats: ['markdown'] },
-    }),
-    signal: AbortSignal.timeout(8000), // Firecrawl can be slow
-  });
+  // Use /v1/scrape for URL inputs (crawl capability) and /v1/search for text queries.
+  const isUrl = query.startsWith('http://') || query.startsWith('https://');
+  const fetchResponse = isUrl
+    ? await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ url: query, formats: ['markdown'] }),
+        signal: AbortSignal.timeout(8000),
+      })
+    : await fetch('https://api.firecrawl.dev/v1/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ query, limit: (config?.limit as number) || 5, scrapeOptions: { formats: ['markdown'] } }),
+        signal: AbortSignal.timeout(8000),
+      });
   const latencyMs = Math.round(performance.now() - start);
 
-  const data = await response.json();
+  const data = await fetchResponse.json();
   return {
-    statusCode: response.status,
+    statusCode: fetchResponse.status,
     latencyMs,
-    resultCount: data.data?.length || 0,
+    resultCount: isUrl ? (data.data ? 1 : 0) : (data.data?.length || 0),
     response: data,
     costUsd: 0.003, // ~$0.003 per search+scrape
   };

@@ -1,9 +1,9 @@
-# Growth State — Cycle 10 (2026-03-15)
+# Growth State — Cycle 11 (2026-03-15)
 
 ## Working
 - Homepage: HTTP 200
-- /pricing, /blog, /connect: all HTTP 200
-- Agent registration: functional (returns ah_live_sk_ key)
+- /pricing, /blog, /checkout?plan=pro: all HTTP 200
+- Agent registration: functional (returns ah_live_sk_ key, status: active)
 - Recommend endpoint: live, real rankings
 - AEO score API: all 3 scores posted ({"ok":true} confirmed)
 - skill.md: live at agentpick.dev/skill.md, serving correct content
@@ -11,40 +11,40 @@
 
 ## Broken
 - Stripe: not configured — $0 revenue (owner action required)
-- Moltbook: DNS failure — confirmed permanently dead, removed from cycles
-- AEO: 0/0/0 for all queries, 10 consecutive cycles
+- Moltbook: DNS failure (exit code 6) — confirmed permanently dead
+- AEO: 0/0/0 for all queries, 11 consecutive cycles
 - Router health endpoint: returns UNAUTHORIZED (requires API key — expected behavior)
 
 ## Metrics
-- Total agents: 337 (up from 336)
-- Router calls today: 229
+- Total agents: 338 (up from 337)
+- Router calls today: 227
 - Paid accounts: 0
-- AEO scores cycle 10: 0/0/0
+- AEO scores cycle 11: 0/0/0
 
-## Rankings (cycle 10 — unchanged)
-- Search #1: Tavily (6.4) — highest quality, most production-tested (4,600+ verified calls)
+## Rankings (cycle 11 — unchanged)
+- Search #1: Tavily (6.4) — highest quality, most production-tested (4,700+ verified calls)
 - Search #2: Exa Search (5.9) — 61% faster than Tavily
 - Search #3: Haystack (5.87) — structured retrieval
 - Search #4: SerpAPI Google (5.28)
 - Crawl #1: Jina AI (5.2)
 
-## Notable cycle 10 findings
-- Query 1 "best search API for AI agents": Tavily, KDnuggets, Firecrawl, Brave, Medium unicodeveloper (tested 5 APIs), Exa, Linkup, Buttondown newsletter, Parallel dominate. A new editorial entry: Buttondown newsletter "we scored 5 search APIs" — this format (testing + scoring) is exactly what agentpick.dev does but with live data.
-- Query 2 "tool routing for AI agents": Same competitors as cycle 9. lamini-ai GitHub now appears. Content remains orchestration-focused not API comparison.
-- Query 3 "AI agent API benchmark": EvidentlyAI, philschmid GitHub compendium, Sierra Tau-Bench, AgentBench (THUDM), IBM Research, o-mega.ai, Cleanlab, Galileo, Emergence AI dominate.
+## Notable cycle 11 findings
+- Query 1 "best search API for AI agents": Firecrawl blog, Medium/unicodeveloper, Tavily, Composio, KDnuggets, data4ai, Parallel, AImultiple, Exa, Linkup dominate. Same pattern as cycle 10.
+- Query 2 "tool routing for AI agents": LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai GitHub, Medium, LangChain dominate. No change.
+- Query 3 "AI agent API benchmark": EvidentlyAI, apiyi.com (OpenClaw+PinchBench), randalolson.com, aitools4you, o-mega.ai, modelslab, AImultiple, IEEE Spectrum, Nature/npj, IBM Research dominate.
+- NEW: aitools4you.ai now ranks for "AI agent API benchmark" with "APEX-Agents benchmark 75% failure rate" story.
+- NEW: Linkup claims #1 on SimpleQA factuality benchmark; modelslab covers AI coding agent benchmark risks.
 
 ## Revenue Blockers (ordered by impact)
 1. Stripe env vars missing — zero revenue ceiling (owner action required: set STRIPE_SECRET_KEY + STRIPE_PRICE_ID in Vercel dashboard)
-2. Zero search visibility — 10 cycles, 0 AEO score; no backlinks = no discovery
+2. Zero search visibility — 11 cycles, 0 AEO score; no backlinks = no discovery
 3. No directory listings — not submitted to toolify.ai, futurepedia.io, theresanaiforthat.com
 4. No distribution channel — Moltbook dead permanently; HN/Reddit/dev.to posts needed
 
-## Actions Taken (Cycle 10)
+## Actions Taken (Cycle 11)
 - AEO scores: all 3 = 0 posted to growth-metrics (confirmed ok)
-- skill.md updated: 980+ benchmark runs, 9,100+ production calls, 337 agents, 4,600+ Tavily calls
+- skill.md updated: 1,000+ benchmark runs, 9,300+ production calls, 338 agents, 4,700+ Tavily calls
 - llms.txt updated: matching metrics
-- GROWTH_STATE.md: updated to cycle 10
-- GROWTH_REPORT.md: updated to cycle 10
-- Query 1 "best search API for AI agents": Tavily, KDnuggets, Firecrawl, Brave, Medium, Exa, Linkup, Buttondown, Parallel dominate
-- Query 2 "tool routing for AI agents": LivePerson, Patronus, Botpress, FME, Deepchecks, Arize, NivaLabs, lamini-ai, LangChain dominate
-- Query 3 "AI agent API benchmark": EvidentlyAI, philschmid compendium, Sierra Tau-Bench, AgentBench, IBM Research, o-mega.ai, Galileo, Emergence dominate
+- GROWTH_STATE.md: updated to cycle 11
+- GROWTH_REPORT.md: updated to cycle 11
+- Moltbook: DNS failure again (exit code 6) — permanently dead
