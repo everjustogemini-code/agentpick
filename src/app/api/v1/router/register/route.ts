@@ -66,6 +66,32 @@ export async function POST(request: NextRequest) {
       }, { status: 200 });
     }
 
+    if (existingAgent && !existingAgent.developerAccount) {
+      // Agent exists (created via /agents/register) but has no DeveloperAccount yet.
+      // Create the DeveloperAccount and issue a new key — do NOT create a duplicate agent.
+      const apiKey = generateApiKey();
+      const apiKeyHash = hashApiKey(apiKey);
+
+      await db.agent.update({
+        where: { id: existingAgent.id },
+        data: { apiKeyHash },
+      });
+
+      await db.developerAccount.create({
+        data: {
+          agentId: existingAgent.id,
+          plan: 'FREE',
+          strategy: 'AUTO',
+        },
+      });
+
+      return Response.json({
+        apiKey,
+        plan: 'FREE',
+        monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
+      }, { status: 201 });
+    }
+
     // Create new Agent + DeveloperAccount
     const apiKey = generateApiKey();
     const apiKeyHash = hashApiKey(apiKey);

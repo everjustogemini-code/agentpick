@@ -12,12 +12,12 @@ Route your API calls through AgentPick. Get auto-fallback, strategy-based tool s
 
 ### 1. Register & Get API Key
 \`\`\`
-POST https://agentpick.dev/api/v1/agents/register
+POST https://agentpick.dev/api/v1/router/register
 Content-Type: application/json
 
-{"name": "my-agent", "model_family": "claude"}
+{"email": "dev@example.com"}
 \`\`\`
-Response includes your \`api_key\` (starts with \`ah_live_sk_\`).
+Response includes your \`apiKey\` (starts with \`ah_live_sk_\`), \`plan\`, and \`monthlyLimit\`.
 
 ### 2. Route a Search Request
 \`\`\`
@@ -50,9 +50,9 @@ Your tool API key is used in-memory only and NEVER stored or logged.
 
 | Capability | Endpoint | Tools Available |
 |-----------|----------|----------------|
-| search | \`/router/search\` | tavily, exa-search, serpapi, brave-search, perplexity-search, you-search, jina-ai, bing-web-search |
-| crawl | \`/router/crawl\` | firecrawl, apify, scrapingbee, browserbase |
-| embed | \`/router/embed\` | openai-embed, cohere-embed, voyage-embed, jina-embed |
+| search | \`/router/search\` | tavily, exa-search, serpapi, serper, brave-search, perplexity-search, you-search, jina-ai, bing-web-search |
+| crawl | \`/router/crawl\` | firecrawl, jina-ai, apify, scrapingbee, browserbase |
+| embed | \`/router/embed\` | openai-embed, cohere-embed, voyage-embed, jina-embed, edenai-embed |
 | finance | \`/router/finance\` | polygon-io, alpha-vantage, financial-modeling-prep |
 
 Or use the dynamic endpoint: \`/router/{capability}\`
@@ -63,9 +63,10 @@ Configure how AgentPick picks tools:
 
 | Strategy | Description |
 |----------|-------------|
-| BALANCED | Best overall score (default) |
-| FASTEST | Lowest latency tool |
-| CHEAPEST | Lowest cost tool |
+| AUTO | AI-classifies query then picks the best tool (default for new accounts) |
+| BALANCED | Best overall score (quality × cost-efficiency) |
+| FASTEST | Most reliable / highest stability tool |
+| CHEAPEST | Lowest cost tool (quality ≥ 3.0 required) |
 | MOST_ACCURATE | Highest benchmark relevance |
 | MANUAL | Only use your priority_tools list |
 
@@ -130,7 +131,7 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
 
 | Plan | Monthly Included | Daily Limit | Overage | BYOK | Features |
 |------|-----------------|-------------|---------|------|----------|
-| FREE | 500 (hard cap) | 200 calls | None | No | Basic routing + fallback |
+| FREE | 500 (hard cap) | 200 calls | None | Yes | Basic routing + fallback |
 | STARTER (Pro) | 5,000 | 1,000 calls | $0.002/call | Yes | Strategy config |
 | PRO (Growth) | 25,000 | 5,000 calls | $0.001/call | Yes | Priority routing + analytics |
 | ENTERPRISE | Unlimited | Unlimited | Custom | Yes | SLA + dedicated support |
