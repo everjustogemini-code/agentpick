@@ -397,7 +397,7 @@ export async function getUsageStats(developerId: string, days = 7) {
   // appearing in byTool analytics for accounts with any legacy or edge-case records.
   const CAPABILITY_NAMES = new Set(['search', 'crawl', 'embed', 'finance', 'code', 'communication', 'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability']);
 
-  const byTool: Record<string, { calls: number; avgLatency: number }> = {};
+  const byTool: Record<string, { calls: number; avgLatency: number; successRate: number }> = {};
   const toolGroups = new Map<string, typeof calls>();
   for (const call of calls) {
     if (!call.toolUsed || call.toolUsed === 'unknown' || call.toolUsed.endsWith('-unavailable') || CAPABILITY_NAMES.has(call.toolUsed)) continue;
@@ -411,6 +411,7 @@ export async function getUsageStats(developerId: string, days = 7) {
       avgLatency: Math.round(
         group.reduce((sum: number, call: { latencyMs: number }) => sum + call.latencyMs, 0) / group.length,
       ),
+      successRate: group.filter((call: { success: boolean }) => call.success).length / group.length,
     };
   }
 
@@ -443,10 +444,13 @@ export async function getUsageStats(developerId: string, days = 7) {
   });
   // Always return a populated summary (with zeros when no AUTO calls have been made)
   // so callers can rely on ai_routing_summary always being an object, never null.
-  const aiRouting: { totalAiRoutedCalls: number; byType: Record<string, number>; byDomain: Record<string, number> } = {
+  // byTool shows which tools were selected for AI-classified queries, enabling developers
+  // to see routing patterns (e.g. tavily for realtime, exa-search for deep research).
+  const aiRouting: { totalAiRoutedCalls: number; byType: Record<string, number>; byDomain: Record<string, number>; byTool: Record<string, number> } = {
     totalAiRoutedCalls: aiCalls.length,
     byType: {} as Record<string, number>,
     byDomain: {} as Record<string, number>,
+    byTool: {} as Record<string, number>,
   };
   for (const call of aiCalls) {
     const classification = call.aiClassification as Record<string, unknown> | null;
@@ -457,6 +461,10 @@ export async function getUsageStats(developerId: string, days = 7) {
     }
     if (queryDomain) {
       aiRouting.byDomain[queryDomain] = (aiRouting.byDomain[queryDomain] ?? 0) + 1;
+    }
+    // Record which tool handled each AI-routed call (exclude capability-name fallbacks)
+    if (call.toolUsed && call.toolUsed !== 'unknown' && !call.toolUsed.endsWith('-unavailable') && !CAPABILITY_NAMES.has(call.toolUsed)) {
+      aiRouting.byTool[call.toolUsed] = (aiRouting.byTool[call.toolUsed] ?? 0) + 1;
     }
   }
 
