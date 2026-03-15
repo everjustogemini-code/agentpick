@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
         strategyUsed: true,
         latencyMs: true,
         costUsd: true,
+        resultCount: true,
         byokUsed: true,
         success: true,
         fallbackUsed: true,
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
         fallbackChain: true,
         statusCode: true,
         traceId: true,
+        aiClassification: true,
         createdAt: true,
       },
     });

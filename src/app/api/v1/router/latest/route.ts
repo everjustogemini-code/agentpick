@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         toolUsed: true,
         latencyMs: true,
         costUsd: true,
+        resultCount: true,
         byokUsed: true,
         capability: true,
         aiClassification: true,
