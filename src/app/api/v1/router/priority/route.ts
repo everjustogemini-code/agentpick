@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const update: Record<string, unknown> = {};
 
   // Accept both field names: tools (actual) and priority_tools (documented)
-  const toolsValue = body.tools ?? body.priority_tools ?? body.search;
+  const toolsValue = body.tools ?? body.priority_tools;
   if (Array.isArray(toolsValue)) {
     update.priorityTools = toolsValue.filter((t: unknown): t is string => typeof t === 'string');
   }

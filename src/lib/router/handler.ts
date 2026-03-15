@@ -149,7 +149,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       if (strategy) {
         const resolved = resolveStrategy(strategy);
         if (!resolved) {
-          return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate, custom, manual`, 400);
+          return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(String(strategy))}". Must be one of: ${VALID_STRATEGIES.join(', ')}, fastest, most_accurate, custom, manual`, 400);
         }
         parsed.strategy = resolved;
       }
