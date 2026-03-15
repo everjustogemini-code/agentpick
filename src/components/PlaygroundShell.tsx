@@ -59,17 +59,38 @@ export default function PlaygroundShell() {
 
   const effectiveKey = apiKey || 'demo_key'
 
+  const ENDPOINT_PARAM: Record<Endpoint, string> = {
+    search: 'query',
+    crawl: 'url',
+    embed: 'text',
+    finance: 'symbol',
+  }
+  const ENDPOINT_PLACEHOLDER: Record<Endpoint, string> = {
+    search: 'your query here',
+    crawl: 'https://example.com',
+    embed: 'your text here',
+    finance: 'AAPL',
+  }
+  const ENDPOINT_LABEL: Record<Endpoint, string> = {
+    search: 'Query',
+    crawl: 'URL',
+    embed: 'Text',
+    finance: 'Symbol',
+  }
+  const paramKey = ENDPOINT_PARAM[endpoint]
+  const paramValue = query || ENDPOINT_PLACEHOLDER[endpoint]
+
   const curlSnippet = `curl -X POST https://agentpick.dev/api/v1/route/${endpoint} \\
   -H "Authorization: Bearer ${effectiveKey}" \\
   -H "Content-Type: application/json" \\
-  -d '{"query": "${query || 'your query here'}", "strategy": "${strategy}"}'`
+  -d '{"${paramKey}": "${paramValue}", "strategy": "${strategy}"}'`
 
   const pythonSnippet = `import requests
 
 res = requests.post(
     "https://agentpick.dev/api/v1/route/${endpoint}",
     headers={"Authorization": "Bearer ${effectiveKey}"},
-    json={"query": "${query || 'your query here'}", "strategy": "${strategy}"}
+    json={"${paramKey}": "${paramValue}", "strategy": "${strategy}"}
 )
 print(res.json()["tool"], res.json()["latency"])`
 
@@ -79,7 +100,7 @@ print(res.json()["tool"], res.json()["latency"])`
     'Authorization': 'Bearer ${effectiveKey}',
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({ query: "${query || 'your query here'}", strategy: "${strategy}" })
+  body: JSON.stringify({ ${paramKey}: "${paramValue}", strategy: "${strategy}" })
 })
 const data = await res.json()
 console.log(data.tool, data.latency + 'ms')`
@@ -121,7 +142,7 @@ console.log(data.tool, data.latency + 'ms')`
         </div>
 
         {/* Query textarea */}
-        <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Query</label>
+        <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">{ENDPOINT_LABEL[endpoint]}</label>
         <textarea
           rows={3}
           value={query}
