@@ -201,7 +201,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   // MOST_ACCURATE uses fastClassify for deep-research routing — same concern as AUTO applies.
   const effectivePriority = body.priority_tools?.length
     ? body.priority_tools
-    : (strategyUsed !== 'AUTO' && strategyUsed !== 'MOST_ACCURATE' && account.priorityTools?.length ? account.priorityTools : undefined);
+    : (strategyUsed !== 'AUTO' && strategyUsed !== 'MOST_ACCURATE' && strategyUsed !== 'CHEAPEST' && account.priorityTools?.length ? account.priorityTools : undefined);
 
   const routeBody: RouterRequest = {
     tool: body.tool,
