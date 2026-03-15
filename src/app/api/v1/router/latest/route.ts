@@ -24,11 +24,20 @@ export async function GET(request: NextRequest) {
 
   try {
     const account = await ensureDeveloperAccount(agent.id);
+    // Capability names stored as toolUsed fallback in recordRouterCall must be filtered
+    // here to stay consistent with the analytics.ts and sdk.ts getUsageStats filters.
+    const CAPABILITY_NAMES = [
+      'search', 'crawl', 'embed', 'finance', 'code', 'communication',
+      'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
+    ];
     const call = await prisma.routerCall.findFirst({
       where: {
         developerId: account.id,
-        // Exclude legacy records where toolUsed was not properly recorded
-        NOT: [{ toolUsed: 'unknown' }, { toolUsed: '' }, { toolUsed: { endsWith: '-unavailable' } }],
+        // Exclude legacy/failure records where toolUsed was not properly recorded
+        NOT: [
+          { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
+          { toolUsed: { endsWith: '-unavailable' } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       select: {
