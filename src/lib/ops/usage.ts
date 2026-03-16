@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { withRetry } from "@/lib/prisma";
 
 const db = prisma as any;
 
@@ -9,7 +10,14 @@ const db = prisma as any;
  */
 export async function trackVaultUsage(service: string) {
   try {
-    const record = await db.apiKeyVault.findUnique({ where: { service } });
+    // withRetry: findUnique can fail with P1017/fetch-failed when called after a
+    // long external tool API call invalidates the Neon HTTP connection. Without
+    // withRetry the Prisma singleton is NOT cleared on failure, leaving it stale
+    // for subsequent withRetry-wrapped calls in the same serverless instance (e.g.
+    // recordTrace's product.findUnique). The stale singleton then forces an extra
+    // retry cycle in those calls, wasting one of the three retry slots.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const record = await withRetry(() => db.apiKeyVault.findUnique({ where: { service } })) as any;
     if (!record) return;
 
     const now = new Date();
@@ -18,12 +26,13 @@ export async function trackVaultUsage(service: string) {
       now.getUTCFullYear() !== lastUpdate.getUTCFullYear() ||
       now.getUTCMonth() !== lastUpdate.getUTCMonth();
 
-    await db.apiKeyVault.update({
+    // withRetry: same P1017/fetch-failed transient error pattern as findUnique above.
+    await withRetry(() => db.apiKeyVault.update({
       where: { service },
       data: {
         usedThisMonth: monthChanged ? 1 : (record.usedThisMonth ?? 0) + 1,
       },
-    });
+    }));
   } catch {
     // Silently swallow — usage tracking must never break a benchmark run
   }
