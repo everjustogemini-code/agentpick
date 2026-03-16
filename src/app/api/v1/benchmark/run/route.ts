@@ -142,9 +142,14 @@ export async function POST(request: NextRequest) {
   // Create BenchmarkRun records with shared batchId
   await createBenchmarkRunRecords('benchmark-internal', domain, probeResults, batchId);
 
-  // Recalculate scores for each product
+  // Recalculate scores for each product — non-critical cache update; don't let a transient
+  // Neon error (P1017/fetch-failed after ~30s tool calls) abort the endpoint with a 500.
   for (const product of products) {
-    await recalculateProductScore(product.id);
+    try {
+      await recalculateProductScore(product.id);
+    } catch {
+      // non-fatal — stale scores will be corrected on the next successful benchmark
+    }
   }
 
   return NextResponse.json({ batchId, results: responseResults });
