@@ -273,34 +273,77 @@ export async function recordRouterCall(
 
   // NOTE: latencyMs and totalMs are Int fields in the schema — always pass integers.
   // Math.round() guards against float values from performance.now() subtraction edge cases.
-  const call = await withRetry(() => db.routerCall.create({
-    data: {
-      developerId,
-      capability,
-      query,
-      toolRequested: request.tool ?? null,
-      toolUsed: sanitizedToolUsed,
-      fallbackUsed: meta.fallback_used,
-      fallbackFrom: meta.fallback_from ?? null,
-      fallbackChain,
-      statusCode,
-      latencyMs: Math.round(meta.latency_ms),
-      resultCount: meta.result_count ?? null,
-      aiClassification: meta.ai_classification
-        ? ({ ...(meta.ai_classification as object), classification_ms: meta.classification_ms ?? 0 } as Prisma.InputJsonValue)
-        : undefined,
-      costUsd: meta.cost_usd ?? 0,
-      success: isSuccess,
-      strategyUsed,
-      byokUsed,
-      traceId: meta.trace_id,
-      totalMs: meta.total_ms != null ? Math.round(meta.total_ms) : null,
-    },
-    select: {
-      id: true,
-      traceId: true,
-    },
-  }));
+  const fullData = {
+    developerId,
+    capability,
+    query,
+    toolRequested: request.tool ?? null,
+    toolUsed: sanitizedToolUsed,
+    fallbackUsed: meta.fallback_used,
+    fallbackFrom: meta.fallback_from ?? null,
+    fallbackChain,
+    statusCode,
+    latencyMs: Math.round(meta.latency_ms),
+    resultCount: meta.result_count ?? null,
+    aiClassification: meta.ai_classification
+      ? ({ ...(meta.ai_classification as object), classification_ms: meta.classification_ms ?? 0 } as Prisma.InputJsonValue)
+      : undefined,
+    costUsd: meta.cost_usd ?? 0,
+    success: isSuccess,
+    strategyUsed,
+    byokUsed,
+    traceId: meta.trace_id,
+    totalMs: meta.total_ms != null ? Math.round(meta.total_ms) : undefined,
+  };
+
+  let call: { id: string; traceId: string | null };
+  try {
+    call = await withRetry(() => db.routerCall.create({
+      data: fullData,
+      select: { id: true, traceId: true },
+    }));
+  } catch (insertErr) {
+    // Fallback INSERT: strip fields that may be missing in older DB schemas
+    // (totalMs, aiClassification) and use BALANCED as safe strategy fallback.
+    // This handles the case where a migration hasn't been applied in production yet.
+    const errMsg = String((insertErr instanceof Error ? insertErr.message : insertErr) ?? '').toLowerCase();
+    const errCode = (insertErr as Record<string, unknown>)?.code;
+    console.error('[RecordRouterCall] primary INSERT failed — attempting fallback INSERT:', {
+      code: errCode,
+      message: errMsg.slice(0, 300),
+    });
+    // Safe fallback: drop totalMs (may not exist) and aiClassification (JSON may be malformed),
+    // and fallback strategyUsed to BALANCED for values added in later migrations (AUTO, MANUAL)
+    // that may not exist in production DB if those migrations failed to apply.
+    // BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE were in the original enum from the start.
+    const ORIGINAL_STRATEGY_VALUES: RouterStrategyValue[] = ['BALANCED', 'FASTEST', 'CHEAPEST', 'MOST_ACCURATE'];
+    const safeStrategy: RouterStrategyValue = ORIGINAL_STRATEGY_VALUES.includes(strategyUsed)
+      ? strategyUsed
+      : 'BALANCED';
+    const safeData = {
+      developerId: fullData.developerId,
+      capability: fullData.capability,
+      query: fullData.query,
+      toolRequested: fullData.toolRequested,
+      toolUsed: fullData.toolUsed,
+      fallbackUsed: fullData.fallbackUsed,
+      fallbackFrom: fullData.fallbackFrom,
+      fallbackChain: fullData.fallbackChain,
+      statusCode: fullData.statusCode,
+      latencyMs: fullData.latencyMs,
+      resultCount: fullData.resultCount,
+      costUsd: fullData.costUsd,
+      success: fullData.success,
+      strategyUsed: safeStrategy,
+      byokUsed: fullData.byokUsed,
+      traceId: fullData.traceId,
+      // totalMs and aiClassification intentionally omitted — may not exist in production DB
+    };
+    call = await withRetry(() => db.routerCall.create({
+      data: safeData,
+      select: { id: true, traceId: true },
+    }));
+  }
 
   const currentAccount = await db.developerAccount.findUnique({
     where: { id: developerId },
