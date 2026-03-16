@@ -34,6 +34,7 @@ async function handleRegister(body: AgentRegisterRequest, ip: string) {
     {
       agent_id: agent.id,
       api_key: apiKey,
+      apiKey: apiKey,
       reputation_score: agent.reputationScore,
       status: 'active',
     },
