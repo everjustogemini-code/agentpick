@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { generateApiKey, hashApiKey } from '@/lib/auth';
 import { ROUTER_PLAN_MONTHLY_LIMITS, isRouterPlanCode } from '@/lib/router/plans';
 import { checkRateLimit, registerLimiter } from '@/lib/rate-limit';
@@ -39,21 +39,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Check if a developer account already exists for this email (via agent ownerEmail)
-    const existingAgent = await db.agent.findFirst({
+    // withRetry: agent.findFirst can fail with P1017/fetch-failed on cold starts when the
+    // Neon HTTP connection drops before the registration query. Without retry, new users
+    // receive 500 and cannot get an API key even though the DB is healthy.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingAgent: any = await withRetry(() => db.agent.findFirst({
       where: { ownerEmail: email },
       include: { developerAccount: true },
-    });
+    }));
 
     if (existingAgent?.developerAccount) {
       // Already registered — generate a new key and return it
       const apiKey = generateApiKey();
       const apiKeyHash = hashApiKey(apiKey);
 
-      await db.agent.update({
+      await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
         data: { apiKeyHash },
-      });
+      }));
 
       const plan = existingAgent.developerAccount.plan;
       // Use isRouterPlanCode to avoid null ?? fallback coercing ENTERPRISE's null limit to 500
@@ -73,12 +76,12 @@ export async function POST(request: NextRequest) {
       const apiKey = generateApiKey();
       const apiKeyHash = hashApiKey(apiKey);
 
-      await db.agent.update({
+      await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
         data: { apiKeyHash },
-      });
+      }));
 
-      await db.developerAccount.create({
+      await withRetry(() => db.developerAccount.create({
         data: {
           agentId: existingAgent.id,
           plan: 'FREE',
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
           priorityTools: [],
           excludedTools: [],
         },
-      });
+      }));
 
       return Response.json({
         apiKey,
@@ -99,16 +102,17 @@ export async function POST(request: NextRequest) {
     const apiKey = generateApiKey();
     const apiKeyHash = hashApiKey(apiKey);
 
-    const agent = await db.agent.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agent: any = await withRetry(() => db.agent.create({
       data: {
         apiKeyHash,
         name: `${name}-router`,
         ownerEmail: email,
         description: `Router SDK developer: ${name}`,
       },
-    });
+    }));
 
-    await db.developerAccount.create({
+    await withRetry(() => db.developerAccount.create({
       data: {
         agentId: agent.id,
         plan: 'FREE',
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
         priorityTools: [],
         excludedTools: [],
       },
-    });
+    }));
 
     return Response.json({
       apiKey,
