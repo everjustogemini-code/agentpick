@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { ensureDeveloperAccount } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
       'search', 'crawl', 'embed', 'finance', 'code', 'communication',
       'translation', 'ocr', 'storage', 'payments', 'auth', 'scheduling', 'ai', 'observability',
     ];
-    const call = await prisma.routerCall.findFirst({
+    // withRetry: findFirst can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton. Without retry, a transient drop returns { call: null }.
+    const call = await withRetry(() => prisma.routerCall.findFirst({
       where: {
         developerId: account.id,
         // Exclude legacy/failure records where toolUsed was not properly recorded
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
         totalMs: true,
         createdAt: true,
       },
-    });
+    }));
 
     const normalizedCall = call ? {
       ...call,

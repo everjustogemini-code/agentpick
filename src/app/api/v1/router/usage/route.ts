@@ -4,7 +4,7 @@ import { getBillingPeriodStart } from '@/lib/router/billing';
 import { ROUTER_PLAN_MONTHLY_LIMITS, getRouterPlanLabel } from '@/lib/router/plans';
 import { checkUsageLimit, ensureDeveloperAccount, getUsageStats } from '@/lib/router/sdk';
 import { apiError } from '@/types';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,12 +43,15 @@ export async function GET(request: NextRequest) {
     const [stats, limits, callsThisMonth] = await Promise.all([
       getUsageStats(account.id, days),
       checkUsageLimit(account.id, account.plan, account.billingCycleStart),
-      (prisma as any).routerCall.count({
+      // withRetry: count can fail with P1017/fetch-failed after getUsageStats or checkUsageLimit
+      // clear the Neon singleton on a transient error. Without retry, the usage endpoint
+      // returns 500 and callsThisMonth is unavailable for the dashboard and QA checks.
+      withRetry(() => (prisma as any).routerCall.count({
         where: {
           developerId: account.id,
           createdAt: { gte: billingCycleStart },
         },
-      }),
+      })),
     ]);
 
     const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null;
