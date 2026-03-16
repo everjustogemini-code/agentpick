@@ -69,6 +69,7 @@ function isRetryable(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
     msg.includes('ECONNREFUSED') ||
+    msg.includes('ECONNRESET') ||          // Connection reset by peer — TCP/HTTP layer
     msg.includes('ETIMEDOUT') ||           // TCP/WebSocket connection timeout
     msg.includes('connection timeout') ||
     msg.includes('fetch failed') ||        // Node.js undici fetch error
@@ -86,7 +87,14 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
       return await fn();
     } catch (err) {
       lastErr = err;
-      if (!isRetryable(err) || i === attempts - 1) throw err;
+      if (!isRetryable(err)) throw err;
+      // Invalidate the cached Prisma client before retrying — stale WebSocket/HTTP connections
+      // are not automatically re-established; clearing the singleton forces getPrismaClient()
+      // to create a fresh client (and new connection) on the next call.
+      // Also clear on the last attempt before rethrowing, so that callers in the fallback
+      // path (e.g. fallback INSERT in recordRouterCall) start with a fresh connection.
+      globalForPrisma.prisma = undefined;
+      if (i === attempts - 1) throw err;
       const backoff = 200 * Math.pow(2, i); // 200 / 400 / 800 ms
       await new Promise((r) => setTimeout(r, backoff));
     }
