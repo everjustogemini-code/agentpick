@@ -154,10 +154,13 @@ export async function PATCH(request: NextRequest) {
       return apiError('VALIDATION_ERROR', 'No valid fields to update.', 400);
     }
 
-    const updated = await db.developerAccount.update({
+    // withRetry: update can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton on a transient error. Without retry, PATCH /account returns 500.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updated: any = await withRetry(() => db.developerAccount.update({
       where: { id: account.id },
       data: update,
-    });
+    }));
 
     return Response.json({
       message: 'Account updated.',
