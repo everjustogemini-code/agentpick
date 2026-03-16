@@ -296,8 +296,10 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         preUsageIsOverage,
       );
     } catch (recordErr) {
-      // Don't fail the request if recording fails
-      console.error('Failed to record router call:', recordErr);
+      // Don't fail the request if recording fails — log structured details for Vercel diagnostics
+      const errCode = (recordErr as Record<string, unknown>)?.code;
+      const errMeta = (recordErr as Record<string, unknown>)?.meta;
+      console.error('[RouterCall] write failed:', errCode ?? 'no-code', errMeta ?? '', recordErr instanceof Error ? recordErr.message : recordErr);
     }
 
     const responseHeaders: Record<string, string> = {

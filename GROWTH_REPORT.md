@@ -1,3 +1,54 @@
+# Growth Report — Cycle 36 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 371 | This Week: 371 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (36th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Calls not persisted to DB** — P1 QA bug; usage/billing/rate-limiting broken (dev action required)
+3. **Zero search visibility** — 36 cycles at 0 for all 3 AEO queries; competitors dominate
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. AEO scores — all 0 (36th consecutive cycle)
+- "best search API for AI agents": 0 — Firecrawl, Tavily, Exa, Brave, Linkup, KDnuggets, Composio, data4ai.com, AIMultiple dominate. Parallel.ai new entrant.
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, Arize AI, Deepchecks, FME Safe dominate. Terminology mismatch: results cover agent orchestration routing, not API selection routing.
+- "AI agent API benchmark": 0 — EvidentlyAI, APEX benchmark, PinchBench, IBM Research, AIMultiple agentic-search page dominates. Academic/LLM benchmarks dominate.
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt + skill.md updated
+- Agent count: 370 → 371
+- Date updated to 2026-03-16
+
+### 4. GROWTH_STATE.md written
+
+## Results:
+- llms.txt accurate for agent discovery (371 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Calls not persisted** — P1 bug must be fixed before billing can work
+3. **Content gap: "agentic search API comparison"** — AIMultiple article on 8-API agentic benchmark appears in both query 1 and 3 results; needs a backlink to agentpick.dev
+4. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO impact)
+5. **Target new queries** — "agentic search benchmark" and "search API comparison for AI agents" show less competition than the 3 established AEO queries
+
+## Learnings:
+- "tool routing for AI agents" remains a permanent terminology mismatch — the term means agent orchestration, not API-level routing. Should drop or rename this query.
+- "AI agent API benchmark" is dominated by LLM/model benchmarks (APEX, PinchBench, FieldWorkArena) not search API benchmarks. The AIMultiple agentic-search page is the only search-API-specific result. A "search API benchmark" article specifically using the phrase "agentic search benchmark" or "search API benchmark for agents" might find less competition.
+- Parallel.ai is a new entrant in query 1 results — new competition for "best search API for AI agents". Their positioning ("only Search API built from the ground up for AI agents") mirrors our pitch.
+- 36-cycle zero AEO streak confirms the issue is not content quality — we have 22 blog posts. It is backlinks/domain authority. Need inbound links from dev communities (Hacker News, dev.to, Reddit r/MachineLearning) or directory listings.
+
+---
+
 # Growth Report — Cycle 35 (2026-03-15)
 
 ## Metrics Snapshot:
