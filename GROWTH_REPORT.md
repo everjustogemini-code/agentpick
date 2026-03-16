@@ -1,3 +1,53 @@
+# Growth Report — Cycle 41 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 376 | This Week: 376 | Calls Today: 2 | Paid: 0
+- AEO scores: 0/0/0 (41st consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 41 cycles at 0 for all 3 AEO queries; no inbound links; domain authority issue confirmed
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+4. **Call persistence (P1)** — router calls still not written to DB despite bugfix-104; metering/billing broken
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, api key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. AEO scores — all 0 (41st consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, Firecrawl, Exa, KDnuggets dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress dominate; query may not match product value prop
+- "AI agent API benchmark": 0 — EvidentlyAI, AgentBench, Sierra tau-bench dominate; framing gap (academic evals vs API comparison)
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt + skill.md updated
+- Agent count: 375 → 376
+- Date updated to 2026-03-16
+- Both files updated ✅
+
+### 4. Moltbook — skipped (confirmed dead for many cycles)
+
+## Results:
+- llms.txt and skill.md accurate for agent discovery (376 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO/AEO impact)
+3. **Inbound links** — Hacker News / dev.to / Reddit post with real benchmark data needed to break 0 AEO streak
+
+## Learnings:
+- 41-cycle AEO zero streak: content is correct and comprehensive, but zero domain authority = Google ignores it. Need backlinks from dev communities.
+- AEO query "tool routing for AI agents" may not be the right keyword — results show agent orchestration routing (LivePerson/Botpress), not tool-selection APIs. Consider testing "search API router for agents" or "API fallback for AI agents".
+- Bugfix-104 merged (success-path recordTrace try-catch) but QA Round 15 P1 call persistence issue still open — needs confirmation fix worked.
+- Moltbook API permanently dead; skip all future cycles.
+
+---
+
 # Growth Report — Cycle 40 (2026-03-15)
 
 ## Metrics Snapshot:
