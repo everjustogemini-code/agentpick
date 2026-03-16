@@ -183,10 +183,17 @@ export async function createBenchmarkRunRecords(
 ) {
   for (const r of results) {
     const productSlug = resolveProductSlug(r.tool);
-    const product = await db.product.findUnique({
-      where: { slug: productSlug },
-      select: { id: true },
-    });
+    // withRetry not available here — wrap in try-catch so a transient P1017/fetch-failed
+    // after a long benchmark run does not abort the loop and lose remaining records.
+    let product: { id: string } | null;
+    try {
+      product = await db.product.findUnique({
+        where: { slug: productSlug },
+        select: { id: true },
+      });
+    } catch {
+      continue; // skip on transient DB error — don't abort remaining records
+    }
     if (!product) continue;
 
     try {
@@ -508,8 +515,14 @@ export async function runBatchBenchmark(): Promise<{
 
   await createBenchmarkRunRecords("benchmark-internal", domain, probeResults, batchId);
 
+  // Score recalculation is a non-critical stats cache update — wrap in try-catch so a
+  // transient Neon error after the long parallel API calls does not abort the batch run.
   for (const product of products) {
-    await recalculateProductScore(product.id);
+    try {
+      await recalculateProductScore(product.id);
+    } catch {
+      // non-fatal — stale scores will be corrected on the next successful benchmark
+    }
   }
 
   return {
