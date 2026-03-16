@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCode } from '@/lib/xray-parser';
 import { RANKING_STATUSES } from '@/lib/product-status';
@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
 
   // Look up each detected tool in our rankings
   const slugs = parsed.tools.map(t => t.slug).filter((s): s is string => s !== null);
-  const products = await prisma.product.findMany({
+  // withRetry: product.findMany can fail with P1017/fetch-failed on cold starts.
+  // Without retry, xray/analyze returns 500 and no report is generated.
+  const products = await withRetry(() => prisma.product.findMany({
     where: { slug: { in: slugs }, status: { in: RANKING_STATUSES } },
     select: {
       slug: true,
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
       successRate: true,
       avgLatencyMs: true,
     },
-  });
+  }));
 
   const productMap = new Map(products.map(p => [p.slug, p]));
 
@@ -90,13 +92,13 @@ export async function POST(request: NextRequest) {
     let rank: number | null = null;
 
     if (product) {
-      const higherRanked = await prisma.product.count({
+      const higherRanked = await withRetry(() => prisma.product.count({
         where: {
           status: { in: RANKING_STATUSES },
           category: product.category,
           weightedScore: { gt: product.weightedScore },
         },
-      });
+      }));
       rank = higherRanked + 1;
     }
 
@@ -131,15 +133,15 @@ export async function POST(request: NextRequest) {
     if (!tool.slug || !tool.category) continue;
 
     // Find the #1 in the same category
-    const topInCategory = await prisma.product.findFirst({
+    const topInCategory = await withRetry(() => prisma.product.findFirst({
       where: {
         status: { in: RANKING_STATUSES },
         category: tool.category as 'search_research',
-        slug: { not: tool.slug },
+        slug: { not: tool.slug! },
       },
       orderBy: { weightedScore: 'desc' },
       select: { name: true, slug: true, weightedScore: true, avgLatencyMs: true },
-    });
+    }));
 
     if (tool.rank && tool.rank > 3 && topInCategory) {
       const scoreDiff = topInCategory.weightedScore - (tool.score ?? 0);
@@ -202,8 +204,10 @@ export async function POST(request: NextRequest) {
   healthScore = Math.max(0, Math.min(10, healthScore));
   healthScore = Math.round(healthScore * 10) / 10;
 
-  // Save report
-  const report = await prisma.xrayReport.create({
+  // Save report — withRetry covers P1017/fetch-failed after the product lookups
+  // above exhaust/drop the Neon connection. Without retry, the report is never saved
+  // and the user sees a 500 even though analysis completed successfully.
+  const report = await withRetry(() => prisma.xrayReport.create({
     data: {
       codeInput: code.slice(0, 5000),
       format,
@@ -214,7 +218,7 @@ export async function POST(request: NextRequest) {
       issues: issues as unknown as Prisma.InputJsonValue,
       recommendations: recommendations as unknown as Prisma.InputJsonValue,
     },
-  });
+  }));
 
   return NextResponse.json({
     report_id: report.id,

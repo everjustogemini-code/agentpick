@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { callToolAPI, BENCHMARKABLE_SLUGS } from '@/lib/benchmark/adapters';
 import { evaluateResult } from '@/lib/benchmark/evaluator';
@@ -71,10 +71,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Look up products for user's tools
-  const userProducts = await prisma.product.findMany({
+  // withRetry: product.findMany can fail with P1017/fetch-failed on cold starts.
+  const userProducts = await withRetry(() => prisma.product.findMany({
     where: { slug: { in: validUserTools } },
     select: { id: true, slug: true, name: true },
-  });
+  }));
 
   if (userProducts.length === 0) {
     return Response.json({ error: 'No matching products found' }, { status: 404 });
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
   const optimalTools = await getOptimalStack(scenario, validUserTools);
 
   // Create arena session
-  const session = await prisma.playgroundSession.create({
+  // withRetry: session.create can fail with P1017/fetch-failed after getOptimalStack DB calls.
+  const session = await withRetry(() => prisma.playgroundSession.create({
     data: {
       domain: scenario,
       config: { type: 'arena', current_tools: validUserTools, optimal_tools: optimalTools.map(t => t.slug) },
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
       tools: [...validUserTools, ...optimalTools.map(t => t.slug)],
       status: 'running',
     },
-  });
+  }));
 
   // SSE stream
   const encoder = new TextEncoder();
@@ -147,8 +149,8 @@ export async function POST(request: NextRequest) {
                 ...runResult,
               });
 
-              // Store run
-              await prisma.playgroundRun.create({
+              // Store run — withRetry covers P1017/fetch-failed after the tool call
+              await withRetry(() => prisma.playgroundRun.create({
                 data: {
                   sessionId: session.id,
                   productId: product.id,
@@ -164,7 +166,7 @@ export async function POST(request: NextRequest) {
                   success: result.statusCode >= 200 && result.statusCode < 300,
                   costUsd: result.costUsd,
                 },
-              });
+              }));
             } catch {
               userResults.push({
                 tool: product.slug,
@@ -202,8 +204,8 @@ export async function POST(request: NextRequest) {
         for (let qi = 0; qi < queries.length; qi++) {
           const query = queries[qi];
           for (const tool of optimalTools) {
-            // First try benchmark cache
-            const cached = await prisma.benchmarkRun.findFirst({
+            // First try benchmark cache — withRetry covers P1017 after prior tool calls
+            const cached = await withRetry(() => prisma.benchmarkRun.findFirst({
               where: {
                 productId: tool.id,
                 domain: scenario,
@@ -217,7 +219,7 @@ export async function POST(request: NextRequest) {
                 success: true,
                 costUsd: true,
               },
-            });
+            }));
 
             if (cached) {
               const cacheResult: RunResult = {
@@ -261,7 +263,7 @@ export async function POST(request: NextRequest) {
                 optimalResults.push(liveResult);
                 send('result', { phase: 'optimal_stack', ...liveResult });
 
-                await prisma.playgroundRun.create({
+                await withRetry(() => prisma.playgroundRun.create({
                   data: {
                     sessionId: session.id,
                     productId: tool.id,
@@ -276,7 +278,7 @@ export async function POST(request: NextRequest) {
                     success: result.statusCode >= 200 && result.statusCode < 300,
                     costUsd: result.costUsd,
                   },
-                });
+                }));
               } catch {
                 optimalResults.push({
                   tool: tool.slug,
@@ -335,8 +337,8 @@ export async function POST(request: NextRequest) {
 
         send('step', { step: 'computing_savings', status: 'complete', delta });
 
-        // Update session
-        await prisma.playgroundSession.update({
+        // Update session — withRetry covers P1017/fetch-failed after long multi-tool run
+        await withRetry(() => prisma.playgroundSession.update({
           where: { id: session.id },
           data: {
             status: 'completed',
@@ -350,7 +352,7 @@ export async function POST(request: NextRequest) {
             } as unknown as Prisma.InputJsonValue,
             completedAt: new Date(),
           },
-        });
+        }));
 
         send('step', { step: 'generating_report', status: 'complete' });
 
@@ -421,12 +423,13 @@ async function getOptimalStack(
   userTools: string[],
 ): Promise<{ id: string; slug: string; name: string }[]> {
   // Get all benchmarkable products EXCEPT user's current tools
-  const candidates = await prisma.product.findMany({
+  // withRetry: product.findMany can fail with P1017/fetch-failed on cold starts.
+  const candidates = await withRetry(() => prisma.product.findMany({
     where: {
       slug: { in: BENCHMARKABLE_SLUGS.filter(s => !userTools.includes(s)) },
     },
     select: { id: true, slug: true, name: true },
-  });
+  }));
 
   if (candidates.length === 0) return [];
 
@@ -434,7 +437,7 @@ async function getOptimalStack(
   const scored: { product: typeof candidates[0]; score: number }[] = [];
 
   for (const candidate of candidates) {
-    const runs = await prisma.benchmarkRun.findMany({
+    const runs = await withRetry(() => prisma.benchmarkRun.findMany({
       where: {
         productId: candidate.id,
         domain,
@@ -443,16 +446,16 @@ async function getOptimalStack(
       select: { relevanceScore: true, latencyMs: true, costUsd: true, success: true },
       take: 50,
       orderBy: { createdAt: 'desc' },
-    });
+    }));
 
     if (runs.length === 0) {
       // No domain-specific data — get any benchmark data
-      const anyRuns = await prisma.benchmarkRun.findMany({
+      const anyRuns = await withRetry(() => prisma.benchmarkRun.findMany({
         where: { productId: candidate.id, relevanceScore: { not: null } },
         select: { relevanceScore: true, latencyMs: true, costUsd: true, success: true },
         take: 20,
         orderBy: { createdAt: 'desc' },
-      });
+      }));
       if (anyRuns.length > 0) {
         scored.push({ product: candidate, score: computeToolScore(anyRuns) * 0.7 }); // discount for non-domain data
       } else {
