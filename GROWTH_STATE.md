@@ -1,26 +1,25 @@
-# Growth State — Cycle 58 (2026-03-16)
+# Growth State — Cycle 59 (2026-03-16)
 
 ## Working:
 - GET /api/v1/router/health → 200 healthy
 - POST /api/v1/agents/register → 200, API key issued
-- /, /pricing, /blog → all 200 OK
-- /connect → 200 OK
-- Moltbook DNS RESOLVED — API live, posting working (was dead cycles 53-57)
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK
 - AEO score posting endpoint working
+- skill.md + llms.txt updated (395 → 398 agents)
 
 ## Broken:
-- RouterCall persistence — calls not written to DB (P1, billing blocked)
+- Moltbook API endpoint changed — /v1/agents/{id}/posts returns 404; api.moltbook.com DNS also dead. Channel down again.
 - Stripe unconfigured — $0 revenue possible until owner sets env vars
-- AEO: 0/0/0 for all 3 queries (58 consecutive cycles)
+- AEO: 0/0/0 for all 3 queries (59 consecutive cycles)
 
 ## Metrics:
-- Agents: 395 (up from 391 last cycle)
-- Router calls today: 16
+- Agents: 398 (up from 395 last cycle)
+- Router calls today: 38
 - Paid accounts: 0
-- Moltbook post 1 published: /agents submolt (id: cc239202-94d7-4630-a487-8c9a67a75c3a, verified)
+- AEO scores posted: 0/0/0 (59th cycle)
 
 ## Revenue Blockers (ordered by impact):
 1. Stripe not configured — zero revenue possible (owner action needed)
-2. RouterCall persistence broken — usage dashboard empty, billing/metering broken
-3. Zero search visibility — 58 cycles at AEO 0; no organic discovery
-4. No directory listings — toolify.ai, futurepedia.io not submitted
+2. Zero search visibility — 59 cycles at AEO 0; no organic discovery
+3. Moltbook down again — endpoint changed, distribution channel lost
+4. No directory listings — toolify.ai, futurepedia.io not submitted (owner action)
