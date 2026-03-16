@@ -476,7 +476,9 @@ export async function testAllApiKeys() {
 }
 
 export async function listQuerySets() {
-  const records = await db.querySet.findMany({ orderBy: [{ domain: "asc" }, { version: "desc" }] });
+  // withRetry: findMany can fail with P1017/fetch-failed after long benchmark runs invalidate
+  // the Neon HTTP connection. Without withRetry the ops index returns 500 and querySets are lost.
+  const records: any[] = await withRetry(() => db.querySet.findMany({ orderBy: [{ domain: "asc" }, { version: "desc" }] }));
   return records.map(serializeQuerySet);
 }
 
@@ -579,26 +581,32 @@ export async function listRuns(filters?: { agentId?: string; status?: string; ho
     where.startedAt = { gte: new Date(Date.now() - filters.hours * 60 * 60 * 1000) };
   }
 
-  const records = await db.benchmarkAgentRun.findMany({
+  // withRetry: findMany can fail with P1017/fetch-failed after long probe loops or between
+  // cron invocations. Without withRetry the runs list returns 500 and the ops dashboard breaks.
+  const records: any[] = await withRetry(() => db.benchmarkAgentRun.findMany({
     where,
     orderBy: { startedAt: "desc" },
     take: 100,
     include: { config: true },
-  });
+  }));
 
   return records.map(serializeRun);
 }
 
 export async function getRun(id: string) {
-  const record = await db.benchmarkAgentRun.findUnique({
+  // withRetry: findUnique can fail with P1017/fetch-failed after a prior long operation
+  // clears the Neon singleton. Without withRetry the run detail page returns 500.
+  const record = await withRetry(() => db.benchmarkAgentRun.findUnique({
     where: { id },
     include: { config: true },
-  });
+  }));
   return record ? serializeRun(record) : null;
 }
 
 export async function getScheduleSnapshot() {
-  const [settings, configs] = await Promise.all([ensureOpsSettings(), db.benchmarkAgentConfig.findMany()]);
+  // withRetry: findMany can fail with P1017/fetch-failed after ensureOpsSettings clears the
+  // Neon singleton on a transient error. Without withRetry the schedule snapshot returns 500.
+  const [settings, configs] = await Promise.all([ensureOpsSettings(), withRetry(() => db.benchmarkAgentConfig.findMany()) as Promise<any[]>]);
   const buckets = FREQUENCY_OPTIONS.map((option) => ({
     frequency: option.value,
     label: option.label,
@@ -619,19 +627,22 @@ export async function getScheduleSnapshot() {
 }
 
 export async function getStatusSnapshot(): Promise<StatusSnapshot> {
+  // withRetry on all four calls: getStatusSnapshot is called from admin status endpoints after
+  // long benchmark runs may have invalidated the Neon HTTP connection. Without withRetry any
+  // single bare findMany/findMany can fail with P1017/fetch-failed and return 500.
   const [configs, runs, keys, latestFailures] = await Promise.all([
-    db.benchmarkAgentConfig.findMany(),
-    db.benchmarkAgentRun.findMany({
+    withRetry(() => db.benchmarkAgentConfig.findMany()) as Promise<any[]>,
+    withRetry(() => db.benchmarkAgentRun.findMany({
       where: { startedAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
       include: { config: true },
-    }),
-    db.apiKeyVault.findMany({ where: { NOT: { service: { startsWith: "__" } } } }),
-    db.benchmarkAgentRun.findMany({
+    })) as Promise<any[]>,
+    withRetry(() => db.apiKeyVault.findMany({ where: { NOT: { service: { startsWith: "__" } } } })) as Promise<any[]>,
+    withRetry(() => db.benchmarkAgentRun.findMany({
       where: { status: { in: ["failed", "timeout"] } },
       include: { config: true },
       orderBy: { startedAt: "desc" },
       take: 50,
-    }),
+    })) as Promise<any[]>,
   ]);
 
   return {
