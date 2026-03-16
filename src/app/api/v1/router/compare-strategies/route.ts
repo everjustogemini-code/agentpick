@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import { apiError } from '@/types';
 import { CAPABILITY_TOOLS, TOOL_CHARACTERISTICS, getRankedToolsForCapability } from '@/lib/router/index';
@@ -67,7 +67,10 @@ export async function GET(request: NextRequest) {
 
     // Enrich with DB data — slug filter is sufficient; no category filter since
     // search tools are stored as 'ai_models' in the DB but CAPABILITY_TOOLS is authoritative
-    const dbProducts = await db.product.findMany({
+    // withRetry: product.findMany can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton on a transient error. Without retry, compare-strategies returns 500.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbProducts: any[] = await withRetry(() => db.product.findMany({
       where: {
         status: { in: BROWSE_STATUSES },
         slug: { in: allowedSlugs },
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
         successRate: true,
       },
       take: 20,
-    });
+    }));
 
     for (const dbProd of dbProducts) {
       const base = baseMap.get(dbProd.slug);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { callToolAPI, BENCHMARKABLE_SLUGS, resolveProductSlug } from '@/lib/benchmark/adapters';
 import { evaluateResult } from '@/lib/benchmark/evaluator';
 import { BROWSE_STATUSES } from '@/lib/product-status';
@@ -38,10 +38,11 @@ export async function POST(request: NextRequest) {
   // Resolve tool slugs: use provided list (resolving aliases) or fall back to all benchmarkable products
   const toolSlugs = tools && tools.length > 0 ? tools.map((s: string) => resolveProductSlug(s)) : BENCHMARKABLE_SLUGS;
 
-  const products = await prisma.product.findMany({
+  // withRetry: Neon connection may be stale on first use in a warm serverless instance.
+  const products = await withRetry(() => prisma.product.findMany({
     where: { slug: { in: toolSlugs }, status: { in: BROWSE_STATUSES } },
     select: { id: true, slug: true, name: true },
-  });
+  }));
 
   if (products.length === 0) {
     return NextResponse.json({ error: 'No matching benchmarkable products found' }, { status: 404 });
