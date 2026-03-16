@@ -80,7 +80,14 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     return apiError('RATE_LIMITED', 'Too many requests. Slow down.', 429, { retry_after: retryAfter });
   }
 
-  const account = await ensureDeveloperAccount(agent.id);
+  let account: Awaited<ReturnType<typeof ensureDeveloperAccount>>;
+  try {
+    account = await ensureDeveloperAccount(agent.id);
+  } catch (accountErr) {
+    const reqId = request.headers.get('x-request-id') ?? 'unknown';
+    console.error(`[${reqId}] sdk-handler: ensureDeveloperAccount failed:`, accountErr instanceof Error ? accountErr.message : accountErr);
+    return apiError('INTERNAL_ERROR', 'Account lookup failed. Please retry.', 500);
+  }
 
   // P1-6: Hard budget enforcement — check before usage limit so over-budget accounts get
   // BUDGET_EXCEEDED (402) not USAGE_LIMIT (429), matching handler.ts ordering.
@@ -94,7 +101,14 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     });
   }
 
-  const usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue, account.billingCycleStart);
+  let usage: Awaited<ReturnType<typeof checkUsageLimit>>;
+  try {
+    usage = await checkUsageLimit(account.id, account.plan as RouterPlanValue, account.billingCycleStart);
+  } catch (usageErr) {
+    const reqId = request.headers.get('x-request-id') ?? 'unknown';
+    console.error(`[${reqId}] sdk-handler: checkUsageLimit failed:`, usageErr instanceof Error ? usageErr.message : usageErr);
+    return apiError('INTERNAL_ERROR', 'Usage check failed. Please retry.', 500);
+  }
   if (!usage.allowed) {
     const isMonthly = usage.hardCapped;
     const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;

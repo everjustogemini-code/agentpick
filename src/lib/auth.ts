@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'crypto';
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 
 export function hashApiKey(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -32,13 +32,14 @@ export async function authenticateAgent(request: Request) {
 
   if (!agent || agent.isRestricted) return null;
 
-  // Fire-and-forget lastActiveAt update
-  prisma.agent
-    .update({
-      where: { id: agent.id },
-      data: { lastActiveAt: new Date() },
-    })
-    .catch(() => {});
+  // Fire-and-forget lastActiveAt update.
+  // Use withRetry (1 attempt, no retries) so any connection failure clears the Prisma
+  // singleton. Without this, a raw prisma.agent.update failure leaves the singleton in
+  // a broken state, which the next withRetry call must recover from with an extra retry.
+  withRetry(() => prisma.agent.update({
+    where: { id: agent.id },
+    data: { lastActiveAt: new Date() },
+  }), 1).catch(() => {});
 
   return agent;
 }

@@ -372,11 +372,48 @@ export async function recordRouterCall(
     } catch (fallbackErr) {
       const fallbackCode = (fallbackErr as Record<string, unknown>)?.code;
       const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-      console.error('[RecordRouterCall] fallback INSERT also failed:', {
+      console.error('[RecordRouterCall] fallback INSERT also failed — attempting minimal INSERT:', {
         code: fallbackCode ?? 'no-code',
         message: fallbackMsg.slice(0, 300),
       });
-      throw fallbackErr;
+      // Minimal fallback: drop both totalMs AND aiClassification.
+      // Handles the case where aiClassification column is also absent in the production DB
+      // (added in a later migration). Without this path, BOTH the primary and first-fallback
+      // INSERTs fail when the production schema is behind, and the RouterCall is silently lost.
+      const minimalData = {
+        developerId: safeData.developerId,
+        capability: safeData.capability,
+        query: safeData.query,
+        toolRequested: safeData.toolRequested,
+        toolUsed: safeData.toolUsed,
+        fallbackUsed: safeData.fallbackUsed,
+        fallbackFrom: safeData.fallbackFrom,
+        fallbackChain: safeData.fallbackChain,
+        statusCode: safeData.statusCode,
+        latencyMs: safeData.latencyMs,
+        resultCount: safeData.resultCount,
+        costUsd: safeData.costUsd,
+        success: safeData.success,
+        strategyUsed: safeStrategy,
+        byokUsed: safeData.byokUsed,
+        traceId: safeData.traceId,
+        // aiClassification intentionally omitted — may not exist in older production schemas
+        // totalMs intentionally omitted — same reason
+      };
+      try {
+        call = await withRetry(() => db.routerCall.create({
+          data: minimalData,
+          select: { id: true, traceId: true },
+        }));
+      } catch (minimalErr) {
+        const minimalCode = (minimalErr as Record<string, unknown>)?.code;
+        const minimalMsg = minimalErr instanceof Error ? minimalErr.message : String(minimalErr);
+        console.error('[RecordRouterCall] minimal INSERT also failed:', {
+          code: minimalCode ?? 'no-code',
+          message: minimalMsg.slice(0, 300),
+        });
+        throw minimalErr;
+      }
     }
   }
 
