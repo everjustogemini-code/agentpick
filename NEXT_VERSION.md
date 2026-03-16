@@ -1,7 +1,7 @@
-# NEXT_VERSION — Bugfix Cycle 111
+# NEXT_VERSION — Bugfix Cycle 129
 
 **Source:** QA Round 15 (2026-03-15)
-**Branch:** bugfix/cycle-111
+**Branch:** bugfix/cycle-129
 **Rule:** Bug fixes only. Zero new features.
 
 ---
@@ -14,36 +14,67 @@
 `POST /api/v1/route/search` returns HTTP 200 with a valid `meta.trace_id`, but no `RouterCall` record is ever committed. `GET /api/v1/router/calls` returns `{"calls": []}`. Account `totalCalls` stays at 0.
 
 **Root Cause:**
-`withRetry` in `src/lib/prisma.ts` clears the Prisma singleton (`globalForPrisma.prisma = undefined`) **only on retryable errors**. When any DB operation inside `recordTrace` (`telemetryEvent.create` or `product.update`) fails with a **non-retryable** error (e.g. a schema mismatch, constraint violation, or a connection-drop error message not listed in `isRetryable`), `withRetry` throws immediately **without clearing** the singleton. The Prisma singleton is left holding a stale/broken connection.
-
-The outer `try-catch` in `recordTrace` swallows the error (non-fatal), so `routeRequest` continues and returns 200. Then `recordRouterCall` in `handler.ts` calls `routerCall.create` — still through the same stale singleton. If the stale-connection error is also non-retryable, `withRetry` throws immediately without clearing. The `RouterCall` record is never written. The catch at line 300 of `handler.ts` swallows the recording error. The user sees HTTP 200 but no call is stored.
-
-Cycle 109 added `withRetry` around `product.update` in `recordTrace`, which fixed the case where a *retryable* `product.update` failure left the singleton stale. But **non-retryable** failures from both `telemetryEvent.create` and `product.update` still leave the singleton stale — so the same class of bug persists into Round 15.
-
-**Fix:**
-`src/lib/prisma.ts` — in `withRetry`, move `globalForPrisma.prisma = undefined` to execute **before** the `if (!isRetryable(err)) throw err` guard, so the singleton is cleared after **any** error:
-
+New developer accounts are created with `strategy: 'AUTO'` (the Prisma schema default in `ensureDeveloperAccount`). When `recordRouterCall` executes:
+```ts
+db.routerCall.create({ data: { ..., strategyUsed: 'AUTO' } })
 ```
-Before (current):
-  if (!isRetryable(err)) throw err;        // throws WITHOUT clearing singleton
-  globalForPrisma.prisma = undefined;      // only reached on retryable errors
+PostgreSQL rejects the INSERT with an invalid-enum-value error because `'AUTO'` is not yet in the production `RouterStrategy` enum — the migration `20260315_add_router_strategy_manual_auto` that adds it has been created in the repo but **was never deployed to the production database**.
 
-After (fix):
-  globalForPrisma.prisma = undefined;      // always clear on any error
-  if (!isRetryable(err)) throw err;        // then rethrow if non-retryable
+The error is non-retryable (it is not a connection error, so `isRetryable` returns false). `withRetry` clears the singleton and throws immediately. The `catch (insertErr)` block in `recordRouterCall` (`src/lib/router/sdk.ts`) maps AUTO→BALANCED and attempts a fallback INSERT. However, after the enum error the Neon HTTP channel that served the failed INSERT is invalidated; the freshly-created `PrismaNeon` WebSocket adapter fails to open its first connection before the Vercel serverless function's tight I/O timeout fires, and all three INSERT attempts (primary, fallback, minimal) fail. The exception propagates to `handler.ts` where the outer `catch` silently swallows it, logs to Vercel (key: `[RouterCall] write failed`), and returns HTTP 200. The call is lost.
+
+**Note:** The `withRetry` singleton-clear fix (applied in cycle 111 — always clear on any error, not just retryable ones) is already live in `src/lib/prisma.ts`. That fix removed one failure path but the root cause here is the missing DB enum value, not stale singleton.
+
+**Fix — two-part:**
+
+### Part A: Deploy the migration (required, resolves the root cause)
+
+**File:** `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql`
+
+This migration already exists in the repo. It must be applied to the production Neon database:
 ```
+npx prisma migrate deploy
+```
+The SQL is:
+```sql
+ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'MANUAL';
+ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'AUTO';
+```
+Once deployed, `strategyUsed: 'AUTO'` is a valid enum value and the primary INSERT succeeds. All call records will be committed.
 
-This guarantees that after any failed DB operation, the next `withRetry` call in `recordRouterCall` always starts with a fresh Prisma client — regardless of which error category caused the earlier failure.
+### Part B: Add explicit enum-error detection to the fallback INSERT path (defense-in-depth)
+
+**File:** `src/lib/router/sdk.ts` — `recordRouterCall`, `catch (insertErr)` block (~line 335)
+
+In the `catch (insertErr)` block, before building `safeData`, detect the enum violation explicitly and log it as a distinct actionable alert:
+```ts
+if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+  console.error('[RecordRouterCall] DB ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto to fix call persistence');
+}
+```
+This makes Vercel logs immediately point to the migration rather than requiring code archaeology.
+
+**File:** `src/lib/router/handler.ts` — `catch (recordErr)` block (~line 321)
+
+Add the same enum-error detection to the outer catch so even if all fallback INSERTs fail the log message names the fix:
+```ts
+if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+  console.error('[RouterCall] ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto');
+}
+```
 
 **Files changed:**
-- `src/lib/prisma.ts` — `withRetry`: move singleton clear before retryability check
+- `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql` — deploy to prod (file already exists, no code edit needed)
+- `src/lib/router/sdk.ts` — add enum-error detection in `recordRouterCall` fallback catch
+- `src/lib/router/handler.ts` — add enum-error detection in outer catch
 
 ---
 
 ## Verification
 
-After this fix, QA should see:
+After deploying the migration, QA should see:
 - `GET /api/v1/router/calls?limit=10` → non-empty array after routing calls
 - `GET /api/v1/router/account` → `totalCalls > 0` after multiple searches
 - Tests `1.5-calls-recorded` and `7.2-call-fields` pass
 - Score: 54/54
+
+All other Round 15 checks (routing, auth, pages, edge cases) remain passing and are not touched by this fix.
