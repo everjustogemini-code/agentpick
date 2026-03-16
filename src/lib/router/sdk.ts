@@ -4,7 +4,7 @@
  */
 
 import { Prisma } from '@/generated/prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { ROUTER_PLAN_DAILY_LIMITS, ROUTER_PLAN_MONTHLY_LIMITS, ROUTER_PLAN_OVERAGE_PER_CALL, type RouterPlanCode } from './plans';
 import type { RouterRequest, RouterResponse, Strategy } from './index';
 import { getRankedToolsForCapability } from './index';
@@ -271,7 +271,9 @@ export async function recordRouterCall(
     ? meta.tool_used
     : capability;
 
-  const call = await db.routerCall.create({
+  // NOTE: latencyMs and totalMs are Int fields in the schema — always pass integers.
+  // Math.round() guards against float values from performance.now() subtraction edge cases.
+  const call = await withRetry(() => db.routerCall.create({
     data: {
       developerId,
       capability,
@@ -282,7 +284,7 @@ export async function recordRouterCall(
       fallbackFrom: meta.fallback_from ?? null,
       fallbackChain,
       statusCode,
-      latencyMs: meta.latency_ms,
+      latencyMs: Math.round(meta.latency_ms),
       resultCount: meta.result_count ?? null,
       aiClassification: meta.ai_classification
         ? ({ ...(meta.ai_classification as object), classification_ms: meta.classification_ms ?? 0 } as Prisma.InputJsonValue)
@@ -292,13 +294,13 @@ export async function recordRouterCall(
       strategyUsed,
       byokUsed,
       traceId: meta.trace_id,
-      totalMs: meta.total_ms ?? null,
+      totalMs: meta.total_ms != null ? Math.round(meta.total_ms) : null,
     },
     select: {
       id: true,
       traceId: true,
     },
-  });
+  }));
 
   const currentAccount = await db.developerAccount.findUnique({
     where: { id: developerId },
