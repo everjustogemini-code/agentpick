@@ -2,6 +2,7 @@ import { ensureAgentIdentity, listAgentDirectory } from "./agent-adapter";
 import { DEFAULT_DISTRIBUTION, DEFAULT_EVALUATOR_MODEL, DEFAULT_QUERYSET_SIZE, DOMAIN_DEFINITIONS, FREQUENCY_OPTIONS } from "./constants";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { prisma } from "./prisma";
+import { withRetry } from "@/lib/prisma";
 import { probeVaultKey } from "./service-probes";
 import type {
   AgentListItem,
@@ -142,7 +143,13 @@ async function resolveEncryptedModelKey(modelProvider: string) {
 }
 
 export async function ensureOpsSettings(): Promise<OpsSettingsSnapshot> {
-  const record = await db.benchmarkOpsSettings.upsert({
+  // withRetry: benchmarkOpsSettings.upsert is the first DB call in runBenchmarkAgentNow.
+  // On warm cron instances the Neon connection may have expired between benchmark runs
+  // (each run can take 30s+). Without withRetry a P1017/fetch-failed error here throws
+  // out of runBenchmarkAgentNow, aborts the entire cron invocation, and leaves the
+  // singleton stale so subsequent DB calls in the same instance also fail.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const record: any = await withRetry(() => db.benchmarkOpsSettings.upsert({
     where: { id: process.env.AGENTPICK_OPS_SETTINGS_ID ?? "agentpick-ops-settings" },
     update: {},
     create: {
@@ -153,7 +160,7 @@ export async function ensureOpsSettings(): Promise<OpsSettingsSnapshot> {
       alertEmail: true,
       alertOpenclaw: true,
     },
-  });
+  }));
 
   return {
     id: record.id,
