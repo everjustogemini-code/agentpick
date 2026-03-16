@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 
@@ -11,7 +11,7 @@ export async function GET(
   const { slug } = await params;
   const agent = await authenticateAgent(request);
 
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug },
     select: {
       id: true,
@@ -29,7 +29,7 @@ export async function GET(
         },
       },
     },
-  });
+  }));
 
   if (!product) {
     return Response.json({ error: `Product "${slug}" not found` }, { status: 404 });

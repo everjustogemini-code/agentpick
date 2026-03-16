@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, voteLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   // 5. Check for duplicate (by name or URL)
   const slug = slugify(body.name);
-  const existing = await prisma.product.findFirst({
+  const existing = await withRetry(() => prisma.product.findFirst({
     where: {
       OR: [
         { slug },
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       ],
     },
     select: { slug: true, name: true },
-  });
+  }));
 
   if (existing) {
     return apiError(
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 6. Insert as PENDING
-  const product = await prisma.product.create({
+  const product = await withRetry(() => prisma.product.create({
     data: {
       slug,
       name: body.name,
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       status: 'PENDING',
       submittedBy: `agent:${agent.id}${body.discovered_via ? `:${body.discovered_via}` : ''}`,
     },
-  });
+  }));
 
   return Response.json(
     {

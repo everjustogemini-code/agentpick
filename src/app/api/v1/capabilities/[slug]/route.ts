@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { RANKING_STATUSES } from '@/lib/product-status';
 
@@ -11,7 +11,7 @@ export async function GET(
   const { slug } = await params;
 
   try {
-    const capability = await prisma.capability.findUnique({
+    const capability = await withRetry(() => prisma.capability.findUnique({
       where: { slug },
       include: {
         products: {
@@ -34,7 +34,7 @@ export async function GET(
           orderBy: { strength: 'desc' },
         },
       },
-    });
+    }));
 
     if (!capability) {
       return Response.json({ error: `Capability "${slug}" not found` }, { status: 404 });

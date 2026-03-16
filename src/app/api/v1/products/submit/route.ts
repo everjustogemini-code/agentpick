@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, submitLimiterAuth, submitLimiterAnon } from '@/lib/rate-limit';
 import { uniqueSlug } from '@/lib/slugify';
@@ -92,7 +92,7 @@ async function handleSubmit(request: NextRequest, body: SubmitBody) {
   }
 
   // --- Auto-approve rule 1: No duplicates (name or URL) ---
-  const existing = await prisma.product.findFirst({
+  const existing = await withRetry(() => prisma.product.findFirst({
     where: {
       OR: [
         { websiteUrl: body.url },
@@ -100,7 +100,7 @@ async function handleSubmit(request: NextRequest, body: SubmitBody) {
       ],
     },
     select: { slug: true, name: true, status: true },
-  });
+  }));
   if (existing) {
     return apiError(
       'DUPLICATE',
@@ -159,12 +159,12 @@ async function handleSubmit(request: NextRequest, body: SubmitBody) {
     ? `agent:${agent.id}:${body.submitted_by ?? 'agent'}`
     : body.submitted_by ?? 'anonymous';
 
-  const product = await prisma.product.create({
+  const product = await withRetry(() => prisma.product.create({
     data: {
       slug,
       name: body.name,
-      tagline: body.tagline,
-      description: body.tagline, // tagline doubles as short description
+      tagline: body.tagline!,
+      description: body.tagline!, // tagline doubles as short description
       category: body.category as (typeof VALID_CATEGORIES)[number],
       websiteUrl: body.url,
       apiBaseUrl: body.api_endpoint ?? null,
@@ -173,7 +173,7 @@ async function handleSubmit(request: NextRequest, body: SubmitBody) {
       submittedBy,
       submittedByAgentId: agent?.id ?? null,
     },
-  });
+  }));
 
   const productUrl = `https://agentpick.dev/products/${product.slug}`;
   const rankingUrl = CATEGORY_RANKING_SLUGS[body.category]

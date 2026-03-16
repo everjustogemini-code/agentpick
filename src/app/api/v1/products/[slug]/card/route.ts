@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { apiError } from '@/types';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug },
     include: {
       votes: {
@@ -27,7 +27,7 @@ export async function GET(
         },
       },
     },
-  });
+  }));
 
   if (!product || !BROWSE_STATUSES.includes(product.status)) {
     return apiError('NOT_FOUND', 'Product not found.', 404);
@@ -35,19 +35,19 @@ export async function GET(
 
   // Calculate rank (overall + in category)
   const [overallRank, categoryRank] = await Promise.all([
-    prisma.product.count({
+    withRetry(() => prisma.product.count({
       where: {
         status: { in: BROWSE_STATUSES },
         weightedScore: { gt: product.weightedScore },
       },
-    }),
-    prisma.product.count({
+    })),
+    withRetry(() => prisma.product.count({
       where: {
         status: { in: BROWSE_STATUSES },
         category: product.category,
         weightedScore: { gt: product.weightedScore },
       },
-    }),
+    })),
   ]);
 
   const upvotes = product.votes.filter((v) => v.signal === 'UPVOTE').length;

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { RANKING_STATUSES } from '@/lib/product-status';
 
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     const aliasCategory = CAPABILITY_ALIASES[capLower];
     if (!mapping && !isCategorySlug && aliasCategory) {
       // Alias matched — treat as category slug
-      const products = await prisma.product.findMany({
+      const products = await withRetry(() => prisma.product.findMany({
         where: {
           status: { in: RANKING_STATUSES },
           category: aliasCategory as 'search_research',
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
           avgLatencyMs: true,
           avgCostUsd: true,
         },
-      });
+      }));
 
       if (products.length > 0) {
         const top = products[0];
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     if (!mapping && !isCategorySlug && !aliasCategory) {
       // Also try Capability table as last resort
-      const dbCapability = await prisma.capability.findFirst({
+      const dbCapability = await withRetry(() => prisma.capability.findFirst({
         where: {
           OR: [
             { slug: capability.toLowerCase() },
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
           ],
         },
         select: { slug: true, capCategory: true },
-      });
+      }));
 
       if (!dbCapability) {
         const knownCapabilities = Object.keys(CAPABILITY_MAP);
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
 
       // Use the DB capability's category
       const category = dbCapability.capCategory;
-      const products = await prisma.product.findMany({
+      const products = await withRetry(() => prisma.product.findMany({
         where: {
           status: { in: RANKING_STATUSES },
           category: category as 'search_research',
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
           avgLatencyMs: true,
           avgCostUsd: true,
         },
-      });
+      }));
 
       if (products.length === 0) {
         return NextResponse.json({
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     const requiredTags = mapping?.tags;
 
     // Get top products in this category, optionally filtered by tags
-    const products = await prisma.product.findMany({
+    const products = await withRetry(() => prisma.product.findMany({
       where: {
         status: { in: RANKING_STATUSES },
         category: category as 'search_research',
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
         avgLatencyMs: true,
         avgCostUsd: true,
       },
-    });
+    }));
 
     if (products.length === 0) {
       return NextResponse.json({
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
     let domainReason = '';
     if (domain) {
       try {
-        const benchmarkData = await prisma.benchmarkRun.groupBy({
+        const benchmarkData = await withRetry(() => prisma.benchmarkRun.groupBy({
           by: ['productId'],
           where: {
             domain,
@@ -219,14 +219,14 @@ export async function GET(request: NextRequest) {
           },
           _avg: { relevanceScore: true },
           _count: true,
-        });
+        }));
 
         if (benchmarkData.length > 0) {
           const productIdToSlug = new Map(
-            (await prisma.product.findMany({
+            (await withRetry(() => prisma.product.findMany({
               where: { slug: { in: products.map(p => p.slug) } },
               select: { id: true, slug: true },
-            })).map(p => [p.id, p.slug])
+            }))).map(p => [p.id, p.slug])
           );
 
           const domainScores = new Map(
