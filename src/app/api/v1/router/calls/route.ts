@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
 import { escapeHtml } from '@/lib/sanitize';
 
@@ -98,7 +98,10 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let calls: any[];
     try {
-      calls = await prisma.routerCall.findMany({
+      // withRetry: findMany can fail with P1017/fetch-failed after ensureDeveloperAccount
+      // clears the Neon singleton on a transient error. Without retry, the calls endpoint
+      // returns 500 and the QA 1.5-calls-recorded / 7.2-call-fields tests see HTTP 500.
+      calls = await withRetry(() => prisma.routerCall.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -123,7 +126,7 @@ export async function GET(request: NextRequest) {
         totalMs: true,
         createdAt: true,
       },
-      });
+      }));
     } catch (queryErr) {
       const reqId2 = request.headers.get('x-request-id') ?? 'unknown';
       console.error(`[${reqId2}] calls: findMany failed:`, queryErr instanceof Error ? queryErr.message : queryErr);

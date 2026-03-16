@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { ensureDeveloperAccount } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 
@@ -31,10 +31,12 @@ export async function GET(request: NextRequest) {
     const since = new Date();
     since.setHours(since.getHours() - 1);
 
-    const recentCalls = await db.routerCall.findMany({
+    // withRetry: findMany can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton. Without retry, health endpoint returns 500.
+    const recentCalls = await withRetry(() => db.routerCall.findMany({
       where: { developerId: account.id, createdAt: { gte: since } },
       select: { success: true, latencyMs: true, toolUsed: true, fallbackUsed: true },
-    });
+    })) as { success: boolean; latencyMs: number; toolUsed: string; fallbackUsed: boolean }[];
 
     const total = recentCalls.length;
     const successCount = recentCalls.filter((call: { success: boolean }) => call.success).length;
