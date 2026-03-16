@@ -91,7 +91,11 @@ export async function runBenchmarkAgentNow(configId: string) {
   const queries = chooseQueries(config, config.querySet);
   const tools = (config.toolSlugs ?? []).slice(0, config.toolsPerQuery ?? 4);
   const toolApiKeys = await ensureToolApiKeys(config);
-  const run = await db.benchmarkAgentRun.create({
+  // withRetry: create can fail with P1017/fetch-failed after ensureToolApiKeys DB calls
+  // invalidate the Neon connection. Without retry, the run record is never created and
+  // the subsequent update at line ~138 will throw "record not found".
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const run = await withRetry(() => db.benchmarkAgentRun.create({
     data: {
       configId: config.id,
       status: "running",
@@ -100,7 +104,7 @@ export async function runBenchmarkAgentNow(configId: string) {
       testsCompleted: 0,
       results: [],
     },
-  });
+  })) as any;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results: any[] = [];
@@ -258,15 +262,20 @@ async function autoVoteFromBenchmarkResults(
     if (!signal) continue;
 
     // Find product by slug (resolve alias → canonical product slug)
+    // withRetry on all DB calls below: autoVoteFromBenchmarkResults runs after long probe
+    // loops (10s+) which invalidate the Neon HTTP connection. Without withRetry each bare
+    // db.* call fails with P1017/fetch-failed and votes/agent stats are silently lost.
     const productSlug = resolveProductSlug(toolSlug);
-    const product = await db.product.findUnique({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const product = await withRetry(() => db.product.findUnique({
       where: { slug: productSlug },
       select: { id: true },
-    });
+    })) as { id: string } | null;
     if (!product) continue;
 
     // Don't overwrite existing proof-verified votes
-    const existingVote = await db.vote.findUnique({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingVote = await withRetry(() => db.vote.findUnique({
       where: {
         productId_agentId: {
           productId: product.id,
@@ -274,13 +283,14 @@ async function autoVoteFromBenchmarkResults(
         },
       },
       select: { id: true, proofVerified: true },
-    });
+    })) as { id: string; proofVerified: boolean } | null;
     if (existingVote?.proofVerified) continue;
 
     const isUpdate = !!existingVote;
 
     // Calculate weights
-    const agent = await db.agent.findUnique({ where: { id: agentId } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agent = await withRetry(() => db.agent.findUnique({ where: { id: agentId } })) as any;
     if (!agent) continue;
 
     const rawWeight = 0.5;
@@ -290,7 +300,7 @@ async function autoVoteFromBenchmarkResults(
 
     const proofHash = `benchmark:${agentId}:${product.id}:${runId}`;
 
-    await db.vote.upsert({
+    await withRetry(() => db.vote.upsert({
       where: {
         productId_agentId: {
           productId: product.id,
@@ -319,19 +329,20 @@ async function autoVoteFromBenchmarkResults(
         signal,
         comment: `Auto-vote from benchmark (avg relevance: ${avgRelevance.toFixed(2)})`,
       },
-    });
+    }));
 
     // Update agent stats only on new vote
     if (!isUpdate) {
-      const updatedAgent = await db.agent.update({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updatedAgent = await withRetry(() => db.agent.update({
         where: { id: agentId },
         data: { totalVotes: { increment: 1 } },
-      });
+      })) as any;
       const newReputation = calculateReputation(updatedAgent);
-      await db.agent.update({
+      await withRetry(() => db.agent.update({
         where: { id: agentId },
         data: { reputationScore: newReputation },
-      });
+      }));
     }
 
     // Recalculate product score

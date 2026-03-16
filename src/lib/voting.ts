@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 
 // --------------- Telemetry-based scoring ---------------
 
@@ -52,10 +52,13 @@ export function calculateBlendedScore(product: TelemetryFields & { weightedScore
 // --------------- Vote-based scoring ---------------
 
 export async function recalculateProductScore(productId: string): Promise<number> {
-  const votes = await prisma.vote.findMany({
+  // withRetry: findMany and update can fail with P1017/fetch-failed after long-duration
+  // external API calls (benchmark probes, tool calls) invalidate the Neon HTTP connection.
+  // Without retry, recalculateProductScore throws and product scores are silently stale.
+  const votes = await withRetry(() => prisma.vote.findMany({
     where: { productId },
     select: { finalWeight: true, signal: true, agentId: true },
-  });
+  }));
 
   const rawScore = votes.reduce((sum, v) => {
     return sum + (v.signal === 'UPVOTE' ? v.finalWeight : -v.finalWeight);
@@ -66,14 +69,14 @@ export async function recalculateProductScore(productId: string): Promise<number
 
   const uniqueAgentIds = new Set(votes.map((v) => v.agentId));
 
-  await prisma.product.update({
+  await withRetry(() => prisma.product.update({
     where: { id: productId },
     data: {
       weightedScore: Math.round(normalizedScore * 100) / 100,
       totalVotes: votes.length,
       uniqueAgents: uniqueAgentIds.size,
     },
-  });
+  }));
 
   return normalizedScore;
 }
