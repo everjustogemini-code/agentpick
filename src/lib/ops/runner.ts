@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { ensureOpsSettings, generateQuerySet, getBenchmarkAgentById } from "./data";
 import { prisma } from "./prisma";
+import { withRetry } from "@/lib/prisma";
 import { runToolProbe } from "./service-probes";
 import { getFrequencyMs } from "./utils";
 import { DOMAIN_DEFINITIONS } from "./constants";
@@ -101,7 +102,8 @@ export async function runBenchmarkAgentNow(configId: string) {
     },
   });
 
-  const results = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const results: any[] = [];
 
   for (const query of queries) {
     for (const tool of tools) {
@@ -130,7 +132,10 @@ export async function runBenchmarkAgentNow(configId: string) {
   const failed = successRate < 0.5;
   const nextConsecutiveFails = failed ? Math.min((config.consecutiveFails ?? 0) + 1, settings.autoPauseAfter) : 0;
 
-  await db.benchmarkAgentRun.update({
+  // withRetry: these updates are called after runToolProbe loop which can take 10s+,
+  // invalidating the Neon HTTP connection. Without withRetry the run result and config
+  // stats are silently lost even though the tool probes completed successfully.
+  await withRetry(() => db.benchmarkAgentRun.update({
     where: { id: run.id },
     data: {
       status: failed ? "failed" : "completed",
@@ -142,14 +147,14 @@ export async function runBenchmarkAgentNow(configId: string) {
       results,
       error: failed ? "Success rate fell below 50%." : null,
     },
-  });
+  }));
 
   const totalRuns = (config.totalRuns ?? 0) + 1;
   const nextAverage = config.avgSuccessRate
     ? (config.avgSuccessRate * (config.totalRuns ?? 0) + successRate) / totalRuns
     : successRate;
 
-  await db.benchmarkAgentConfig.update({
+  await withRetry(() => db.benchmarkAgentConfig.update({
     where: { id: config.id },
     data: {
       lastRunAt: new Date(),
@@ -160,7 +165,7 @@ export async function runBenchmarkAgentNow(configId: string) {
       consecutiveFails: nextConsecutiveFails,
       isActive: nextConsecutiveFails >= settings.autoPauseAfter ? false : config.isActive,
     },
-  });
+  }));
 
   // --- Create BenchmarkRun records for each tool+query result ---
   await createBenchmarkRunRecords(config.agentId, config.domain, results);
@@ -183,25 +188,27 @@ export async function createBenchmarkRunRecords(
 ) {
   for (const r of results) {
     const productSlug = resolveProductSlug(r.tool);
-    // withRetry not available here — wrap in try-catch so a transient P1017/fetch-failed
-    // after a long benchmark run does not abort the loop and lose remaining records.
+    // withRetry: product.findUnique and benchmarkRun.create can fail with P1017/fetch-failed
+    // after the long tool API calls (up to 30s+ for batch benchmarks) invalidate the Neon
+    // HTTP connection. Without withRetry the singleton is left stale, causing every subsequent
+    // create in the loop to fail on the same dead connection and losing all remaining records.
     let product: { id: string } | null;
     try {
-      product = await db.product.findUnique({
+      product = await withRetry(() => db.product.findUnique({
         where: { slug: productSlug },
         select: { id: true },
-      });
+      }));
     } catch {
-      continue; // skip on transient DB error — don't abort remaining records
+      continue; // skip on persistent DB error — don't abort remaining records
     }
     if (!product) continue;
 
     try {
-      await db.benchmarkRun.create({
+      await withRetry(() => db.benchmarkRun.create({
         data: {
           benchmarkAgentId: agentId,
           queryId: `auto:${Date.now()}:${r.tool}:${r.query.substring(0, 20)}`,
-          productId: product.id,
+          productId: product!.id,
           query: r.query,
           statusCode: typeof r.status === 'number' ? r.status : (r.success ? 200 : 500),
           latencyMs: r.latencyMs ?? 0,
@@ -215,7 +222,7 @@ export async function createBenchmarkRunRecords(
           costUsd: null,
           batchId: batchId ?? null,
         },
-      });
+      }));
     } catch {
       // Skip duplicates or other errors — don't block the run
     }
@@ -446,10 +453,14 @@ export async function runBatchBenchmark(): Promise<{
 
   const toolSlugs = getBenchmarkableSlugsByDomain(domain);
 
-  const products = await db.product.findMany({
+  // withRetry: product.findMany can fail with P1017/fetch-failed after the prior
+  // pickNextBatchDomain DB calls invalidate the Neon HTTP connection. Without retry,
+  // the batch benchmark silently returns 0 results even when valid tools exist.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const products = await withRetry(() => db.product.findMany({
     where: { slug: { in: toolSlugs }, status: { in: BROWSE_STATUSES } },
     select: { id: true, slug: true },
-  });
+  })) as any[];
 
   if (products.length === 0) {
     return { batchId, domain, query, toolsRun: 0, results: [] };
