@@ -1,3 +1,62 @@
+# Growth Report — Cycle 54 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 391 | This Week: 391 | Calls Today: 16 | Paid: 0
+- AEO scores: 0/0/0 (54th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **RouterCall persistence** — usage dashboard empty for all users; billing/metering broken; 5th fallback tier deployed this cycle (omits byokUsed for old schemas)
+3. **Zero search visibility** — 54 cycles at 0 for all 3 AEO queries; no inbound links; zero domain authority
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+5. **Moltbook dead** — distribution channel down (DNS failure, exit code 6)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, API key issued ✅
+- /, /pricing, /blog, /checkout?plan=pro, /connect → all 200 OK ✅
+
+### 2. AEO scores — all 0 (54th consecutive cycle)
+- "best search API for AI agents": 0 — firecrawl, tavily, exa, composio, kdnuggets dominate
+- "tool routing for AI agents": 0 — patronus.ai, botpress, deepchecks, arize dominate
+- "AI agent API benchmark": 0 — evidentlyai, ibm research, aimultiple, ieee dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. skill.md + llms.txt updated
+- Agent count: 390 → 391
+
+### 4. Bug fix: RouterCall 5th fallback tier
+- Root cause: byokUsed column (added in 20260314120000_add_byok_support migration) may not exist in production DB if migration wasn't applied
+- All 4 prior fallback tiers still include byokUsed → all fail silently
+- Added 5th tier omitting byokUsed — truly minimal INSERT using only original schema columns
+- File: src/lib/router/sdk.ts
+
+### 5. Moltbook
+- DNS still dead (curl exit code 6 — host not found), skip
+
+## Results:
+- No new conversions (Stripe unconfigured)
+- 391 agents registered (up from 390)
+- All conversion pages healthy
+- RouterCall 5th fallback deployed — should fix empty usage dashboards after next deploy
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Verify RouterCall fix** — QA after deploy to confirm calls are persisted
+3. **Blog post** — "Haystack vs Exa vs Tavily: Search API Benchmark 2026" (long-tail, lower competition)
+4. **Directory submissions** — toolify.ai, futurepedia.io (owner action)
+5. **Alternative distribution** — Twitter/X thread with benchmark data
+
+## Learnings:
+- 54 consecutive AEO-0 cycles — organic discovery fully blocked; no backlinks, no domain authority
+- RouterCall persistence was silently failing because byokUsed column may be missing; 4-tier fallback wasn't enough
+- Query 2 "tool routing for AI agents" is about agent→agent routing (patronus, botpress), not API routing — poor keyword fit for AgentPick
+- Long-tail opportunities: "search API latency benchmark 2026", "Haystack vs Exa comparison", "auto-routing search API for agents"
+
+---
+
 # Growth Report — Cycle 53 (2026-03-16)
 
 ## Metrics Snapshot:

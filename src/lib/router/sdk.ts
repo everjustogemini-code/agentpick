@@ -429,11 +429,30 @@ export async function recordRouterCall(
         } catch (noTraceErr) {
           const noTraceCode = (noTraceErr as Record<string, unknown>)?.code;
           const noTraceMsg = noTraceErr instanceof Error ? noTraceErr.message : String(noTraceErr);
-          console.error('[RecordRouterCall] no-traceId INSERT also failed — call record lost:', {
+          console.error('[RecordRouterCall] no-traceId INSERT also failed — attempting no-byok INSERT:', {
             code: noTraceCode ?? 'no-code',
             message: noTraceMsg.slice(0, 300),
           });
-          throw noTraceErr;
+          // 5th-tier fallback: drop byokUsed (added in 20260314120000_add_byok_support migration).
+          // If that migration was not applied to the production DB, byokUsed column is absent and
+          // all prior tiers fail. This tier uses only columns present since the initial schema.
+          const { byokUsed: _byok, ...bareData } = noTraceData;
+          void _byok;
+          try {
+            const bareCall = await withRetry(() => db.routerCall.create({
+              data: bareData,
+              select: { id: true },
+            })) as { id: string };
+            call = { id: bareCall.id, traceId: null };
+          } catch (bareErr) {
+            const bareCode = (bareErr as Record<string, unknown>)?.code;
+            const bareMsg = bareErr instanceof Error ? bareErr.message : String(bareErr);
+            console.error('[RecordRouterCall] no-byok INSERT also failed — call record lost:', {
+              code: bareCode ?? 'no-code',
+              message: bareMsg.slice(0, 300),
+            });
+            throw bareErr;
+          }
         }
       }
     }
