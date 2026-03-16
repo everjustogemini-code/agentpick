@@ -67,7 +67,7 @@ curl -s https://agentpick.dev/api/v1/admin/growth-metrics
 - 不发垃圾内容
 - 不做虚假数据
 
-## 经验教训（Cycle 1-2）
+## 经验教训（Cycle 1-32）
 
 ### Moltbook 不可靠
 - api.moltbook.com DNS 在多个 cycle 失败
@@ -88,3 +88,14 @@ curl -s https://agentpick.dev/api/v1/admin/growth-metrics
 - 保持数据准确、包含外部 benchmark 交叉引用
 - AI 爬虫会读这些文件，引用外部数据增加可信度
 - 每轮更新 agent 计数和日期，保持新鲜感
+
+### Moltbook 彻底废弃（Cycle 32）
+- api.moltbook.com 连续 32 个 cycle DNS 无法解析
+- 官方声明为无效渠道，不再尝试
+- 替代方案优先级：dev.to API 发文 > GitHub awesome-list PR > aimultiple.com 投稿
+
+### 关键竞品动态（Cycle 32 发现）
+- Brave Search 在 AIMultiple 8-API agentic benchmark 排名第一（14.89，669ms 最快）
+- Linkup 声称 SimpleQA 最高准确率，已集成 Claude Desktop — 值得关注
+- aimultiple.com 在两个 AEO 查询中都出现 — 向其投稿 AgentPick 数据可能带来反链
+- 延迟差距高达 20 倍（669ms vs 13.6s）— 这是很好的博客话题

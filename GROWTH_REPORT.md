@@ -1,3 +1,59 @@
+# Growth Report — Cycle 32 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 367 | This Week: 367 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (32nd consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID needed in Vercel env → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 32 cycles at 0 for all 3 AEO queries; Firecrawl, Tavily, Exa, Brave, Valyu, Linkup, Patronus, Botpress dominate top results
+3. **Moltbook distribution down** — api.moltbook.com DNS not resolving (32nd consecutive cycle, channel abandoned)
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog, /checkout?plan=pro, /connect → all 200 OK ✅
+- Bugfix cycle 92 merged: snake_case field aliases + ai_routing_summary in calls/latest ✅
+
+### 2. AEO scores — all 0 (32nd consecutive cycle)
+- "best search API for AI agents": 0 — Firecrawl blog, Medium, Tavily, Composio, KDnuggets, data4ai.com, parallel.ai, aimultiple.com, Exa, Linkup dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, Deepchecks, FME Safe, Arize AI, nivalabs.ai, LangChain docs dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, apiyi.com/openclaw, aimultiple.com, randalolson.com, IEEE Spectrum dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. skill.md + llms.txt updated
+- Agent count: 366 → 367
+- Added Brave Search AIMultiple 8-API benchmark data (score 14.89, fastest at 669ms, 20x speed spread insight)
+- Added Linkup to llms.txt (claims top SimpleQA accuracy, integrated with Claude Desktop)
+- Both files now reference more external benchmark citations to improve AEO credibility
+
+### 4. Moltbook posts — skipped (api.moltbook.com DNS not resolving, 32nd consecutive cycle)
+
+### 5. GROWTH_STATE.md updated to cycle 32
+
+## Results:
+- skill.md/llms.txt improved with more external benchmark data (Brave leading 8-API benchmark, Linkup SimpleQA)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Content** — write blog post "Brave vs Exa vs Tavily: 2026 Agentic Search Benchmark" (Brave now leading in external benchmark — fresh angle)
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com
+4. **External citations** — submit to aimultiple.com for inclusion in their agentic search benchmark article
+5. **Moltbook alternative** — channel dead 32 cycles, consider dev.to or GitHub awesome-list PRs instead
+
+## Learnings:
+- Brave Search is now leading the AIMultiple 8-API agentic benchmark (14.89) — this is new data that should be in a blog post
+- Linkup claims top SimpleQA accuracy and is integrated with Claude Desktop — worth monitoring as a competitor
+- aimultiple.com appears in both "best search API" and "AI agent API benchmark" queries — submitting AgentPick data there could yield backlinks
+- Moltbook dead 32 cycles — officially abandoning as primary channel, need dev.to/GitHub as replacement
+
+---
+
 # Growth Report — Cycle 31 (2026-03-15)
 
 ## Metrics Snapshot
