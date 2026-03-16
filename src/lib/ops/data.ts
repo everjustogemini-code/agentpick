@@ -202,21 +202,27 @@ export async function updateOpsSettings(input: Partial<OpsSettingsSnapshot>) {
 }
 
 export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
+  // withRetry: these calls are often the first DB operations in admin requests.
+  // On warm serverless instances the Neon connection may have expired, causing
+  // P1017/fetch-failed. Without withRetry, the dashboard returns 500 and the
+  // singleton stays stale, breaking all subsequent DB calls in the same instance.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [configs, runs, keys] = await Promise.all([
-    db.benchmarkAgentConfig.findMany(),
-    db.benchmarkAgentRun.findMany({
+    withRetry(() => db.benchmarkAgentConfig.findMany()) as Promise<any[]>,
+    withRetry(() => db.benchmarkAgentRun.findMany({
       take: 6,
       orderBy: { startedAt: "desc" },
       include: { config: true },
-    }),
-    db.apiKeyVault.findMany({ orderBy: { service: "asc" } }),
+    })) as Promise<any[]>,
+    withRetry(() => db.apiKeyVault.findMany({ orderBy: { service: "asc" } })) as Promise<any[]>,
   ]);
 
   const today = startOfToday();
-  const testsToday = await db.benchmarkAgentRun.aggregate({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const testsToday = await withRetry(() => db.benchmarkAgentRun.aggregate({
     _sum: { testsCompleted: true },
     where: { startedAt: { gte: today } },
-  });
+  })) as any;
 
   const totalAgents = configs.length;
   const activeAgents = configs.filter((config: any) => config.isActive).length;
@@ -260,7 +266,10 @@ export async function listBenchmarkAgents(filters?: { domain?: string; provider?
   if (filters?.active === "active") where.isActive = true;
   if (filters?.active === "paused") where.isActive = false;
 
-  const configs = await db.benchmarkAgentConfig.findMany({
+  // withRetry: findMany is often the first DB call in the admin agents request.
+  // P1017/fetch-failed on a stale Neon connection causes a 500 without retry.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const configs = await withRetry(() => db.benchmarkAgentConfig.findMany({
     where,
     orderBy: [{ domain: "asc" }, { displayName: "asc" }],
     include: {
@@ -270,13 +279,16 @@ export async function listBenchmarkAgents(filters?: { domain?: string; provider?
         include: { config: true },
       },
     },
-  });
+  })) as any[];
 
   return configs.map(serializeConfig);
 }
 
 export async function getBenchmarkAgentById(id: string) {
-  const record = await db.benchmarkAgentConfig.findUnique({
+  // withRetry: findUnique is called from runBenchmarkAgentNow after long probe loops
+  // (30s+) that invalidate the Neon connection. Without retry, P1017/fetch-failed here
+  // causes the runner to return null instead of the completed agent snapshot.
+  const record = await withRetry(() => db.benchmarkAgentConfig.findUnique({
     where: { id },
     include: {
       runs: {
@@ -286,7 +298,7 @@ export async function getBenchmarkAgentById(id: string) {
       },
       querySet: true,
     },
-  });
+  }));
 
   return record ? serializeConfig(record) : null;
 }

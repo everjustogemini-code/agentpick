@@ -25,15 +25,21 @@ async function ensureToolApiKeys(config: any): Promise<Record<string, string>> {
   if (missing.length === 0) return existing;
 
   // Resolve from vault — map slug to vault service name first
+  // withRetry: findUnique is called after long probe loops (30s+) that invalidate the
+  // Neon HTTP connection. Without withRetry a P1017/fetch-failed error here causes
+  // ensureToolApiKeys to throw, preventing the benchmark agent from using vault keys
+  // and falling back to platform-env keys (or failing if neither is set).
   const resolved: Record<string, string> = { ...existing };
   for (const slug of missing) {
     // Try slug directly, then mapped vault service name
-    let record = await db.apiKeyVault.findUnique({ where: { service: slug } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let record = await withRetry(() => db.apiKeyVault.findUnique({ where: { service: slug } })) as any;
     if (!record?.apiKey) {
       const { vaultServiceForSlug } = await import("./usage");
       const vaultService = vaultServiceForSlug(slug);
       if (vaultService && vaultService !== slug) {
-        record = await db.apiKeyVault.findUnique({ where: { service: vaultService } });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        record = await withRetry(() => db.apiKeyVault.findUnique({ where: { service: vaultService } })) as any;
       }
     }
     if (record?.apiKey) resolved[slug] = record.apiKey;
