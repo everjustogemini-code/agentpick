@@ -71,12 +71,16 @@ function isRetryable(err: unknown): boolean {
     msg.includes('ECONNREFUSED') ||
     msg.includes('ECONNRESET') ||          // Connection reset by peer — TCP/HTTP layer
     msg.includes('ETIMEDOUT') ||           // TCP/WebSocket connection timeout
+    msg.includes('ENOTFOUND') ||           // DNS resolution failure — transient in serverless cold starts
+    msg.includes('ECONNABORTED') ||        // Connection aborted by OS/network layer
     msg.includes('connection timeout') ||
     msg.includes('fetch failed') ||        // Node.js undici fetch error
     msg.includes('socket hang up') ||      // TCP drop
     msg.includes('Server has closed') ||   // P1017 message text fallback
     msg.includes('WebSocket is not open') || // PrismaNeon WebSocket pool — connection closed
-    msg.includes('Connection terminated')  // Neon serverless driver connection drop
+    msg.includes('Connection terminated') || // Neon serverless driver connection drop
+    msg.includes('connection is not open') || // WebSocket not-open variant
+    msg.includes('terminating connection due to administrator command') // Postgres restart
   );
 }
 

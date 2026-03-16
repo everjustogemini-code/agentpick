@@ -69,7 +69,7 @@ export async function ensureDeveloperAccount(agentId: string) {
 
   if (!account) {
     try {
-      account = await db.developerAccount.create({
+      account = await withRetry(() => db.developerAccount.create({
         data: {
           agentId,
           plan: 'FREE',
@@ -77,7 +77,7 @@ export async function ensureDeveloperAccount(agentId: string) {
           priorityTools: [],
           excludedTools: [],
         },
-      });
+      }));
     } catch (createErr) {
       // P2002 = unique constraint violation — concurrent request already created the account
       if ((createErr as { code?: string })?.code === 'P2002') {
@@ -414,7 +414,7 @@ export async function recordRouterCall(
         : 0;
       const totalCallCost = toolCost + overageCost;
 
-      await db.developerAccount.update({
+      await withRetry(() => db.developerAccount.update({
         where: { id: developerId },
         data: {
           totalCalls: { increment: 1 },
@@ -426,7 +426,7 @@ export async function recordRouterCall(
           billingCycleStart: resetMonthlySpend ? new Date() : undefined,
           avgLatencyMs: nextAvgLatency,
         },
-      });
+      }));
     }
   } catch (updateErr) {
     const code = (updateErr as Record<string, unknown>)?.code;
