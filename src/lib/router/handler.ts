@@ -158,7 +158,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         parsed.strategy = resolved;
       }
 
-      if (!parsed.params && (parsed.query || parsed.q || parsed.text || parsed.input || parsed.url || parsed.ticker || parsed.symbol)) {
+      // Use 'in' (field presence) rather than truthiness so { "query": "" } triggers
+      // normalization and gets "A non-empty query is required" instead of "params object required".
+      if (!parsed.params && ('query' in parsed || 'q' in parsed || 'text' in parsed || 'input' in parsed || 'url' in parsed || 'ticker' in parsed || 'symbol' in parsed)) {
         const { tool, tool_api_key, fallback, strategy: _s, priority_tools: _pt, priority: _p, priorityTools: _pT, ...rest } = parsed;
         parsed.params = rest;
         parsed.tool = tool;
