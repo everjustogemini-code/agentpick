@@ -609,10 +609,21 @@ export async function routeRequest(
         touchByokKeyUsage(options.developerId, options.storedByokKeys, candidateSlug).catch(() => {});
       }
       // Success!
-      const traceId = await recordTrace(
-        agentId, candidateSlug, capability, result,
-        isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
-      );
+      // NOTE: Do not let trace recording abort the success path. If recordTrace throws
+      // (e.g. transient P1017/fetch-failed after ~1.5s external API call), routeRequest
+      // would throw, handler returns 502, and recordRouterCall never runs (calls lost).
+      // Cycle 103 fixed this for the failure path; this try-catch closes the same gap for
+      // the success path. A fallback trace ID preserves the RouterCall write in handler.ts.
+      let traceId: string;
+      try {
+        traceId = await recordTrace(
+          agentId, candidateSlug, capability, result,
+          isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+        );
+      } catch (traceErr) {
+        console.error('[Router] recordTrace failed for success path (non-fatal):', candidateSlug, traceErr instanceof Error ? traceErr.message : traceErr);
+        traceId = `trace_ok_${Date.now()}`;
+      }
       const meta: RouterResponse['meta'] = {
         tool_used: candidateSlug,
         latency_ms: result.latencyMs,
