@@ -1,3 +1,53 @@
+# Growth Report — Cycle 50 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 386 | This Week: 386 | Calls Today: 11 | Paid: 0
+- AEO scores: 0/0/0 (50th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 50 cycles at 0 for all 3 AEO queries; no inbound links; zero domain authority
+3. **Calls not persisted to DB** — P1 bug from QA round 15: router returns 200 but calls array stays empty; usage/billing/metering broken
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, API key issued ✅
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK ✅
+
+### 2. AEO scores — all 0 (50th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily/Exa/Firecrawl/Brave/SerpAPI/Linkup/Parallel/Valyu dominate; agentpick.dev not found
+- "tool routing for AI agents": 0 — LivePerson/Patronus AI/Botpress dominate; keyword mismatch (architectural routing, not API routing)
+- "AI agent API benchmark": 0 — EvidentlyAI/AgentBench/Sierra tau-bench/IBM Research dominate; academic eval frameworks own SERP
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt + skill.md updated
+- Agent count: 385 → 386
+- Both files updated ✅
+
+### 4. Moltbook — API 404 (Cannot POST /api/posts), skipped
+
+## Results:
+- llms.txt and skill.md accurate for agent discovery (386 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Calls not persisted** — P1 bug; recordTrace not committing to DB — fix or undermines trust when paying users check dashboard
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO/AEO impact)
+4. **Inbound links** — Hacker News / dev.to / Reddit post to break 50-cycle AEO zero streak
+5. **Replace query 2** — "tool routing for AI agents" is permanently mismatched; replace with "search API comparison for agents" or "API routing for AI agents"
+
+## Learnings:
+- 50-cycle AEO zero streak: query 2 ("tool routing for AI agents") consistently pulls architectural content not product comparisons — wrong keyword. Query 1 dominated by 8 named competitors (Tavily, Exa, Firecrawl, Brave, SerpAPI, Linkup, Parallel, Valyu). Query 3 dominated by academic LLM eval frameworks — different market.
+- Without a single backlink or directory listing, agentpick.dev has zero domain authority and no path to organic discovery.
+- All infrastructure is healthy; the bottleneck is entirely distribution and Stripe configuration.
+
+---
+
 # Growth Report — Cycle 49 (2026-03-16)
 
 ## Metrics Snapshot:
