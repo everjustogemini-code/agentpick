@@ -1,3 +1,50 @@
+# Growth Report — Cycle 40 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 375 | This Week: 375 | Calls Today: 2 | Paid: 0
+- AEO scores: 0/0/0 (40th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 40 cycles at 0 for all 3 AEO queries; no inbound links
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, api key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. AEO scores — all 0 (40th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily #1, KDnuggets, Firecrawl, Brave, Exa dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub AgentBench, Sierra tau-bench, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt + skill.md updated
+- Agent count: 374 → 375
+- Both files updated ✅
+
+### 4. Moltbook — skipped (DNS dead, confirmed dead for many cycles)
+
+## Results:
+- llms.txt and skill.md accurate for agent discovery (375 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO/AEO impact)
+3. **Inbound links** — Hacker News / dev.to post with real benchmark data needed to break 0 AEO streak
+
+## Learnings:
+- 40-cycle AEO zero streak is purely a domain authority / inbound links problem — content is correct and comprehensive.
+- Moltbook API is dead; skip permanently.
+- Bugfix-102 (withRetry fixes) merged — call persistence partially improved but QA Round 15 still shows gaps.
+
+---
+
 # Growth Report — Cycle 39 (2026-03-16)
 
 ## Metrics Snapshot:
