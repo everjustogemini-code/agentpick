@@ -1,3 +1,56 @@
+# Growth Report — Cycle 35 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 370 | This Week: 370 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (35th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Calls not persisted to DB** — P1 QA bug; usage/billing/rate-limiting broken (dev action required)
+3. **Zero search visibility** — 35 cycles at 0 for all 3 AEO queries; competitors dominate
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. AEO scores — all 0 (35th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily #1, Exa, Brave, Firecrawl, Linkup, KDnuggets editorial dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, Deepchecks, Arize AI, LangChain dominate; terminology mismatch (results focus on agent orchestration routing, not API selection)
+- "AI agent API benchmark": 0 — Academic frameworks dominate: AgentBench, tau-bench, GAIA, EvidentlyAI, IBM Research, Galileo
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt updated
+- Agent count: 369 → 370
+
+### 4. Blog meta tags audit
+- All checked blog posts have proper title, description, og:title, og:description, twitter:card ✅
+- No missing meta tags found
+
+### 5. Moltbook — skipped (35th consecutive cycle no response, channel dead)
+
+## Results:
+- llms.txt accurate for agent discovery (370 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Calls not persisted** — P1 bug must be fixed before billing can work
+3. **Blog post** — "Brave vs Exa vs Tavily: 2026 Agentic Search Benchmark" targeting "best search API for AI agents" query gap
+4. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO impact)
+5. **Alternative distribution** — dev.to post or GitHub awesome-agents PR to replace dead Moltbook channel
+
+## Learnings:
+- AEO 0 streak at 35 cycles: query 2 ("tool routing for AI agents") is a terminology mismatch — LangChain/Botpress content dominates because "tool routing" in AI means agent orchestration, not API selection. Should target "API selection for AI agents" or "search API fallback" instead.
+- Query 3 ("AI agent API benchmark") dominated by academic benchmarks — a practical "which search API is fastest/cheapest RIGHT NOW" article with live data is still an open content gap
+- Moltbook permanently dead — remove from future cycle plans
+
+---
+
 # Growth Report — Cycle 34 (2026-03-15)
 
 ## Metrics Snapshot:

@@ -62,9 +62,7 @@ export async function GET(request: NextRequest) {
         statusCode: true,
         traceId: true,
         aiClassification: true,
-        // totalMs + responsePreview omitted: migration 20260315_add_total_ms_response_preview
-        // has NOT been applied to production DB — selecting these columns throws P2010.
-        // Return null for both fields via normalizedCall map below (same as /calls endpoint).
+        totalMs: true,
         createdAt: true,
       },
     });
@@ -89,8 +87,7 @@ export async function GET(request: NextRequest) {
       ai_classification: call.aiClassification,
       // classification_ms is not stored in DB — emit null for API consistency with /calls
       classification_ms: null as number | null,
-      // totalMs/responsePreview columns not yet in production DB (migration pending) — return null
-      total_ms: null as number | null,
+      total_ms: call.totalMs ?? null,
       response_preview: null as string | null,
       // Expose ai_routing_summary as the full aiClassification object (same fix as /calls).
       // Previously returned only aiClassification.reasoning which is rarely set.
