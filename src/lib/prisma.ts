@@ -73,6 +73,7 @@ function isRetryable(err: unknown): boolean {
     msg.includes('ETIMEDOUT') ||           // TCP/WebSocket connection timeout
     msg.includes('ENOTFOUND') ||           // DNS resolution failure — transient in serverless cold starts
     msg.includes('ECONNABORTED') ||        // Connection aborted by OS/network layer
+    msg.includes('EPIPE') ||               // Broken pipe — Node.js write to socket already closed by remote
     msg.includes('connection timeout') ||
     msg.includes('fetch failed') ||        // Node.js undici fetch error
     msg.includes('socket hang up') ||      // TCP drop

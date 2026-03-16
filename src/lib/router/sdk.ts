@@ -443,7 +443,10 @@ export async function getUsageStats(developerId: string, days = 7) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const calls = await db.routerCall.findMany({
+  // withRetry: same P1017/fetch-failed transient errors that break routerCall.create also
+  // break findMany. Without retry, a Neon connection drop after a prior write causes a 500
+  // from the usage and weekly-report endpoints. The pattern mirrors checkUsageLimit (cycle 102).
+  const calls = await withRetry(() => db.routerCall.findMany({
     where: { developerId, createdAt: { gte: since } },
     select: {
       capability: true,
@@ -457,7 +460,7 @@ export async function getUsageStats(developerId: string, days = 7) {
       aiClassification: true,
       createdAt: true,
     },
-  });
+  }));
 
   const totalCalls = calls.length;
   const successCalls = calls.filter((call: { success: boolean }) => call.success).length;
@@ -590,7 +593,9 @@ export async function getFallbackStats(developerId: string, days = 30) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const fallbackCalls = await db.routerCall.findMany({
+  // withRetry: mirrors the fix applied to getUsageStats — transient Neon HTTP errors cause
+  // unnecessary 500s from the fallbacks endpoint without retry. Safe to retry since reads are idempotent.
+  const fallbackCalls = await withRetry(() => db.routerCall.findMany({
     where: {
       developerId,
       fallbackUsed: true,
@@ -603,7 +608,7 @@ export async function getFallbackStats(developerId: string, days = 30) {
       latencyMs: true,
       createdAt: true,
     },
-  });
+  }));
 
   // Mirrors the filter in analytics.ts and getUsageStats: exclude 'unknown', empty strings,
   // and capability-name fallbacks (e.g. 'search', 'crawl') from per-tool breakdown so legacy
