@@ -355,12 +355,19 @@ async function recordTrace(
   // Increment product telemetry count — non-critical stats cache.
   // NOTE: Do NOT let a failure here propagate: product.update is a denormalized counter
   // and must never abort a routing response. Stale counts are acceptable.
+  // NOTE: withRetry here is critical for call persistence: if product.update fails without
+  // withRetry, the Prisma singleton is left with a stale/broken connection that is NOT
+  // cleared. The subsequent withRetry(routerCall.create) in recordRouterCall then uses
+  // that stale connection — if the resulting error is not in isRetryable, routerCall.create
+  // throws immediately (no retry) and the RouterCall record is never written.
+  // withRetry ensures the singleton is always cleared on failure, so recordRouterCall
+  // always starts with a fresh connection regardless of how product.update failed.
   if (product) {
     try {
-      await prisma.product.update({
+      await withRetry(() => prisma.product.update({
         where: { id: product.id },
         data: { telemetryCount: { increment: 1 } },
-      });
+      }));
     } catch (countErr) {
       console.error('[recordTrace] product telemetryCount increment failed (non-fatal):', countErr instanceof Error ? countErr.message : countErr);
     }
