@@ -28,7 +28,12 @@ export async function authenticateAgent(request: Request) {
   }
   if (!token) return null;
   const hash = hashApiKey(token);
-  const agent = await prisma.agent.findUnique({ where: { apiKeyHash: hash } });
+  // withRetry: agent.findUnique is the critical auth lookup on every authenticated request.
+  // A stale Neon connection (P1017/fetch-failed) here causes a valid user to receive 401
+  // because the handler catches the exception and returns apiError('UNAUTHORIZED', ...).
+  // Without withRetry the stale singleton is also never cleared, so ALL subsequent
+  // auth lookups fail with the same dead connection until the instance is recycled.
+  const agent = await withRetry(() => prisma.agent.findUnique({ where: { apiKeyHash: hash } }));
 
   if (!agent || agent.isRestricted) return null;
 
