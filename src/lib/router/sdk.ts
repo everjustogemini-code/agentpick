@@ -371,7 +371,7 @@ export async function recordRouterCall(
   // Do NOT remove this try-catch: losing it causes a misleading "[RouterCall] write failed"
   // log in handler.ts even when the RouterCall record was successfully committed.
   try {
-    const currentAccount = await db.developerAccount.findUnique({
+    const currentAccount = await withRetry(() => db.developerAccount.findUnique({
       where: { id: developerId },
       select: {
         plan: true,
@@ -382,7 +382,7 @@ export async function recordRouterCall(
         spentThisMonth: true,
         billingCycleStart: true,
       },
-    });
+    }));
 
     if (currentAccount) {
       const previousCalls = currentAccount.totalCalls ?? 0;
