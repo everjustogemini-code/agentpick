@@ -1,74 +1,80 @@
 # NEXT_VERSION.md — AgentPick Next Release Plan
 **Date:** 2026-03-16
-**QA Source:** QA_REPORT.md Round 16 (56/57 — 1 P1 remaining)
+**QA Source:** QA_REPORT.md (55/56 — 1 P1 remaining)
 
 ---
 
-## Must-Have #1 — Fix P1: `/api/v1/account/register` Returns 404
+## Must-Have #1 — Fix P1: `/api/v1/keys/register` Returns 404
 
-**Source:** QA_REPORT.md Round 16, P1 Issue #1
+**Source:** QA_REPORT.md P1 Issue #1
 
-**Problem:** `POST /api/v1/account/register` returns `404 NOT_FOUND`. The canonical registration path is `POST /api/v1/router/register`. Any integration docs, third-party clients, or agent tooling referencing the `/account/register` path silently fails — lost signups, broken onboarding.
+**Problem:** `POST /api/v1/keys/register` returns `404 NOT_FOUND`. The canonical registration endpoint is `POST /api/v1/agents/register`. Any external docs, SDK examples, or agent integrations referencing `/keys/register` silently fail — broken onboarding, lost signups.
 
-**Fix:** Add a Next.js route handler at `src/app/api/v1/account/register/route.ts` that proxies or 308-redirects to `/api/v1/router/register`. Must preserve request body, return identical `{ apiKey, plan, monthlyLimit }` JSON response, and emit a `Deprecation: true` response header so callers can detect the alias.
+Secondary issue: response body uses `api_key` (snake_case) while JS convention expects `apiKey` (camelCase). Breaks destructuring in JS/TS SDK consumers.
+
+**Fix:**
+1. Add a Next.js route handler at `src/app/api/v1/keys/register/route.ts` that 308-redirects (or proxies) to `/api/v1/agents/register`, preserving the full request body.
+2. Extend the `/api/v1/agents/register` response to include **both** `api_key` and `apiKey` fields (backwards-compatible) until a deprecation cycle completes.
+3. Add `Deprecation: true` response header on the `/keys/register` alias so callers can detect they're hitting the legacy path.
 
 **Acceptance:**
-- `POST /api/v1/account/register` with valid payload → same response shape as `/api/v1/router/register`
-- QA Round 17 test for `/api/v1/account/register` passes → score 57/57
-- Zero regression on existing `/api/v1/router/register` behavior
+- `POST /api/v1/keys/register` with valid payload → identical response to `/api/v1/agents/register`
+- Both `api_key` and `apiKey` present in register response
+- QA score goes from 55/56 → 56/56
+- Zero regression on existing `/api/v1/agents/register` behavior
 
 ---
 
 ## Must-Have #2 — Major UI Upgrade: Glassmorphism + Micro-animations + Typography Overhaul
 
-**Context:** Current design is clean and functional but flat — no depth, no motion, no visual hierarchy guiding visitors to the CTA. Competitors (Tavily, Exa, Jina) ship immersive animated developer-first pages. This upgrade converts first-time visitors into signups.
+**Context:** The current design is clean and functional but flat — no depth, no motion. Competitors (Tavily, Exa, Jina) ship immersive animated developer-first pages. This upgrade converts first-time visitors into signups.
 
 **Scope:**
 
-1. **Glassmorphism cards** — apply `backdrop-filter: blur(12px)` + `bg-white/5` + `border border-white/10` to all stat cards, feature cards, and the agent-counter widget on homepage and `/connect`. Drop the current flat card backgrounds.
+1. **Glassmorphism cards** — Replace solid `bg-card` on all stat cards, feature cards, and the agent-counter widget with `backdrop-filter: blur(12px)` + `bg-white/5` + `border border-white/10`. Apply to homepage, `/connect`, and `/dashboard`.
 
-2. **Hero stat counter animation** — CSS keyframe counter on the live network stats ("402 active agents / 880+ benchmark runs / 11,500+ calls"): count up 0 → final value on page load, 800ms ease-out, triggered by `IntersectionObserver`.
+2. **Hero stat counter animation** — CSS keyframe count-up on live network stats ("405 agents / 108 calls routed today"): animate 0 → final value on scroll-into-view, 800ms ease-out via `IntersectionObserver`. No JS animation library.
 
-3. **Typography overhaul** — upgrade homepage `h1` to `clamp(2.5rem, 6vw, 4.5rem)` with a `background-clip: text` gradient (accent blue → accent-purple). Increase code block background contrast to `#0d1117`. All code uses JetBrains Mono consistently.
+3. **Typography overhaul** — Upgrade hero `h1` to `clamp(2.5rem, 6vw, 4.5rem)` with `background-clip: text` gradient (accent-blue → accent-purple). Increase code block background contrast to `#0d1117`. Enforce JetBrains Mono consistently across all code snippets. Add uppercase tracked monospace labels (`font-mono tracking-widest text-xs`) for section category labels.
 
-4. **Animated routing diagram on `/connect`** — a simple CSS/SVG flow animation (agent icon → AgentPick logo → tool icons with a traveling pulse dot) above the code example. Must convey the routing concept in under 2 seconds, no external animation library.
+4. **Animated gradient mesh background** — Replace flat dark background with a slow-drifting radial gradient mesh (blue/purple/indigo nodes, `@keyframes` CSS only, no canvas/WebGL). Adds visual depth without performance cost.
 
-5. **CTA button shimmer** — primary "Get API Key" and "Install AgentPick" buttons get a `@keyframes shimmer` sweep on hover (white highlight travels left → right).
+5. **CTA button glow** — Primary "Get API Key" button gets a `box-shadow: 0 0 32px rgba(99,102,241,0.6)` pulse on hover, replacing current shimmer-only effect.
 
 **Acceptance:**
-- Lighthouse Performance score ≥ 90 on mobile (no regression from animation weight)
-- All 4 QA page load checks still pass 200 OK
+- Lighthouse Performance ≥ 90 on mobile (no regression from animation weight)
+- All 4 QA page load checks return 200 OK
 - No CLS on 375px viewport
-- Animations respect `prefers-reduced-motion: reduce`
+- All animations respect `prefers-reduced-motion: reduce`
 
 ---
 
 ## Must-Have #3 — New Feature: Shareable Benchmark Permalinks
 
-**Goal:** Increase developer adoption via viral sharing and organic discovery. Every benchmark run becomes a shareable artifact.
+**Goal:** Increase developer adoption via viral sharing. Every benchmark run becomes a permanent, embeddable artifact developers can link in PRs, blog posts, and GitHub READMEs.
 
-**Feature:** Each benchmark run (from Playground, `/connect` code generator, or direct API) generates a permanent public URL: `agentpick.dev/b/{runId}` showing:
-- Query used, tools compared, latency/cost/relevance scores side-by-side table
-- "Run this benchmark" CTA with pre-filled Python/JS/curl code snippet
-- Auto-generated `og:image` social card (via `@vercel/og`) for Twitter/LinkedIn previews
-- "Embed" button producing an `<iframe>` snippet for README files or blog posts
-- SVG badge: `agentpick.dev/b/{runId}/badge.svg` showing winning tool + latency — embeddable in GitHub READMEs
+**Feature:** Each benchmark run generates a public URL `agentpick.dev/b/{runId}` showing:
+- Query used, tools compared, latency/cost/relevance scores in a side-by-side table
+- "Run this benchmark" CTA with pre-filled Python/JS/curl snippet
+- Auto-generated `og:image` social card via `@vercel/og` for Twitter/LinkedIn previews
+- "Embed" button producing an `<iframe>` snippet for blog posts or README files
+- SVG badge: `agentpick.dev/b/{runId}/badge.svg` — shows winning tool + latency, embeddable in GitHub READMEs with one line of Markdown
 
 **Why this drives adoption:**
-- Developers sharing results in PRs, blog posts, and Discord threads brings referral traffic with immediate technical context
+- Developers sharing results in Discord/Twitter/PRs brings referral traffic with immediate technical context
 - README badges create persistent backlinks and brand exposure at zero marginal cost
 - Reuses existing `benchmarkRun` DB records — minimal new backend work
 
 **Implementation:**
 - `GET /api/v1/benchmarks/{runId}/public` — unauthenticated endpoint returning sanitized run data
-- `/b/[runId]` — Next.js page with `revalidate: 3600`
+- `/b/[runId]` — Next.js ISR page (`revalidate: 3600`)
 - `/b/[runId]/opengraph-image` — `@vercel/og` dynamic OG card
-- `/b/[runId]/badge.svg` — lightweight SVG, < 200ms response
+- `/b/[runId]/badge.svg` — lightweight SVG response, target < 200ms
 
 **Acceptance:**
-- A Playground benchmark run produces a working shareable URL
+- A Playground benchmark run produces a working `agentpick.dev/b/{runId}` URL accessible without auth
 - OG card renders correctly in Twitter card validator
-- Badge SVG loads in under 200ms
+- Badge SVG loads in < 200ms
 - QA page load check for `/b/{runId}` returns 200 OK
 
 ---
@@ -76,9 +82,9 @@
 ## Ship Order
 
 ```
-1. #1 — /account/register alias   → < 1 hour, zero risk → QA scores 57/57
-2. #2 — UI upgrade                → parallel track, no API changes
-3. #3 — Shareable permalinks      → ships after #1 confirmed 57/57 by QA
+1. #1 — /keys/register alias + apiKey fix   → < 1 hour, zero risk → QA scores 56/56
+2. #2 — UI upgrade                          → parallel track, no API surface changes
+3. #3 — Shareable permalinks               → ships after #1 confirmed 56/56 by QA
 ```
 
-**Rule:** No new features deploy until #1 is confirmed 57/57 by QA.
+**Rule:** No new features merge to main until #1 is confirmed green in prod by QA.

@@ -1,12 +1,11 @@
-# AgentPick QA Report — Round 16 (2026-03-16)
-
+# AgentPick QA Report
+**Date:** 2026-03-16
 **Target:** https://agentpick.dev
-**Tester:** QA Agent (Claude Sonnet 4.6)
-**Script:** agentpick-router-qa.py (full mode)
+**Tester:** QA Agent (Claude Code)
 
 ---
 
-## Score: 56/57
+## Score: 55/56
 
 ---
 
@@ -18,57 +17,86 @@ None.
 
 ## P1 Issues
 
-1. **Registration endpoint path inconsistency**
-   `POST /api/v1/account/register` returns `404 NOT_FOUND` ("No API endpoint at /api/v1/account/register").
-   The correct endpoint is `POST /api/v1/router/register`.
-   Any integration doc, client, or external tooling referencing the `/account/register` path will silently fail. Recommend adding a redirect/alias at `/api/v1/account/register` or auditing all docs/references to use the correct path.
+### 1. Registration endpoint inconsistency
+- **`/api/v1/keys/register`** returns 404 (NOT_FOUND)
+- Correct endpoint is **`/api/v1/agents/register`**
+- The `/connect` page shows the correct endpoint, but any external docs using `keys/register` will break
+- Response key is `api_key` (snake_case), not `apiKey` (camelCase) — minor inconsistency with JS conventions
 
 ---
 
-## P2 / Minor Issues
+## Test Results
 
-None found.
+### Automated QA Suite (`agentpick-router-qa.py`)
+**51/51 passed (100%)**
+
+| Part | Tests | Result |
+|------|-------|--------|
+| Part 1: Router Core | 9 | ✅ All pass |
+| Part 2: Developer Dashboard API | 7 | ✅ All pass |
+| Part 3: /connect Page | 7 | ✅ All pass |
+| Part 4: Homepage Dark Code Block | 3 | ✅ All pass |
+| Part 5: Nav Update | 2 | ✅ All pass |
+| Part 6: AI-Powered Routing | 5 | ✅ All pass |
+| Part 7: Schema & Data Integrity | 5 | ✅ All pass |
+| Part 8: Dashboard Web UI | 5 | ✅ All pass |
+| Bonus: Cross-Capability | 2 | ✅ All pass |
+| Bonus: Edge Cases | 5 | ✅ All pass |
+
+### Main Pages (HTTP Status)
+| Page | Status |
+|------|--------|
+| `/` (homepage) | ✅ 200 |
+| `/connect` | ✅ 200 |
+| `/dashboard` | ✅ 200 |
+| `/products/tavily` | ✅ 200 |
+
+### Paid User Flow (manual end-to-end)
+- **Register** → `POST /api/v1/agents/register` → ✅ Returns `api_key`, `agent_id`, `status: active`
+- **Search** → `POST /api/v1/router/search` with Bearer auth → ✅ HTTP 200, real results via tavily (1768ms), 10 results
+- **Usage check** → `GET /api/v1/router/usage` → ✅ HTTP 200, shows `callsThisMonth: 1`, `daily_used: 1`, full stats object
+
+### API: POST /api/v1/router/search (Bearer auth)
+- ✅ Returns valid JSON with `data` and `meta` fields
+- ✅ `meta.tool_used: "tavily"`, `meta.latency_ms: 1768`, `meta.cost_usd: 0.001`
+- ✅ `meta.plan: "FREE"`, `meta.calls_remaining: 199`
+- ✅ Fallback info present (`fallback_used: false`, `tried_chain`)
+- ✅ Auth enforced: missing/invalid key → HTTP 401
+
+### Visual Regression Check
+- ✅ Brand name present on homepage
+- ✅ Nav present with correct items: [Live, Rankings, Benchmarks, Agents]
+- ✅ CSS/stylesheet loaded
+- ✅ No error pages or 500s on any page
+- ✅ Dark code block on homepage with pip install snippet
+- ✅ /connect page: pip install, strategies, pricing, API endpoint, get-API-key CTA, auto-fallback info, dashboard link — all present
+
+### AI Routing
+- ✅ Deep research queries → exa-search
+- ✅ Realtime queries → tavily
+- ✅ Simple queries → tavily
+- ✅ AI classification latency ~500ms, total ~1400ms
+- ✅ AI insights available in usage endpoint
+
+### Edge Cases
+- ✅ Empty query → HTTP 400
+- ✅ Invalid capability → HTTP 404
+- ✅ 5000-char query → HTTP 413
+- ✅ Invalid strategy → HTTP 400
+- ✅ 5 concurrent calls → 5/5 success
 
 ---
 
 ## What Looks Good
 
-### Automated Router QA — 51/51 ✅
-- **Router core**: Registration, search/crawl routing, adapter data, fallback, strategy differentiation, call recording, health — all pass.
-- **Developer Dashboard API**: Usage, fallback stats, compare, set-strategy/budget/priority, weekly report — all HTTP 200 with valid payloads.
-- **/connect page**: pip install, strategies, pricing, API endpoint, get-API-key, auto-fallback, dashboard link — all present.
-- **Homepage**: Dark code block, /connect link, dark styling — all present.
-- **Nav**: Router item + Live/Rankings/Benchmarks/Agents items — correct.
-- **AI-powered routing**: Deep research → exa-search, realtime → tavily, simple → tavily; classification latency 501ms; AI insights in usage — all correct.
-- **Schema & data integrity**: Account/call fields present; 401 on invalid/missing key — correct.
-- **Dashboard web UI**: HTTP 200; shows calls, strategy, tools, settings.
-- **Cross-capability**: embed → cohere-embed, finance → polygon-io — correct.
-- **Edge cases**: Empty query → 400, invalid capability → 404, 5000-char query → 413, invalid strategy → 400, 5 concurrent calls → 5/5 success.
-
-### Page Load Checks — 4/4 ✅
-| Page | Status | Notes |
-|------|--------|-------|
-| `/` | ✅ 200 | Hero, 397-agent network stats, code example, pricing, live feed — all render |
-| `/connect` | ✅ 200 | Interactive code generator, playground, strategies, quick start, SDK docs — all render |
-| `/dashboard` | ✅ 200 | Plan/Strategy/Spend/Connect controls — all render; no visual regressions |
-| `/products/tavily` | ✅ 200 | Benchmark data, agent reviews, rankings — all render |
-
-### Paid User Flow ✅
-- `POST /api/v1/router/register` → `{ apiKey, plan: "FREE", monthlyLimit: 500 }`
-- `POST /api/v1/router/search` (Bearer auth) → HTTP 200, 10 results returned, correct `meta` + `data` structure
-- `GET /api/v1/router/usage` → correctly reflects `callsThisMonth: 1` after one search; `calls_remaining` decrements properly in `meta`
-
-### API: POST /api/v1/router/search with Bearer Auth ✅
-Response envelope:
-```json
-{
-  "meta": { "tool_used", "latency_ms", "cost_usd", "fallback_used", "strategy", "plan", "calls_remaining", ... },
-  "data": { "results": [...], "requestId", "resolvedSearchType", "searchTime", "costDollars" }
-}
-```
-- Unauthenticated requests → HTTP 401 ✅
-- `best_performance` strategy routes to `exa-search` for realtime queries ✅
-- Latency healthy: 358ms tool + 373ms total
+- **Router core solid**: all 4 strategies routing correctly, fallback working, calls recorded
+- **AI routing live**: query classification working with correct tool selection per type
+- **Developer dashboard API**: all 7 endpoints healthy (usage, fallbacks, compare, strategy, budget, priority, weekly report)
+- **Auth enforcement**: 401 on missing/invalid keys, proper error codes on bad inputs
+- **Cross-capability routing**: embed (cohere-embed) and finance (polygon-io) both working
+- **Paid user flow end-to-end**: register → search → usage tracking all functional
+- **All 4 main pages load** cleanly at HTTP 200
+- **Performance**: search ~1.8s end-to-end, AI classification ~500ms
 
 ---
 
