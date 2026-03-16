@@ -53,10 +53,14 @@ function getPrismaClient(): PrismaClient {
 
 // ─── Retry Helper ────────────────────────────────────────────────────────────
 
-// NOTE: P1017 = "Server has closed the connection" — common with Neon HTTP after
-// ~1.5s external tool API call. 'fetch failed' = Node.js undici error on HTTP timeout.
-// 'socket hang up' = TCP drop during idle period. All are transient and safe to retry.
-const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1017', 'P2024']);
+// Retryable Prisma/Neon error codes:
+//   P1001 = "Can't reach database server"
+//   P1002 = "Database server was reached, but timed out"
+//   P1008 = "Operations timed out" — query-level timeout, transient
+//   P1017 = "Server has closed the connection" — common after ~1.5s external API call
+//   P2024 = "Timed out fetching a new connection from the connection pool"
+//   P2034 = "Transaction failed due to a write conflict or deadlock" — transient, safe to retry
+const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024', 'P2034']);
 
 function isRetryable(err: unknown): boolean {
   if (err && typeof err === 'object' && 'code' in err) {
@@ -65,10 +69,13 @@ function isRetryable(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
     msg.includes('ECONNREFUSED') ||
+    msg.includes('ETIMEDOUT') ||           // TCP/WebSocket connection timeout
     msg.includes('connection timeout') ||
-    msg.includes('fetch failed') ||       // Neon HTTP adapter — Node.js fetch error
-    msg.includes('socket hang up') ||     // TCP drop
-    msg.includes('Server has closed')     // P1017 message text fallback
+    msg.includes('fetch failed') ||        // Node.js undici fetch error
+    msg.includes('socket hang up') ||      // TCP drop
+    msg.includes('Server has closed') ||   // P1017 message text fallback
+    msg.includes('WebSocket is not open') || // PrismaNeon WebSocket pool — connection closed
+    msg.includes('Connection terminated')  // Neon serverless driver connection drop
   );
 }
 

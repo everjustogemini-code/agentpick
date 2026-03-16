@@ -313,19 +313,19 @@ export async function recordRouterCall(
       select: { id: true, traceId: true },
     }));
   } catch (insertErr) {
-    // Fallback INSERT: strip fields that may be missing in older DB schemas
-    // (totalMs, aiClassification) and use BALANCED as safe strategy fallback.
-    // This handles the case where a migration hasn't been applied in production yet.
+    // Fallback INSERT: drop totalMs (may not exist in older DB schemas) and fall back
+    // strategyUsed to BALANCED for enum values added in later migrations (AUTO, MANUAL).
+    // NOTE: aiClassification IS included here (cycle 99 re-added it; it is JSON-serializable
+    // and its absence was causing ai_routing_summary to always be null).
+    // totalMs is the only field intentionally omitted from this fallback path.
     const errMsg = String((insertErr instanceof Error ? insertErr.message : insertErr) ?? '').toLowerCase();
     const errCode = (insertErr as Record<string, unknown>)?.code;
     console.error('[RecordRouterCall] primary INSERT failed — attempting fallback INSERT:', {
       code: errCode,
       message: errMsg.slice(0, 300),
     });
-    // Safe fallback: drop totalMs (may not exist) and aiClassification (JSON may be malformed),
-    // and fallback strategyUsed to BALANCED for values added in later migrations (AUTO, MANUAL)
-    // that may not exist in production DB if those migrations failed to apply.
     // BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE were in the original enum from the start.
+    // AUTO and MANUAL were added in later migrations — fall back to BALANCED when not present.
     const ORIGINAL_STRATEGY_VALUES: RouterStrategyValue[] = ['BALANCED', 'FASTEST', 'CHEAPEST', 'MOST_ACCURATE'];
     const safeStrategy: RouterStrategyValue = ORIGINAL_STRATEGY_VALUES.includes(strategyUsed)
       ? strategyUsed
@@ -350,10 +350,20 @@ export async function recordRouterCall(
       aiClassification: fullData.aiClassification,
       // totalMs intentionally omitted — may not exist in production DB if migration not applied
     };
-    call = await withRetry(() => db.routerCall.create({
-      data: safeData,
-      select: { id: true, traceId: true },
-    }));
+    try {
+      call = await withRetry(() => db.routerCall.create({
+        data: safeData,
+        select: { id: true, traceId: true },
+      }));
+    } catch (fallbackErr) {
+      const fallbackCode = (fallbackErr as Record<string, unknown>)?.code;
+      const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      console.error('[RecordRouterCall] fallback INSERT also failed:', {
+        code: fallbackCode ?? 'no-code',
+        message: fallbackMsg.slice(0, 300),
+      });
+      throw fallbackErr;
+    }
   }
 
   // NOTE: routerCall.create is already committed at this point (awaited above via withRetry).
