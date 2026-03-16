@@ -175,7 +175,7 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     }
   }
 
-  if (!body.params || typeof body.params !== 'object') {
+  if (!body.params || typeof body.params !== 'object' || Array.isArray(body.params)) {
     const hasPriority = Array.isArray(body.priority_tools);
     const hint = hasPriority
       ? ' When using priority_tools, also include your query: {"query":"...", "priority_tools":["tool-a","tool-b"]}.'

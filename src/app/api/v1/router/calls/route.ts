@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let calls: any[];
     try {
-      calls = await (prisma as any).routerCall.findMany({
+      calls = await prisma.routerCall.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -120,9 +120,7 @@ export async function GET(request: NextRequest) {
         statusCode: true,
         traceId: true,
         aiClassification: true,
-        // totalMs + responsePreview omitted: migration 20260315_add_total_ms_response_preview
-        // has NOT been applied to production DB — selecting these columns throws P2010.
-        // Return null for both fields via normalizedCalls map below.
+        totalMs: true,
         createdAt: true,
       },
       });
@@ -156,8 +154,7 @@ export async function GET(request: NextRequest) {
       ai_classification: call.aiClassification,
       // classification_ms is not stored in DB (computed at classification time only) — emit null
       classification_ms: null as number | null,
-      // totalMs/responsePreview columns not yet in production DB (migration pending) — return null
-      total_ms: null as number | null,
+      total_ms: call.totalMs ?? null,
       response_preview: null as string | null,
       // Expose ai_routing_summary as the full aiClassification object so callers can
       // access type/domain/confidence. Previously returned only aiClassification.reasoning

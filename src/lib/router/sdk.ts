@@ -292,14 +292,8 @@ export async function recordRouterCall(
       strategyUsed,
       byokUsed,
       traceId: meta.trace_id,
-      // totalMs + responsePreview omitted: migration 20260315_add_total_ms_response_preview
-      // has NOT been applied to production DB — inserting these columns throws P2010 and
-      // silently breaks all call recording via the .catch() handler. Remove once migration applied.
+      totalMs: meta.total_ms ?? null,
     },
-    // CRITICAL: explicit select prevents Prisma from auto-selecting ALL columns after INSERT.
-    // Without select, Prisma queries totalMs+responsePreview which don't exist in production DB
-    // (migration 20260315_add_total_ms_response_preview pending), causing a silent P2010 error
-    // that breaks all call recording. Select only columns that exist in production.
     select: {
       id: true,
       traceId: true,
