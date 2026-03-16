@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
 
   // Resolve all unique tool slugs to products
   const uniqueSlugs = [...new Set(body.events.map((e) => e.tool))];
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where: { slug: { in: uniqueSlugs } },
     select: { id: true, slug: true },
-  });
+  }));
   const slugToProductId = new Map(products.map((p) => [p.slug, p.id]));
 
   // Batch insert all events
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   for (const e of body.events) {
     const productId = slugToProductId.get(e.tool) ?? null;
-    const created = await prisma.telemetryEvent.create({
+    const created = await withRetry(() => prisma.telemetryEvent.create({
       data: {
         agentId: agent.id,
         productId,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         costUsd: e.cost_usd ?? null,
         context: e.context ?? null,
       },
-    });
+    }));
     eventIds.push(created.id);
 
     if (productId) {
@@ -82,10 +82,10 @@ export async function POST(request: NextRequest) {
 
   // Update product telemetry counts
   for (const [productId, count] of productCountIncrements) {
-    await prisma.product.update({
+    await withRetry(() => prisma.product.update({
       where: { id: productId },
       data: { telemetryCount: { increment: count } },
-    });
+    }));
   }
 
   return Response.json({
