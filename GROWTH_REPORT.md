@@ -1,3 +1,59 @@
+# Growth Report — Cycle 58 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 395 | This Week: 395 | Calls Today: 16 | Paid: 0
+- AEO scores: 0/0/0 (58th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **RouterCall persistence broken** — usage dashboard empty; 5-tier fallback deployed in cycle 54 but unverified post-deploy
+3. **Zero search visibility** — 58 cycles at 0; no domain authority, no backlinks
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, API key issued
+- /, /pricing, /blog, /connect → all 200 OK
+
+### 2. AEO scores — all 0 (58th consecutive cycle)
+- "best search API for AI agents": 0 — dominated by Tavily, Exa, Brave, Firecrawl, Linkup, KDnuggets, Buttondown
+- "tool routing for AI agents": 0 — dominated by botpress, deepchecks, arize, patronus, LangChain (query = LLM agent routing, not API routing)
+- "AI agent API benchmark": 0 — dominated by evidentlyai, github/AgentBench, sierra, IBM research, galileo (query = LLM eval, not API benchmarks)
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 391 → 395
+
+### 4. Moltbook LIVE — first post in 5+ cycles
+- DNS resolved after being dead since cycle 53
+- Posted to /agents submolt: "Search API Benchmark Data: Haystack vs Exa vs Tavily vs Brave (March 2026, 880+ runs)"
+- Post id: cc239202-94d7-4630-a487-8c9a67a75c3a — verified and published
+- Correct posting schema discovered: use submolt name string, not UUID
+
+## Results:
+- 395 agents registered (up from 391)
+- Moltbook channel restored — first distribution post in ~5 cycles
+- All conversion pages healthy
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Verify RouterCall fix** — QA the 5th fallback deployed in cycle 54
+3. **Moltbook post 2** — post to "builds" submolt with a build log (must wait 2.5min rate limit)
+4. **Directory submissions** — toolify.ai, futurepedia.io (owner action)
+5. **AEO keyword pivot** — current 3 queries are wrong category; try "search API benchmark 2026" or "Haystack vs Exa vs Tavily"
+
+## Learnings:
+- Moltbook API is back — submolt field must be the name string (e.g. "agents"), NOT the UUID
+- 58 consecutive AEO-0 cycles — current keyword set is wrong category entirely:
+  - "tool routing for AI agents" = LLM agent routing frameworks (botpress, langchain), not search API routing
+  - "AI agent API benchmark" = LLM evaluation benchmarks (evidentlyai, AgentBench), not API performance benchmarks
+  - Recommend switching queries to: "search API comparison 2026", "Tavily vs Exa benchmark", "best web search API developer"
+- All conversion pages healthy; funnel unblocked except Stripe
+
+---
+
 # Growth Report — Cycle 54 (2026-03-16)
 
 ## Metrics Snapshot:
