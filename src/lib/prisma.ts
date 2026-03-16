@@ -53,15 +53,23 @@ function getPrismaClient(): PrismaClient {
 
 // ─── Retry Helper ────────────────────────────────────────────────────────────
 
-const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P2024']);
+// NOTE: P1017 = "Server has closed the connection" — common with Neon HTTP after
+// ~1.5s external tool API call. 'fetch failed' = Node.js undici error on HTTP timeout.
+// 'socket hang up' = TCP drop during idle period. All are transient and safe to retry.
+const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1017', 'P2024']);
 
 function isRetryable(err: unknown): boolean {
   if (err && typeof err === 'object' && 'code' in err) {
     return RETRYABLE_CODES.has((err as { code: string }).code);
   }
-  // Also retry on raw connection-refused / ECONNREFUSED errors
   const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes('ECONNREFUSED') || msg.includes('connection timeout');
+  return (
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('connection timeout') ||
+    msg.includes('fetch failed') ||       // Neon HTTP adapter — Node.js fetch error
+    msg.includes('socket hang up') ||     // TCP drop
+    msg.includes('Server has closed')     // P1017 message text fallback
+  );
 }
 
 export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {

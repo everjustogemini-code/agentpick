@@ -65,15 +65,25 @@ export async function ensureDeveloperAccount(agentId: string) {
   });
 
   if (!account) {
-    account = await db.developerAccount.create({
-      data: {
-        agentId,
-        plan: 'FREE',
-        strategy: 'AUTO',
-        priorityTools: [],
-        excludedTools: [],
-      },
-    });
+    try {
+      account = await db.developerAccount.create({
+        data: {
+          agentId,
+          plan: 'FREE',
+          strategy: 'AUTO',
+          priorityTools: [],
+          excludedTools: [],
+        },
+      });
+    } catch (createErr) {
+      // P2002 = unique constraint violation — concurrent request already created the account
+      if ((createErr as { code?: string })?.code === 'P2002') {
+        account = await db.developerAccount.findUnique({ where: { agentId } });
+        if (!account) throw createErr;
+      } else {
+        throw createErr;
+      }
+    }
   } else if (isNewBillingCycle(account.billingCycleStart)) {
     account = await db.developerAccount.update({
       where: { id: account.id },
@@ -337,7 +347,8 @@ export async function recordRouterCall(
       strategyUsed: safeStrategy,
       byokUsed: fullData.byokUsed,
       traceId: fullData.traceId,
-      // totalMs and aiClassification intentionally omitted — may not exist in production DB
+      aiClassification: fullData.aiClassification,
+      // totalMs intentionally omitted — may not exist in production DB if migration not applied
     };
     call = await withRetry(() => db.routerCall.create({
       data: safeData,
@@ -345,48 +356,57 @@ export async function recordRouterCall(
     }));
   }
 
-  const currentAccount = await db.developerAccount.findUnique({
-    where: { id: developerId },
-    select: {
-      plan: true,
-      totalCalls: true,
-      totalFallbacks: true,
-      totalCostUsd: true,
-      avgLatencyMs: true,
-      spentThisMonth: true,
-      billingCycleStart: true,
-    },
-  });
-
-  if (currentAccount) {
-    const previousCalls = currentAccount.totalCalls ?? 0;
-    const nextCalls = previousCalls + 1;
-    const nextAvgLatency =
-      previousCalls > 0 && currentAccount.avgLatencyMs !== null
-        ? (currentAccount.avgLatencyMs * previousCalls + meta.latency_ms) / nextCalls
-        : meta.latency_ms;
-    const resetMonthlySpend = isNewBillingCycle(currentAccount.billingCycleStart);
-
-    // For overage calls, add the overage charge to monthly spend
-    const toolCost = meta.cost_usd ?? 0;
-    const overageCost = isOverageCall
-      ? (ROUTER_PLAN_OVERAGE_PER_CALL[currentAccount.plan as RouterPlanCode] ?? 0)
-      : 0;
-    const totalCallCost = toolCost + overageCost;
-
-    await db.developerAccount.update({
+  // NOTE: routerCall.create is already committed at this point (awaited above via withRetry).
+  // developerAccount.update is a denormalized stats cache — stale counts are acceptable.
+  // Do NOT remove this try-catch: losing it causes a misleading "[RouterCall] write failed"
+  // log in handler.ts even when the RouterCall record was successfully committed.
+  try {
+    const currentAccount = await db.developerAccount.findUnique({
       where: { id: developerId },
-      data: {
-        totalCalls: { increment: 1 },
-        totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
-        totalCostUsd: byokUsed ? (overageCost > 0 ? { increment: overageCost } : undefined) : { increment: totalCallCost },
-        spentThisMonth: resetMonthlySpend
-          ? (byokUsed ? overageCost : totalCallCost)
-          : { increment: byokUsed ? overageCost : totalCallCost },
-        billingCycleStart: resetMonthlySpend ? new Date() : undefined,
-        avgLatencyMs: nextAvgLatency,
+      select: {
+        plan: true,
+        totalCalls: true,
+        totalFallbacks: true,
+        totalCostUsd: true,
+        avgLatencyMs: true,
+        spentThisMonth: true,
+        billingCycleStart: true,
       },
     });
+
+    if (currentAccount) {
+      const previousCalls = currentAccount.totalCalls ?? 0;
+      const nextCalls = previousCalls + 1;
+      const nextAvgLatency =
+        previousCalls > 0 && currentAccount.avgLatencyMs !== null
+          ? (currentAccount.avgLatencyMs * previousCalls + meta.latency_ms) / nextCalls
+          : meta.latency_ms;
+      const resetMonthlySpend = isNewBillingCycle(currentAccount.billingCycleStart);
+
+      // For overage calls, add the overage charge to monthly spend
+      const toolCost = meta.cost_usd ?? 0;
+      const overageCost = isOverageCall
+        ? (ROUTER_PLAN_OVERAGE_PER_CALL[currentAccount.plan as RouterPlanCode] ?? 0)
+        : 0;
+      const totalCallCost = toolCost + overageCost;
+
+      await db.developerAccount.update({
+        where: { id: developerId },
+        data: {
+          totalCalls: { increment: 1 },
+          totalFallbacks: meta.fallback_used ? { increment: 1 } : undefined,
+          totalCostUsd: byokUsed ? (overageCost > 0 ? { increment: overageCost } : undefined) : { increment: totalCallCost },
+          spentThisMonth: resetMonthlySpend
+            ? (byokUsed ? overageCost : totalCallCost)
+            : { increment: byokUsed ? overageCost : totalCallCost },
+          billingCycleStart: resetMonthlySpend ? new Date() : undefined,
+          avgLatencyMs: nextAvgLatency,
+        },
+      });
+    }
+  } catch (updateErr) {
+    const code = (updateErr as Record<string, unknown>)?.code;
+    console.error('[RouterCall] account stats update failed (RouterCall committed OK):', code ?? '', updateErr instanceof Error ? updateErr.message : updateErr);
   }
 
   return call;

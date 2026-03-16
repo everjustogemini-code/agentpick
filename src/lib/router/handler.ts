@@ -122,7 +122,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     const url = new URL(request.url);
     const params: Record<string, unknown> = {};
     for (const [key, value] of url.searchParams.entries()) {
-      if (!['tool', 'tool_api_key', 'token', 'fallback', 'strategy'].includes(key)) {
+      if (!['tool', 'tool_api_key', 'token', 'fallback', 'strategy', 'priority_tools', 'priority', 'priorityTools'].includes(key)) {
         params[key] = value;
       }
     }
