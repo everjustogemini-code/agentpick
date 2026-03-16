@@ -4,6 +4,7 @@ import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
 import { apiError } from '@/types';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
+import { escapeHtml } from '@/lib/sanitize';
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
     if (strategy) {
       const normalizedStrat = normalizeStrategy(strategy);
       if (!normalizedStrat) {
-        return apiError('VALIDATION_ERROR', `Invalid strategy "${strategy}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO (or aliases: best_performance, most_stable, custom)`, 400);
+        return apiError('VALIDATION_ERROR', `Invalid strategy "${escapeHtml(strategy)}". Must be one of: BALANCED, FASTEST, CHEAPEST, MOST_ACCURATE, MANUAL, AUTO (or aliases: best_performance, most_stable, custom)`, 400);
       }
       (where as Record<string, unknown>).strategyUsed = normalizedStrat;
     }

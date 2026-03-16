@@ -26,8 +26,18 @@ export async function GET(request: NextRequest) {
 
     const account = await ensureDeveloperAccount(agent.id);
     const url = new URL(request.url);
-    const parsedDays = parseInt(url.searchParams.get('days') ?? '30', 10);
-    const days = Math.min(Math.max(isNaN(parsedDays) ? 30 : parsedDays, 1), 90);
+    // Accept ?days=N or ?period=Nd (e.g. ?period=7d) — mirrors usage endpoint parameter handling
+    const daysParam = url.searchParams.get('days');
+    const periodParam = url.searchParams.get('period');
+    let rawDays = 30;
+    if (daysParam) {
+      const parsed = parseInt(daysParam, 10);
+      if (!isNaN(parsed)) rawDays = parsed;
+    } else if (periodParam) {
+      const m = periodParam.match(/^(\d+)d$/);
+      if (m) rawDays = parseInt(m[1], 10);
+    }
+    const days = Math.min(Math.max(rawDays, 1), 90);
 
     const stats = await getFallbackStats(account.id, days);
     return Response.json(stats);
