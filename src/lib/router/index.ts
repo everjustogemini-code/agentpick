@@ -5,7 +5,7 @@
  * Agent API keys are NEVER stored, logged, or persisted.
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { callToolAPI } from '@/lib/benchmark/adapters/index';
 import type { ToolCallResult } from '@/lib/benchmark/adapters/types';
 import { getClassification, aiRoute, fastClassify, type QueryContext } from './ai-classify';
@@ -327,12 +327,16 @@ async function recordTrace(
   isFallback: boolean,
   fallbackFrom?: string,
 ): Promise<string> {
-  const product = await prisma.product.findUnique({
+  // NOTE: withRetry here covers P1017/fetch-failed/socket-hang-up that occur after the
+  // ~1.5s external tool API call invalidates the Neon HTTP connection. Without retry,
+  // a transient drop throws out of recordTrace, which throws out of routeRequest,
+  // causing the handler to return 502 even though the tool call succeeded.
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug: tool },
     select: { id: true },
-  });
+  }));
 
-  const event = await prisma.telemetryEvent.create({
+  const event = await withRetry(() => prisma.telemetryEvent.create({
     data: {
       agentId,
       productId: product?.id ?? null,
@@ -346,14 +350,20 @@ async function recordTrace(
       source: 'router',
       context: isFallback ? `fallback_from:${fallbackFrom}` : null,
     },
-  });
+  }));
 
-  // Increment product telemetry count
+  // Increment product telemetry count — non-critical stats cache.
+  // NOTE: Do NOT let a failure here propagate: product.update is a denormalized counter
+  // and must never abort a routing response. Stale counts are acceptable.
   if (product) {
-    await prisma.product.update({
-      where: { id: product.id },
-      data: { telemetryCount: { increment: 1 } },
-    });
+    try {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { telemetryCount: { increment: 1 } },
+      });
+    } catch (countErr) {
+      console.error('[recordTrace] product telemetryCount increment failed (non-fatal):', countErr instanceof Error ? countErr.message : countErr);
+    }
   }
 
   return event.id;
@@ -457,10 +467,12 @@ export async function routeRequest(
   // This causes non-deterministic routing for realtime/news queries (e.g., tavily vs serpapi-google).
   // For strategy-ranked routes the circuit breaker still applies since a pre-selected explicit tool
   // is the primary choice and the circuit breaker only affects fallback ordering there.
-  // For all strategies (including cheapest): getRankedToolsForCapability applies
+  // For all strategies EXCEPT cheapest: getRankedToolsForCapability applies
   // deprioritizeUnconfiguredTools so configured tools rank ahead of unconfigured ones.
-  // Within each group (configured / unconfigured) cost-sorted order is preserved, so
-  // cheapest picks the cheapest available configured tool (e.g. serper before tavily).
+  // For cheapest: raw cost-sorted order is returned (brave-search $0.0001 first, serper
+  // $0.0005 second) even if those tools lack a platform key — the fallback chain handles
+  // missing-key failures so unconfigured cheap tools are naturally skipped, not permanently
+  // demoted. This prevents cheapest from routing to tavily ($0.001) when cheaper tools exist.
   // BYOK keys are resolved at call time, not at ranking time.
   const rawRankedTools = aiRankedTools ?? getRankedToolsForCapability(capability, strategy === 'auto' ? 'balanced' : strategy, undefined, options.storedByokKeys, options.latencyBudgetMs);
   // Skip circuit breaker for AI-ranked tools (per-instance state causes cross-instance non-determinism)
@@ -629,10 +641,16 @@ export async function routeRequest(
 
     // Failed — record the failure and continue
     if (!firstFailedTool) firstFailedTool = candidateSlug;
-    await recordTrace(
-      agentId, candidateSlug, capability, result,
-      isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
-    );
+    // NOTE: Do not let trace recording abort the fallback loop. If recordTrace throws
+    // (e.g. transient Neon error), remaining tools in fullChain would never be tried.
+    try {
+      await recordTrace(
+        agentId, candidateSlug, capability, result,
+        isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+      );
+    } catch (traceErr) {
+      console.error('[Router] recordTrace failed for failed attempt (non-fatal):', candidateSlug, traceErr instanceof Error ? traceErr.message : traceErr);
+    }
   }
 
   // All tools failed — return last failure.
