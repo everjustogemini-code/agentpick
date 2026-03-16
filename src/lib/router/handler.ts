@@ -172,6 +172,16 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       if (Array.isArray(rawPriority)) {
         parsed.priority_tools = rawPriority.filter((t: unknown) => typeof t === 'string');
       }
+      // Normalize fallback to string array. Users sometimes send fallback as a comma-separated
+      // string (e.g. "serper,tavily") instead of an array. Without normalization, routeRequest
+      // iterates over string characters as tool slugs, wasting fallback slots on 's','e','r',...
+      // Mirror the GET-param comma-split behaviour for consistency.
+      const rawFallback = parsed.fallback;
+      if (typeof rawFallback === 'string') {
+        parsed.fallback = rawFallback ? rawFallback.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined;
+      } else if (rawFallback !== undefined && !Array.isArray(rawFallback)) {
+        parsed.fallback = undefined;
+      }
       body = parsed;
     } catch {
       return apiError('VALIDATION_ERROR', 'Invalid JSON body.', 400);
@@ -267,6 +277,12 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       body = { ...body, priority_tools: preAccount.priorityTools as string[] };
     }
   }
+  // Track whether preAccount was available at routing time. If the account lookup failed in
+  // step 4 (preAccount = undefined), body.strategy was never set from account.strategy, so
+  // routeRequest defaulted to 'balanced'. When preAccount is then loaded fresh in the
+  // recording step, using its stored strategy (e.g. 'AUTO') would record the wrong strategy.
+  // wasPreAccountAvailable = false → force effectiveStrategy to 'balanced' for non-MANUAL accounts.
+  const wasPreAccountAvailable = Boolean(preAccount);
   try {
     const { response, headers: extraHeaders } = await routeRequest(agent.id, capability, body, {
       developerId: preAccount?.id,
@@ -279,10 +295,15 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     // Record the call for analytics
     try {
       const account = preAccount ?? await ensureDeveloperAccount(agent.id);
-      // Use body strategy → account default strategy → fallback 'balanced'
-      // This ensures AUTO-strategy accounts' calls are recorded correctly for ai_routing_summary
+      // Use body strategy → account default strategy → fallback 'balanced'.
+      // When preAccount was unavailable at routing time, body.strategy was not set, and
+      // routeRequest used 'balanced'. Use 'balanced' here too (not account.strategy) so the
+      // recorded strategy matches the actual routing strategy used.
       const accountDefaultStrategy = account.strategy ? (account.strategy as string).toLowerCase() : 'balanced';
-      const effectiveStrategy = body.strategy ?? (CORE_TO_SDK[accountDefaultStrategy] ? accountDefaultStrategy : 'balanced');
+      const effectiveStrategy = body.strategy ??
+        (wasPreAccountAvailable
+          ? (CORE_TO_SDK[accountDefaultStrategy] ? accountDefaultStrategy : 'balanced')
+          : 'balanced');
       const strategyUsed = CORE_TO_SDK[effectiveStrategy] ?? 'BALANCED';
       await recordRouterCall(
         account.id,

@@ -170,6 +170,15 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
       if (Array.isArray(rawPriority)) {
         parsed.priority_tools = rawPriority.filter((t: unknown) => typeof t === 'string');
       }
+      // Normalize fallback to string array. Users sometimes send fallback as a comma-separated
+      // string (e.g. "serper,tavily") instead of an array. Without normalization, routeRequest
+      // iterates over string characters as tool slugs, wasting fallback slots on 's','e','r',...
+      const rawFallback = parsed.fallback;
+      if (typeof rawFallback === 'string') {
+        parsed.fallback = rawFallback ? rawFallback.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined;
+      } else if (rawFallback !== undefined && !Array.isArray(rawFallback)) {
+        parsed.fallback = undefined;
+      }
       // Normalize flat body: { query/q/text/input/url/ticker/symbol } → { params: { ... } }
       // Use 'in' (field presence) rather than truthiness so { "query": "" } triggers
       // normalization and returns "A non-empty query is required" instead of "params object required".
