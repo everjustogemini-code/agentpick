@@ -46,6 +46,7 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   "firecrawl-api": "firecrawl",
   brave: "brave",
   "brave-search": "brave",
+  "perplexity-api": "perplexity",
   "perplexity-search": "perplexity",
   perplexity: "perplexity",
   "you-search": "you",

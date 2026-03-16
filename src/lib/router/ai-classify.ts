@@ -306,7 +306,7 @@ export function aiRoute(context: QueryContext, capability: string): string[] {
 
   // Deep research → quality tools first
   if (context.depth === 'deep' || context.type === 'research') {
-    return filterAvailable(['exa-search', 'perplexity-search', 'tavily', 'serpapi'], capability);
+    return filterAvailable(['exa-search', 'perplexity-api', 'tavily', 'serpapi'], capability);
   }
 
   // Finance domain search → domain-aware tools

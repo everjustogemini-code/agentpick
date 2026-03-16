@@ -38,7 +38,7 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
  * This prevents the router from picking tools like Mapbox for search.
  */
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
-  search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-search', 'you-search', 'jina-ai', 'bing-web-search'],
+  search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-api', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
   embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
@@ -58,7 +58,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   serpapi:                  { quality: 3.0, cost: 0.01,    latency: 89,   stability: 0.98 },
   'brave-search':           { quality: 3.2, cost: 0.0001,  latency: 150,  stability: 0.93 },
   serper:                   { quality: 3.1, cost: 0.0005,  latency: 100,  stability: 0.97 },
-  'perplexity-search':      { quality: 4.2, cost: 0.005,   latency: 500,  stability: 0.90 },
+  'perplexity-api':         { quality: 4.2, cost: 0.005,   latency: 500,  stability: 0.90 },
   'you-search':             { quality: 3.0, cost: 0.001,   latency: 200,  stability: 0.92 },
   'jina-ai':                { quality: 3.5, cost: 0.001,   latency: 250,  stability: 0.94 },
   'serpapi-google':          { quality: 3.2, cost: 0.00075, latency: 120,  stability: 0.96 },

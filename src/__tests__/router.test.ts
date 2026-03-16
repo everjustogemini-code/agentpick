@@ -35,14 +35,14 @@ describe('Strategy-based ranking', () => {
   it('best_performance ranks highest quality first', () => {
     const ranked = getRankedToolsForCapability('search', 'best_performance');
     expect(ranked).toContain('exa-search'); // quality 4.6
-    expect(ranked).toContain('perplexity-search'); // quality 4.2
+    expect(ranked).toContain('perplexity-api'); // quality 4.2
   });
 
   it('cheapest ranks lowest cost first (with quality floor)', () => {
     const ranked = getRankedToolsForCapability('search', 'cheapest');
-    // Unconfigured tools are deprioritized to avoid "key not set" failures.
-    // Within the unconfigured group, cost order is preserved:
-    // brave-search ($0.0001) must appear before serper ($0.0005).
+    // Cheapest strategy uses pure cost order — deprioritizeUnconfiguredTools is
+    // intentionally skipped (cycle 94 fix). brave-search ($0.0001) must appear
+    // before serper ($0.0005) due to raw cost sort.
     const braveIdx = ranked.indexOf('brave-search');
     const serperIdx = ranked.indexOf('serper');
     expect(braveIdx).toBeGreaterThanOrEqual(0);

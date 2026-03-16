@@ -50,7 +50,7 @@ Your tool API key is used in-memory only and NEVER stored or logged.
 
 | Capability | Endpoint | Tools Available |
 |-----------|----------|----------------|
-| search | \`/router/search\` | tavily, exa-search, serpapi, serper, brave-search, perplexity-search, you-search, jina-ai, bing-web-search |
+| search | \`/router/search\` | tavily, exa-search, serpapi, serper, brave-search, perplexity-api, you-search, jina-ai, bing-web-search |
 | crawl | \`/router/crawl\` | firecrawl, jina-ai, apify, scrapingbee, browserbase |
 | embed | \`/router/embed\` | openai-embed, cohere-embed, voyage-embed, jina-embed, edenai-embed |
 | finance | \`/router/finance\` | polygon-io, alpha-vantage, financial-modeling-prep |

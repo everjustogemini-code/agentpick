@@ -209,6 +209,7 @@ const SLUG_TO_PROBE_SERVICE: Record<string, string> = {
   "polygon-io": "polygon",
   "alpha-vantage": "alphavantage",
   "financial-modeling-prep": "fmp",
+  "perplexity-api": "perplexity",
   "perplexity-search": "perplexity",
   "you-search": "you",
   "serpapi-google": "serpapi",

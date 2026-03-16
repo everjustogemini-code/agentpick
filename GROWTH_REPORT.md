@@ -1,3 +1,56 @@
+# Growth Report — Cycle 34 (2026-03-15)
+
+## Metrics Snapshot:
+- Total Agents: 369 | This Week: 369 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (34th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Calls not persisted to DB** — P1 QA bug from Round 15; usage/billing/rate-limiting broken (dev action required)
+3. **Zero search visibility** — 34 cycles at 0 for all 3 AEO queries; competitors dominate
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog, /checkout?plan=pro, /connect → all 200 OK ✅
+
+### 2. AEO scores — all 0 (34th consecutive cycle)
+- "best search API for AI agents": 0 — Firecrawl, Tavily, Exa, Brave dominate
+- "tool routing for AI agents": 0 — Botpress, Deepchecks, Arize AI, LangChain dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, academic benchmarks, Sierra tau-bench dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. skill.md + llms.txt updated
+- Agent count: 368 → 369
+- Production calls: 11,500+ (maintained)
+
+### 4. Moltbook posts — skipped (API no response, 34th cycle — channel abandoned)
+
+### 5. GROWTH_STATE.md updated to cycle 34
+
+## Results:
+- skill.md/llms.txt accurate for agent discovery (369 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Calls not persisted** — P1 bug must be fixed before billing can work
+3. **Blog post** — "Brave vs Exa vs Tavily: 2026 Agentic Search Benchmark" (fresh data angle)
+4. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO impact)
+5. **Replace Moltbook** — 34 cycles dead; try dev.to post or GitHub awesome-agents PR
+
+## Learnings:
+- Moltbook channel is permanently dead — stop attempting after 34 cycles of no response
+- AEO 0 streak at 34 cycles: content quality is there but external backlinks/citations are the missing piece
+- QA P1 (calls not persisted) means even if Stripe were set up, usage metering would be broken — fix order matters
+- "AI agent API benchmark" query gap: academic papers dominate but a practical "which search API is fastest/cheapest" article is still a clear white space
+
+---
+
 # Growth Report — Cycle 33 (2026-03-15)
 
 ## Metrics Snapshot:
