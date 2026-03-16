@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { RANKING_STATUSES } from '@/lib/product-status';
 import { hashApiKey } from '@/lib/auth';
@@ -15,24 +15,24 @@ export async function GET(request: NextRequest) {
 
   // Find agent by API key hash
   const hash = hashApiKey(apiKey);
-  const agent = await prisma.agent.findFirst({
+  const agent = await withRetry(() => prisma.agent.findFirst({
     where: { apiKeyHash: hash },
     select: { id: true, name: true },
-  });
+  }));
 
   if (!agent) {
     return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
   }
 
   // Get agent's telemetry — which tools they've been using
-  const telemetry = await prisma.telemetryEvent.findMany({
+  const telemetry = await withRetry(() => prisma.telemetryEvent.findMany({
     where: { agentId: agent.id, productId: { not: null } },
     orderBy: { createdAt: 'desc' },
     take: 500,
     include: {
       product: { select: { slug: true, name: true, category: true, weightedScore: true } },
     },
-  });
+  }));
 
   if (telemetry.length === 0) {
     return NextResponse.json({
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
   const recommendations: Array<{ from: string; to: string; toSlug: string; improvement: string }> = [];
 
   for (const tool of toolsUsed) {
-    const topInCategory = await prisma.product.findFirst({
+    const topInCategory = await withRetry(() => prisma.product.findFirst({
       where: {
         status: { in: RANKING_STATUSES },
         category: tool.category as 'search_research',
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { weightedScore: 'desc' },
       select: { name: true, slug: true, weightedScore: true },
-    });
+    }));
 
     if (topInCategory && topInCategory.weightedScore > tool.score + 1) {
       const diff = Math.round(((topInCategory.weightedScore - tool.score) / tool.score) * 100);

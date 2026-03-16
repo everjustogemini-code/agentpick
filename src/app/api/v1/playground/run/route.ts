@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { hashApiKey } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export const maxDuration = 60;
 
@@ -22,7 +22,7 @@ function checkMemRateLimit(ip: string, limit = 10, windowMs = 86_400_000): boole
 
 async function getPlaygroundAgent() {
   const apiKeyHash = hashApiKey(PLAYGROUND_AGENT_TOKEN);
-  return prisma.agent.upsert({
+  return withRetry(() => prisma.agent.upsert({
     where: { apiKeyHash },
     update: { lastActiveAt: new Date(), isRestricted: false },
     create: {
@@ -34,7 +34,7 @@ async function getPlaygroundAgent() {
       isRestricted: false,
     },
     select: { id: true },
-  });
+  }));
 }
 
 export async function POST(request: NextRequest) {

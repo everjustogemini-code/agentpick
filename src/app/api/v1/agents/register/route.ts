@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { generateApiKey, hashApiKey } from '@/lib/auth';
 import { checkRateLimit, registerLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -18,7 +18,7 @@ async function handleRegister(body: AgentRegisterRequest, ip: string) {
   const apiKey = generateApiKey();
   const apiKeyHash = hashApiKey(apiKey);
 
-  const agent = await prisma.agent.create({
+  const agent = await withRetry(() => prisma.agent.create({
     data: {
       apiKeyHash,
       name: body.name,
@@ -28,7 +28,7 @@ async function handleRegister(body: AgentRegisterRequest, ip: string) {
       description: body.description ?? null,
       orchestratorId: body.orchestrator ?? null,
     },
-  });
+  }));
 
   return Response.json(
     {
