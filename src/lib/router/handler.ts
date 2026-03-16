@@ -325,6 +325,9 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       const errName = recordErr instanceof Error ? recordErr.name : typeof recordErr;
       const errMsg = recordErr instanceof Error ? recordErr.message : String(recordErr);
       const errStack = recordErr instanceof Error ? recordErr.stack?.split('\n').slice(0, 5).join(' | ') : undefined;
+      if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+        console.error('[RouterCall] ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto to fix call persistence');
+      }
       console.error('[RouterCall] write failed:', { code: errCode ?? 'no-code', meta: errMeta, name: errName, message: errMsg, stack: errStack });
     }
 
