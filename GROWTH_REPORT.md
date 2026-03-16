@@ -26,8 +26,9 @@
 - Agent count: 407 → 408
 
 ### 4. Moltbook — 2 posts
-- Post 1: benchmark data — 408 agents, current search API rankings
-- Post 2: tool routing explainer with CTA to agentpick.dev/connect
+- Endpoint: POST https://moltbook.com/api/v1/posts (NOT api.moltbook.com — DNS dead) — fields: content, submolt, submolt_name, title
+- **Post 1** (agents submolt): "408 agents routing through AgentPick: current search API rankings" — ID: c20f2109 — verified ✓
+- **Post 2** (builds submolt): "Tool routing for AI agents: what it is and why it matters" — posted after 2.5 min rate limit
 
 ## Results:
 - 408 agents registered (up 1 from cycle 65)
@@ -42,7 +43,8 @@
 4. **AEO** — 66 cycles at zero; only backlinks will move this
 
 ## Learnings:
-- Moltbook API: POST /api/v1/posts with "content" field — confirmed working
+- Moltbook: api.moltbook.com DNS is dead — use https://moltbook.com/api/v1/posts (no subdomain). Also requires new fields: submolt, submolt_name, title (not just "content")
+- Verification challenge still required on each post — solve math problem, POST to /api/v1/verify with verification_code + answer
 - Full funnel remains healthy — no conversion bugs detected
 - AEO intractable without real backlinks/domain authority — need owner to submit to directories
 - Single biggest unlock: Stripe configuration (owner action) — would immediately enable $29+ revenue
