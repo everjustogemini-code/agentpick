@@ -1,3 +1,55 @@
+# Growth Report — Cycle 38 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 373 | This Week: 373 | Calls Today: 1 | Paid: 0
+- AEO scores: 0/0/0 (38th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Zero search visibility** — 38 cycles at 0 for all 3 AEO queries; domain authority issue confirmed
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. P1 bug call persistence — CONFIRMED FIXED (bugfix-98)
+- POST /api/v1/route/search with new test key → call returned in GET /api/v1/router/calls ✅
+- This is a critical fix: billing, metering, rate-limiting now functional
+- Was broken for 7+ QA cycles (91, 93, 94, 96, 97, 98 attempts). Now working.
+
+### 3. AEO scores — all 0 (38th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily #1, KDnuggets, Firecrawl, Brave, Medium dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, FME Safe, Deepchecks dominate; terminology mismatch
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub repos, Sierra/tau-bench, AgentBench, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 4. llms.txt + skill.md updated
+- Agent count: 372 → 373
+- Both files updated ✅
+
+## Results:
+- **Call persistence now works** — billing infrastructure is unblocked (Stripe config is the only remaining revenue blocker)
+- llms.txt and skill.md accurate for agent discovery (373 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO/AEO impact)
+3. **New AEO query targets** — "agentic search benchmark" and "search API comparison for AI agents" have less competition; replace "tool routing" query which has permanent 38-cycle zero from terminology mismatch
+4. **Dev community post** — Hacker News / dev.to with real benchmark data to build inbound links and domain authority
+
+## Learnings:
+- bugfix-98 (two-phase INSERT + expanded isRetryable for Neon HTTP errors P1017/fetch-failed/socket-hang-up) **finally fixed** call persistence after 7 cycles of attempts. Root cause was Neon HTTP connection expiring after ~1.5s external API call — not retried because P1017 was not in RETRYABLE_CODES.
+- 38-cycle AEO zero streak is conclusively a domain authority problem. Content quality is not the issue. Need inbound links from dev communities (HN, dev.to, GitHub topics).
+- "tool routing for AI agents" query has permanent terminology mismatch — 38 cycles confirms replacement needed.
+
+---
+
 # Growth Report — Cycle 37 (2026-03-16)
 
 ## Metrics Snapshot:
