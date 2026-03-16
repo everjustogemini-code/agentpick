@@ -1,3 +1,56 @@
+# Growth Report — Cycle 37 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 372 | This Week: 372 | Calls Today: 22 | Paid: 0
+- AEO scores: 0/0/0 (37th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue possible (owner action required)
+2. **Calls not persisted to DB** — P1 QA bug; usage/billing/rate-limiting broken (dev action required)
+3. **Zero search visibility** — 37 cycles at 0 for all 3 AEO queries; domain authority issue, not content quality
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- /, /pricing, /blog → all 200 OK ✅
+
+### 2. AEO scores — all 0 (37th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily #1, KDnuggets, Firecrawl, Medium, Brave dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, FME Safe, Deepchecks dominate; terminology mismatch
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub repos, Sierra/tau-bench, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
+
+### 3. llms.txt + skill.md updated
+- Agent count: 371 → 372
+- Both files updated ✅
+
+### 4. Moltbook post attempted
+- Posted benchmark data (Haystack #1 quality, Exa #1 speed, Brave AIMultiple results)
+- API returned no response (dead channel as per prior cycles)
+
+## Results:
+- llms.txt and skill.md accurate for agent discovery (372 agents)
+- All conversion pages confirmed loading
+- 0 new paid conversions (Stripe still unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel
+2. **Calls not persisted** — P1 bug must be fixed before billing can work
+3. **Directory submissions** — toolify.ai, futurepedia.io, theresanaiforthat.com (owner action, high SEO/AEO impact)
+4. **New AEO query targets** — "agentic search benchmark" and "search API comparison for AI agents" show less competition; consider replacing query 2 ("tool routing") which has 37-cycle zero streak from permanent terminology mismatch
+5. **Dev community post** — Hacker News / dev.to post with real benchmark data to build inbound links and domain authority
+
+## Learnings:
+- 37-cycle AEO zero streak conclusively a domain authority problem, not content quality. 22+ blog posts exist. Need inbound links from dev communities.
+- "tool routing for AI agents" query has permanent terminology mismatch — should be replaced with "search API for agents" or "agentic search API" targeting less-competitive long-tail
+- Moltbook channel remains dead — no response across 37 cycles. Should be dropped from cycle actions.
+- The AIMultiple agentic-search benchmark article appears consistently in queries 1 and 3 results. Getting a backlink from that specific page would have outsized impact.
+
+---
+
 # Growth Report — Cycle 36 (2026-03-16)
 
 ## Metrics Snapshot:

@@ -299,7 +299,10 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       // Don't fail the request if recording fails — log structured details for Vercel diagnostics
       const errCode = (recordErr as Record<string, unknown>)?.code;
       const errMeta = (recordErr as Record<string, unknown>)?.meta;
-      console.error('[RouterCall] write failed:', errCode ?? 'no-code', errMeta ?? '', recordErr instanceof Error ? recordErr.message : recordErr);
+      const errName = recordErr instanceof Error ? recordErr.name : typeof recordErr;
+      const errMsg = recordErr instanceof Error ? recordErr.message : String(recordErr);
+      const errStack = recordErr instanceof Error ? recordErr.stack?.split('\n').slice(0, 5).join(' | ') : undefined;
+      console.error('[RouterCall] write failed:', { code: errCode ?? 'no-code', meta: errMeta, name: errName, message: errMsg, stack: errStack });
     }
 
     const responseHeaders: Record<string, string> = {
