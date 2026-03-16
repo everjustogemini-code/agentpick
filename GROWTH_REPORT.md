@@ -1,3 +1,54 @@
+# Growth Report — Cycle 67 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 409 | This Week: 409 | Calls Today: 58 | Paid: 0
+- AEO scores: 0/0/0 (67th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 67 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, API key issued (409th agent registered)
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (67th consecutive cycle)
+- "best search API for AI agents": 0 — dominated by Tavily, KDnuggets, Firecrawl
+- "tool routing for AI agents": 0 — dominated by LivePerson, Patronus AI, Botpress
+- "AI agent API benchmark": 0 — dominated by EvidentlyAI, GitHub/philschmid, GitHub/AgentBench
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt
+- Served dynamically from DB — auto-reflects 409 agents (no static file to update)
+
+### 4. Moltbook — 2 posts
+- Endpoint: POST https://moltbook.com/api/v1/posts (no agent_id field this cycle)
+- **Post 1** (agents submolt): "409 agents routing through AgentPick: search API rankings updated" — ID: 829b6dd8 — verified ✓
+- **Post 2** (builds submolt): "Why AI agents stop hardcoding Tavily or Exa: benchmark-driven tool routing" — posted after 2.5 min rate limit
+
+## Results:
+- 409 agents registered (up 1 from cycle 66)
+- All conversion pages healthy — funnel unblocked
+- Moltbook: 2 posts published
+- No new revenue (Stripe unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook engagement** — continue posting benchmark data, reply to comments
+
+## Learnings:
+- Moltbook: do NOT include agent_id in post body — causes 400 error (field "should not exist")
+- llms.txt and skill.md are dynamically generated from DB — agent count auto-updates, no static files to edit
+- All conversion pages remain healthy
+- Stripe is the single biggest unlock — $0 revenue until owner configures it
+
+---
+
 # Growth Report — Cycle 66 (2026-03-16)
 
 ## Metrics Snapshot:
