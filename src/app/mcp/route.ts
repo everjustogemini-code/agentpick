@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { RANKING_STATUSES, BROWSE_STATUSES } from '@/lib/product-status';
 import { hashApiKey } from '@/lib/auth';
 import { calculateReputation } from '@/lib/reputation';
@@ -232,7 +232,7 @@ async function discoverTools(args: {
 
   const limit = Math.min(20, Math.max(1, args.limit ?? 5));
 
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where,
     orderBy: { weightedScore: 'desc' },
     take: limit,
@@ -247,7 +247,7 @@ async function discoverTools(args: {
       websiteUrl: true,
       tags: true,
     },
-  });
+  }));
 
   return products.map((p, i) => ({
     rank: i + 1,
@@ -263,7 +263,7 @@ async function discoverTools(args: {
 }
 
 async function getToolDetails(args: { slug: string }) {
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug: args.slug },
     include: {
       votes: {
@@ -277,7 +277,7 @@ async function getToolDetails(args: { slug: string }) {
         },
       },
     },
-  });
+  }));
 
   if (!product || !RANKING_STATUSES.includes(product.status)) {
     return { error: 'Product not found' };
@@ -312,7 +312,7 @@ async function getToolDetails(args: { slug: string }) {
 
 async function compareTools(args: { slug_a: string; slug_b: string }) {
   const [a, b] = await Promise.all([
-    prisma.product.findUnique({
+    withRetry(() => prisma.product.findUnique({
       where: { slug: args.slug_a },
       include: {
         votes: {
@@ -321,8 +321,8 @@ async function compareTools(args: { slug_a: string; slug_b: string }) {
           include: { agent: { select: { name: true, modelFamily: true } } },
         },
       },
-    }),
-    prisma.product.findUnique({
+    })),
+    withRetry(() => prisma.product.findUnique({
       where: { slug: args.slug_b },
       include: {
         votes: {
@@ -331,7 +331,7 @@ async function compareTools(args: { slug_a: string; slug_b: string }) {
           include: { agent: { select: { name: true, modelFamily: true } } },
         },
       },
-    }),
+    })),
   ]);
 
   if (!a || !RANKING_STATUSES.includes(a.status)) return { error: `Product '${args.slug_a}' not found` };
@@ -377,7 +377,7 @@ async function getRankings(args: { category: string; limit?: number }) {
   }
   const limit = Math.min(20, Math.max(1, args.limit ?? 10));
 
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where: { status: { in: RANKING_STATUSES }, category: args.category as Category },
     orderBy: { weightedScore: 'desc' },
     take: limit,
@@ -388,7 +388,7 @@ async function getRankings(args: { category: string; limit?: number }) {
       weightedScore: true,
       totalVotes: true,
     },
-  });
+  }));
 
   return {
     category: args.category,
@@ -406,13 +406,13 @@ async function getRankings(args: { category: string; limit?: number }) {
 
 async function arenaCompare(args: { scenario: string; current_tools: string[]; queries: string[] }) {
   // Get benchmark data for user's tools and alternatives
-  const userProducts = await prisma.product.findMany({
+  const userProducts = await withRetry(() => prisma.product.findMany({
     where: { slug: { in: args.current_tools } },
     select: { slug: true, name: true, weightedScore: true, avgBenchmarkRelevance: true, avgLatencyMs: true, avgCostUsd: true, successRate: true },
-  });
+  }));
 
   // Find top alternatives
-  const alternatives = await prisma.product.findMany({
+  const alternatives = await withRetry(() => prisma.product.findMany({
     where: {
       status: { in: RANKING_STATUSES },
       slug: { notIn: args.current_tools },
@@ -421,7 +421,7 @@ async function arenaCompare(args: { scenario: string; current_tools: string[]; q
     orderBy: { weightedScore: 'desc' },
     take: 3,
     select: { slug: true, name: true, weightedScore: true, avgBenchmarkRelevance: true, avgLatencyMs: true, avgCostUsd: true, successRate: true },
-  });
+  }));
 
   const userAvgScore = userProducts.length > 0
     ? userProducts.reduce((s, p) => s + (p.avgBenchmarkRelevance ?? 0), 0) / userProducts.length
@@ -463,10 +463,10 @@ async function arenaCompare(args: { scenario: string; current_tools: string[]; q
 async function authenticateFromKey(apiKey: string) {
   if (!apiKey || !apiKey.startsWith('ah_')) return null;
   const hash = hashApiKey(apiKey);
-  const agent = await prisma.agent.findUnique({ where: { apiKeyHash: hash } });
+  const agent = await withRetry(() => prisma.agent.findUnique({ where: { apiKeyHash: hash } }));
   if (!agent || agent.isRestricted) return null;
   // Fire-and-forget lastActiveAt
-  prisma.agent.update({ where: { id: agent.id }, data: { lastActiveAt: new Date() } }).catch(() => {});
+  withRetry(() => prisma.agent.update({ where: { id: agent.id }, data: { lastActiveAt: new Date() } })).catch(() => {});
   return agent;
 }
 
@@ -479,9 +479,9 @@ async function voteForTool(args: { api_key: string; product_slug: string; signal
     return { error: 'signal must be "upvote" or "downvote"' };
   }
 
-  const product = await prisma.product.findFirst({
+  const product = await withRetry(() => prisma.product.findFirst({
     where: { slug: args.product_slug, status: { in: BROWSE_STATUSES } },
-  });
+  }));
   if (!product) return { error: `Product "${args.product_slug}" not found.` };
 
   const signal: VoteSignal = signalUpper as VoteSignal;
@@ -490,10 +490,10 @@ async function voteForTool(args: { api_key: string; product_slug: string; signal
   const diversityMult = await calculateDiversity(agent, product.id);
   const finalWeight = Math.round(rawWeight * reputationMult * diversityMult * 1000) / 1000;
 
-  const existingVote = await prisma.vote.findUnique({
+  const existingVote = await withRetry(() => prisma.vote.findUnique({
     where: { productId_agentId: { productId: product.id, agentId: agent.id } },
     select: { id: true, signal: true, proofVerified: true },
-  });
+  }));
 
   if (existingVote?.proofVerified) {
     return { vote_id: existingVote.id, updated: false, message: 'You already have a proof-backed vote for this product.' };
@@ -513,19 +513,19 @@ async function voteForTool(args: { api_key: string; product_slug: string; signal
     comment: args.comment ?? null,
   };
 
-  const vote = await prisma.vote.upsert({
+  const vote = await withRetry(() => prisma.vote.upsert({
     where: { productId_agentId: { productId: product.id, agentId: agent.id } },
     create: { productId: product.id, agentId: agent.id, ...voteData },
     update: voteData,
-  });
+  }));
 
   if (!isUpdate) {
-    const updatedAgent = await prisma.agent.update({
+    const updatedAgent = await withRetry(() => prisma.agent.update({
       where: { id: agent.id },
       data: { totalVotes: { increment: 1 }, verifiedVotes: { increment: 1 } },
-    });
+    }));
     const newReputation = calculateReputation(updatedAgent);
-    await prisma.agent.update({ where: { id: agent.id }, data: { reputationScore: newReputation } });
+    await withRetry(() => prisma.agent.update({ where: { id: agent.id }, data: { reputationScore: newReputation } }));
   }
 
   const newScore = await recalculateProductScore(product.id);
@@ -564,10 +564,10 @@ async function submitTool(args: { api_key: string; name: string; url: string; ta
   }
 
   // Dedup check
-  const existing = await prisma.product.findFirst({
+  const existing = await withRetry(() => prisma.product.findFirst({
     where: { OR: [{ websiteUrl: args.url }, { name: { equals: args.name, mode: 'insensitive' } }] },
     select: { slug: true, name: true, status: true },
-  });
+  }));
   if (existing) {
     return { error: `A product matching this name or URL already exists: ${existing.name}`, existing_slug: existing.slug };
   }
@@ -594,7 +594,7 @@ async function submitTool(args: { api_key: string; name: string; url: string; ta
   if (!urlReachable) return { error: `URL ${args.url} is not reachable.` };
 
   const slug = await uniqueSlug(args.name);
-  const product = await prisma.product.create({
+  const product = await withRetry(() => prisma.product.create({
     data: {
       slug,
       name: args.name,
@@ -607,7 +607,7 @@ async function submitTool(args: { api_key: string; name: string; url: string; ta
       submittedBy: `agent:${agent.id}:agent`,
       submittedByAgentId: agent.id,
     },
-  });
+  }));
 
   return {
     product_id: product.id,
@@ -630,7 +630,7 @@ async function registerAgent(args: { name: string; model_family?: string; descri
   const apiKey = generateApiKey();
   const apiKeyHash = hashKey(apiKey);
 
-  const agent = await prisma.agent.create({
+  const agent = await withRetry(() => prisma.agent.create({
     data: {
       apiKeyHash,
       name: args.name,
@@ -638,7 +638,7 @@ async function registerAgent(args: { name: string; model_family?: string; descri
       description: args.description ?? null,
       orchestratorId: null,
     },
-  });
+  }));
 
   return {
     agent_id: agent.id,
