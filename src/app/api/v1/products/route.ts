@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { RANKING_STATUSES } from '@/lib/product-status';
 import type { Category } from '@/generated/prisma/client';
@@ -74,14 +74,14 @@ export async function GET(request: NextRequest) {
     }
 
     const [products, total] = await Promise.all([
-      prisma.product.findMany({
+      withRetry(() => prisma.product.findMany({
         where,
         orderBy,
         take: limit,
         skip: offset,
         select: SELECT_FIELDS,
-      }),
-      prisma.product.count({ where }),
+      })),
+      withRetry(() => prisma.product.count({ where })),
     ]);
 
     const _links: Record<string, { href: string }> = {
@@ -112,14 +112,14 @@ export async function GET(request: NextRequest) {
 
   // Search queries — no cache
   const [products, total] = await Promise.all([
-    prisma.product.findMany({
+    withRetry(() => prisma.product.findMany({
       where,
       orderBy,
       take: limit,
       skip: offset,
       select: SELECT_FIELDS,
-    }),
-    prisma.product.count({ where }),
+    })),
+    withRetry(() => prisma.product.count({ where })),
   ]);
 
   const _links: Record<string, { href: string }> = {

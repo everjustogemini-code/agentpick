@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -8,10 +8,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing claimId' }, { status: 400 });
   }
 
-  const claim = await prisma.productClaim.findUnique({
+  const claim = await withRetry(() => prisma.productClaim.findUnique({
     where: { id: claimId },
     include: { product: { select: { websiteUrl: true, slug: true } } },
-  });
+  }));
 
   if (!claim) {
     return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Verification failed. Please check your setup and try again.' }, { status: 400 });
   }
 
-  await prisma.$transaction([
+  await withRetry(() => prisma.$transaction([
     prisma.productClaim.update({
       where: { id: claimId },
       data: { status: 'verified', verifiedAt: new Date() },
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       where: { id: claim.productId },
       data: { isClaimed: true },
     }),
-  ]);
+  ]));
 
   return NextResponse.json({ status: 'verified', slug: claim.product.slug });
 }

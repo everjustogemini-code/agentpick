@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { callToolAPI, BENCHMARKABLE_SLUGS } from '@/lib/benchmark/adapters';
 import { RANKING_STATUSES } from '@/lib/product-status';
@@ -25,13 +25,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Get top 5 benchmarkable products per category
-  const categories = await prisma.product.groupBy({
+  const categories = await withRetry(() => prisma.product.groupBy({
     by: ['category'],
     where: {
       status: { in: RANKING_STATUSES },
       slug: { in: BENCHMARKABLE_SLUGS },
     },
-  });
+  }));
 
   const results: Array<{
     slug: string;
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   const query = MONITOR_QUERIES[Math.floor(Math.random() * MONITOR_QUERIES.length)];
 
   for (const { category } of categories) {
-    const products = await prisma.product.findMany({
+    const products = await withRetry(() => prisma.product.findMany({
       where: {
         status: { in: RANKING_STATUSES },
         category,
@@ -54,20 +54,20 @@ export async function GET(request: NextRequest) {
       orderBy: { weightedScore: 'desc' },
       take: 5,
       select: { id: true, slug: true },
-    });
+    }));
 
     for (const product of products) {
       try {
         const result = await callToolAPI(product.slug, query);
 
         // Store as telemetry
-        const playgroundAgent = await prisma.agent.findFirst({
+        const playgroundAgent = await withRetry(() => prisma.agent.findFirst({
           where: { name: 'playground-agent' },
           select: { id: true },
-        });
+        }));
 
         if (playgroundAgent) {
-          await prisma.telemetryEvent.create({
+          await withRetry(() => prisma.telemetryEvent.create({
             data: {
               agentId: playgroundAgent.id,
               productId: product.id,
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
               costUsd: result.costUsd,
               context: 'continuous-arena',
             },
-          });
+          }));
         }
 
         results.push({

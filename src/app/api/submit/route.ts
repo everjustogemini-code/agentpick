@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { uniqueSlug } from '@/lib/slugify';
 import { checkRateLimit, submitLimiterAnon } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Duplicate detection: check if website URL already exists
-  const existingByUrl = await prisma.product.findFirst({
+  const existingByUrl = await withRetry(() => prisma.product.findFirst({
     where: { websiteUrl: body.website_url },
     select: { slug: true, name: true },
-  });
+  }));
   if (existingByUrl) {
     return apiError(
       'DUPLICATE',
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   const slug = await uniqueSlug(body.name);
 
   // R5v2: Auto-publish as SUBMITTED (visible immediately, unverified)
-  const product = await prisma.product.create({
+  const product = await withRetry(() => prisma.product.create({
     data: {
       slug,
       name: body.name,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       submittedBy: body.submitter_email,
       status: 'SUBMITTED',
     },
-  });
+  }));
 
   return Response.json(
     {

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { calculateScoreBreakdown } from '@/lib/score';
 import { BROWSE_STATUSES } from '@/lib/product-status';
@@ -7,14 +7,14 @@ import { NextRequest, NextResponse } from 'next/server';
 export const maxDuration = 120;
 
 async function getSourceStats(productId: string, source: string) {
-  const events = await prisma.telemetryEvent.aggregate({
+  const events = await withRetry(() => prisma.telemetryEvent.aggregate({
     where: { productId, source },
     _count: true,
     _avg: { latencyMs: true },
-  });
-  const successCount = await prisma.telemetryEvent.count({
+  }));
+  const successCount = await withRetry(() => prisma.telemetryEvent.count({
     where: { productId, source, success: true },
-  });
+  }));
   const count = events._count;
   return {
     count,
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where: { status: { in: BROWSE_STATUSES } },
     select: {
       id: true,
@@ -39,27 +39,27 @@ export async function GET(request: NextRequest) {
       weightedScore: true,
       totalVotes: true,
     },
-  });
+  }));
 
   let updated = 0;
 
   for (const product of products) {
     // Benchmark stats
-    const benchRuns = await prisma.benchmarkRun.findMany({
+    const benchRuns = await withRetry(() => prisma.benchmarkRun.findMany({
       where: { productId: product.id, relevanceScore: { not: null } },
       select: { relevanceScore: true },
-    });
-    const benchmarkCount = await prisma.benchmarkRun.count({
+    }));
+    const benchmarkCount = await withRetry(() => prisma.benchmarkRun.count({
       where: { productId: product.id },
-    });
+    }));
     const avgBenchmarkRelevance = benchRuns.length > 0
       ? benchRuns.reduce((s, r) => s + (r.relevanceScore ?? 0), 0) / benchRuns.length
       : null;
 
     // Arena test count (social proof only)
-    const arenaTestCount = await prisma.playgroundRun.count({
+    const arenaTestCount = await withRetry(() => prisma.playgroundRun.count({
       where: { productId: product.id },
-    });
+    }));
 
     // Per-source telemetry stats
     const [routerStats, communityStats] = await Promise.all([
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       voteCount: product.totalVotes,
     });
 
-    await prisma.product.update({
+    await withRetry(() => prisma.product.update({
       where: { id: product.id },
       data: {
         avgBenchmarkRelevance,
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
         } as unknown as Prisma.InputJsonValue,
         weightedScore: breakdown.blendedScore,
       },
-    });
+    }));
 
     updated++;
   }

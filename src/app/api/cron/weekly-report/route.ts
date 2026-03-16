@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 import { escapeHtml } from '@/lib/sanitize';
@@ -24,48 +24,48 @@ export async function GET(request: NextRequest) {
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Check if report already exists
-  const existing = await prisma.weeklyReport.findUnique({ where: { week } });
+  const existing = await withRetry(() => prisma.weeklyReport.findUnique({ where: { week } }));
   if (existing) {
     return NextResponse.json({ status: 'already_exists', id: existing.id });
   }
 
   // Votes this week
-  const weekVotes = await prisma.vote.count({
+  const weekVotes = await withRetry(() => prisma.vote.count({
     where: { createdAt: { gte: weekAgo }, proofVerified: true },
-  });
-  const totalVotes = await prisma.vote.count({ where: { proofVerified: true } });
+  }));
+  const totalVotes = await withRetry(() => prisma.vote.count({ where: { proofVerified: true } }));
 
   // Benchmark tests this week
-  const weekBenchmarks = await prisma.benchmarkRun.count({
+  const weekBenchmarks = await withRetry(() => prisma.benchmarkRun.count({
     where: { createdAt: { gte: weekAgo } },
-  });
+  }));
 
   // Playground sessions this week
-  const weekPlayground = await prisma.playgroundSession.count({
+  const weekPlayground = await withRetry(() => prisma.playgroundSession.count({
     where: { createdAt: { gte: weekAgo }, status: 'completed' },
-  });
+  }));
 
   // Top products
-  const topProducts = await prisma.product.findMany({
+  const topProducts = await withRetry(() => prisma.product.findMany({
     where: { status: { in: BROWSE_STATUSES } },
     orderBy: { weightedScore: 'desc' },
     take: 5,
     select: { name: true, slug: true, weightedScore: true, totalVotes: true, category: true },
-  });
+  }));
 
   // Top movers (most votes this week)
-  const recentVotes = await prisma.vote.groupBy({
+  const recentVotes = await withRetry(() => prisma.vote.groupBy({
     by: ['productId'],
     where: { createdAt: { gte: weekAgo }, proofVerified: true },
     _count: true,
     orderBy: { _count: { productId: 'desc' } },
     take: 5,
-  });
+  }));
 
-  const moverProducts = await prisma.product.findMany({
+  const moverProducts = await withRetry(() => prisma.product.findMany({
     where: { id: { in: recentVotes.map((v) => v.productId) } },
     select: { id: true, name: true, slug: true },
-  });
+  }));
 
   const movers = recentVotes.map((v) => {
     const p = moverProducts.find((p) => p.id === v.productId);
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   });
 
   // Top agent reviews this week
-  const topReviews = await prisma.vote.findMany({
+  const topReviews = await withRetry(() => prisma.vote.findMany({
     where: { createdAt: { gte: weekAgo }, proofVerified: true, comment: { not: null } },
     orderBy: { finalWeight: 'desc' },
     take: 3,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       agent: { select: { name: true } },
       product: { select: { name: true } },
     },
-  });
+  }));
 
   // Generate markdown
   // SECURITY: Escape all DB-sourced content (product names, agent names, comments)
@@ -116,7 +116,7 @@ ${weekPlayground} playground sessions.
 
 Full report: agentpick.dev/reports/weekly/${week}`;
 
-  const report = await prisma.weeklyReport.create({
+  const report = await withRetry(() => prisma.weeklyReport.create({
     data: {
       week,
       markdownContent: markdown,
@@ -130,7 +130,10 @@ Full report: agentpick.dev/reports/weekly/${week}`;
       },
       status: 'draft',
     },
-  });
+  }));
+
+  // Suppress unused variable warning for topProducts (fetched for context, movers computed separately)
+  void topProducts;
 
   return NextResponse.json({ status: 'created', id: report.id, week });
 }
