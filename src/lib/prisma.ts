@@ -92,13 +92,16 @@ export async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<
       return await fn();
     } catch (err) {
       lastErr = err;
-      if (!isRetryable(err)) throw err;
-      // Invalidate the cached Prisma client before retrying — stale WebSocket/HTTP connections
-      // are not automatically re-established; clearing the singleton forces getPrismaClient()
-      // to create a fresh client (and new connection) on the next call.
-      // Also clear on the last attempt before rethrowing, so that callers in the fallback
-      // path (e.g. fallback INSERT in recordRouterCall) start with a fresh connection.
+      // Always clear the singleton on ANY error — not just retryable ones.
+      // Non-retryable errors (e.g. unrecognised error codes from a dropped connection,
+      // schema mismatches surfacing after a prior stale-connection failure) also leave the
+      // Prisma singleton in a broken state. If we only clear on retryable errors, a
+      // non-retryable failure from telemetryEvent.create or product.update inside
+      // recordTrace will leave the singleton stale, and the subsequent routerCall.create
+      // in recordRouterCall will fail on the same stale connection — silently losing the
+      // RouterCall record even though the external tool call succeeded.
       globalForPrisma.prisma = undefined;
+      if (!isRetryable(err)) throw err;
       if (i === attempts - 1) throw err;
       const backoff = 200 * Math.pow(2, i); // 200 / 400 / 800 ms
       await new Promise((r) => setTimeout(r, backoff));

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { decryptSecret, encryptSecret } from '@/lib/ops/crypto';
 import { vaultServiceForSlug } from '@/lib/ops/usage';
 
@@ -182,11 +182,14 @@ export async function saveByokKey(
     lastUsedAt: existing[service]?.lastUsedAt ?? null,
   };
 
-  const updated = await db.developerAccount.update({
+  // withRetry: developerAccount.update can fail with P1017/fetch-failed after the prior
+  // ensureDeveloperAccount call clears the Neon singleton on a transient error. Without
+  // retry, saveByokKey throws and the route handler returns a spurious 400 to the user.
+  const updated = await withRetry(() => db.developerAccount.update({
     where: { id: developerId },
     data: { byokKeys: existing },
     select: { byokKeys: true },
-  });
+  }));
 
   return listByokKeys(updated.byokKeys).find((item) => item.service === service) ?? null;
 }
@@ -224,11 +227,12 @@ export async function updateByokKey(
     updatedAt: new Date().toISOString(),
   };
 
-  const updated = await db.developerAccount.update({
+  // withRetry: same transient P1017/fetch-failed pattern as saveByokKey.
+  const updated = await withRetry(() => db.developerAccount.update({
     where: { id: developerId },
     data: { byokKeys: existing },
     select: { byokKeys: true },
-  });
+  }));
 
   return listByokKeys(updated.byokKeys).find((item) => item.service === service) ?? null;
 }
@@ -246,10 +250,11 @@ export async function deleteByokKey(developerId: string, rawKeys: unknown, servi
 
   delete existing[normalizedService];
 
-  await db.developerAccount.update({
+  // withRetry: same transient P1017/fetch-failed pattern as saveByokKey.
+  await withRetry(() => db.developerAccount.update({
     where: { id: developerId },
     data: { byokKeys: existing },
-  });
+  }));
 
   return true;
 }
@@ -298,8 +303,11 @@ export async function getByokSummary(developerId: string, rawKeys: unknown, days
   const since = new Date();
   since.setDate(since.getDate() - days);
 
+  // withRetry: aggregate and findFirst can fail with P1017/fetch-failed after the prior
+  // ensureDeveloperAccount call clears the Neon singleton. Without retry, getByokSummary
+  // throws and the keys GET/POST/PATCH/DELETE handlers return a spurious 500 to the user.
   const [aggregate, latestCall] = await Promise.all([
-    db.routerCall.aggregate({
+    withRetry(() => db.routerCall.aggregate({
       where: {
         developerId,
         byokUsed: true,
@@ -307,15 +315,15 @@ export async function getByokSummary(developerId: string, rawKeys: unknown, days
       },
       _count: { _all: true },
       _sum: { costUsd: true },
-    }),
-    db.routerCall.findFirst({
+    })),
+    withRetry(() => db.routerCall.findFirst({
       where: {
         developerId,
         byokUsed: true,
       },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true, toolUsed: true },
-    }),
+    })),
   ]);
 
   return {
