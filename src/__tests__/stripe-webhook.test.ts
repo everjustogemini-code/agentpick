@@ -12,6 +12,7 @@ vi.mock('@/lib/prisma', () => ({
       updateMany: mocks.updateMany,
     },
   },
+  withRetry: (fn: () => Promise<unknown>) => fn(),
 }));
 
 vi.mock('@/lib/stripe', async () => {

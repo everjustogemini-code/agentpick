@@ -334,6 +334,9 @@ export async function recordRouterCall(
     // totalMs is the only field intentionally omitted from this fallback path.
     const errMsg = String((insertErr instanceof Error ? insertErr.message : insertErr) ?? '').toLowerCase();
     const errCode = (insertErr as Record<string, unknown>)?.code;
+    if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+      console.error('[RecordRouterCall] DB ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto to fix call persistence');
+    }
     console.error('[RecordRouterCall] primary INSERT failed — attempting fallback INSERT:', {
       code: errCode,
       message: errMsg.slice(0, 300),
@@ -408,11 +411,30 @@ export async function recordRouterCall(
       } catch (minimalErr) {
         const minimalCode = (minimalErr as Record<string, unknown>)?.code;
         const minimalMsg = minimalErr instanceof Error ? minimalErr.message : String(minimalErr);
-        console.error('[RecordRouterCall] minimal INSERT also failed:', {
+        console.error('[RecordRouterCall] minimal INSERT also failed — attempting no-traceId INSERT:', {
           code: minimalCode ?? 'no-code',
           message: minimalMsg.slice(0, 300),
         });
-        throw minimalErr;
+        // 4th-tier fallback: drop traceId in case the column is absent in the production schema
+        // (traceId has no tracked migration — it may not exist if the DB was initialized before
+        // traceId was added to the Prisma schema and prisma db push was not re-run).
+        const { traceId: _omitted, ...noTraceData } = minimalData;
+        void _omitted;
+        try {
+          const noTraceCall = await withRetry(() => db.routerCall.create({
+            data: noTraceData,
+            select: { id: true },
+          })) as { id: string };
+          call = { id: noTraceCall.id, traceId: null };
+        } catch (noTraceErr) {
+          const noTraceCode = (noTraceErr as Record<string, unknown>)?.code;
+          const noTraceMsg = noTraceErr instanceof Error ? noTraceErr.message : String(noTraceErr);
+          console.error('[RecordRouterCall] no-traceId INSERT also failed — call record lost:', {
+            code: noTraceCode ?? 'no-code',
+            message: noTraceMsg.slice(0, 300),
+          });
+          throw noTraceErr;
+        }
       }
     }
   }
