@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, telemetryLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -46,10 +46,12 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Resolve tool slug to product
-  const product = await prisma.product.findUnique({
+  // withRetry: product.findUnique can fail with P1017/fetch-failed on cold starts.
+  // Without retry, telemetry returns 500 and the event is never recorded.
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug: body.tool },
     select: { id: true, slug: true, weightedScore: true, category: true, telemetryCount: true },
-  });
+  }));
 
   // 5. Determine if this is a benchmark contribution
   const hasQuery = typeof (body as any).query === 'string' && (body as any).query.length > 0;
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
   let isDuplicate = false;
   if (isBenchmarkContribution && product) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const existing = await prisma.telemetryEvent.findFirst({
+    const existing = await withRetry(() => prisma.telemetryEvent.findFirst({
       where: {
         agentId: agent.id,
         tool: body.tool,
@@ -68,13 +70,15 @@ export async function POST(request: NextRequest) {
         createdAt: { gte: twentyFourHoursAgo },
       },
       select: { id: true },
-    });
+    }));
     isDuplicate = !!existing;
   }
 
   // 5b. Create telemetry event
+  // withRetry: telemetryEvent.create can fail with P1017/fetch-failed after the dedup
+  // findFirst above drops the Neon connection. Without retry, the event is silently lost.
   const isActualBenchmark = isBenchmarkContribution && !isDuplicate;
-  const event = await prisma.telemetryEvent.create({
+  const event = await withRetry(() => prisma.telemetryEvent.create({
     data: {
       agentId: agent.id,
       productId: product?.id ?? null,
@@ -90,66 +94,76 @@ export async function POST(request: NextRequest) {
       source: isActualBenchmark ? 'benchmark' : 'community',
       isBenchmarkContribution: isActualBenchmark,
     },
-  });
+  }));
 
   // 6. Increment product telemetry count (aggregation cron handles averages)
+  // withRetry: product.update can fail with P1017/fetch-failed after telemetryEvent.create
+  // drops the Neon connection. Without retry, the telemetryCount counter falls behind.
   if (product) {
-    await prisma.product.update({
-      where: { id: product.id },
-      data: { telemetryCount: { increment: 1 } },
-    });
+    try {
+      await withRetry(() => prisma.product.update({
+        where: { id: product.id },
+        data: { telemetryCount: { increment: 1 } },
+      }));
+    } catch (countErr) {
+      // Non-critical — telemetryCount is a denormalized cache; stale counts are acceptable
+      console.error('[telemetry] product.update telemetryCount failed (non-fatal):', countErr instanceof Error ? countErr.message : countErr);
+    }
   }
 
   // 7. Compute agent stats for response
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+  // withRetry on all stats queries: these reads occur after the telemetryEvent.create
+  // write, which may have dropped the Neon connection. Without retry, a stale connection
+  // causes 500 even though the event was committed successfully.
   const [todayStats, allTimeCount, topTool] = await Promise.all([
-    prisma.telemetryEvent.aggregate({
+    withRetry(() => prisma.telemetryEvent.aggregate({
       where: { agentId: agent.id, createdAt: { gte: startOfDay } },
       _count: true,
       _avg: { costUsd: true },
       _sum: { costUsd: true },
-    }),
-    prisma.telemetryEvent.count({ where: { agentId: agent.id } }),
-    prisma.telemetryEvent.groupBy({
+    })),
+    withRetry(() => prisma.telemetryEvent.count({ where: { agentId: agent.id } })),
+    withRetry(() => prisma.telemetryEvent.groupBy({
       by: ['tool'],
       where: { agentId: agent.id },
       _count: true,
       orderBy: { _count: { tool: 'desc' } },
       take: 1,
-    }),
+    })),
   ]);
 
-  const todaySuccessCount = await prisma.telemetryEvent.count({
+  const todaySuccessCount = await withRetry(() => prisma.telemetryEvent.count({
     where: { agentId: agent.id, createdAt: { gte: startOfDay }, success: true },
-  });
+  }));
 
-  const todayToolsCount = await prisma.telemetryEvent.groupBy({
+  const todayToolsCount = await withRetry(() => prisma.telemetryEvent.groupBy({
     by: ['tool'],
     where: { agentId: agent.id, createdAt: { gte: startOfDay } },
-  });
+  }));
 
   // 8. Build tool stats if product exists
   let toolStats = null;
   if (product) {
     const [rank, categoryRank, productTelemetry] = await Promise.all([
-      prisma.product.count({
+      withRetry(() => prisma.product.count({
         where: { status: { in: BROWSE_STATUSES }, weightedScore: { gt: product.weightedScore } },
-      }),
-      prisma.product.count({
+      })),
+      withRetry(() => prisma.product.count({
         where: { status: { in: BROWSE_STATUSES }, category: product.category, weightedScore: { gt: product.weightedScore } },
-      }),
-      prisma.telemetryEvent.aggregate({
+      })),
+      withRetry(() => prisma.telemetryEvent.aggregate({
         where: { productId: product.id },
         _avg: { latencyMs: true },
         _count: true,
-      }),
+      })),
     ]);
 
-    const successCount = await prisma.telemetryEvent.count({
+    const successCount = await withRetry(() => prisma.telemetryEvent.count({
       where: { productId: product.id, success: true },
-    });
+    }));
 
     toolStats = {
       agent_score: Math.round(product.weightedScore * 10) / 10,
@@ -184,15 +198,15 @@ export async function POST(request: NextRequest) {
   // At 100 traces, boost agent reputation
   if (allTimeCount >= 100 && allTimeCount - 1 < 100) {
     try {
-      const currentAgent = await prisma.agent.findUnique({
+      const currentAgent = await withRetry(() => prisma.agent.findUnique({
         where: { id: agent.id },
         select: { reputationScore: true },
-      });
+      }));
       if (currentAgent && currentAgent.reputationScore < 0.5) {
-        await prisma.agent.update({
+        await withRetry(() => prisma.agent.update({
           where: { id: agent.id },
           data: { reputationScore: Math.max(currentAgent.reputationScore * 2, 0.5) },
-        });
+        }));
       }
     } catch {
       // Non-critical — don't fail telemetry for reputation update errors
