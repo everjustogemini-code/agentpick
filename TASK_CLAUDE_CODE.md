@@ -1,91 +1,94 @@
 # TASK_CLAUDE_CODE.md
 **Agent:** Claude Code
-**Date:** 2026-03-15
-**Cycle:** 90
-**Source:** NEXT_VERSION.md — v0.90, QA Round 14, score 62/67 (5 failures: 1 P0, 3 P1)
+**Date:** 2026-03-16
+**Cycle:** 129
+**Source:** NEXT_VERSION.md — Bugfix Cycle 129, QA Round 15
 **Cycle type:** BUG FIX ONLY — zero new features
 
 ---
 
 ## Overview
 
-This file covers **Fix #1 (P0)** and **Fix #3 (P1)** from NEXT_VERSION.md.
-TASK_CODEX.md covers Fix #2 and Fix #4.
+This file covers **Fix #1 (P1)** — the only fix in NEXT_VERSION.md this cycle.
+All changed files are backend. TASK_CODEX.md has no tasks this cycle.
 No file is touched by both agents.
 
 ---
 
-## Fix #1 — P0 · `GET /api/v1/router/calls` → HTTP 500
+## Fix #1 — P1 · Calls not persisted to database after routing
 
-**QA tests:** `1.5-calls-recorded`, `7.2-call-fields`
-**File:** `src/app/api/v1/router/calls/route.ts` **lines 47–50**
+**QA Issues:** `1.5-calls-recorded`, `7.2-call-fields`
 
-**Root cause:** `NOT: [...]` array form is fragile across Prisma versions. Growth-17 commit rewrote it as `AND: [{NOT:...}]`, breaking the query.
+**Symptom:** `POST /api/v1/route/search` returns HTTP 200 with valid `meta.trace_id`, but no `RouterCall` record is committed. `GET /api/v1/router/calls` returns `{"calls": []}`. Account `totalCalls` stays at 0.
 
-**Required change — replace lines 47–50:**
-```ts
-// BEFORE (fragile — growth commits keep breaking this):
-NOT: [
-  { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-  { toolUsed: { endsWith: '-unavailable' } },
-],
-
-// AFTER (explicit, stable, cannot be misread):
-// NOTE: Do NOT rewrite NOT: { OR: [...] } to NOT: [...] or AND: [{NOT:...}].
-// This has broken QA tests 1.5-calls-recorded and 7.2-call-fields three times.
-NOT: {
-  OR: [
-    { toolUsed: { in: ['unknown', '', ...CAPABILITY_NAMES] } },
-    { toolUsed: { endsWith: '-unavailable' } },
-  ],
-},
-```
-
-**Semantics are identical:** `NOT: { OR: [A, B] }` = NOT A AND NOT B. No behaviour change, just explicit and Prisma-stable.
+**Root cause:** `RouterStrategy` enum in the production Neon database is missing `'AUTO'` and `'MANUAL'` values. The migration `20260315_add_router_strategy_manual_auto` exists in the repo but was never deployed. Every `routerCall.create({ strategyUsed: 'AUTO' })` is rejected with an invalid-enum-value error; the outer `catch` in `handler.ts` swallows it silently and returns HTTP 200.
 
 ---
 
-## Fix #3 — P1 · `GET /api/v1/router/account` returns nulls for new users
+### Part A — Deploy the pending migration (resolves root cause)
 
-**QA test:** Paid User Flow — account info check
-**File:** `src/app/api/v1/router/account/route.ts` **line 42+** (final `return Response.json(...)` in GET handler)
+**File:** `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql`
 
-**Root cause:** Response nests all data under `account.usage`. QA Paid User Flow reads `data.plan`, `data.strategy`, `data.monthlyLimit` at the **top level**. When absent, Python parses them as `None`.
-
-**Required change — add top-level fields to the return statement:**
-```ts
-// NOTE: plan/strategy/monthlyLimit/callsThisMonth MUST remain as top-level fields.
-// QA Paid User Flow checks data.plan and data.strategy directly on this response.
-// Do NOT nest them under account.* only — this has broken onboarding multiple times.
-return Response.json({
-  // Top-level fields — QA Paid User Flow reads data.plan / data.strategy directly:
-  plan: account.plan,           // "FREE" | "STARTER" | "PRO" | "ENTERPRISE"
-  strategy: account.strategy,   // "AUTO" | "BALANCED" | ...
-  monthlyLimit,                 // 500 for FREE, null for ENTERPRISE
-  callsThisMonth,
-  account: { /* full nested object unchanged */ },
-});
+File already exists in the repo. No code edit required. Run:
+```
+npx prisma migrate deploy
 ```
 
-Do not remove or restructure the existing nested `account` object — just add the four top-level keys alongside it.
+The SQL that will be applied:
+```sql
+ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'MANUAL';
+ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'AUTO';
+```
+
+Once deployed, `strategyUsed: 'AUTO'` is a valid enum value and the primary INSERT succeeds. All subsequent call records will be committed.
+
+---
+
+### Part B — Add enum-error detection to fallback INSERT path (defense-in-depth)
+
+#### File 1: `src/lib/router/sdk.ts`
+
+**Function:** `recordRouterCall`
+**Location:** `catch (insertErr)` block, ~line 335
+
+At the **top** of the `catch (insertErr)` block, before building `safeData`, add:
+```ts
+if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+  console.error('[RecordRouterCall] DB ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto to fix call persistence');
+}
+```
+
+#### File 2: `src/lib/router/handler.ts`
+
+**Function:** outer error handler
+**Location:** `catch (recordErr)` block, ~line 321
+
+At the **top** of the `catch (recordErr)` block, add:
+```ts
+if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
+  console.error('[RouterCall] ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto');
+}
+```
 
 ---
 
 ## Files to Modify
 
-| File | Lines | Change |
-|------|-------|--------|
-| `src/app/api/v1/router/calls/route.ts` | 47–50 | `NOT: [...]` → `NOT: { OR: [...] }` + guard comment |
-| `src/app/api/v1/router/account/route.ts` | 42+ | Add `plan`, `strategy`, `monthlyLimit`, `callsThisMonth` as top-level keys + guard comment |
+| File | Action |
+|------|--------|
+| `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql` | Deploy via `npx prisma migrate deploy` — no code edit needed |
+| `src/lib/router/sdk.ts` | Add enum-error detection in `recordRouterCall` catch (~line 335) |
+| `src/lib/router/handler.ts` | Add enum-error detection in outer catch (~line 321) |
 
-**Do NOT touch:**
-- `src/app/api/v1/router/priority/route.ts` — owned by TASK_CODEX.md
-- `src/app/api/v1/router/health/route.ts` — owned by TASK_CODEX.md
+**Do NOT touch (no Codex files this cycle):**
+- No files are owned by TASK_CODEX.md this cycle.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `GET /api/v1/router/calls` → HTTP 200 (QA tests `1.5-calls-recorded` + `7.2-call-fields`)
-- [ ] `GET /api/v1/router/account` → `plan: "FREE"`, `monthlyLimit: 500`, `strategy: "AUTO"` for new user
+- [ ] `GET /api/v1/router/calls?limit=10` → non-empty array after routing calls
+- [ ] `GET /api/v1/router/account` → `totalCalls > 0` after multiple searches
+- [ ] QA tests `1.5-calls-recorded` and `7.2-call-fields` pass
+- [ ] Score: 54/54
 - [ ] No other files modified
