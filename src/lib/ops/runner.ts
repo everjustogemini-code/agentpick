@@ -79,10 +79,14 @@ function scoreProbe(details: Record<string, unknown> | undefined, domain?: strin
 
 export async function runBenchmarkAgentNow(configId: string) {
   const settings = await ensureOpsSettings();
-  const config = await db.benchmarkAgentConfig.findUnique({
+  // withRetry: findUnique can fail with P1017/fetch-failed on a warm serverless instance
+  // if the Neon connection expired between cron invocations. Without retry, the config
+  // is never loaded and the run throws "Benchmark agent config not found." prematurely.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config = await withRetry(() => db.benchmarkAgentConfig.findUnique({
     where: { id: configId },
     include: { querySet: true },
-  });
+  })) as any;
 
   if (!config) {
     throw new Error("Benchmark agent config not found.");
@@ -351,11 +355,15 @@ async function autoVoteFromBenchmarkResults(
 }
 
 export async function runDueBenchmarkAgents(limit = 10) {
-  const configs = await db.benchmarkAgentConfig.findMany({
+  // withRetry: findMany is the first DB call in the cron handler. On a warm-but-idle
+  // serverless instance, the Neon connection expires after ~1s of inactivity. Without
+  // retry, the cron silently skips all benchmark agents with a P1017/fetch-failed error.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const configs = await withRetry(() => db.benchmarkAgentConfig.findMany({
     where: { isActive: true },
     include: { querySet: true },
     orderBy: { lastRunAt: "asc" },
-  });
+  })) as any[];
 
   const due = configs.filter((config: any) => {
     if (!config.lastRunAt) return true;
@@ -408,13 +416,20 @@ function getBenchmarkableSlugsByDomain(domain: string): string[] {
 async function pickNextBatchDomain(): Promise<string> {
   const domains = DOMAIN_DEFINITIONS.map((d) => d.slug);
 
-  const lastRuns = await Promise.all(
+  // withRetry on each findFirst: pickNextBatchDomain is the first DB operation in the
+  // runBatchBenchmark cron handler. A stale Neon connection (warm serverless instance idle
+  // for >1s) will fail the first query with P1017/fetch-failed. Without retry, all domains
+  // default to lastRunTime=0 and the domain selection falls back to the first domain every time,
+  // breaking the rotation logic. Each parallel query uses withRetry so a single transient
+  // error on one domain does not abort the entire Promise.all.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lastRuns: any[] = await Promise.all(
     domains.map((domain) =>
-      db.benchmarkRun.findFirst({
+      withRetry(() => db.benchmarkRun.findFirst({
         where: { domain, batchId: { not: null } },
         orderBy: { createdAt: "desc" },
         select: { domain: true, createdAt: true },
-      }),
+      })),
     ),
   );
 
