@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { calculateBlendedScore } from '@/lib/voting';
 import { BROWSE_STATUSES } from '@/lib/product-status';
 
@@ -12,26 +12,26 @@ export async function GET(request: Request) {
   }
 
   // Get all approved products
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where: { status: { in: BROWSE_STATUSES } },
     select: { id: true, weightedScore: true },
-  });
+  }));
 
   let updated = 0;
 
   for (const product of products) {
     // Aggregate telemetry stats
-    const stats = await prisma.telemetryEvent.aggregate({
+    const stats = await withRetry(() => prisma.telemetryEvent.aggregate({
       where: { productId: product.id },
       _count: true,
       _avg: { latencyMs: true, costUsd: true },
-    });
+    }));
 
     if (stats._count === 0) continue;
 
-    const successCount = await prisma.telemetryEvent.count({
+    const successCount = await withRetry(() => prisma.telemetryEvent.count({
       where: { productId: product.id, success: true },
-    });
+    }));
 
     const telemetryCount = stats._count;
     const successRate = Math.round((successCount / telemetryCount) * 10000) / 10000;
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       avgCostUsd,
     });
 
-    await prisma.product.update({
+    await withRetry(() => prisma.product.update({
       where: { id: product.id },
       data: {
         telemetryCount,
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         // Update weightedScore to blended score
         weightedScore: Math.round(blended * 100) / 100,
       },
-    });
+    }));
 
     updated++;
   }

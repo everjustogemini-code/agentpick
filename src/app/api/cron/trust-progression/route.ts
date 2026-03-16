@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const maxDuration = 120;
@@ -20,10 +20,10 @@ export async function GET(request: NextRequest) {
   const promoted: { slug: string; from: string; to: string }[] = [];
 
   // 1. SUBMITTED/PENDING → SMOKE_TESTED (if endpoint responds 2xx)
-  const unverified = await prisma.product.findMany({
+  const unverified = await withRetry(() => prisma.product.findMany({
     where: { status: { in: ['SUBMITTED', 'PENDING'] } },
     select: { id: true, slug: true, status: true, websiteUrl: true, apiBaseUrl: true },
-  });
+  }));
 
   for (const product of unverified) {
     const urlToCheck = product.apiBaseUrl || product.websiteUrl;
@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
       clearTimeout(timeout);
 
       if (resp.ok || resp.status === 405) {
-        await prisma.product.update({
+        await withRetry(() => prisma.product.update({
           where: { id: product.id },
           data: { status: 'SMOKE_TESTED' },
-        });
+        }));
         promoted.push({ slug: product.slug, from: product.status, to: 'SMOKE_TESTED' });
       }
     } catch {
@@ -52,37 +52,37 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. SMOKE_TESTED/APPROVED → BENCHMARKED (when benchmarkCount >= 30)
-  const tested = await prisma.product.findMany({
+  const tested = await withRetry(() => prisma.product.findMany({
     where: { status: { in: ['SMOKE_TESTED', 'APPROVED'] } },
     select: { id: true, slug: true, status: true },
-  });
+  }));
 
   for (const product of tested) {
-    const benchmarkCount = await prisma.benchmarkRun.count({
+    const benchmarkCount = await withRetry(() => prisma.benchmarkRun.count({
       where: { productId: product.id },
-    });
+    }));
 
     if (benchmarkCount >= 30) {
-      await prisma.product.update({
+      await withRetry(() => prisma.product.update({
         where: { id: product.id },
         data: { status: 'BENCHMARKED', benchmarkCount },
-      });
+      }));
       promoted.push({ slug: product.slug, from: product.status, to: 'BENCHMARKED' });
     }
   }
 
   // 3. BENCHMARKED → LIVE_TELEMETRY (when telemetryCount > 100)
-  const benchmarked = await prisma.product.findMany({
+  const benchmarked = await withRetry(() => prisma.product.findMany({
     where: { status: 'BENCHMARKED' },
     select: { id: true, slug: true, telemetryCount: true },
-  });
+  }));
 
   for (const product of benchmarked) {
     if (product.telemetryCount > 100) {
-      await prisma.product.update({
+      await withRetry(() => prisma.product.update({
         where: { id: product.id },
         data: { status: 'LIVE_TELEMETRY' },
-      });
+      }));
       promoted.push({ slug: product.slug, from: 'BENCHMARKED', to: 'LIVE_TELEMETRY' });
     }
   }

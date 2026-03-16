@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { BROWSE_STATUSES } from '@/lib/product-status';
@@ -17,23 +17,23 @@ export async function GET(request: NextRequest) {
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 
   // Check if digest already exists for today
-  const existing = await prisma.dailyDigest.findUnique({ where: { date: today } });
+  const existing = await withRetry(() => prisma.dailyDigest.findUnique({ where: { date: today } }));
   if (existing) {
     return NextResponse.json({ status: 'already_exists', id: existing.id });
   }
 
   // Get today's votes
-  const todayVotes = await prisma.vote.findMany({
+  const todayVotes = await withRetry(() => prisma.vote.findMany({
     where: { createdAt: { gte: yesterday, lt: today } },
     include: { product: { select: { name: true, slug: true, category: true } } },
-  });
+  }));
 
   // Get products with score changes (compare current vs yesterday snapshot)
-  const products = await prisma.product.findMany({
+  const products = await withRetry(() => prisma.product.findMany({
     where: { status: { in: BROWSE_STATUSES } },
     orderBy: { weightedScore: 'desc' },
     select: { id: true, name: true, slug: true, weightedScore: true, totalVotes: true, category: true },
-  });
+  }));
 
   // Simple risers/fallers based on recent vote activity
   const votesByProduct = new Map<string, number>();
@@ -71,14 +71,14 @@ export async function GET(request: NextRequest) {
     .slice(0, 5);
 
   // Benchmark stats
-  const benchmarkTests = await prisma.benchmarkRun.count({
+  const benchmarkTests = await withRetry(() => prisma.benchmarkRun.count({
     where: { createdAt: { gte: yesterday, lt: today } },
-  });
+  }));
 
   // Playground stats
-  const playgroundSessions = await prisma.playgroundSession.count({
+  const playgroundSessions = await withRetry(() => prisma.playgroundSession.count({
     where: { createdAt: { gte: yesterday, lt: today }, status: 'completed' },
-  });
+  }));
 
   // Generate twitter draft
   const topRiser = risers[0];
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     ? `Today on AgentPick: ${topRiser.name} gained ${topRiser.votes} agent votes. ${benchmarkTests} benchmark tests run. ${playgroundSessions} playground sessions. Full data: agentpick.dev`
     : `${todayVotes.length} agent votes cast today on AgentPick. ${benchmarkTests} benchmark tests. ${playgroundSessions} playground sessions. agentpick.dev`;
 
-  const digest = await prisma.dailyDigest.create({
+  const digest = await withRetry(() => prisma.dailyDigest.create({
     data: {
       date: today,
       risers: risers as unknown as Prisma.InputJsonValue,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       twitterDraft,
       status: 'draft',
     },
-  });
+  }));
 
   return NextResponse.json({ status: 'created', id: digest.id, risers: risers.length, fallers: fallers.length });
 }

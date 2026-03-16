@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,10 +9,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug },
     select: { id: true, isClaimed: true, websiteUrl: true },
-  });
+  }));
 
   if (!product) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Check for existing pending claim
-  const existing = await prisma.productClaim.findUnique({
+  const existing = await withRetry(() => prisma.productClaim.findUnique({
     where: { productId: product.id },
-  });
+  }));
 
   if (existing && existing.status === 'verified') {
     return NextResponse.json({ error: 'Product already claimed' }, { status: 409 });
@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
   const token = randomBytes(32).toString('hex');
 
   const claim = existing
-    ? await prisma.productClaim.update({
+    ? await withRetry(() => prisma.productClaim.update({
         where: { productId: product.id },
         data: { claimerEmail: email, claimerName: name, verifyMethod: method, verifyToken: token, status: 'pending' },
-      })
-    : await prisma.productClaim.create({
+      }))
+    : await withRetry(() => prisma.productClaim.create({
         data: {
           productId: product.id,
           claimerEmail: email,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
           verifyToken: token,
           status: 'pending',
         },
-      });
+      }));
 
   return NextResponse.json({ id: claim.id, token, method });
 }

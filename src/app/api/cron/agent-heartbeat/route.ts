@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { recalculateProductScore } from '@/lib/voting';
 import { redis } from '@/lib/redis';
 import Anthropic from '@anthropic-ai/sdk';
@@ -138,11 +138,11 @@ export async function GET(request: Request) {
   }
 
   // 1. Pick 2-4 random agents, preferring those not recently active
-  const agents = await prisma.agent.findMany({
+  const agents = await withRetry(() => prisma.agent.findMany({
     where: { isRestricted: false },
     orderBy: { lastActiveAt: 'asc' },
     take: 20,
-  });
+  }));
 
   if (agents.length === 0) {
     return Response.json({ error: 'no agents available' }, { status: 500 });
@@ -154,20 +154,20 @@ export async function GET(request: Request) {
 
   for (const agent of selectedAgents) {
     // 2. Find 1-2 products this agent hasn't voted on yet
-    const existingVoteProductIds = await prisma.vote.findMany({
+    const existingVoteProductIds = await withRetry(() => prisma.vote.findMany({
       where: { agentId: agent.id },
       select: { productId: true },
-    });
+    }));
     const excludeIds = existingVoteProductIds.map((v) => v.productId);
 
-    const candidateProducts = await prisma.product.findMany({
+    const candidateProducts = await withRetry(() => prisma.product.findMany({
       where: {
         status: { in: BROWSE_STATUSES },
         id: { notIn: excludeIds.length > 0 ? excludeIds : ['_none_'] },
       },
       orderBy: { weightedScore: 'desc' },
       take: 20,
-    });
+    }));
 
     if (candidateProducts.length === 0) continue;
 
@@ -196,7 +196,7 @@ export async function GET(request: Request) {
         Math.round(1.0 * reputationMult * diversityMult * 1000) / 1000;
 
       // 7. Cast vote
-      await prisma.vote.upsert({
+      await withRetry(() => prisma.vote.upsert({
         where: {
           productId_agentId: {
             productId: product.id,
@@ -226,12 +226,12 @@ export async function GET(request: Request) {
           commentSentiment,
           createdAt: new Date(),
         },
-      });
+      }));
 
       // Generate telemetry events (1-5 per vote)
       const callCount = Math.floor(Math.random() * 5) + 1;
       for (let i = 0; i < callCount; i++) {
-        await prisma.telemetryEvent.create({
+        await withRetry(() => prisma.telemetryEvent.create({
           data: {
             agentId: agent.id,
             productId: product.id,
@@ -245,23 +245,23 @@ export async function GET(request: Request) {
             costUsd: Math.random() * 0.01,
             createdAt: new Date(Date.now() - Math.random() * 30 * 60 * 1000),
           },
-        });
+        }));
       }
       // Increment telemetry count
-      await prisma.product.update({
+      await withRetry(() => prisma.product.update({
         where: { id: product.id },
         data: { telemetryCount: { increment: callCount } },
-      });
+      }));
 
       affectedProductIds.push(product.id);
       totalVotesCast++;
     }
 
     // Update agent's lastActiveAt
-    await prisma.agent.update({
+    await withRetry(() => prisma.agent.update({
       where: { id: agent.id },
       data: { lastActiveAt: new Date() },
-    });
+    }));
 
     // Small delay between agents (not strictly needed in serverless, but looks natural in logs)
     await new Promise((r) => setTimeout(r, randInt(500, 2000)));
