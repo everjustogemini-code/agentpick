@@ -1,27 +1,24 @@
-# Growth State — Cycle 35 (2026-03-15)
+# Growth State — Cycle 36 (2026-03-16)
 
 ## Working
 - GET /api/v1/router/health → 200 healthy ✅
-- POST /api/v1/agents/register → 200 (live test confirmed: ah_live_sk_... key issued) ✅
-- /, /pricing, /blog: all HTTP 200 ✅
-- Core routing engine: healthy ✅
-- llms.txt updated: 370 agents / 11,500+ calls ✅
-- AEO scores posted: 0/0/0 (35th consecutive cycle) ✅
-- Blog meta tags: all present and correct ✅
+- POST /api/v1/agents/register → 200, ah_live_sk_... key issued ✅
+- / → 200 OK ✅
+- /pricing → 200 OK ✅
+- /blog → 200 OK ✅
 
 ## Broken
-- Stripe not configured (STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET missing in Vercel) — $0 revenue possible
-- Calls not persisted to DB (P1 from QA Round 15) — usage/billing broken
-- Moltbook API: no response — 35th consecutive cycle, channel dead
+- Stripe not configured → $0 revenue possible (owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET in Vercel)
+- Calls not persisted to DB → usage/billing broken (P1 QA bug from Round 15, partially addressed in cycle 91 but root cause may remain)
 
 ## Metrics
-- Agents: 370 (up from 369)
-- Router calls today: 22
-- AEO scores: 0/0/0 (35th consecutive cycle)
-- Paid accounts: 0
+- Registrations: working (new agent IDs issued on each register call)
+- API calls: 22/day (router calls today)
+- Active agents: 371
+- Pages live: /, /pricing, /blog all 200 OK
 
 ## Revenue Blockers (ordered by impact)
-1. Stripe not configured — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel (owner action required)
-2. Calls not persisted to DB — usage/billing/rate-limiting broken (P1 QA bug, owner/dev action)
-3. Zero search visibility — 35 cycles at 0 for all 3 AEO queries
-4. No directory listings — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+1. **Stripe unconfigured** — zero revenue possible, owner action required
+2. **Calls not persisted** — billing/metering can't function, P1 bug
+3. **Zero search visibility** — 36 consecutive cycles at AEO score 0 for all 3 queries
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
