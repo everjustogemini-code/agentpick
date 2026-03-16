@@ -60,9 +60,12 @@ export function normalizeStrategy(value: string): RouterStrategyValue | null {
  * Get or create a DeveloperAccount for an agent.
  */
 export async function ensureDeveloperAccount(agentId: string) {
-  let account = await db.developerAccount.findUnique({
+  // NOTE: withRetry here covers P1017/fetch-failed/socket-hang-up on the initial lookup.
+  // Without it, a transient Neon HTTP connection drop on the findUnique throws immediately
+  // and propagates as a 500 from sdk-handler.ts (which has no outer try-catch for this call).
+  let account = await withRetry(() => db.developerAccount.findUnique({
     where: { agentId },
-  });
+  }));
 
   if (!account) {
     try {
@@ -78,20 +81,28 @@ export async function ensureDeveloperAccount(agentId: string) {
     } catch (createErr) {
       // P2002 = unique constraint violation — concurrent request already created the account
       if ((createErr as { code?: string })?.code === 'P2002') {
-        account = await db.developerAccount.findUnique({ where: { agentId } });
+        account = await withRetry(() => db.developerAccount.findUnique({ where: { agentId } }));
         if (!account) throw createErr;
       } else {
         throw createErr;
       }
     }
   } else if (isNewBillingCycle(account.billingCycleStart)) {
-    account = await db.developerAccount.update({
-      where: { id: account.id },
-      data: {
-        spentThisMonth: 0,
-        billingCycleStart: new Date(),
-      },
-    });
+    // withRetry: billing cycle reset is a best-effort stats update; retry on transient errors
+    // so the fresh billingCycleStart is applied before usage counting begins.
+    try {
+      account = await withRetry(() => db.developerAccount.update({
+        where: { id: account!.id },
+        data: {
+          spentThisMonth: 0,
+          billingCycleStart: new Date(),
+        },
+      }));
+    } catch (resetErr) {
+      // If the reset fails after retries, continue with the stale billingCycleStart.
+      // Monthly spend reset will be retried on the next request; counts remain consistent.
+      console.error('[ensureDeveloperAccount] billing cycle reset failed (non-fatal):', (resetErr instanceof Error ? resetErr.message : resetErr));
+    }
   }
 
   return account;
@@ -116,13 +127,16 @@ export async function checkUsageLimit(developerId: string, plan: RouterPlanValue
     return d;
   })();
 
+  // withRetry: count queries can fail with P1017/fetch-failed after a prior withRetry
+  // cleared the singleton. Without retry, a transient drop here propagates as 500 from
+  // sdk-handler.ts (checkUsageLimit is not wrapped in a try-catch there).
   const [todayCount, monthCount] = await Promise.all([
-    db.routerCall.count({
+    withRetry(() => db.routerCall.count({
       where: { developerId, createdAt: { gte: todayStart } },
-    }),
-    db.routerCall.count({
+    })),
+    withRetry(() => db.routerCall.count({
       where: { developerId, createdAt: { gte: monthStart } },
-    }),
+    })),
   ]);
 
   // Free plan: hard cap at monthly limit

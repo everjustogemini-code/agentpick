@@ -157,10 +157,12 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         parsed.priority_tools = rawPriority.filter((t: unknown) => typeof t === 'string');
       }
       // Normalize flat body: { query/q/text/input/url/ticker/symbol } → { params: { ... } }
+      // Use 'in' (field presence) rather than truthiness so { "query": "" } triggers
+      // normalization and returns "A non-empty query is required" instead of "params object required".
       if (
         !parsed.params &&
-        (parsed.query || parsed.q || parsed.text || parsed.input ||
-          parsed.url || parsed.ticker || parsed.symbol)
+        ('query' in parsed || 'q' in parsed || 'text' in parsed || 'input' in parsed ||
+          'url' in parsed || 'ticker' in parsed || 'symbol' in parsed)
       ) {
         const { tool, tool_api_key, fallback, strategy: _s, priority_tools: _pt, priority: _p, priorityTools: _pT, ...rest } = parsed;
         parsed.params = rest;
