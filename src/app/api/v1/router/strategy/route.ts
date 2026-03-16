@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
 import { ensureDeveloperAccount, normalizeStrategy } from '@/lib/router/sdk';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { apiError } from '@/types';
 
 const db = prisma as any;
@@ -50,10 +50,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const updated = await db.developerAccount.update({
+    // withRetry: update can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton on a transient error. Without retry, strategy update returns 500.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updated: any = await withRetry(() => db.developerAccount.update({
       where: { id: account.id },
       data: { strategy: normalized },
-    });
+    }));
 
     return Response.json({
       message: 'Strategy updated.',
