@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import {
   ROUTER_PLAN_MONTHLY_LIMITS,
   ROUTER_PLAN_OVERAGE_PER_CALL,
@@ -32,9 +32,12 @@ export async function GET(request: NextRequest) {
     const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null;
     const overagePerCall = (ROUTER_PLAN_OVERAGE_PER_CALL as Record<string, number | null>)[account.plan] ?? null;
     const billingCycleStart = getBillingPeriodStart(account.billingCycleStart);
-    const callsThisMonth = await db.routerCall.count({
+    // withRetry: routerCall.count can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton on a transient error. Without retry, the account endpoint
+    // returns 500 and callsThisMonth is unavailable for the dashboard and QA checks.
+    const callsThisMonth = await withRetry(() => prisma.routerCall.count({
       where: { developerId: account.id, createdAt: { gte: billingCycleStart } },
-    });
+    }));
     const includedCallsUsed = monthlyLimit !== null ? Math.min(callsThisMonth, monthlyLimit) : callsThisMonth;
     const overageCalls = monthlyLimit !== null ? Math.max(0, callsThisMonth - monthlyLimit) : 0;
     const overageCostUsd = overagePerCall !== null ? overageCalls * overagePerCall : 0;

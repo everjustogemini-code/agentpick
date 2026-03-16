@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import {
   buildRouterAnalytics,
   getRouterAnalyticsWindow,
@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
     const range = normalizeAnalyticsRange(url.searchParams.get('range'));
     const { since, now } = getRouterAnalyticsWindow(range);
 
-    const calls = await prisma.routerCall.findMany({
+    // withRetry: findMany can fail with P1017/fetch-failed after ensureDeveloperAccount
+    // clears the Neon singleton on a transient error. Without retry, the analytics
+    // endpoint returns 500 and the dashboard chart shows an error state.
+    const calls = await withRetry(() => prisma.routerCall.findMany({
       where: {
         createdAt: { gte: since, lte: now },
         developerId: account.id,
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
         success: true,
         toolUsed: true,
       },
-    });
+    }));
 
     const analytics = buildRouterAnalytics(calls, range, now);
 
