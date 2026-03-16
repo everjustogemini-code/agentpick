@@ -131,20 +131,40 @@ export async function GET(request: NextRequest) {
       return apiError('INTERNAL_ERROR', 'Query failed.', 500);
     }
 
-    // Normalize to include all 9 drawer fields
+    // Normalize to include all 9 drawer fields.
+    // snake_case aliases are added alongside the camelCase Prisma fields so that the dashboard
+    // and QA tests (which check tool_used, latency_ms, cost_usd, trace_id) find the expected
+    // keys. Both forms are returned to avoid breaking any existing consumers.
     const normalizedCalls = calls.map(call => ({
       ...call,
+      // snake_case aliases — QA test 7.2-call-fields and dashboard read these field names.
+      // Do NOT remove: dashboard shows 'unknown' for tool_used without these aliases.
+      tool_used: call.toolUsed,
+      latency_ms: call.latencyMs,
+      cost_usd: call.costUsd,
+      trace_id: call.traceId,
+      strategy_used: call.strategyUsed,
+      byok_used: call.byokUsed,
+      fallback_used: call.fallbackUsed,
+      fallback_from: call.fallbackFrom,
+      fallback_chain: call.fallbackChain,
+      status_code: call.statusCode,
+      result_count: call.resultCount,
+      tool_requested: call.toolRequested,
+      created_at: call.createdAt,
+      ai_classification: call.aiClassification,
       // classification_ms is not stored in DB (computed at classification time only) — emit null
       classification_ms: null as number | null,
       // totalMs/responsePreview columns not yet in production DB (migration pending) — return null
       total_ms: null as number | null,
       response_preview: null as string | null,
-      // Expose ai_routing_summary as a top-level field from aiClassification JSON
-      ai_routing_summary: call.aiClassification &&
-        typeof call.aiClassification === 'object' &&
-        'reasoning' in (call.aiClassification as Record<string, unknown>)
-          ? (call.aiClassification as Record<string, unknown>).reasoning as string
-          : null,
+      // Expose ai_routing_summary as the full aiClassification object so callers can
+      // access type/domain/confidence. Previously returned only aiClassification.reasoning
+      // (an optional field rarely set), causing ai_routing_summary to be null for nearly
+      // all AI-routed calls. Returning the full object fixes "ai_routing_summary never populated".
+      ai_routing_summary: (call.aiClassification && typeof call.aiClassification === 'object')
+        ? call.aiClassification
+        : null,
     }));
 
     const headers: Record<string, string> = {};

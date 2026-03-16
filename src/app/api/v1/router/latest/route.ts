@@ -71,17 +71,32 @@ export async function GET(request: NextRequest) {
 
     const normalizedCall = call ? {
       ...call,
+      // snake_case aliases — dashboard and QA tests read tool_used, latency_ms, etc.
+      // Must remain in sync with /calls endpoint normalization.
+      tool_used: call.toolUsed,
+      latency_ms: call.latencyMs,
+      cost_usd: call.costUsd,
+      trace_id: call.traceId,
+      strategy_used: call.strategyUsed,
+      byok_used: call.byokUsed,
+      fallback_used: call.fallbackUsed,
+      fallback_from: call.fallbackFrom,
+      fallback_chain: call.fallbackChain,
+      status_code: call.statusCode,
+      result_count: call.resultCount,
+      tool_requested: call.toolRequested,
+      created_at: call.createdAt,
+      ai_classification: call.aiClassification,
       // classification_ms is not stored in DB — emit null for API consistency with /calls
       classification_ms: null as number | null,
       // totalMs/responsePreview columns not yet in production DB (migration pending) — return null
       total_ms: null as number | null,
       response_preview: null as string | null,
-      // Expose ai_routing_summary as a top-level field from aiClassification JSON
-      ai_routing_summary: call.aiClassification &&
-        typeof call.aiClassification === 'object' &&
-        'reasoning' in (call.aiClassification as Record<string, unknown>)
-          ? (call.aiClassification as Record<string, unknown>).reasoning as string
-          : null,
+      // Expose ai_routing_summary as the full aiClassification object (same fix as /calls).
+      // Previously returned only aiClassification.reasoning which is rarely set.
+      ai_routing_summary: (call.aiClassification && typeof call.aiClassification === 'object')
+        ? call.aiClassification
+        : null,
     } : null;
 
     return Response.json(
