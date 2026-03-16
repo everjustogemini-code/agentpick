@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { isRouterPlanCode, type RouterPlanCode } from '@/lib/router/plans';
 import {
   getDeveloperAccountIdFromCheckoutSession,
@@ -29,14 +29,14 @@ function canProvisionCheckoutSession(
 }
 
 async function updateDeveloperPlan(developerAccountId: string, plan: RouterPlanCode) {
-  await db.developerAccount.updateMany({
+  await withRetry(() => db.developerAccount.updateMany({
     where: { id: developerAccountId },
     data: {
       plan,
       spentThisMonth: 0,
       billingCycleStart: new Date(),
     },
-  });
+  }));
 }
 
 function getPlanFromMetadata(metadata: Stripe.Metadata | null | undefined): RouterPlanCode | null {

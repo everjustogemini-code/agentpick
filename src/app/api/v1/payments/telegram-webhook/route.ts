@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { isRouterPlanCode, type RouterPlanCode } from '@/lib/router/plans';
 
 export const runtime = 'nodejs';
@@ -118,14 +118,14 @@ export async function POST(request: NextRequest) {
 
     try {
       // Upgrade the developer account
-      await db.developerAccount.updateMany({
+      await withRetry(() => db.developerAccount.updateMany({
         where: { id: payload.developerAccountId },
         data: {
           plan: payload.routerPlan,
           spentThisMonth: 0,
           billingCycleStart: new Date(),
         },
-      });
+      }));
 
       // Optionally link Telegram user ID to agent for future webhook lookups
       if (telegramUserId) {
@@ -176,7 +176,7 @@ async function linkTelegramUser(
 ): Promise<void> {
   try {
     // Store Telegram ID in agent metadata (uses raw update to avoid schema changes)
-    await db.agent.updateMany({
+    await withRetry(() => db.agent.updateMany({
       where: { id: agentId },
       data: {
         // telegramUserId is stored in a JSON metadata column if it exists,
@@ -184,7 +184,7 @@ async function linkTelegramUser(
         // For now we log it — update this when you add the DB column.
         lastActiveAt: new Date(),
       },
-    });
+    }));
 
     console.log(
       `[telegram-webhook] Linked Telegram user ${telegramUserId} (${telegramUsername ?? 'no username'}) to agent ${agentId}`,
