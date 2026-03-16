@@ -1,9 +1,9 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const recentVotes = await prisma.vote.findMany({
+  const recentVotes = await withRetry(() => prisma.vote.findMany({
     where: { proofVerified: true },
     orderBy: { createdAt: 'desc' },
     take: 50,
@@ -15,7 +15,7 @@ export async function GET() {
         select: { name: true, slug: true },
       },
     },
-  });
+  }));
 
   const votes = recentVotes.map((v) => ({
     id: v.id,

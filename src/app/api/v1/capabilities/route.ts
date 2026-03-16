@@ -1,10 +1,10 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const capabilities = await prisma.capability.findMany({
+    const capabilities = await withRetry(() => prisma.capability.findMany({
       orderBy: [{ capCategory: 'asc' }, { sortOrder: 'asc' }],
       select: {
         slug: true,
@@ -14,7 +14,7 @@ export async function GET() {
         icon: true,
         _count: { select: { products: true } },
       },
-    });
+    }));
 
     // Group by capCategory
     const grouped: Record<string, Array<{

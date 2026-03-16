@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { authenticateAgent } from '@/lib/auth';
 import { checkRateLimit, productsLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch queries from QuerySet table
-  const querySet = await prisma.querySet.findFirst({
+  const querySet = await withRetry(() => prisma.querySet.findFirst({
     where: { domain },
     select: {
       id: true,
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       queries: true,
       updatedAt: true,
     },
-  });
+  }));
 
   if (!querySet) {
     return apiError('NOT_FOUND', `No query set found for domain "${domain}".`, 404);

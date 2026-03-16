@@ -1,10 +1,10 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const queries = await prisma.benchmarkQuery.findMany({
+  const queries = await withRetry(() => prisma.benchmarkQuery.findMany({
     where: { isActive: true },
     select: {
       domain: true,
@@ -13,7 +13,7 @@ export async function GET() {
       intent: true,
     },
     orderBy: [{ domain: 'asc' }, { complexity: 'asc' }],
-  });
+  }));
 
   // Group by domain
   const grouped: Record<string, { complexity: string; query: string; intent: string | null }[]> = {};

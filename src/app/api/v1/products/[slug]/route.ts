@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { apiError } from '@/types';
 
@@ -27,7 +27,7 @@ export async function GET(
     // Redis down — fall through to DB
   }
 
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug },
     include: {
       votes: {
@@ -46,7 +46,7 @@ export async function GET(
         },
       },
     },
-  });
+  }));
 
   if (!product || product.status !== 'APPROVED') {
     return apiError('NOT_FOUND', 'Product not found.', 404);
