@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { prisma } from './prisma';
+import { prisma, withRetry } from './prisma';
 
 export function generateSlug(name: string): string {
   return name
@@ -11,7 +11,11 @@ export function generateSlug(name: string): string {
 
 export async function uniqueSlug(name: string): Promise<string> {
   const base = generateSlug(name);
-  const existing = await prisma.product.findUnique({ where: { slug: base } });
+  // withRetry: product.findUnique can fail with P1017/fetch-failed on cold starts
+  // or after long prior DB operations. Without withRetry the singleton is NOT cleared
+  // on failure, leaving it stale for subsequent DB calls in the same request (e.g.
+  // product.create in the submit/suggest routes).
+  const existing = await withRetry(() => prisma.product.findUnique({ where: { slug: base } }));
   if (!existing) return base;
   return `${base}-${randomBytes(2).toString('hex')}`;
 }

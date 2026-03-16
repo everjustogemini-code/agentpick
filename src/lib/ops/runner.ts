@@ -47,10 +47,15 @@ async function ensureToolApiKeys(config: any): Promise<Record<string, string>> {
 
   // Persist so we don't hit vault every run
   if (missing.length > 0) {
-    await db.benchmarkAgentConfig.update({
+    // withRetry: update can fail with P1017/fetch-failed after the vault findUnique
+    // calls above clear the Neon singleton on a transient error. Without withRetry
+    // the singleton is NOT cleared on update failure — leaving it stale for the
+    // subsequent withRetry(benchmarkAgentRun.create(...)) in runBenchmarkAgentNow,
+    // which would then waste its first retry slot on the dead connection.
+    await withRetry(() => db.benchmarkAgentConfig.update({
       where: { id: config.id },
       data: { toolApiKeys: resolved },
-    }).catch(() => {}); // fire-and-forget
+    })).catch(() => {}); // fire-and-forget
   }
 
   return resolved;
