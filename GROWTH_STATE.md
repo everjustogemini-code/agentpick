@@ -1,26 +1,26 @@
-# Growth State — Cycle 46 (2026-03-16)
+# Growth State — Cycle 47 (2026-03-16)
 
-## Working
+## Working:
 - GET /api/v1/router/health → 200 healthy ✅
 - POST /api/v1/agents/register → 200, api key issued ✅
-- /, /pricing, /blog → all 200 OK ✅
-- llms.txt → 200, serving correctly ✅
-- skill.md → 200, serving correctly ✅
-- Core routing engine: search, crawl, embed, finance all routing correctly ✅
+- / (homepage) → 200 ✅
+- /pricing → 200 ✅
+- /blog → 200 ✅
+- AEO score posting → all 3 posted successfully ✅
+- llms.txt / skill.md → updated to 383 agents ✅
 
-## Broken
-- **Calls not persisted to DB** (P1) — router returns 200 + trace_id but GET /router/calls → empty array. Usage dashboard always shows 0. Billing/metering broken.
-- **Moltbook API** — `api.moltbook.com` DNS resolution fails. Dead for 3+ cycles.
-- **Stripe not configured** — STRIPE_SECRET_KEY/STRIPE_PRICE_ID/STRIPE_WEBHOOK_SECRET not set → $0 revenue possible
+## Broken:
+- **Calls not persisted to DB** (P1 — QA round 15): router returns 200 with trace_id but GET /api/v1/router/calls always empty. Billing/metering/rate-limit enforcement broken.
+- **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET missing in Vercel → $0 revenue possible. Owner action required.
 
-## Metrics
-- Total Agents: 382
-- Router calls today: 2
-- Paid accounts: 0
-- AEO scores: 0/0/0 (46th consecutive cycle at zero)
+## Metrics:
+- Total Agents: 383 (up from 382)
+- Router Calls Today: 6
+- Paid Accounts: 0
+- AEO Scores: 0/0/0 (47th consecutive cycle at zero)
 
-## Revenue Blockers (ordered by impact)
-1. **Stripe not configured** — owner must set env vars in Vercel → blocks all paid conversions
-2. **Zero search visibility** — 46 cycles at 0; no backlinks, no directory listings
-3. **Calls not persisted** — usage dashboard always 0 → breaks trust/metering for potential paying users
-4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — no path to paid revenue without this (owner action)
+2. **47-cycle AEO zero streak** — zero search visibility; no inbound organic traffic
+3. **Calls not persisted** — P1 bug; metering broken, undermines trust when paid users check dashboard
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action for credibility)
