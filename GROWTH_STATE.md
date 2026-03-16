@@ -1,24 +1,26 @@
-# Growth State — Cycle 43 (2026-03-15)
+# Growth State — Cycle 46 (2026-03-16)
 
-## Working:
-- GET /api/v1/router/health → 200 ✅
+## Working
+- GET /api/v1/router/health → 200 healthy ✅
 - POST /api/v1/agents/register → 200, api key issued ✅
-- https://agentpick.dev → 200 ✅
-- https://agentpick.dev/pricing → 200 ✅
-- https://agentpick.dev/blog → 200 ✅
-- AEO scores posted to /api/v1/admin/growth-metrics/aeo-score ✅
-- llms.txt + skill.md updated (378 agents) ✅
+- /, /pricing, /blog → all 200 OK ✅
+- llms.txt → 200, serving correctly ✅
+- skill.md → 200, serving correctly ✅
+- Core routing engine: search, crawl, embed, finance all routing correctly ✅
 
-## Broken:
-- Stripe not configured (STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET missing from Vercel) — **BLOCKS ALL REVENUE**
-- Zero search visibility (43rd consecutive AEO-zero cycle)
+## Broken
+- **Calls not persisted to DB** (P1) — router returns 200 + trace_id but GET /router/calls → empty array. Usage dashboard always shows 0. Billing/metering broken.
+- **Moltbook API** — `api.moltbook.com` DNS resolution fails. Dead for 3+ cycles.
+- **Stripe not configured** — STRIPE_SECRET_KEY/STRIPE_PRICE_ID/STRIPE_WEBHOOK_SECRET not set → $0 revenue possible
 
-## Metrics:
-- Registrations: 378 total agents (+1 this cycle)
+## Metrics
+- Total Agents: 382
 - Router calls today: 2
-- AEO scores: 0 / 0 / 0
+- Paid accounts: 0
+- AEO scores: 0/0/0 (46th consecutive cycle at zero)
 
-## Revenue Blockers (by impact):
-1. **Stripe** — no payment processing possible without env vars (owner action)
-2. **Zero domain authority** — 43 AEO-zero cycles; zero inbound links
-3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+## Revenue Blockers (ordered by impact)
+1. **Stripe not configured** — owner must set env vars in Vercel → blocks all paid conversions
+2. **Zero search visibility** — 46 cycles at 0; no backlinks, no directory listings
+3. **Calls not persisted** — usage dashboard always 0 → breaks trust/metering for potential paying users
+4. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
