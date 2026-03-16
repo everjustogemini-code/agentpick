@@ -292,10 +292,15 @@ export async function touchByokKeyUsage(developerId: string, rawKeys: unknown, s
     updatedAt: record.updatedAt,
   };
 
-  await db.developerAccount.update({
+  // withRetry: developerAccount.update can fail with P1017/fetch-failed when the
+  // Neon connection is stale after a BYOK-assisted tool API call (~1.5s+).
+  // Without withRetry the singleton is NOT cleared on failure, leaving it stale
+  // for subsequent withRetry-wrapped calls in the same serverless instance and
+  // causing recordRouterCall to need an extra retry cycle to get a fresh connection.
+  await withRetry(() => db.developerAccount.update({
     where: { id: developerId },
     data: { byokKeys: parsed },
-  });
+  }));
 }
 
 export async function getByokSummary(developerId: string, rawKeys: unknown, days = 30) {
