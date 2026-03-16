@@ -176,7 +176,10 @@ export async function ensureOpsSettings(): Promise<OpsSettingsSnapshot> {
 
 export async function updateOpsSettings(input: Partial<OpsSettingsSnapshot>) {
   await ensureOpsSettings();
-  const updated = await db.benchmarkOpsSettings.update({
+  // withRetry: update can fail with P1017/fetch-failed after ensureOpsSettings clears the
+  // Neon singleton on a transient error. Without withRetry the settings update returns 500.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated: any = await withRetry(() => db.benchmarkOpsSettings.update({
     where: { id: process.env.AGENTPICK_OPS_SETTINGS_ID ?? "agentpick-ops-settings" },
     data: {
       defaultFrequency: input.defaultFrequency,
@@ -187,7 +190,7 @@ export async function updateOpsSettings(input: Partial<OpsSettingsSnapshot>) {
       alertEmail: input.alertEmail,
       alertOpenclaw: input.alertOpenclaw,
     },
-  });
+  }));
 
   return {
     id: updated.id,
@@ -319,7 +322,10 @@ export async function createBenchmarkAgent(input: CreateAgentInput) {
   const domain = input.domain;
   const providerModel = findModel(input.modelProvider);
   const domainMeta = findDomain(domain);
-  const existingInDomain = await db.benchmarkAgentConfig.count({ where: { domain, modelProvider: input.modelProvider } });
+  // withRetry: count can fail with P1017/fetch-failed after prior DB calls in the same
+  // request instance clear the Neon singleton. Without withRetry createBenchmarkAgent returns 500.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existingInDomain: number = (await withRetry(() => db.benchmarkAgentConfig.count({ where: { domain, modelProvider: input.modelProvider } }))) as number;
   const displayName = normalizeDisplayName(
     input.displayName || buildBenchmarkDisplayName(domain, input.modelProvider, existingInDomain + 1),
   );
@@ -330,7 +336,10 @@ export async function createBenchmarkAgent(input: CreateAgentInput) {
   const modelApiKey = await resolveEncryptedModelKey(input.modelProvider);
   const toolApiKeys = await resolveEncryptedToolKeys(toolSlugs);
 
-  const created = await db.benchmarkAgentConfig.create({
+  // withRetry: create can fail with P1017/fetch-failed after ensureAgentIdentity/resolveEncryptedModelKey
+  // perform external calls that invalidate the Neon HTTP connection.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const created: any = await withRetry(() => db.benchmarkAgentConfig.create({
     data: {
       agentId,
       displayName,
@@ -353,19 +362,27 @@ export async function createBenchmarkAgent(input: CreateAgentInput) {
       openclawEnabled: input.openclawEnabled ?? false,
       openclawConfig: input.openclawConfig ?? null,
     },
-  });
+  }));
 
   return getBenchmarkAgentById(created.id);
 }
 
 export async function updateBenchmarkAgent(input: UpdateAgentInput) {
-  const existing = await db.benchmarkAgentConfig.findUnique({ where: { id: input.id } });
+  // withRetry: findUnique can fail with P1017/fetch-failed; without retry the update returns 500.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existing: any = await withRetry(() => db.benchmarkAgentConfig.findUnique({ where: { id: input.id } }));
   if (!existing) {
     throw new Error("Agent config not found.");
   }
 
   const toolSlugs = input.toolSlugs?.length ? input.toolSlugs : existing.toolSlugs;
-  const updated = await db.benchmarkAgentConfig.update({
+  // Pre-compute encrypted keys outside withRetry so the lambda has no await expressions.
+  const updatedModelApiKey = await resolveEncryptedModelKey(input.modelProvider);
+  const updatedToolApiKeys = await resolveEncryptedToolKeys(toolSlugs);
+  // withRetry: update can fail with P1017/fetch-failed after the async key-resolution calls above
+  // invalidate the Neon HTTP connection. Without withRetry the agent update returns 500.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated: any = await withRetry(() => db.benchmarkAgentConfig.update({
     where: { id: input.id },
     data: {
       displayName: input.displayName ? normalizeDisplayName(input.displayName) : undefined,
@@ -374,41 +391,48 @@ export async function updateBenchmarkAgent(input: UpdateAgentInput) {
       description: input.description,
       modelProvider: input.modelProvider,
       modelName: input.modelName,
-      modelApiKey: await resolveEncryptedModelKey(input.modelProvider),
+      modelApiKey: updatedModelApiKey,
       evaluatorModel: input.evaluatorModel ?? existing.evaluatorModel ?? DEFAULT_EVALUATOR_MODEL,
       testFrequency: input.testFrequency,
       queriesPerRun: input.queriesPerRun,
       toolsPerQuery: input.toolsPerQuery,
       complexity: input.complexity?.length ? input.complexity : existing.complexity,
       toolSlugs,
-      toolApiKeys: await resolveEncryptedToolKeys(toolSlugs),
+      toolApiKeys: updatedToolApiKeys,
       querySetId: input.querySetId || null,
       customQueries: input.customQueries ?? [],
       isActive: input.isActive,
       openclawEnabled: input.openclawEnabled,
       openclawConfig: input.openclawConfig ?? undefined,
     },
-  });
+  }));
 
   return getBenchmarkAgentById(updated.id);
 }
 
 export async function deleteBenchmarkAgent(id: string) {
-  await db.benchmarkAgentRun.deleteMany({ where: { configId: id } });
-  await db.benchmarkAgentConfig.delete({ where: { id } });
+  // withRetry: deleteMany/delete can fail with P1017/fetch-failed after prior DB calls in the
+  // same request. Without withRetry the delete returns 500 and the agent record is not removed.
+  await withRetry(() => db.benchmarkAgentRun.deleteMany({ where: { configId: id } }));
+  await withRetry(() => db.benchmarkAgentConfig.delete({ where: { id } }));
 }
 
 export async function listApiKeys() {
-  const records = await db.apiKeyVault.findMany({
+  // withRetry: findMany is called from getAdminBundledData on every admin page load.
+  // Without withRetry a transient Neon connection drop returns 500 and the keys list is lost.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const records: any[] = await withRetry(() => db.apiKeyVault.findMany({
     orderBy: { service: "asc" },
-  });
+  }));
   return records.map(serializeApiKey);
 }
 
 export async function saveApiKey(input: SaveApiKeyInput) {
-  const existing = input.id
-    ? await db.apiKeyVault.findUnique({ where: { id: input.id } })
-    : await db.apiKeyVault.findUnique({ where: { service: input.service } });
+  // withRetry: findUnique can fail with P1017/fetch-failed on warm serverless instances.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existing: any = input.id
+    ? await withRetry(() => db.apiKeyVault.findUnique({ where: { id: input.id } }))
+    : await withRetry(() => db.apiKeyVault.findUnique({ where: { service: input.service } }));
 
   if (!existing?.apiKey && !input.apiKey) {
     throw new Error("A new vault entry requires an API key.");
@@ -426,19 +450,22 @@ export async function saveApiKey(input: SaveApiKeyInput) {
     notes: input.notes ?? null,
   };
 
-  const record = input.id
-    ? await db.apiKeyVault.update({ where: { id: input.id }, data: payload })
-    : await db.apiKeyVault.upsert({
+  // withRetry: update/upsert can fail with P1017/fetch-failed after the findUnique above.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const record: any = input.id
+    ? await withRetry(() => db.apiKeyVault.update({ where: { id: input.id }, data: payload }))
+    : await withRetry(() => db.apiKeyVault.upsert({
         where: { service: input.service },
         update: payload,
         create: payload,
-      });
+      }));
 
   return serializeApiKey(record);
 }
 
 export async function deleteApiKey(id: string) {
-  await db.apiKeyVault.delete({ where: { id } });
+  // withRetry: delete can fail with P1017/fetch-failed on warm serverless instances.
+  await withRetry(() => db.apiKeyVault.delete({ where: { id } }));
 }
 
 // Usage tracking (trackVaultUsage, vaultServiceForSlug) lives in ./usage.ts
@@ -446,25 +473,32 @@ export async function deleteApiKey(id: string) {
 export { trackVaultUsage, vaultServiceForSlug } from "./usage";
 
 export async function testApiKey(id: string) {
-  const record = await db.apiKeyVault.findUnique({ where: { id } });
+  // withRetry: findUnique can fail with P1017/fetch-failed. probeVaultKey makes an external
+  // HTTP call (300ms+) that can invalidate the Neon connection before the update.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const record: any = await withRetry(() => db.apiKeyVault.findUnique({ where: { id } }));
   if (!record) throw new Error("API key not found.");
   const result = await probeVaultKey(record.service, record.apiKey);
 
-  await db.apiKeyVault.update({
+  // withRetry: update can fail with P1017/fetch-failed after probeVaultKey's external HTTP call.
+  await withRetry(() => db.apiKeyVault.update({
     where: { id },
     data: {
       status: result.ok ? "active" : result.status,
     },
-  });
+  }));
 
   return result;
 }
 
 export async function testAllApiKeys() {
-  const keys = await db.apiKeyVault.findMany({
+  // withRetry: findMany is called at the start of the test-all flow; a transient Neon drop here
+  // aborts the entire batch. Without withRetry the test-all endpoint returns 500 immediately.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const keys: any[] = await withRetry(() => db.apiKeyVault.findMany({
     where: { NOT: { service: { startsWith: "__" } } },
     orderBy: { service: "asc" },
-  });
+  }));
   const results = [];
 
   for (const key of keys) {
@@ -561,16 +595,18 @@ export async function saveQuerySet(input: SaveQuerySetInput) {
     queries: input.queries,
   };
 
+  // withRetry: update/create can fail with P1017/fetch-failed on warm serverless instances.
   const record =
     input.id && !input.id.startsWith("draft-")
-      ? await db.querySet.update({ where: { id: input.id }, data: payload })
-      : await db.querySet.create({ data: payload });
+      ? await withRetry(() => db.querySet.update({ where: { id: input.id }, data: payload }))
+      : await withRetry(() => db.querySet.create({ data: payload }));
 
   return serializeQuerySet(record);
 }
 
 export async function deleteQuerySet(id: string) {
-  await db.querySet.delete({ where: { id } });
+  // withRetry: delete can fail with P1017/fetch-failed on warm serverless instances.
+  await withRetry(() => db.querySet.delete({ where: { id } }));
 }
 
 export async function listRuns(filters?: { agentId?: string; status?: string; hours?: number }) {
@@ -688,7 +724,9 @@ export async function buildOpsIndex() {
 }
 
 export async function getVaultExportMap() {
-  const keys = await db.apiKeyVault.findMany();
+  // withRetry: findMany can fail with P1017/fetch-failed on warm serverless instances.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const keys: any[] = await withRetry(() => db.apiKeyVault.findMany());
   return Object.fromEntries(keys.map((record: any) => [record.service, decryptSecret(record.apiKey)]));
 }
 
@@ -709,24 +747,28 @@ export function summarizeAgentHealth(agent: AgentListItem) {
 }
 
 export async function getCompetitiveSnapshot(productId: string) {
-  const product = await db.product.findUnique({
+  // withRetry: findUnique can fail with P1017/fetch-failed on warm serverless instances.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const product: any = await withRetry(() => db.product.findUnique({
     where: { id: productId },
     select: { weightedScore: true },
-  });
+  }));
   if (!product) return null;
 
   const [higherCount, totalCount] = await Promise.all([
-    db.product.count({ where: { weightedScore: { gt: product.weightedScore }, status: 'APPROVED' } }),
-    db.product.count({ where: { status: 'APPROVED' } }),
+    withRetry(() => db.product.count({ where: { weightedScore: { gt: product.weightedScore }, status: 'APPROVED' } })) as Promise<number>,
+    withRetry(() => db.product.count({ where: { status: 'APPROVED' } })) as Promise<number>,
   ]);
 
   const overallRank = higherCount + 1;
 
   // Load all batch runs (batchId not null) to compute per-domain rankings
-  const allBatchRuns = await db.benchmarkRun.findMany({
+  // withRetry: findMany can fail with P1017/fetch-failed after the count queries above.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allBatchRuns: any[] = await withRetry(() => db.benchmarkRun.findMany({
     where: { batchId: { not: null } },
     select: { productId: true, domain: true, relevanceScore: true, createdAt: true, batchId: true },
-  });
+  }));
 
   const myRuns: any[] = allBatchRuns.filter((r: any) => r.productId === productId);
   const myDomains = [...new Set(myRuns.map((r: any) => r.domain as string))];
