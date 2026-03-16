@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { authenticateAgent } from '@/lib/auth';
 import { verifyProof } from '@/lib/proof';
@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Find product
-  const product = await prisma.product.findUnique({
+  const product = await withRetry(() => prisma.product.findUnique({
     where: { slug: body.product_slug },
-  });
+  }));
   if (!product || !BROWSE_STATUSES.includes(product.status as any)) {
     return apiError('NOT_FOUND', `Product "${body.product_slug}" not found.`, 404);
   }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   // 7. Check for existing vote (detect create vs update)
   try {
-    const existingVote = await prisma.vote.findUnique({
+    const existingVote = await withRetry(() => prisma.vote.findUnique({
       where: {
         productId_agentId: {
           productId: product.id,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         },
       },
       select: { id: true, signal: true },
-    });
+    }));
 
     const isUpdate = !!existingVote;
     const previousSignal = existingVote?.signal ?? null;
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       comment: body.comment ?? null,
     };
 
-    const vote = await prisma.vote.upsert({
+    const vote = await withRetry(() => prisma.vote.upsert({
       where: {
         productId_agentId: {
           productId: product.id,
@@ -107,22 +107,22 @@ export async function POST(request: NextRequest) {
         ...proofData,
       },
       update: proofData,
-    });
+    }));
 
     // 8. Update agent stats & reputation (only increment on NEW vote)
     if (!isUpdate) {
-      const updatedAgent = await prisma.agent.update({
+      const updatedAgent = await withRetry(() => prisma.agent.update({
         where: { id: agent.id },
         data: {
           totalVotes: { increment: 1 },
           verifiedVotes: { increment: 1 },
         },
-      });
+      }));
       const newReputation = calculateReputation(updatedAgent);
-      await prisma.agent.update({
+      await withRetry(() => prisma.agent.update({
         where: { id: agent.id },
         data: { reputationScore: newReputation },
-      });
+      }));
     }
 
     // 9. Recalculate product score
