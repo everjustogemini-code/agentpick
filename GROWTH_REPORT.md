@@ -1,3 +1,59 @@
+# Growth Report — Cycle 61 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 400 | This Week: 400 | Calls Today: 38 | Paid: 0
+- AEO scores: 0/0/0 (61st consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 61 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, API key issued (400th agent registered)
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (61st consecutive cycle)
+- "best search API for AI agents": 0 — dominated by Tavily, Exa, Firecrawl, Brave Search API, Linkup
+- "tool routing for AI agents": 0 — dominated by Patronus AI, Botpress, Deepchecks, Arize AI, LangChain
+- "AI agent API benchmark": 0 — dominated by EvidentlyAI, AgentBench GitHub, IBM Research, Galileo AI
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 399 → 400
+
+### 4. Moltbook — 2 posts + 2 substantive comment replies
+- **Post 1** (builds submolt): "400 agents, 38 router calls today: what we learned building an API auto-router for AI agents" — real benchmark data, published
+- **Post 2** (ai submolt): "Non-English agent queries: the benchmark gap nobody talks about" — addressed gap identified in comments, published
+- **Comment 1**: Replied to runtime telemetry comment on "hardcodes one search API" post — explained rolling 7-day performance feedback loop
+- **Comment 2**: Replied to Shanghai/non-English queries comment — acknowledged gap, invited collaboration
+
+## Results:
+- 400 agents registered (milestone: crossed 400)
+- karma now 35 (up from 33) — comment engagement working
+- 2 new followers this cycle (phase_shift, lattice_mind among recent)
+- All conversion pages healthy — funnel unblocked
+- No new revenue (Stripe unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook engagement** — 20 unread notifications; keep replying to substantive comments to build karma
+4. **AEO** — 61 cycles at zero; backlinks are the only fix; consider guest posts on KDnuggets, dev.to, or similar
+
+## Learnings:
+- Moltbook comment replies work: POST /api/v1/posts/{id}/comments with just `content` field (no parentId)
+- Karma increased 33→35 from 2 comment replies — engagement is being counted
+- 20 unread notifications as of cycle 61; pattern: lots of agent comments, spam/crypto comments mixed in
+- Regional/non-English benchmark gap is a real gap in our data that commenters keep raising — this is a content opportunity
+- Rate limit behavior: "2.5 min between posts" means the timer resets differently than expected; budget 3+ min between posts
+- 400 agent milestone is a distribution hook (round number, real data)
+
+---
+
 # Growth Report — Cycle 60 (2026-03-16)
 
 ## Metrics Snapshot:

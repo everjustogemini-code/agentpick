@@ -1,80 +1,91 @@
-# NEXT_VERSION — Bugfix Cycle 129
+# NEXT_VERSION.md — AgentPick v1.next
 
-**Source:** QA Round 15 (2026-03-15)
-**Branch:** bugfix/cycle-129
-**Rule:** Bug fixes only. Zero new features.
+Generated: 2026-03-16 | QA: Round 16 (56/57) | Branch: main
 
 ---
 
-## Fix #1 — P1: Calls not persisted to database after routing
+## Must-Have #1 — Fix P1 Bug: `/api/v1/account/register` Returns 404
 
-**QA Issues:** `1.5-calls-recorded`, `7.2-call-fields`
+**Source:** QA_REPORT.md Round 16, P1 Issue #1
 
-**Symptom:**
-`POST /api/v1/route/search` returns HTTP 200 with a valid `meta.trace_id`, but no `RouterCall` record is ever committed. `GET /api/v1/router/calls` returns `{"calls": []}`. Account `totalCalls` stays at 0.
+**Problem:** `POST /api/v1/account/register` returns `404 NOT_FOUND`. The canonical registration path is `POST /api/v1/router/register`. Any integration docs, third-party clients, or agent tooling referencing the `/account/register` path silently fails — lost signups, broken onboarding.
 
-**Root Cause:**
-New developer accounts are created with `strategy: 'AUTO'` (the Prisma schema default in `ensureDeveloperAccount`). When `recordRouterCall` executes:
-```ts
-db.routerCall.create({ data: { ..., strategyUsed: 'AUTO' } })
-```
-PostgreSQL rejects the INSERT with an invalid-enum-value error because `'AUTO'` is not yet in the production `RouterStrategy` enum — the migration `20260315_add_router_strategy_manual_auto` that adds it has been created in the repo but **was never deployed to the production database**.
+**Fix:** Add a Next.js route handler at `src/app/api/v1/account/register/route.ts` that proxies or 301-redirects to `/api/v1/router/register`. Must preserve request body, return identical `{ apiKey, plan, monthlyLimit }` JSON response, and emit a `Deprecation: true` header so callers can detect the alias.
 
-The error is non-retryable (it is not a connection error, so `isRetryable` returns false). `withRetry` clears the singleton and throws immediately. The `catch (insertErr)` block in `recordRouterCall` (`src/lib/router/sdk.ts`) maps AUTO→BALANCED and attempts a fallback INSERT. However, after the enum error the Neon HTTP channel that served the failed INSERT is invalidated; the freshly-created `PrismaNeon` WebSocket adapter fails to open its first connection before the Vercel serverless function's tight I/O timeout fires, and all three INSERT attempts (primary, fallback, minimal) fail. The exception propagates to `handler.ts` where the outer `catch` silently swallows it, logs to Vercel (key: `[RouterCall] write failed`), and returns HTTP 200. The call is lost.
-
-**Note:** The `withRetry` singleton-clear fix (applied in cycle 111 — always clear on any error, not just retryable ones) is already live in `src/lib/prisma.ts`. That fix removed one failure path but the root cause here is the missing DB enum value, not stale singleton.
-
-**Fix — two-part:**
-
-### Part A: Deploy the migration (required, resolves the root cause)
-
-**File:** `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql`
-
-This migration already exists in the repo. It must be applied to the production Neon database:
-```
-npx prisma migrate deploy
-```
-The SQL is:
-```sql
-ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'MANUAL';
-ALTER TYPE "RouterStrategy" ADD VALUE IF NOT EXISTS 'AUTO';
-```
-Once deployed, `strategyUsed: 'AUTO'` is a valid enum value and the primary INSERT succeeds. All call records will be committed.
-
-### Part B: Add explicit enum-error detection to the fallback INSERT path (defense-in-depth)
-
-**File:** `src/lib/router/sdk.ts` — `recordRouterCall`, `catch (insertErr)` block (~line 335)
-
-In the `catch (insertErr)` block, before building `safeData`, detect the enum violation explicitly and log it as a distinct actionable alert:
-```ts
-if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
-  console.error('[RecordRouterCall] DB ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto to fix call persistence');
-}
-```
-This makes Vercel logs immediately point to the migration rather than requiring code archaeology.
-
-**File:** `src/lib/router/handler.ts` — `catch (recordErr)` block (~line 321)
-
-Add the same enum-error detection to the outer catch so even if all fallback INSERTs fail the log message names the fix:
-```ts
-if (errMsg.includes('invalid input value for enum') || errMsg.includes('invalid enum value')) {
-  console.error('[RouterCall] ENUM MIGRATION NOT APPLIED — deploy 20260315_add_router_strategy_manual_auto');
-}
-```
-
-**Files changed:**
-- `prisma/migrations/20260315_add_router_strategy_manual_auto/migration.sql` — deploy to prod (file already exists, no code edit needed)
-- `src/lib/router/sdk.ts` — add enum-error detection in `recordRouterCall` fallback catch
-- `src/lib/router/handler.ts` — add enum-error detection in outer catch
+**Acceptance:**
+- `POST /api/v1/account/register` with valid payload → same response shape as `/api/v1/router/register`
+- QA Round 17 test for `/api/v1/account/register` passes → score 57/57
+- Zero regression on existing `/api/v1/router/register` behavior
 
 ---
 
-## Verification
+## Must-Have #2 — Major UI Upgrade: Glassmorphism + Micro-animations + Typography Overhaul
 
-After deploying the migration, QA should see:
-- `GET /api/v1/router/calls?limit=10` → non-empty array after routing calls
-- `GET /api/v1/router/account` → `totalCalls > 0` after multiple searches
-- Tests `1.5-calls-recorded` and `7.2-call-fields` pass
-- Score: 54/54
+**Context:** Current design is clean and functional but flat — no depth, no motion, no visual hierarchy that guides visitors to the CTA. Competitors (Tavily, Exa, Jina) ship immersive animated developer-first landing pages. This upgrade converts first-time visitors into signups.
 
-All other Round 15 checks (routing, auth, pages, edge cases) remain passing and are not touched by this fix.
+**Scope:**
+
+1. **Glassmorphism cards** — apply `backdrop-filter: blur(12px)` + `bg-white/5` + `border border-white/10` to all stat cards, feature cards, and the agent-counter widget on homepage and `/connect`. Drop the current flat card backgrounds.
+
+2. **Hero stat counter animation** — CSS keyframe counter on the live network stats ("395 active agents / 880+ benchmark runs / 11,500+ calls"): count up 0 → final value on page load, 800ms ease-out, triggered by `IntersectionObserver`.
+
+3. **Typography overhaul** — upgrade homepage `h1` to `clamp(2.5rem, 6vw, 4.5rem)` with a `background-clip: text` gradient (blue → purple). Switch all inline code and code blocks to `JetBrains Mono` or `Geist Mono`. Increase code block background contrast to `#0d1117`.
+
+4. **Animated routing diagram on `/connect`** — add a simple CSS/SVG flow animation (agent icon → AgentPick logo → tool icons with a traveling pulse dot) above the code example. Must convey the routing concept in under 2 seconds without a library dependency.
+
+5. **CTA button shimmer** — primary "Get API Key" and "Install AgentPick" buttons get a `@keyframes shimmer` sweep on hover (white highlight travels left → right over the button).
+
+**Acceptance:**
+- Lighthouse Performance score ≥ 90 on mobile (no regression from animation weight)
+- All 4 QA page load checks still pass 200 OK
+- No Cumulative Layout Shift on 375px viewport
+- Animations respect `prefers-reduced-motion: reduce`
+
+---
+
+## Must-Have #3 — New Feature: Official `agentpick` Python Package on PyPI
+
+**Goal:** Reduce developer integration time from ~30 min (reading docs, crafting curl) to under 2 minutes (`pip install agentpick`). Every major competitor ships a Python SDK. This directly increases adoption and makes AgentPick citable in agent framework repos.
+
+**Deliverables:**
+
+1. **PyPI package:** `agentpick` version `0.1.0`, pure Python, no heavy deps (only `httpx` or `requests`).
+
+2. **Core interface:**
+```python
+from agentpick import AgentPick
+
+ap = AgentPick(api_key="ah_live_sk_...")
+
+# Route a search
+result = ap.search("SEC filings NVDA 2025")
+print(result["data"]["results"])
+
+# Recommend a tool
+rec = ap.recommend(capability="search", domain="finance")
+
+# Report telemetry
+ap.telemetry(tool="tavily", success=True, latency_ms=195)
+```
+
+3. **Auto-registration:** `AgentPick(auto_register=True, agent_name="my-bot")` registers on first call and persists the key to `~/.agentpick/config.json` — zero-friction onboarding for new agents.
+
+4. **Surface it:** Add `pip install agentpick` block prominently to `/connect` quick start (above the curl examples). Update `skill.md` to include the pip install path. Add PyPI badge to homepage.
+
+**Acceptance:**
+- `pip install agentpick && python -c "from agentpick import AgentPick; print('ok')"` exits 0
+- `ap.search("test")` returns structured results via `/api/v1/router/search`
+- PyPI README matches `/connect` docs
+- `/connect` page updated; QA page load check still passes 200 OK
+
+---
+
+## Ship Order
+
+```
+1. #1 — /account/register alias   → < 1 hour, zero risk, QA score 57/57
+2. #2 — UI upgrade                → parallel track, no API changes
+3. #3 — PyPI package              → ships after #1 is live and confirmed
+```
+
+**Rule:** No new features deploy until #1 is confirmed 57/57 by QA.
