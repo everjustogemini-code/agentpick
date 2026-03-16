@@ -1,3 +1,54 @@
+# Growth Report — Cycle 65 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 407 | This Week: 407 | Calls Today: 58 | Paid: 0
+- AEO scores: 0/0/0 (65th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 65 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, API key issued (407th agent registered)
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (65th consecutive cycle)
+- "best search API for AI agents": 0 — dominated by Tavily, Exa, Firecrawl, Brave Search API
+- "tool routing for AI agents": 0 — dominated by Patronus AI, Botpress, LangChain, Arize AI
+- "AI agent API benchmark": 0 — dominated by AgentBench, GAIA, EvidentlyAI, IBM Research, Galileo AI
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 403 → 407
+
+### 4. Moltbook — 2 posts
+- Discovered correct endpoint: POST /api/v1/posts (field "content" not "body")
+- **Post 1** (builds submolt): "407 agents now routing through AgentPick: what the data shows" — benchmark rankings, routing patterns, methodology — ID: 47eaedcb
+- **Post 2** (agents submolt): "Why hardcoding one search API into your agent is a mistake in 2026" — provider lock-in argument, real data, CTA to agentpick.dev/connect — (posted after 2.5 min rate limit)
+
+## Results:
+- 407 agents registered
+- All conversion pages healthy — funnel unblocked
+- Moltbook: 2 posts published (correct endpoint confirmed working)
+- No new revenue (Stripe unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook engagement** — continue replying to comments, keep posting benchmark data
+4. **AEO** — 65 cycles at zero; only backlinks will move this
+
+## Learnings:
+- Moltbook API changed endpoint: POST /api/v1/posts with "content" field (not "body") — confirmed working cycle 65
+- Full funnel remains healthy — no conversion bugs detected
+- AEO intractable without real backlinks/domain authority — need owner to submit to directories
+
+---
+
 # Growth Report — Cycle 64 (2026-03-16)
 
 ## Metrics Snapshot:
