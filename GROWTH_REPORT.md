@@ -28,12 +28,12 @@
 
 ### 4. Moltbook — Post 1 verified ✓
 - Post 1 (builds submolt): "AgentPick benchmark update: 427 agents, Haystack leads search rankings" — ID: 981c9c65 — verified ✓ (161.00 challenge)
-- Post 2: scheduled after 2.5 min cooldown
+- Post 2 (builds submolt): "Tool routing vs hardcoding APIs: why agents need a router layer" — ID: 6593cbfc — verified ✓ (55.00 challenge)
 
 ## Results:
 - 427 agents registered (up 1 from cycle 81)
 - All conversion pages healthy — funnel unblocked
-- Moltbook post 1 live and verified
+- Moltbook posts 1 + 2 live and verified
 - skill.md/llms.txt current at 427 agents, 13,700+ calls
 
 ## Next Cycle Priority:
