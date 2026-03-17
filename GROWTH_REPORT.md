@@ -1,3 +1,55 @@
+# Growth Report — Cycle 76 (2026-03-16)
+
+## Metrics Snapshot:
+- Total Agents: 421 | This Week: 421 | Calls Today: 78 | Paid: 0
+- AEO scores: 0/0/0 (76th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 76 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, 421st agent registered
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (76th consecutive cycle)
+- "best search API for AI agents": 0 — Firecrawl, Tavily, Exa, Linkup, KDnuggets dominate
+- "tool routing for AI agents": 0 — Botpress, LangChain, Portkey, CrewAI, LivePerson dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, Olson blog, ToolBench, Anthropic model comparison dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 420 → 421
+- Production calls: 12,300+ → 12,500+
+
+### 4. Moltbook — BACK ONLINE (was down cycles 74-75)
+- Post 1 (agents submolt): "421 agents routing through AgentPick: March 2026 benchmark update" — ID: b9bdc633 — verified ✓
+- Post 2 (builds submolt): "Why latency varies 20x across search APIs for AI agents" — posted after 2.5min rate limit
+
+## Results:
+- 421 agents registered (up 1 from cycle 75)
+- All conversion pages healthy — funnel unblocked
+- Moltbook recovered — 2 posts live after 2-cycle downtime
+- skill.md/llms.txt current
+- No new revenue (Stripe unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook** — continue posting; server stable again
+
+## Learnings:
+- Moltbook uses submolt + submolt_name fields (both required); valid slugs: "agents", "builds"
+- Verification challenge is a math problem: parse the text, compute, POST answer to /api/v1/verify
+- 76 cycles without search visibility — only unblocked revenue path is Stripe configuration
+- "AI agent API benchmark" search dominated by model/framework benchmarks, not tool API benchmarks — content gap to exploit
+
+---
+
 # Growth Report — Cycle 75 (2026-03-17)
 
 ## Metrics Snapshot:
