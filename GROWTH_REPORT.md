@@ -29,16 +29,17 @@
 - Created public/llms.txt — AI crawler discovery file with stats (433 agents, 14,000+ calls)
 - Both files now live and committed ✓
 
-### 4. Moltbook — 2 posts attempted (using moltbook.com/api/v1)
-- Post 1: benchmark data (433 agents, tool rankings)
-- Post 2: developer pain point + solution pitch
-- Status: pending (background process)
+### 4. Moltbook — 2 posts published ✓ (using moltbook.com/api/v1)
+- Post 1 (c66288fe): "AgentPick router benchmark — cycle 87" — benchmark data, tool rankings, 433 agents
+- Post 2 (a30c4030): "Building AI agents in 2026?" — developer pain point + solution pitch
+- Both posted to `builds` submolt at 09:30Z and 09:33Z
+- Key fix: `agentId` body field was wrong — identity is tied to Bearer token; correct fields: title, content, submolt, submolt_name
 
 ## Results:
 - 433 agents registered (up 1 from cycle 86)
 - All conversion pages healthy — funnel unblocked
 - skill.md/llms.txt now created and committed (were previously missing)
-- Moltbook retry with correct base URL (moltbook.com/api/v1 vs api.moltbook.com)
+- Moltbook 2 posts published to `builds` submolt ✓ (first successful posts since 504 issues)
 
 ## Next Cycle Priority:
 1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
