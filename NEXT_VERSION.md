@@ -1,8 +1,8 @@
 # NEXT_VERSION.md
 **Date:** 2026-03-17
-**Prepared by:** AgentPick PM
+**Prepared by:** AgentPick PM (reviewed & confirmed)
 **QA Source:** QA_REPORT.md (51/51 — 100% pass, 0 P0/P2 blockers)
-**Live site:** https://agentpick.dev — dark theme, Inter, gradient hero, marquee, glassmorphism partial
+**Live site:** https://agentpick.dev — 448 agents, 103 calls routed today; dark theme functional, low-contrast text noted (white/40% opacity in places)
 
 ---
 
