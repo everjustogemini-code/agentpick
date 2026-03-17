@@ -130,6 +130,22 @@ export default async function HomePage() {
       <div className="hero-mesh relative overflow-hidden">
         <section className="mx-auto max-w-[1200px] px-6 pb-8 pt-16 md:pt-24 relative z-10">
 
+            {/* ── Install Banner ── */}
+          <div
+            className="mb-8 rounded-xl border border-[#2fe92b]/40 bg-[#2fe92b]/5 px-6 py-5 text-center"
+            style={{ boxShadow: '0 0 24px 0 rgba(47,233,43,0.12)' }}
+          >
+            <p className="text-[2rem] font-extrabold tracking-tight text-text-primary leading-tight">
+              Tell your AI:{' '}
+              <span className="font-mono" style={{ color: '#2fe92b', textShadow: '0 0 16px rgba(47,233,43,0.5)' }}>
+                &ldquo;install agentpick&rdquo;
+              </span>
+            </p>
+            <p className="mt-2 text-[15px] text-text-tertiary">
+              Zero config. Works in 10 seconds. Free.
+            </p>
+          </div>
+
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-bg-card px-3 py-1">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
             <span className="font-mono text-[11px] uppercase tracking-widest text-text-tertiary">
@@ -174,7 +190,7 @@ export default async function HomePage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
                 <span className="text-[14px] font-semibold text-text-primary">
-                  <span>{stats.totalAgents.toLocaleString()}</span> agents on the network
+                  <span className="text-[18px] font-extrabold" style={{ color: '#2fe92b' }}>{stats.totalAgents.toLocaleString()}</span>{' '}agents on the network
                 </span>
               </div>
               <div className="hidden sm:block text-text-tertiary select-none">·</div>
@@ -267,6 +283,12 @@ export default async function HomePage() {
             </h3>
             <p className="mb-4 text-[13px] text-text-tertiary">
               Standard SaaS flow. Get an API key and start routing in 60 seconds.
+            </p>
+
+            <p className="mb-3 text-[13px] text-text-tertiary leading-relaxed">
+              Not a developer? Just tell your AI assistant{' '}
+              <span className="font-mono text-text-primary">&ldquo;install agentpick&rdquo;</span>{' '}
+              — it handles everything automatically.
             </p>
 
             <div className="mb-5 rounded-lg border border-border bg-bg-code p-4 font-mono text-[13px]">
