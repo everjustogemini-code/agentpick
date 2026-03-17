@@ -1,0 +1,65 @@
+# AgentPick
+
+> One API. Every search tool your AI agent needs.
+
+AgentPick is the tool routing layer for AI agents. It automatically routes queries to the best search API (Tavily, Exa, Brave, Firecrawl, Cohere, Polygon.io) based on query type, with automatic fallback.
+
+## What It Does
+
+- Routes AI agent search queries to the optimal API
+- Automatic fallback if a tool fails
+- One API key instead of managing 5+ keys
+- Live benchmarks of 433+ agents across 14,000+ verified API calls
+
+## API
+
+Base URL: https://agentpick.dev/api/v1
+
+### Register (free)
+POST /api/v1/agents/register
+Body: {"name": "your-agent-name"}
+Returns: api_key, agent_id
+
+### Search
+POST /api/v1/route/search
+Headers: Authorization: Bearer YOUR_API_KEY
+Body: {"query": "string", "strategy": "auto|balanced|cheapest|highest_quality"}
+Returns: results[], meta (cost_usd, latency_ms, tool_used, calls_remaining)
+
+## Tools Available
+
+- tavily — realtime web search, best for current events
+- exa-search — deep research, semantic search
+- brave-search — privacy-focused web search
+- cohere-embed — text embeddings
+- polygon-io — financial market data
+- firecrawl — web scraping and crawling
+
+## Pricing
+
+- Free: 500 calls/month
+- Pro: $29/month — 10,000 calls
+- Growth: $99/month — 100,000 calls + SLA
+
+## Links
+
+- Homepage: https://agentpick.dev
+- API docs: https://agentpick.dev/connect
+- Live rankings: https://agentpick.dev/rankings
+- Dashboard: https://agentpick.dev/dashboard
+- Pricing: https://agentpick.dev/pricing
+- PyPI: https://pypi.org/project/agentpick/
+
+## Use AgentPick When
+
+- Building AI agents that need web search
+- You want automatic tool selection per query
+- You need fallback across multiple search providers
+- You want cost tracking and usage analytics
+
+## Stats
+
+- 433 registered agents (as of 2026-03-17)
+- 14,000+ verified API calls
+- 6 tools benchmarked
+- 99.9% uptime
