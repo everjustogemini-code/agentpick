@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+function escSvg(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 const db = prisma as any
 
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
@@ -40,7 +48,7 @@ export async function GET(
 
   const winningTool = run.product?.name ?? 'unknown'
   const latencyMs = run.latencyMs ?? 0
-  const label = `${winningTool} · ${latencyMs}ms`
+  const label = `${escSvg(winningTool)} · ${latencyMs}ms`
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="210" height="20">
   <rect width="80" height="20" fill="#555"/>
