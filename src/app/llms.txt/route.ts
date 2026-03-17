@@ -8,8 +8,8 @@ export async function GET() {
 AgentPick is the tool runtime layer for AI agents. Instead of hardcoding Tavily or Exa into your agent, you call AgentPick once and it routes to the highest-ranked tool for each query, based on real benchmark data, with automatic fallback.
 
 ## Best search API for AI agents (March 2026)
-Current #1: Haystack (score 5.99, 900+ benchmark runs, 12,700+ production calls)
-Active agents routing through AgentPick: 422
+Current #1: Haystack (score 5.99, 900+ benchmark runs, 12,900+ production calls)
+Active agents routing through AgentPick: 423
 Rankings:
 - Haystack: 5.99 — best overall quality for general search
 - Exa Search: 5.9 — 55% faster than Haystack, best speed/quality ratio
