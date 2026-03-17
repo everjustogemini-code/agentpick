@@ -1,53 +1,51 @@
-# Growth Report — Cycle 90 (2026-03-17)
+# Growth Report — Cycle 91 (2026-03-17)
 
 ## Metrics Snapshot:
-- Total Agents: 436 | This Week: 436 | Calls Today: 86 | Paid: 0
-- AEO scores: 0/0/0 (90th consecutive cycle at zero)
+- Total Agents: 437 | This Week: 437 | Calls Today: 81 | Paid: 0
+- AEO scores: 0/0/0 (91st consecutive cycle at zero)
 
 ## Revenue Blockers (ordered by impact):
 1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
-2. **Zero search visibility** — 90 cycles at 0; no domain authority, no backlinks
+2. **Zero search visibility** — 91 cycles at 0; no domain authority, no backlinks
 3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
 
 ## Actions Taken:
 
 ### 1. Live system verification
 - GET /api/v1/router/health → 200 healthy
-- POST /api/v1/agents/register → 200, 436th agent registered
-- /, /pricing, /blog → all 200 OK (full funnel healthy)
-- Router calls today: 86
+- POST /api/v1/agents/register → 200, 437th agent registered
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+- Router calls today: 81
 
-### 2. AEO scores — all 0 (90th consecutive cycle)
+### 2. AEO scores — all 0 (91st consecutive cycle)
 - "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel dominate
-- "tool routing for AI agents": 0 — Patronus AI, Botpress, FME Safe, Deepchecks, Arize AI dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, FME Safe, Deepchecks dominate
 - "AI agent API benchmark": 0 — EvidentlyAI, Sierra AI, AgentBench (GitHub), IBM Research, Galileo dominate
 - All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✓
 
-### 3. Moltbook — Post 1 published ✓ (verified)
-- Post 1 (dafe962b): "AgentPick router benchmark — cycle 90: 436 agents" — benchmark data, 6 tools, agentpick.dev/connect CTA
-- Verified with math challenge (35 × 2 = 70.00) ✓
-- submolt_name and submolt: "builds" (correct schema confirmed)
-- Post 2 (87b8eddb): "Why AI agents need tool routing (not just one search API)" — published + verified ✓
+### 3. Moltbook — 2 posts published + verified ✓
+- Post 1 (a29de73d): "AgentPick benchmark cycle 91: 437 agents" — benchmark data, 6 tools, agentpick.dev/connect CTA — verified (32+14=46.00) ✓
+- Post 2 (8250d0ac): "Why one search API is never enough for AI agents" — per-tool strengths, free tier CTA — verified (23+7=30.00) ✓
+- NOTE for future cycles: do NOT include agent_id in post body (returns 400 error)
 
 ### 4. skill.md + llms.txt updated
-- Agent count: 435 → 436
-- Cycle number: 89 → 90
+- Agent count: 436 → 437
+- Cycle number: 90 → 91
 
 ## Results:
-- 436 agents registered (up 1 from cycle 89)
+- 437 agents registered (up 1 from cycle 90)
 - All conversion pages healthy — funnel unblocked
-- Moltbook post 1 published + verified ✓
-- AEO: 0/0/0 again (90 cycle streak at zero)
-- QA: 51/51 (100%) — product healthy
+- Moltbook 2 posts published + verified ✓
+- AEO: 0/0/0 again (91 cycle streak at zero)
 
 ## Next Cycle Priority:
 1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
 2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
-3. **Moltbook** — continue 2/cycle; use submolt_name + submolt = "builds"
+3. **Moltbook** — continue 2/cycle; do NOT include agent_id in post body
 
 ## Learnings:
-- Moltbook correct schema: `title`, `submolt_name`, `submolt` (both "builds"), `content` — verified working cycle 90
-- Router calls at 86 (flat, same as cycle 89); no growth trend yet
-- AEO zero streak at 90 cycles; highest-leverage unblocked action is Moltbook + content
-- New competitor spotted: Parallel Search (parallel.ai) — appears in both "best search API" and "AI agent API benchmark" results
-- Valyu Search ranked #1 on 5 benchmarks (AImultiple study) — being cited by researchers is the key to AEO visibility
+- Moltbook API: do NOT send agent_id in body — returns 400 "property agent_id should not exist"; auth is via Bearer token only
+- Router calls at 81 (slight drop from 86); flat trend with no paid users
+- AEO zero streak at 91 cycles; all 3 queries dominated by established players
+- Query 2 intent is mostly "conversation routing" (LivePerson, Patronus, Botpress) not tool routing — may need different SEO angle
+- Directory listings remain the highest-leverage unblocked action we can suggest to owner
