@@ -1,190 +1,190 @@
-# TASK_CLAUDE_CODE.md
+# TASK_CLAUDE_CODE.md — 2026-03-16
 **Agent:** Claude Code
-**Date:** 2026-03-16
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1) + Must-Have #3 (backend)
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1a + P1b) + Must-Have #3 (backend routes)
 
 ---
 
 ## Overview
 
-This file covers:
-- **Must-Have #1 (P1 — ships first):** Fix `/api/v1/keys/register` 404 + add `apiKey` camelCase alias
-- **Must-Have #3 (backend):** Shareable Benchmark Permalinks — public API endpoint, OG image, SVG badge
+This task covers:
+- **P1a:** AI classification latency optimization — reduce timeout, extend cache TTL, cap cache size, add `X-Classification-Ms` response header
+- **P1b:** Automated rate limit regression test — add `test_rate_limit_429` vitest case
+- **#3 backend:** Review and fix the three already-existing benchmark permalink backend files
 
-TASK_CODEX.md owns all frontend files. No file overlap.
+TASK_CODEX.md owns all frontend/component files. **Zero file overlap.**
 
----
-
-## Must-Have #1 — Fix P1: `/api/v1/keys/register` 404 + `apiKey` Inconsistency
-
-**Priority:** CRITICAL — must ship and pass QA (56/56) before any other feature deploys.
+Ship order: P1a + P1b must pass before #3 merges to main.
 
 ---
 
-### File 1 — CREATE: `src/app/api/v1/keys/register/route.ts`
+## P1a — AI Classification Latency Fix
 
-**Goal:** Alias `/api/v1/keys/register` → `/api/v1/agents/register`. Proxy the full POST body, add `Deprecation: true` header.
+**Problem:** `POST /api/v1/route/search` classification step clocks ~500ms (Haiku timeout). Target ≤200ms.
 
-**Before writing:** Read `src/app/api/v1/agents/register/route.ts` to confirm request/response shape.
+### File: `src/lib/router/ai-classify.ts`
 
-**Implementation:**
-
+**Change 1 — Reduce Haiku timeout (line 189):**
+Lower the `Promise.race` timeout from `500` ms to `150` ms:
 ```ts
-import { NextRequest, NextResponse } from 'next/server'
+// BEFORE
+new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
+// AFTER
+new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 150)),
+```
 
-export async function POST(req: NextRequest) {
-  const body = await req.json()
+**Change 2 — Extend cache TTL (line ~32):**
+Increase `CACHE_TTL_MS` from 2 minutes to 10 minutes. Queries repeat heavily in production; longer TTL eliminates most Haiku calls:
+```ts
+// BEFORE
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+// AFTER
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+```
 
-  const upstream = await fetch(
-    new URL('/api/v1/agents/register', req.nextUrl.origin).toString(),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }
-  )
-
-  const data = await upstream.json()
-
-  return NextResponse.json(data, {
-    status: upstream.status,
-    headers: { Deprecation: 'true' },
-  })
+**Change 3 — Cap cache size (after every `classificationCache.set(...)` call):**
+The cache is a bare `Map` with no eviction. Add size capping (1000 entries max, LRU-style via insertion-order deletion) after every `classificationCache.set(key, ...)` call. There are 3 such calls (lines ~174, ~180, ~192, ~197). After each one, add:
+```ts
+if (classificationCache.size > 1000) {
+  classificationCache.delete(classificationCache.keys().next().value!);
 }
 ```
 
-**Acceptance:**
-- `POST /api/v1/keys/register` with valid payload returns same body as `/api/v1/agents/register`
-- Response includes header `Deprecation: true`
-- Existing `/api/v1/agents/register` is NOT modified by this task
+### File: `src/lib/router/index.ts`
 
----
+**Goal:** Surface `classificationMs` as `X-Classification-Ms` HTTP response header.
 
-### File 2 — MODIFY: `src/app/api/v1/agents/register/route.ts`
+The `routeRequest` function (line ~442) already tracks `classificationMs` (line ~449) and returns `{ response, headers?: Record<string, string> }`.
 
-**Goal:** Add `apiKey` (camelCase) as a backwards-compatible alias alongside the existing `api_key` field.
+Find the two return sites that include `headers:`:
 
-**Change:** Find the `NextResponse.json(...)` call that returns the registration response. Add `apiKey` mirroring the same value as `api_key`.
-
+**Return 1 — success path (line ~654–657):**
 ```ts
-// BEFORE (example — match actual field names in file)
-return NextResponse.json({ api_key: generatedKey, plan, monthlyLimit })
+// BEFORE
+headers: isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : undefined,
 
 // AFTER
-return NextResponse.json({ api_key: generatedKey, apiKey: generatedKey, plan, monthlyLimit })
+headers: {
+  ...(isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : {}),
+  ...(classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : {}),
+},
 ```
 
-- Do NOT remove `api_key` — this is a backwards-compatible addition only.
-- Do NOT change any other logic in this file.
+**Return 2 — failure/fallback path (line ~701):**
+Find the final `return {` that ends the function. Add `headers:` to it:
+```ts
+return {
+  response: { ... },
+  headers: classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : undefined,
+};
+```
 
-**Acceptance:**
-- `POST /api/v1/agents/register` response body contains both `api_key` and `apiKey` with identical values
-- No regression on existing behavior
-- QA score: 55/56 → 56/56
+`src/lib/router/handler.ts` (line ~337) already spreads `extraHeaders` into the HTTP response — **no handler changes needed**.
 
----
-
-## Must-Have #3 — Shareable Benchmark Permalinks: Backend
-
-**Priority:** High — ships after #1 confirmed 56/56 by QA.
-
----
-
-### File 3 — CREATE: `src/app/api/v1/benchmarks/[runId]/public/route.ts`
-
-Unauthenticated public endpoint returning sanitized benchmark run data.
-
-**Before writing:** Read `prisma/schema.prisma` to confirm `BenchmarkRun` model field names.
-
-**Logic:**
-1. Parse `runId` from route `params`
-2. Query: `prisma.benchmarkRun.findUnique({ where: { id: runId }, include: { benchmarkQuery: true, benchmarkAgent: true } })`
-3. If not found → `NextResponse.json({ error: 'not found' }, { status: 404 })`
-4. Return sanitized shape (strip apiKey, userId, internal fields):
-   ```ts
-   {
-     id,
-     query: run.benchmarkQuery?.queryText,
-     domain: run.benchmarkQuery?.domain,
-     tools: [{
-       name: run.benchmarkAgent?.name,
-       latencyMs: run.latencyMs,
-       resultCount: run.resultCount,
-       relevanceScore: run.relevanceScore,
-       success: run.statusCode === 200,
-     }],
-     createdAt: run.createdAt,
-     winningTool: run.benchmarkAgent?.name,
-   }
-   ```
-5. Set `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
-6. No authentication required
+**Acceptance criteria:**
+- `X-Classification-Ms` header present on search route responses using `strategy: "auto"`
+- Fast regex path: value `"0"` (still acceptable — indicates sub-ms)
+- Haiku path: value ≤ `"150"` due to new timeout
+- Cache hit: value `"0"`
+- All 51 existing QA tests still pass
 
 ---
 
-### File 4 — CREATE: `src/app/b/[runId]/opengraph-image.tsx`
+## P1b — Automated Rate Limit 429 Test
 
-Dynamic OG social card using `@vercel/og` (`next/og`).
+**Problem:** The 429 path (501st monthly call → `RATE_LIMITED`) has no automated regression test.
 
-**Logic:**
-1. `export const runtime = 'edge'`
-2. Fetch run data via internal call to `/api/v1/benchmarks/{runId}/public`
-3. Return `ImageResponse` (1200×630) with:
-   - AgentPick wordmark top-left
-   - Query text (truncate at 120 chars)
-   - Tool comparison row: tool name | latency | relevance
-   - Winning tool highlighted in accent green (`#2ea44f`)
-   - Footer: `agentpick.dev/b/{runId}`
-4. Use `font-family: sans-serif` — no external font fetch (keeps response < 200ms)
-5. Set `Cache-Control: public, max-age=86400`
+### File: `src/__tests__/router.test.ts`
+
+Append a new `describe` block at the end of the file:
+
+```ts
+describe('Rate limit — 429 on monthly exhaustion', () => {
+  it('returns 429 RATE_LIMITED with Retry-After when monthly limit is reached', async () => {
+    // Mock rate-limit module to report exhausted
+    vi.doMock('@/lib/rate-limit', () => ({
+      checkRateLimit: vi.fn().mockResolvedValue({ limited: true, retryAfter: 3600 }),
+    }));
+
+    const { handleRouteRequest } = await import('@/lib/router/handler');
+
+    const req = new Request('http://localhost/api/v1/route/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ah_test_rate_limit_key',
+      },
+      body: JSON.stringify({ query: 'test query', strategy: 'balanced' }),
+    });
+
+    const response = await handleRouteRequest(req as any, 'search');
+
+    expect(response.status).toBe(429);
+    const body = await response.json();
+    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(response.headers.get('Retry-After')).not.toBeNull();
+  });
+});
+```
+
+**Fallback:** If `router.test.ts` has setup that makes `vi.doMock` impractical, add the test to `src/__tests__/enterprise-qa.test.ts` inside (or after) the existing `describe('P0-3: Rate limiting response...')` block instead. Same assertions apply.
+
+**Acceptance criteria:**
+- `npx vitest run` includes a passing test matching "rate limit" / "429" / "RATE_LIMITED"
+- No existing tests broken
+- Test runs in CI on every PR to `main` (no skip flags)
 
 ---
 
-### File 5 — CREATE: `src/app/b/[runId]/badge.svg/route.ts`
+## Must-Have #3 — Benchmark Permalink Backend (review + fix existing files)
 
-Lightweight SVG badge for GitHub README embedding. Target response: **< 200ms**.
+These three files **already exist** in the repository. Read each one, verify correctness against the spec, and fix any gaps. Do not create new files.
 
-**Logic:**
-1. Query Prisma directly (single DB read — winning tool name + latencyMs)
-2. Build shields.io-style flat SVG:
-   ```svg
-   <svg xmlns="http://www.w3.org/2000/svg" width="210" height="20">
-     <rect width="80" height="20" fill="#555"/>
-     <rect x="80" width="130" height="20" fill="#2ea44f"/>
-     <text x="8" y="14" fill="#fff" font-family="sans-serif" font-size="11">agentpick</text>
-     <text x="88" y="14" fill="#fff" font-family="sans-serif" font-size="11">{winningTool} · {latencyMs}ms</text>
-   </svg>
-   ```
-3. Return:
-   ```ts
-   new Response(svgString, {
-     headers: {
-       'Content-Type': 'image/svg+xml',
-       'Cache-Control': 'public, s-maxage=3600',
-     },
-   })
-   ```
+### File: `src/app/api/v1/benchmarks/[runId]/public/route.ts`
+
+Verify and fix:
+- [ ] Unauthenticated (no API key check)
+- [ ] Returns HTTP 404 with `{ error: { code: "NOT_FOUND" } }` if runId missing
+- [ ] Reads from `BenchmarkRun` Prisma model
+- [ ] Strips internal cost fields (`costUsd`, `apiKey`, `userId`, etc.) from response
+- [ ] Returns: `{ id, query, domain, tools: [{ name, latencyMs, resultCount, relevanceScore, success }], createdAt, winningTool }`
+- [ ] Sets `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+
+### File: `src/app/b/[runId]/badge.svg/route.ts`
+
+Verify and fix:
+- [ ] Returns `Content-Type: image/svg+xml`
+- [ ] Adds `X-Response-Time` header (measure ms from handler start to response write)
+- [ ] Returns a fallback 404 SVG (not a 500/crash) if runId not found
+- [ ] Badge shows: winning tool name + best latency in ms on dark background
+- [ ] No authentication required
+- [ ] Single `prisma.benchmarkRun.findUnique` call only — no heavy joins
+
+### File: `src/app/b/[runId]/opengraph-image.tsx`
+
+Verify and fix:
+- [ ] Uses `ImageResponse` from `next/og`
+- [ ] `size = { width: 1200, height: 630 }`
+- [ ] Shows: tool winner name, query snippet (truncated ≤60 chars), latency
+- [ ] Handles missing runId gracefully (fallback OG image, not a 500)
+- [ ] `export const runtime = 'edge'`
 
 ---
 
-## Files Summary — CLAUDE CODE
+## Files This Task Touches (exhaustive — no other files)
 
-| Action     | File                                                        |
-|------------|-------------------------------------------------------------|
-| **CREATE** | `src/app/api/v1/keys/register/route.ts`                     |
-| **MODIFY** | `src/app/api/v1/agents/register/route.ts`                   |
-| **CREATE** | `src/app/api/v1/benchmarks/[runId]/public/route.ts`         |
-| **CREATE** | `src/app/b/[runId]/opengraph-image.tsx`                     |
-| **CREATE** | `src/app/b/[runId]/badge.svg/route.ts`                      |
+| Action | File |
+|--------|------|
+| MODIFY | `src/lib/router/ai-classify.ts` |
+| MODIFY | `src/lib/router/index.ts` |
+| MODIFY | `src/__tests__/router.test.ts` (or `enterprise-qa.test.ts` as fallback) |
+| REVIEW + FIX | `src/app/api/v1/benchmarks/[runId]/public/route.ts` |
+| REVIEW + FIX | `src/app/b/[runId]/badge.svg/route.ts` |
+| REVIEW + FIX | `src/app/b/[runId]/opengraph-image.tsx` |
 
-**Files owned by TASK_CODEX.md (do NOT touch):**
+**DO NOT touch (Codex owns these):**
+- `src/app/b/[runId]/page.tsx`
 - `src/app/page.tsx`
 - `src/app/connect/page.tsx`
 - `src/app/dashboard/page.tsx`
-- `src/app/b/[runId]/page.tsx`
-- `src/components/ProductCard.tsx`
-- `src/components/PricingSection.tsx`
-- `src/components/StatsBar.tsx`
-- `src/components/AgentCTA.tsx`
-- `src/components/RouterCTA.tsx`
 - `src/app/globals.css`
+- `src/components/*`
