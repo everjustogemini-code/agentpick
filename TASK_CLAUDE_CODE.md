@@ -1,74 +1,56 @@
 # TASK_CLAUDE_CODE.md
+**Cycle:** 9
 **Agent:** Claude Code
 **Date:** 2026-03-17
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1 rate limit CI) + Must-Have #3 (backend verification + test)
+**Source:** NEXT_VERSION.md — Must-Have #1 (CI restore) + Must-Have #3 (OpenAI-compat endpoint)
 
 ---
 
-## Coverage Check — Every NEXT_VERSION.md Item
+## Coverage Summary
 
 | Must-Have | Item | Owner |
 |-----------|------|-------|
-| #1 | Rate limit 429 regression test — CI, Retry-After header, Python QA | **CLAUDE CODE** |
-| #2 | UI upgrade — glassmorphism, motion, typography | Codex |
-| #3 | Benchmark permalink frontend page | Codex |
-| #3 | Benchmark backend routes (badge.svg, public API, OG image) | **CLAUDE CODE** (verify + test) |
+| #1 | Restore `.github/workflows/ci.yml` to `main` | **CLAUDE CODE** |
+| #2 | Glassmorphism UI upgrade (pure frontend) | Codex |
+| #3 | `POST /v1/chat/completions` endpoint (new files) | **CLAUDE CODE** |
+| #3 | `src/lib/openai-compat.ts` request normalizer + response shaper | **CLAUDE CODE** |
+| #3 | 3 new vitest tests for the new endpoint | **CLAUDE CODE** |
+| #3 | `public/llms.txt` documentation update | **CLAUDE CODE** |
+| #3 | `src/components/HeroCodeBlock.tsx` snippet swap | Codex |
 
 ---
 
-## Must-Have #1 — Complete Rate Limit 429 Regression Coverage
+## Files to Create / Modify
 
-### Problem (what is still missing)
-1. `src/lib/router/handler.ts` line ~244: the monthly USAGE_LIMIT 429 response lacks a `Retry-After` header. The spec requires it.
-2. `src/lib/router/sdk-handler.ts` line ~117: same missing header.
-3. `src/__tests__/rate-limit-429.test.ts` does not assert `Retry-After`, so CI has no contract coverage.
-4. `.github/workflows/ci.yml` does not exist — tests never run automatically on push to `main`.
-5. `agentpick-router-qa.py` does not exist — test 7.3 (rate limit path) is manual-only.
+| Action | File |
+|--------|------|
+| COMMIT (already on disk, untracked) | `.github/workflows/ci.yml` |
+| **CREATE** | `src/app/v1/chat/completions/route.ts` |
+| **CREATE** | `src/lib/openai-compat.ts` |
+| **CREATE** | `src/__tests__/openai-compat.test.ts` |
+| **MODIFY** | `public/llms.txt` |
 
-### Files to Modify / Create
+> **DO NOT TOUCH** any file listed in the TASK_CODEX.md "Files to Create/Modify" table.
+> Specifically: `src/app/globals.css`, `src/app/page.tsx`, `src/app/layout.tsx`,
+> `src/components/SiteHeader.tsx`, `src/components/HeroCodeBlock.tsx`,
+> `src/components/ProductCard.tsx`, `src/components/ScoreBreakdown.tsx`,
+> `src/components/StrategyCards.tsx`, `src/components/PricingSection.tsx`,
+> `src/app/rankings/page.tsx`.
 
-#### `src/lib/router/handler.ts` — MODIFY (~line 244)
-Add `Retry-After` to the USAGE_LIMIT 429 path.
+---
 
-Find this block:
-```ts
-return apiError('USAGE_LIMIT', `${limitLabel} call limit reached (${limitCount} calls). Upgrade plan for more.`, 429, {
-  details: { plan: preAccount.plan, limit: limitCount, used: usedCount, period: isMonthly ? 'monthly' : 'daily' },
-});
-```
+## Task 1 — Restore CI (`/.github/workflows/ci.yml`)
 
-Replace with (compute seconds to next month boundary):
-```ts
-const now = new Date();
-const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-const retryAfterSecs = Math.ceil((nextReset.getTime() - now.getTime()) / 1000);
-return apiError('USAGE_LIMIT', `${limitLabel} call limit reached (${limitCount} calls). Upgrade plan for more.`, 429, {
-  details: { plan: preAccount.plan, limit: limitCount, used: usedCount, period: isMonthly ? 'monthly' : 'daily' },
-  headers: { 'Retry-After': String(retryAfterSecs) },
-});
-```
+`git status` shows `.github/` as **untracked** (`?? .github/`).
+The file `.github/workflows/ci.yml` exists on disk but was not committed (deleted in commit `d2238178`).
 
-Check how `apiError` passes extra headers (look at the `RATE_LIMITED` path at line ~116 for the pattern — it passes `retry_after` in the body, but confirm whether `apiError` also accepts headers). If `apiError` does not accept a `headers` param, add the header to the returned `NextResponse` directly after calling `apiError`.
+**Action:** Stage and commit `.github/workflows/ci.yml` to `main`.
 
-#### `src/lib/router/sdk-handler.ts` — MODIFY (~line 117)
-Same fix as handler.ts. Find the USAGE_LIMIT 429 path and add the `Retry-After` header with the same seconds-to-month-reset computation.
+Before committing, open the file and confirm it contains at minimum:
+- `on: push: branches: [main]` trigger
+- A job step that runs `npm test` or `npx vitest run`
 
-#### `src/__tests__/rate-limit-429.test.ts` — MODIFY
-In the test `'HTTP 429 — 500 monthly calls (501st call, at limit)'` (currently ends around line 168), add 2 new assertions after `expect(body.error.code).toBe('USAGE_LIMIT')`:
-
-```ts
-const retryAfter = response.headers.get('Retry-After');
-expect(retryAfter).not.toBeNull();                    // new assertion 1
-expect(Number(retryAfter)).toBeGreaterThan(0);        // new assertion 2
-```
-
-This brings the suite to ≥ 53 assertions as required by NEXT_VERSION.md.
-
-#### `package.json` — MODIFY (if not already present)
-Check if `"scripts"."test"` exists. If not, add `"test": "vitest run"`. Read the file first.
-
-#### `.github/workflows/ci.yml` — CREATE NEW FILE
-Create directory `.github/workflows/` if it does not exist.
+If the file is missing those, add them. The NEXT_VERSION.md spec example:
 
 ```yaml
 name: CI
@@ -92,127 +74,191 @@ jobs:
       - run: npm test
 ```
 
-#### `agentpick-router-qa.py` — CREATE NEW FILE (project root)
-Python integration QA script. Uses env vars: `QA_BASE_URL`, `QA_TEST_KEY_499`, `QA_TEST_KEY_500`, `QA_BENCHMARK_RUN_ID`.
+**Acceptance:** `ci.yml` on `main`; CI runs on next push; all 51+ tests pass in CI.
 
-Structure:
-- Part 9: `TestRateLimitPath`
-  - `test_rate_limit_429_200`: POST `/api/v1/route/search` with `QA_TEST_KEY_499` (seeded at 499 calls). Assert HTTP 200.
-  - `test_rate_limit_429_429`: POST with `QA_TEST_KEY_500` (seeded at 500 calls). Assert HTTP 429, `body["error"]["code"] == "USAGE_LIMIT"`, and `"Retry-After" in response.headers`.
-- Part 10: `TestBenchmarkPermalinks`
-  - `test_permalink_public_api`: GET `/api/v1/benchmarks/{QA_BENCHMARK_RUN_ID}/public`. Assert HTTP 200, response JSON contains `id`, `query`, `tools`.
-  - `test_badge_svg`: GET `/b/{QA_BENCHMARK_RUN_ID}/badge.svg`. Assert HTTP 200, `Content-Type` starts with `image/svg+xml`.
+---
 
-```python
-#!/usr/bin/env python3
-"""AgentPick integration QA suite — rate limit + permalink regression."""
+## Task 2 — New File: `src/lib/openai-compat.ts`
 
-import os, unittest, requests
+Request normalizer + response shaper. No dependencies outside the existing codebase.
 
-BASE_URL   = os.environ.get('QA_BASE_URL', 'http://localhost:3000')
-KEY_499    = os.environ.get('QA_TEST_KEY_499', '')
-KEY_500    = os.environ.get('QA_TEST_KEY_500', '')
-RUN_ID     = os.environ.get('QA_BENCHMARK_RUN_ID', '')
+```typescript
+// Types
+export interface ParsedOpenAIRequest {
+  query: string        // extracted from messages[-1].content
+  domain: string       // inferred or pinned from model string
+  capability: string   // e.g. "search", "finance", "auto"
+  stream: boolean
+  model: string        // original model field, e.g. "agentpick/auto"
+}
 
-class TestRateLimitPath(unittest.TestCase):
+export interface OpenAIChatCompletion {
+  id: string                  // "chatcmpl-" + random
+  object: "chat.completion"
+  created: number             // Unix seconds
+  model: string
+  choices: Array<{
+    index: number
+    message: { role: "assistant"; content: string }
+    finish_reason: "stop"
+  }>
+  usage: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+  "x-agentpick-tool": string
+  "x-agentpick-latency-ms": number
+}
 
-    def test_rate_limit_429_200(self):
-        """7.3a — 500th call (at 499) must return 200."""
-        r = requests.post(
-            f"{BASE_URL}/api/v1/route/search",
-            headers={"Authorization": f"Bearer {KEY_499}"},
-            json={"params": {"query": "rate limit regression test"}},
-            timeout=15,
-        )
-        self.assertEqual(r.status_code, 200)
+export interface OpenAIChatCompletionChunk {
+  id: string
+  object: "chat.completion.chunk"
+  created: number
+  model: string
+  choices: Array<{
+    index: number
+    delta: { content?: string; role?: "assistant" }
+    finish_reason: "stop" | null
+  }>
+}
 
-    def test_rate_limit_429_429(self):
-        """7.3b — 501st call (at 500) must return 429 + Retry-After."""
-        r = requests.post(
-            f"{BASE_URL}/api/v1/route/search",
-            headers={"Authorization": f"Bearer {KEY_500}"},
-            json={"params": {"query": "rate limit regression test"}},
-            timeout=15,
-        )
-        self.assertEqual(r.status_code, 429)                        # 7.3b-1
-        body = r.json()
-        self.assertEqual(body["error"]["code"], "USAGE_LIMIT")      # 7.3b-2
-        self.assertIn("Retry-After", r.headers)                     # 7.3b-3
+// Functions to implement:
 
+/**
+ * Parse an incoming OpenAI-format request body.
+ * Extracts the last user message as query.
+ * Derives capability from model: "agentpick/search" → "search", "agentpick/auto" → "auto".
+ */
+export function parseOpenAIRequest(body: unknown): ParsedOpenAIRequest
 
-class TestBenchmarkPermalinks(unittest.TestCase):
+/**
+ * Shape a router result into an OpenAI chat.completions response object.
+ */
+export function shapeOpenAIResponse(opts: {
+  content: string
+  tool: string
+  latencyMs: number
+  model: string
+}): OpenAIChatCompletion
 
-    def test_permalink_public_api(self):
-        """Must-Have #3 — public API returns sanitized benchmark data."""
-        r = requests.get(f"{BASE_URL}/api/v1/benchmarks/{RUN_ID}/public", timeout=10)
-        self.assertEqual(r.status_code, 200)
-        body = r.json()
-        self.assertIn("id", body)
-        self.assertIn("query", body)
-        self.assertIn("tools", body)
+/**
+ * Yield SSE lines for a streaming response.
+ * Format: "data: <JSON>\n\n" for each chunk, then "data: [DONE]\n\n".
+ * Splits content into ~10-word chunks to simulate streaming.
+ */
+export async function* streamOpenAIChunks(opts: {
+  content: string
+  tool: string
+  model: string
+}): AsyncGenerator<string>
+```
 
-    def test_badge_svg(self):
-        """Must-Have #3 — badge SVG returns correct content type, < 200ms."""
-        r = requests.get(f"{BASE_URL}/b/{RUN_ID}/badge.svg", timeout=5)
-        self.assertEqual(r.status_code, 200)
-        self.assertTrue(r.headers.get("Content-Type", "").startswith("image/svg+xml"))
+Token counts: estimate `prompt_tokens` as `Math.ceil(query.length / 4)`,
+`completion_tokens` as `Math.ceil(content.length / 4)`, sum for `total_tokens`.
 
+---
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+## Task 3 — New File: `src/app/v1/chat/completions/route.ts`
+
+Next.js App Router POST handler at `/v1/chat/completions`.
+Reuse existing utilities — **no new auth surface, no new billing logic**.
+
+Implementation:
+
+```typescript
+export async function POST(req: Request): Promise<Response>
+```
+
+Steps inside the handler:
+1. Read `Authorization: Bearer <key>` header → call `validateApiKey()` from `src/lib/auth.ts`.
+   Return `401` on invalid key (use the same error shape as other API routes).
+2. Parse request body via `parseOpenAIRequest()` from `src/lib/openai-compat.ts`.
+3. Route via existing `routeToBestTool()` in `src/lib/router/handler.ts`.
+   Pass `capability` as the domain hint. `"auto"` = fully automatic.
+4. Meter usage via the same billing path as `/api/v1/route/*` (no new billing code).
+5. If `stream: false` → return `Response.json(shapeOpenAIResponse(...))` with headers:
+   - `x-agentpick-tool: <tool>`
+   - `x-agentpick-latency-ms: <number>`
+6. If `stream: true` → return a `ReadableStream` response with `Content-Type: text/event-stream`,
+   yielding from `streamOpenAIChunks(...)`.
+7. Non-tool / general LLM queries: fall through to `process.env.FALLBACK_MODEL ?? "gpt-4o-mini"`.
+   Include in the response `model` field but still shape as `OpenAIChatCompletion`.
+
+---
+
+## Task 4 — New File: `src/__tests__/openai-compat.test.ts`
+
+Exactly **3 vitest tests**. Follow the same import/setup patterns as other tests in `src/__tests__/`.
+
+```typescript
+// Test 1 — Normal (non-streaming) request returns valid OpenAI response shape
+it('POST /v1/chat/completions stream:false returns valid OpenAI response', async () => {
+  // Call the route handler directly (or via fetch to localhost if other tests do that).
+  // Assert:
+  //   response.status === 200
+  //   body.id starts with "chatcmpl-"
+  //   body.object === "chat.completion"
+  //   body.choices[0].message.role === "assistant"
+  //   typeof body.choices[0].message.content === "string"
+  //   body.usage.total_tokens > 0
+})
+
+// Test 2 — Streaming request returns SSE
+it('POST /v1/chat/completions stream:true returns text/event-stream', async () => {
+  // Assert:
+  //   response.headers.get('content-type') includes "text/event-stream"
+  //   Response body text includes "data: " and ends with "data: [DONE]"
+})
+
+// Test 3 — Invalid API key returns 401
+it('POST /v1/chat/completions with invalid key returns 401', async () => {
+  // Send Authorization: Bearer invalid-key-xyz
+  // Assert: response.status === 401
+})
 ```
 
 ---
 
-## Must-Have #3 — Backend Verification
+## Task 5 — Update `public/llms.txt`
 
-The following backend files already exist. Read each and verify the listed conditions. Fix anything that fails.
+Read the file first. Append the following block at the end (do not replace existing content):
 
-#### `src/app/b/[runId]/badge.svg/route.ts` — VERIFY (fix if needed)
-- [ ] Does NOT query `agentRuns` relation (badge must stay lean for < 200ms target)
-- [ ] Responds with `Cache-Control: public, s-maxage=3600`
-- [ ] No auth check (public route)
-- Current file at line ~28 selects only `latencyMs`, `statusCode`, `product.name` — confirm nothing else was added
+```
+## OpenAI-Compatible Endpoint (added cycle 9)
 
-#### `src/app/api/v1/benchmarks/[runId]/public/route.ts` — VERIFY (fix if needed)
-- [ ] No auth check
-- [ ] No `costUsd`, `apiKeyId`, or other internal billing fields in the sanitized response
-- [ ] `Cache-Control: public, s-maxage=3600` header present in the response
-- Current file line ~67: `sanitized` object — confirm it has only `id`, `query`, `domain`, `tools`, `winningTool`, `createdAt`
+POST /v1/chat/completions
+Authorization: Bearer <agentpick-router-key>
 
----
+Drop-in replacement for OpenAI chat completions. Point any OpenAI SDK at AgentPick:
 
-## Files Modified / Created by CLAUDE CODE
+  import OpenAI from 'openai'
+  const client = new OpenAI({ baseURL: 'https://agentpick.dev/v1', apiKey: '<your-key>' })
+  const res = await client.chat.completions.create({
+    model: 'agentpick/auto',
+    messages: [{ role: 'user', content: 'What is the AAPL stock price?' }],
+  })
 
-| File | Action |
-|------|--------|
-| `src/lib/router/handler.ts` | Modify — add Retry-After header to USAGE_LIMIT 429 path |
-| `src/lib/router/sdk-handler.ts` | Modify — same Retry-After fix |
-| `src/__tests__/rate-limit-429.test.ts` | Modify — add 2 Retry-After assertions |
-| `package.json` | Modify — add `"test": "vitest run"` if missing |
-| `.github/workflows/ci.yml` | **CREATE** |
-| `agentpick-router-qa.py` | **CREATE** |
-| `src/app/b/[runId]/badge.svg/route.ts` | Verify; fix only if conditions above fail |
-| `src/app/api/v1/benchmarks/[runId]/public/route.ts` | Verify; fix only if conditions above fail |
+Supported model strings:
+  agentpick/auto      — automatic routing (recommended)
+  agentpick/search    — pin to web search capability
+  agentpick/finance   — pin to finance/market data capability
+  agentpick/<domain>  — pin to any supported capability
 
-## DO NOT TOUCH (Codex files — merge conflict risk)
-
-- `src/app/page.tsx`
-- `src/app/layout.tsx`
-- `src/app/globals.css`
-- `src/app/b/[runId]/page.tsx`
-- `src/app/b/[runId]/opengraph-image.tsx`
-- `src/components/SiteHeader.tsx`
-- `src/app/rankings/page.tsx`
-- Any `*.tsx` page file under `src/app/`
-- Any file under `src/components/`
+Streaming: supported (stream: true → SSE, data: [DONE] terminator)
+Auth: same API keys as /api/v1/route/*
+Metering: identical to /api/v1/route/* calls
+Response: OpenAI-compatible schema + x-agentpick-tool + x-agentpick-latency-ms extensions
+```
 
 ---
 
 ## Acceptance Criteria
 
-- `npm test` runs all Vitest tests and passes (≥ 53 assertions in rate-limit suite)
-- Monthly 429 response includes `Retry-After` header with positive integer value
-- `.github/workflows/ci.yml` runs on push to `main`
-- `agentpick-router-qa.py` has `TestRateLimitPath` (2 tests) and `TestBenchmarkPermalinks` (2 tests)
-- Badge route and public API verified clean (no auth, no cost fields, cache headers present)
+- [ ] `.github/workflows/ci.yml` committed to `main`; CI runs on next push; 51+ tests pass
+- [ ] `POST /v1/chat/completions` with valid key + `stream: false` → OpenAI-shaped JSON (`id`, `object`, `choices`, `usage`)
+- [ ] `POST /v1/chat/completions` with `stream: true` → `text/event-stream`, ends with `data: [DONE]`
+- [ ] Invalid key → `401`
+- [ ] `npx vitest run` passes (3 new tests + all 51 existing)
+- [ ] `public/llms.txt` documents the new endpoint
+- [ ] Zero files from TASK_CODEX.md were modified
