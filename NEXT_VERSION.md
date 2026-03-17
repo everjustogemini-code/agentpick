@@ -1,141 +1,122 @@
 # NEXT_VERSION.md
-**Date:** 2026-03-17 (refreshed)
+**Date:** 2026-03-17
 **Prepared by:** AgentPick PM
 **QA Source:** QA_REPORT.md (51/51 — 100% pass, 0 P0/P2 blockers)
-**Live site:** https://agentpick.dev — dark theme, Inter/JetBrains Mono, marquee, gradient hero, partial glassmorphism
+**Live site:** https://agentpick.dev — dark theme, Inter, gradient hero, marquee, glassmorphism partial
 
 ---
 
 ## P1 Status from QA
 
-Two P1 notes remain — neither is a user-facing failure but both are must-fix before the next growth push:
+One P1 remains — not user-facing but a coverage gap that must close before next growth push:
 
 | # | Issue | Severity |
 |---|-------|----------|
-| 1 | AI classification latency ~500ms (~1283ms total), above 200ms routing target | P1 — degrades at scale |
-| 2 | Rate limit 429 path (test 7.3) has no automated regression coverage | P1 — coverage gap |
+| 1 | Rate limit 429 path (test 7.3) has no automated regression coverage — manual check only | P1 |
+
+No P2s.
 
 ---
 
-## Must-Have #1 — Close Both P1s: Latency + Rate Limit Test Coverage
+## Must-Have #1 — Fix P1: Automate Rate Limit 429 Regression Test
 
-**Rule:** P1s from QA are must-have #1, no exceptions.
+**Rule:** All QA P1s are must-have #1. No new features ship while P1s are open.
 
-### 1a — AI Classification Latency
-
-**Problem:** `POST /api/v1/route/search` AI classification step clocks ~500ms, pushing total end-to-end to ~1283ms. The routing spec targets ≤200ms for the classification sub-step. Under concurrent agent load this compounds — 10 agents = 5s+ queue.
+**Problem:** The 501st-call threshold (FREE plan: 500 calls/month) returns HTTP 429 with `RATE_LIMITED` — but this path is verified manually only. Any future DB schema change or middleware refactor could silently break billing enforcement with zero CI signal.
 
 **Required fix:**
-- Profile `src/lib/ai-classifier.ts` (or equivalent) — identify whether latency is cold-start (LLM init), repeated prompt tokenization, or missing response cache.
-- Add an in-process LRU cache keyed on normalized query intent: identical or near-identical queries skip the LLM call entirely.
-- If the LLM call itself is the bottleneck, switch to a smaller/faster model (e.g., `claude-haiku-4-5`) for the classification step only — accuracy is secondary to routing speed here.
-- Target: classification sub-step ≤ 200ms at p95 under 10 concurrent requests.
+- Add `test_rate_limit_429` to `agentpick-router-qa.py`:
+  - Seed or mock a test user at `callsThisMonth = monthlyLimit - 1` (499)
+  - Assert the 500th call returns HTTP 200 with normal response
+  - Assert the 501st call returns HTTP 429 + `{"error": {"code": "RATE_LIMITED"}}` + `Retry-After` header
+- Test must run in CI on every push to `main`
 
 **Acceptance criteria:**
-- `meta.latency_ms` for a realtime search query ≤ 1000ms end-to-end (currently ~1283ms)
-- Classification step ≤ 200ms in isolation (loggable via `X-Classification-Ms` response header)
-- All 51 existing QA tests still pass
-
-### 1b — Automated Rate Limit Coverage
-
-**Problem:** The 429 path (501st call in a month) has no automated regression test. If rate limit logic is accidentally broken by a future DB schema change, no CI signal catches it.
-
-**Required fix:**
-- Add one test to `agentpick-router-qa.py` (or equivalent vitest/integration suite):
-  - Mock or seed usage to `monthlyLimit - 1` calls
-  - Fire one more call → assert HTTP 429 + `RATE_LIMITED` error code + `Retry-After` header present
-- This test must run in CI on every PR to `main`.
-
-**Acceptance criteria:**
-- `pytest agentpick-router-qa.py` includes a `test_rate_limit_429` case that passes
-- No manual-only check for this path going forward
+- QA suite reports ≥ 53/53 (adds at least 2 new assertions)
+- No manual-only check for the 429 path going forward
+- All existing 51 tests still pass
 
 ---
 
-## Must-Have #2 — Major UI Upgrade: Glassmorphism + Motion + Typography
+## Must-Have #2 — Major UI Upgrade: Glassmorphism, Motion, Typography
 
-**Context:** QA confirms all 4 pages load at HTTP 200 and the product works end-to-end. The visual layer is the weakest signal for developer trust. Competing tools (Vercel, Resend, Linear) ship immersive animated pages. This upgrade converts first-time visitors into API key signups.
+**Context:** Product works end-to-end (51/51 QA). The conversion bottleneck is now visual trust. Competing dev tools (Vercel, Resend, Upstash) ship immersive animated pages — AgentPick looks functional but not yet *shareable*. The `UI_POLISH_V1.md` spec is written; this is the execution.
 
-**Required changes:**
+**Required changes (zero new npm packages — pure CSS/Tailwind):**
 
-### Glassmorphism Cards
-Replace solid `bg-card` on stat cards, feature cards, pricing tiers, and the agent-counter widget with:
-```css
-backdrop-filter: blur(12px);
-background: rgba(255, 255, 255, 0.05);
-border: 1px solid rgba(255, 255, 255, 0.1);
-```
-Apply across: homepage hero, `/connect` feature grid, `/dashboard` stat panels.
+### Navigation
+- `backdrop-filter: blur(12px)` glass nav bar on scroll
+- Live green pulse dot next to logo (pulsing CSS `@keyframes` — signals system is alive)
+- Active page underline (2px accent line, not just color change)
 
-### Hero Stat Counter Animation
-Animate live network stats (agent count, calls routed) from 0 → final value on `IntersectionObserver` trigger. CSS keyframe count-up, 800ms ease-out. No animation library. Respects `prefers-reduced-motion`.
+### Cards & Panels
+- All feature cards, stat panels, pricing tiers: `backdrop-filter: blur(12px)` + `background: rgba(255,255,255,0.05)` + `border: 1px solid rgba(255,255,255,0.10)`
+- Hover: `transform: translateY(-2px)` + elevated box-shadow
 
-### Typography Overhaul
-- Hero `h1`: `font-size: clamp(2.5rem, 6vw, 4.5rem)` with `background-clip: text` gradient (accent-blue → accent-purple)
-- All code snippets: enforce JetBrains Mono (already likely loaded — verify it's applied consistently)
-- Section category labels: `font-mono tracking-widest text-xs uppercase opacity-60`
+### Typography
+- Hero `h1`: `clamp(2.5rem, 6vw, 4.5rem)` + `background-clip: text` gradient (blue → purple)
+- All `font-mono` code: enforce JetBrains Mono via `next/font/google` consistently across all pages
+- Section labels: `font-mono tracking-widest text-xs uppercase opacity-60`
 
-### Animated Gradient Mesh Background
-Replace flat dark `#0a0a0a` with a slow-drifting radial gradient mesh using `@keyframes` CSS only — no canvas, no WebGL, no JS dependency. Blue/purple/indigo nodes drifting at 20s cycle.
-
-### CTA Glow Pulse
-Primary "Get API Key" button on hover:
-```css
-box-shadow: 0 0 32px rgba(99, 102, 241, 0.6), 0 0 64px rgba(99, 102, 241, 0.2);
-transition: box-shadow 0.3s ease;
-```
+### Animations
+- Animated slow-drift radial gradient mesh background (`@keyframes`, 20s cycle, no JS/canvas)
+- Hero stat counters (agent count, calls routed): count-up from 0 on `IntersectionObserver`, 800ms ease-out
+- CTA "Get API Key" button: glow pulse on hover (`box-shadow: 0 0 32px rgba(99,102,241,0.6)`)
+- Leaderboard score bars: red→yellow→green gradient (not single color)
+- `pip install` snippet: one-click copy with "Copied! ✓" fade tooltip
 
 **Acceptance criteria:**
-- Lighthouse Performance ≥ 90 mobile (no regression from current baseline)
-- All 51 QA tests still pass (no HTTP regressions)
+- Lighthouse Performance ≥ 90 mobile (no regression)
+- All 51+ QA tests still pass
 - No CLS on 375px viewport
-- All motion effects gated behind `@media (prefers-reduced-motion: no-preference)`
+- All motion gated behind `@media (prefers-reduced-motion: no-preference)`
 
 ---
 
-## Must-Have #3 — New Feature: Shareable Benchmark Permalinks
+## Must-Have #3 — New Feature: Shareable Benchmark Permalinks + Embeddable Badges
 
-**Goal:** Every benchmark run becomes a permanent, embeddable artifact. Developers share results in PRs, Discord, and GitHub READMEs — each link drives referral traffic with built-in technical context. Zero-cost distribution.
+**Why this drives developer adoption:** Passive virality via README badges. Every developer who runs a benchmark gets a shareable URL and a one-line badge they paste into their GitHub repo — each badge is a permanent inbound link with real performance data, not marketing copy. Zero ongoing cost to distribute.
 
 **Feature spec:**
 
-Each benchmark run generates a public URL `agentpick.dev/b/{runId}` showing:
-- Query used, tools compared, latency / cost / relevance scores in a side-by-side table
-- "Run this benchmark" CTA with pre-filled Python / JS / curl snippet for instant reproduction
-- Auto-generated `og:image` social card via `@vercel/og` for Twitter/LinkedIn previews
-- Embeddable SVG badge: `agentpick.dev/b/{runId}/badge.svg` — shows winning tool + latency in one line
+```
+GET  /b/[runId]                  → public permalink page (no auth)
+GET  /b/[runId]/badge.svg        → embeddable SVG badge, < 200ms, no auth
+GET  /api/v1/benchmarks/[runId]/public  → sanitized JSON (no cost fields), no auth
+/b/[runId]/opengraph-image       → @vercel/og dynamic OG card for social previews
+```
 
+Each permalink page shows:
+- Query used, tools compared, latency / relevance / cost scores side-by-side
+- "Reproduce this benchmark" CTA with pre-filled Python + curl snippets
+- Auto-generated OG card for Twitter/LinkedIn unfurls
+
+Badge example for README:
 ```markdown
 ![AgentPick Benchmark](https://agentpick.dev/b/abc123/badge.svg)
 ```
 
 **Implementation surface:**
-- `GET /api/v1/benchmarks/{runId}/public` — unauthenticated, returns sanitized run data (no internal cost fields), reads from existing `benchmarkRun` DB records
-- `/b/[runId]` — Next.js ISR page (`revalidate: 3600`)
-- `/b/[runId]/opengraph-image` — `@vercel/og` dynamic OG card (tool name, query snippet, winner callout)
-- `/b/[runId]/badge.svg` — SVG response, target < 200ms, no auth
-
-**Why this drives adoption over alternatives (SDK, GitHub Action, OpenAPI docs):**
-- Passive virality: README badges create persistent brand exposure at zero ongoing cost
-- Immediate trust signal: real latency/cost data beats marketing copy
-- Reuses existing DB records — minimal new backend surface, fast to ship
+- Reuses existing `benchmarkRun` DB records — minimal new backend
+- `/b/[runId]` as Next.js ISR page (`revalidate: 3600`)
+- Badge SVG is a pure HTTP response, no DB write on read
 
 **Acceptance criteria:**
-- A Playground benchmark run produces a working `agentpick.dev/b/{runId}` URL without auth
-- OG card renders correctly in Twitter card validator (`https://cards-dev.twitter.com/validator`)
-- Badge SVG loads in < 200ms (verify via `X-Response-Time` header)
-- `/b/{runId}` returns HTTP 200 in QA page load check (add to QA suite)
+- A completed Playground run produces a working `/b/{runId}` URL without auth
+- OG card renders correctly in Twitter card validator
+- Badge SVG loads in < 200ms
+- `/b/{runId}` added to QA page-load check (suite grows to ≥ 54 tests)
 
 ---
 
 ## Ship Order
 
 ```
-1. #1a — Classification latency cache/model optimization   → profile first, fix second
-1b. #1b — Rate limit 429 automated test                   → < 2 hours, pure test work
-                                                           ↓ both must pass before #2/#3 land on main
-2. #2  — UI upgrade                                        → parallel track, no API surface changes
-3. #3  — Shareable benchmark permalinks                   → ships after #1 confirmed in prod by QA
+1. Must-Have #1 — Rate limit 429 test (< 2h)     → merge alone, confirm QA green
+                                                    ↓
+2. Must-Have #2 — UI upgrade                      → no API surface, safe parallel dev
+                                                    ↓
+3. Must-Have #3 — Benchmark permalinks            → ships after #1 confirmed in prod
 ```
 
-**Rule:** Must-Have #1 confirmed green by QA agent before #2 or #3 merge to main.
+**Rule:** Must-Have #1 confirmed green by QA before #3 merges to main.

@@ -1,5 +1,5 @@
 # AgentPick QA Report
-**Date:** 2026-03-16
+**Date:** 2026-03-17
 **Target:** https://agentpick.dev
 **Tester:** QA Agent (Claude Code)
 
@@ -17,7 +17,6 @@ None.
 
 ## P1 Issues
 
-- **AI classification latency**: ~500ms for classification, ~1283ms total end-to-end. Slightly above the 200ms target noted in Part 6 routing tests. No user-facing failure but may degrade agent UX at scale — worth monitoring under load.
 - **Rate limit test (7.3) not automated**: The 501-call rate limit / 429 path has no automated regression coverage. Manual check only.
 
 ---
