@@ -74,9 +74,13 @@ describe('Strategy-based ranking', () => {
 
 describe('Rate limit — 429 on monthly exhaustion', () => {
   it('returns 429 RATE_LIMITED with Retry-After when monthly limit is reached', async () => {
+    vi.doMock('@/lib/auth', () => ({
+      authenticateAgent: vi.fn().mockResolvedValue({ id: 'agent-test-id' }),
+    }));
     // Mock rate-limit module to report exhausted
     vi.doMock('@/lib/rate-limit', () => ({
       checkRateLimit: vi.fn().mockResolvedValue({ limited: true, retryAfter: 3600 }),
+      routerSdkLimiter: {},
     }));
 
     const { handleRouteRequest } = await import('@/lib/router/handler');

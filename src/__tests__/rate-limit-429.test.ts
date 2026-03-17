@@ -165,5 +165,8 @@ describe('Rate limit 429 — HTTP layer (handleRouteRequest)', () => {
     expect(response.status).toBe(429);
     const body = await response.json();
     expect(body.error.code).toBe('USAGE_LIMIT');
+    const retryAfter = response.headers.get('Retry-After');
+    expect(retryAfter).not.toBeNull();
+    expect(Number(retryAfter)).toBeGreaterThan(0);
   });
 });
