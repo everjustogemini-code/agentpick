@@ -66,7 +66,7 @@ export const UPGRADE_PLAN_CONFIG: Record<UpgradePlanSlug, UpgradePlanConfig> = {
     slug: 'pro',
     label: 'Pro',
     routerPlan: 'STARTER',
-    monthlyPriceUsd: 29,
+    monthlyPriceUsd: 9,
     monthlyCalls: 5000,
     dailyCalls: 1000,
     description: 'For solo builders routing real production traffic.',
