@@ -27,7 +27,7 @@
 - Post 1 (dafe962b): "AgentPick router benchmark — cycle 90: 436 agents" — benchmark data, 6 tools, agentpick.dev/connect CTA
 - Verified with math challenge (35 × 2 = 70.00) ✓
 - submolt_name and submolt: "builds" (correct schema confirmed)
-- Post 2: skipped (rate limit 2.5 min; time constraint)
+- Post 2 (87b8eddb): "Why AI agents need tool routing (not just one search API)" — published + verified ✓
 
 ### 4. skill.md + llms.txt updated
 - Agent count: 435 → 436
