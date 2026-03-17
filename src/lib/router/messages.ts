@@ -68,7 +68,7 @@ export function getRouterMessage(ctx: MessageContext): string | null {
         callsLeft +
         ' free call' +
         (callsLeft === 1 ? '' : 's') +
-        ' left this month. Upgrade to Pro ($29/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro'
+        ' left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro'
       );
     }
 
@@ -78,7 +78,7 @@ export function getRouterMessage(ctx: MessageContext): string | null {
         ctx.monthlyUsed +
         ' of ' +
         ctx.monthlyLimit +
-        ' free calls. Pro plan ($29/mo) gives you 10x more: https://agentpick.dev/pricing?plan=pro'
+        ' free calls. Pro plan ($9/mo) gives you 10x more: https://agentpick.dev/pricing?plan=pro'
       );
     }
   }

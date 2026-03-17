@@ -116,7 +116,7 @@ export const PRICING_CARD_PLANS = [
     overagePerCall: UPGRADE_PLAN_CONFIG.pro.overagePerCall,
     features: [
       '5,000 included calls/mo',
-      '$29/mo base subscription',
+      '$9/mo base subscription',
       'then $0.002/call overage',
       '1,000 calls per day',
       'Saved keys plus higher traffic limits',

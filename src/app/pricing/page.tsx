@@ -6,7 +6,7 @@ import PricingPageClient from '@/components/PricingPageClient';
 export const metadata: Metadata = {
   title: 'Pricing | AgentPick',
   description:
-    'Compare Free, Pro ($29/mo), and Growth ($99/mo) router plans and upgrade with Stripe Checkout.',
+    'Compare Free, Pro ($9/mo), and Growth ($99/mo) router plans and upgrade with Stripe Checkout.',
 };
 
 export default function PricingPage() {

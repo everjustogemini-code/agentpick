@@ -30,7 +30,7 @@ const PLAN_PRICES: Record<string, number> = {
 };
 
 const UPGRADE_TARGETS: Record<string, { slug: string; label: string; price: number } | null> = {
-  FREE: { slug: 'pro', label: 'Pro', price: 29 },
+  FREE: { slug: 'pro', label: 'Pro', price: 9 },
   STARTER: { slug: 'growth', label: 'Growth', price: 99 },
   PRO: null,
   SCALE: null,

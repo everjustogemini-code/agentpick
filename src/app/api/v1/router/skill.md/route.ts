@@ -148,7 +148,7 @@ Response includes \`meta.fallback_used\` and \`meta.fallback_from\` so you know 
     "strategy": "BALANCED",
     "plan": "FREE",
     "calls_remaining": 87,
-    "message": "Only 10 free calls left this month. Upgrade to Pro ($29/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro"
+    "message": "Only 10 free calls left this month. Upgrade to Pro ($9/mo) for 5,000 calls: https://agentpick.dev/pricing?plan=pro"
   }
 }
 \`\`\`
@@ -199,7 +199,7 @@ Telegram will display a payment card in the chat. The user taps "Pay" and comple
 **Plans:**
 | plan | Label | Price | Included | Overage |
 |------|-------|-------|----------|---------|
-| \`pro\` | Pro | $29/month | 5,000 calls | $0.002/call |
+| \`pro\` | Pro | $9/month | 5,000 calls | $0.002/call |
 | \`growth\` | Growth | $99/month | 25,000 calls | $0.001/call |
 
 **Response:**

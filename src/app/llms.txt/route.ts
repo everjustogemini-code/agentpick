@@ -63,7 +63,7 @@ Tool routing means automatically selecting the best API for each query instead o
 
 ## Plans
 - Free: 500 calls/month, hard cap, no credit card required
-- Pro: $29/month, 5,000 calls + $0.002/call overage
+- Pro: $9/month, 5,000 calls + $0.002/call overage
 - Growth: $99/month, 25,000 calls + $0.001/call overage
 - Enterprise: custom pricing for larger deployments
 `;
