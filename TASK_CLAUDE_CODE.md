@@ -1,121 +1,116 @@
 # TASK_CLAUDE_CODE.md
-**Agent:** Claude Code (backend / tests)
-**Cycle:** 2
+**Agent:** Claude Code (backend)
+**Branch:** feat/cycle-2-codex
 **Date:** 2026-03-17
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1) + Must-Have #3 (backend audit)
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1 rate limit CI) + Must-Have #3 (QA extension)
 
 ---
 
-## Files to Modify
+## Must-Have #1 — Automate Rate Limit 429 Regression Test
+
+### Context
+`src/__tests__/rate-limit-429.test.ts` already exists with Vitest unit + HTTP-layer assertions for the 429 path. The P1 gap is:
+1. No `"test"` script in `package.json` — tests never run in CI.
+2. No GitHub Actions CI workflow — nothing runs automatically on push to `main`.
+3. `agentpick-router-qa.py` (Python integration suite referenced in `QA_REPORT.md`) has no `test_rate_limit_429` entry; test 7.3 is listed as manual-only.
+
+### Files to Modify / Create
+
+#### 1. `package.json` — MODIFY
+- **Change:** Add `"test": "vitest run"` to the `"scripts"` block (after `"lint"`).
+- No other changes to this file.
+
+#### 2. `.github/workflows/ci.yml` — CREATE NEW FILE
+- **Action:** Create the directory `.github/workflows/` and the file `ci.yml`.
+- Runs on `push` to `main` and on `pull_request`.
+- Steps: `actions/checkout@v4` → `actions/setup-node@v4` (node 20, cache npm) → `npm ci` → `npm test`.
+- Job fails if any Vitest test fails.
+
+Exact content:
+```yaml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BENCHMARK_SECRET: test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+```
+
+#### 3. `agentpick-router-qa.py` — CREATE NEW FILE (project root)
+- **Action:** Create the Python integration QA script.
+- Structure mirrors the existing 51-test suite described in `QA_REPORT.md`.
+- Add **Part 9: Rate Limit Regression** with class `TestRateLimitPath`:
+  - `test_rate_limit_429_200`: POST to `/api/v1/route/search` with a key pre-seeded at 499 monthly calls. Assert HTTP 200.
+  - `test_rate_limit_429_429`: POST with a key pre-seeded at 500 monthly calls. Assert HTTP 429, `body["error"]["code"] == "RATE_LIMITED"`, and `"Retry-After"` header present.
+- Add `/b/{runId}` page-load checks inline (see Must-Have #3 section below).
+- Use env vars `QA_BASE_URL`, `QA_TEST_KEY_499`, `QA_TEST_KEY_500`, `QA_BENCHMARK_RUN_ID`.
+- Total assertions: ≥ 55 (51 existing + 2 rate-limit + 2 permalink = 55).
+
+Key test structure:
+```python
+class TestRateLimitPath(unittest.TestCase):
+    def test_rate_limit_429_200(self):
+        r = requests.post(f"{BASE_URL}/api/v1/route/search",
+                          headers={"Authorization": f"Bearer {TEST_KEY_499}"},
+                          json={"params": {"query": "rate limit regression"}},
+                          timeout=15)
+        self.assertEqual(r.status_code, 200)               # 7.3a: 500th call allowed
+
+    def test_rate_limit_429_429(self):
+        r = requests.post(f"{BASE_URL}/api/v1/route/search",
+                          headers={"Authorization": f"Bearer {TEST_KEY_500}"},
+                          json={"params": {"query": "rate limit regression"}},
+                          timeout=15)
+        self.assertEqual(r.status_code, 429)               # 7.3b: 501st call blocked
+        body = r.json()
+        self.assertEqual(body["error"]["code"], "RATE_LIMITED")
+        self.assertIn("Retry-After", r.headers)
+```
+
+---
+
+## Must-Have #3 — QA Extension: /b/{runId} Page-Load Check
+
+### Context
+`/b/[runId]/page.tsx` will be created by Codex (see TASK_CODEX.md). Once live, it must be in the automated QA page-load check so the suite reaches ≥ 54 tests.
+
+### Files to Modify
+
+#### `agentpick-router-qa.py` (same new file as above)
+Add class `TestBenchmarkPermalinks`:
+- `test_permalink_page`: `GET /b/{QA_BENCHMARK_RUN_ID}` → assert HTTP 200.
+- `test_badge_svg`: `GET /b/{QA_BENCHMARK_RUN_ID}/badge.svg` → assert HTTP 200 and `Content-Type` starts with `image/svg+xml`.
+
+---
+
+## Files — CLAUDE CODE Exclusively (Codex must NOT touch these)
 
 | File | Action |
 |------|--------|
-| `src/__tests__/rate-limit-429.test.ts` | Modify — add HTTP route-handler level assertions (file exists, has 2 tests) |
-| `src/app/b/[runId]/badge.svg/route.ts` | Modify — add XSS-safe escaping for tool name in SVG template |
+| `package.json` | Modify — add `"test": "vitest run"` |
+| `.github/workflows/ci.yml` | **CREATE** |
+| `agentpick-router-qa.py` | **CREATE** |
 
-**DO NOT touch any files owned by TASK_CODEX.md:**
-`src/app/globals.css`, `src/app/page.tsx`, `src/components/HeroCodeBlock.tsx`,
-`src/components/AnimatedCounter.tsx`, `src/components/AgentCTA.tsx`,
-`src/components/RouterCTA.tsx`, `src/app/connect/page.tsx`,
-`src/app/dashboard/page.tsx`, `src/app/rankings/[slug]/page.tsx`,
-`src/app/b/[runId]/page.tsx`
+**Forbidden:** Do NOT edit any file under `src/app/`, `src/components/`, `src/app/globals.css`, or `src/app/layout.tsx`.
 
 ---
 
-## Task 1 — Must-Have #1 (P1): Extend Rate Limit 429 Tests to HTTP Layer
-
-**NEXT_VERSION.md ref:** Must-Have #1 — QA suite must reach ≥ 53/53; 429 path must have CI regression coverage, not manual-only.
-
-### Current State
-`src/__tests__/rate-limit-429.test.ts` **already exists** with 2 passing tests that call `checkUsageLimit()` directly (function level). These do NOT cover the HTTP response format (status 429, `Retry-After` header, `error.code` body field).
-
-The QA P1 requires asserting the HTTP route handler produces the correct 429 response shape.
-
-### Before Writing
-
-1. Read `src/lib/router/handler.ts` — find the block where `usage.hardCapped === true` triggers a 429 response (around line 240). Confirm the exact `code` string passed to `apiError()` — it may be `'USAGE_LIMIT'` (not `'RATE_LIMITED'` as the spec says). **Use whatever the handler actually passes** — do not change the handler.
-
-2. Read the existing `src/__tests__/rate-limit-429.test.ts` to understand the current mock setup and avoid duplicating tests.
-
-3. Read `src/lib/router/sdk.ts` to find the `checkUsageLimit` function signature and understand what mock values to supply.
-
-### What to Add to `src/__tests__/rate-limit-429.test.ts`
-
-Add a **second `describe` block** (after the existing one) that mocks at a higher level and tests the handler's HTTP output. You will need to import the router handler function from wherever it is exported (likely `src/lib/router/handler.ts` or a route file). Use the `NextRequest` / `Response` pattern already used in other test files (see `src/__tests__/router.test.ts` for the mock pattern).
-
-Add these two new assertions:
-
-**Assertion 1 — 500th call (at 499) → HTTP 200:**
-- Mock `prisma.routerCall.count` to return `todayCount=0`, `monthCount=499`
-- Invoke the route handler with a valid API key request
-- Assert `response.status === 200` (call should be allowed)
-
-**Assertion 2 — 501st call (at 500) → HTTP 429:**
-- Mock `prisma.routerCall.count` to return `todayCount=0`, `monthCount=500`
-- Invoke the route handler with a valid API key request
-- Assert `response.status === 429`
-- Assert `(await response.json()).error.code === '<ACTUAL_CODE>'` (use the code from handler.ts)
-- Assert `response.headers.get('Retry-After')` is a non-null string
-
-> **Important:** If the handler is difficult to unit-test in isolation (e.g. it requires a live DB for API key lookup), mock the full auth + usage path. Look at how `src/__tests__/router.test.ts` or `src/__tests__/billing.test.ts` handle mocking to use the same approach.
-
-### Acceptance Criteria
-- `npx vitest run src/__tests__/rate-limit-429.test.ts` reports 4 passing tests (up from 2)
-- No existing tests broken
-- The 2 new assertions cover the HTTP 429 path end-to-end (status code + body `error.code` + `Retry-After` header)
-- No new npm dependencies
-
----
-
-## Task 2 — Must-Have #3 (backend): Badge SVG XSS Escaping
-
-**File:** `src/app/b/[runId]/badge.svg/route.ts`
-
-### Problem
-Line 43: `const label = \`${winningTool} · ${latencyMs}ms\`` — `winningTool` comes from `run.product?.name` which is a DB value. If a product name contains `<`, `>`, `&`, or `"`, the SVG XML breaks and could render unexpected content.
-
-### Fix
-Add an `escSvg` helper before the `GET` function and apply it to `winningTool`:
-
-```typescript
-function escSvg(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-```
-
-Then on line 43, change:
-```typescript
-const label = `${winningTool} · ${latencyMs}ms`
-```
-to:
-```typescript
-const label = `${escSvg(winningTool)} · ${latencyMs}ms`
-```
-
-No other changes to this file.
-
-### Acceptance Criteria
-- Product names with `<`, `>`, `&`, `"` produce valid SVG XML
-- No functional change for normal product names
-- No new dependencies
-
----
-
-## Already Complete — Do Not Redo
-
-- `src/app/api/v1/benchmarks/[runId]/public/route.ts` — multi-tool response is implemented and correct (cycle 1 work). Do not modify.
-- `src/app/b/[runId]/opengraph-image.tsx` — implemented and correct. Do not modify.
-
----
-
-## Final Verification
-
-- [ ] `npx vitest run src/__tests__/rate-limit-429.test.ts` — 4 tests pass
-- [ ] `npx vitest run` — all tests pass, no regressions
-- [ ] Badge SVG escaping applied
-- [ ] No changes to CODEX-owned files
-- [ ] Write progress log to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`
+## Acceptance Criteria
+- `npm test` runs Vitest and passes all existing tests.
+- `.github/workflows/ci.yml` runs on push to `main`; job fails on test failure.
+- `agentpick-router-qa.py` contains `TestRateLimitPath` with 2 assertions (7.3a, 7.3b) and `TestBenchmarkPermalinks` with 2 assertions.
+- QA suite total: ≥ 55/55 when run against production.
+- All 51 existing Vitest tests in `src/__tests__/` continue to pass.

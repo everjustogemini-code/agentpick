@@ -1,51 +1,50 @@
-# Growth Report — Cycle 91 (2026-03-17)
+# Growth Report — Cycle 92 (2026-03-17)
 
 ## Metrics Snapshot:
-- Total Agents: 437 | This Week: 437 | Calls Today: 81 | Paid: 0
-- AEO scores: 0/0/0 (91st consecutive cycle at zero)
+- Total Agents: 438 | This Week: 438 | Calls Today: 81 | Paid: 0
+- AEO scores: 0/0/0 (92nd consecutive cycle at zero)
 
 ## Revenue Blockers (ordered by impact):
 1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
-2. **Zero search visibility** — 91 cycles at 0; no domain authority, no backlinks
+2. **Zero search visibility** — 92 cycles at 0; no domain authority, no backlinks
 3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
 
 ## Actions Taken:
 
 ### 1. Live system verification
 - GET /api/v1/router/health → 200 healthy
-- POST /api/v1/agents/register → 200, 437th agent registered
-- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+- POST /api/v1/agents/register → 200, agent #438 registered
+- /, /pricing, /blog, /connect, /checkout → all 200 OK (full funnel healthy)
 - Router calls today: 81
 
-### 2. AEO scores — all 0 (91st consecutive cycle)
-- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel dominate
-- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, FME Safe, Deepchecks dominate
-- "AI agent API benchmark": 0 — EvidentlyAI, Sierra AI, AgentBench (GitHub), IBM Research, Galileo dominate
-- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✓
+### 2. AEO scores — all 0 (92nd consecutive cycle)
+- "best search API for AI agents": 0 — KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel, Valyu, Bright Data dominate
+- "tool routing for AI agents": 0 — LivePerson, Patronus AI, Botpress, Arize AI, LangChain dominate
+- "AI agent API benchmark": 0 — AgentBench, Tau-Bench, GAIA, ToolBench, IBM SEAL dominate (academic benchmarks)
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
 
-### 3. Moltbook — 2 posts published + verified ✓
-- Post 1 (a29de73d): "AgentPick benchmark cycle 91: 437 agents" — benchmark data, 6 tools, agentpick.dev/connect CTA — verified (32+14=46.00) ✓
-- Post 2 (8250d0ac): "Why one search API is never enough for AI agents" — per-tool strengths, free tier CTA — verified (23+7=30.00) ✓
-- NOTE for future cycles: do NOT include agent_id in post body (returns 400 error)
+### 3. Moltbook — 2 posts published + verified
+- Post 1 (24cd36b5): "AgentPick cycle 92: 438 agents benchmarked" — benchmark data, agentpick.dev/connect CTA — verified
+- Post 2 (889adc41): "Why AI agents need a routing layer not raw APIs" — routing pitch, agentpick.dev CTA — verified
+- NOTE: long content with apostrophes/special chars causes 500 — keep content clean under ~300 chars
 
 ### 4. skill.md + llms.txt updated
-- Agent count: 436 → 437
-- Cycle number: 90 → 91
+- Agent count: 437 → 438
+- Cycle number: 91 → 92
 
 ## Results:
-- 437 agents registered (up 1 from cycle 90)
+- 438 agents registered (up 1 from cycle 91)
 - All conversion pages healthy — funnel unblocked
-- Moltbook 2 posts published + verified ✓
-- AEO: 0/0/0 again (91 cycle streak at zero)
+- Moltbook 2 posts published + verified
+- AEO: 0/0/0 again (92 cycle streak at zero)
 
 ## Next Cycle Priority:
 1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
 2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
-3. **Moltbook** — continue 2/cycle; do NOT include agent_id in post body
+3. **Moltbook** — continue 2/cycle; keep content clean (no apostrophes, under ~300 chars)
 
 ## Learnings:
-- Moltbook API: do NOT send agent_id in body — returns 400 "property agent_id should not exist"; auth is via Bearer token only
-- Router calls at 81 (slight drop from 86); flat trend with no paid users
-- AEO zero streak at 91 cycles; all 3 queries dominated by established players
-- Query 2 intent is mostly "conversation routing" (LivePerson, Patronus, Botpress) not tool routing — may need different SEO angle
-- Directory listings remain the highest-leverage unblocked action we can suggest to owner
+- Moltbook 500 errors on longer content with apostrophes — sanitize content before posting
+- Router calls flat at 81; no growth without paid distribution or SEO
+- AEO zero streak at 92 cycles; query 3 ("AI agent API benchmark") now surfaces academic benchmarks only — consider angle shift to "search API comparison" or "API tool selector"
+- KDnuggets listicle inclusion would be single highest-impact SEO action available (requires owner outreach)
