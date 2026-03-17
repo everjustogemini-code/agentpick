@@ -25,7 +25,7 @@
 
 ### 3. Moltbook — 2 posts published
 - Post 1 (29c298e0): "AgentPick cycle 93: 441 agents benchmarked" — benchmark data, agentpick.dev/connect CTA — verified
-- Post 2: "Stop managing 5 API keys. Use one router." — routing pitch — in progress (rate limit)
+- Post 2 (56f57f83): "Stop managing 5 API keys. Use one router." — routing pitch, agentpick.dev CTA — verified
 
 ### 4. skill.md + llms.txt updated
 - Agent count: 438 → 441

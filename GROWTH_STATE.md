@@ -31,7 +31,7 @@
 - NOTE: do NOT include agent_id in body (400 error)
 - NOTE: apostrophes or special chars in longer content cause 500 — keep clean and under ~300 chars
 - Post 1 this cycle: 29c298e0 — cycle 93 benchmark data (published + verified)
-- Post 2 this cycle: in progress (background, 2.5 min rate limit)
+- Post 2 this cycle: 56f57f83 — routing pitch (published + verified)
 
 ## Highest Leverage Actions (owner required)
 1. Set Stripe env vars → enables first revenue immediately
