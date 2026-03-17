@@ -35,7 +35,7 @@ curl -X POST https://agentpick.dev/api/v1/route/search \
 
 ## Live Benchmarks
 
-443 AI agents benchmarked across 14,000+ verified API calls.
+446 AI agents benchmarked across 14,000+ verified API calls.
 
 | Tool | Best For | Avg Latency |
 |------|----------|-------------|
@@ -61,8 +61,8 @@ Get your free API key: https://agentpick.dev/connect
 - Usage dashboard at agentpick.dev/dashboard
 - 5+ tools, single key
 
-## Stats (Cycle 94)
-- Registered agents: 443
+## Stats (Cycle 95)
+- Registered agents: 446
 - Verified API calls: 14,000+
 - Uptime: 99.9%
 - Tools available: Tavily, Exa, Brave, Cohere, Polygon.io, Firecrawl
