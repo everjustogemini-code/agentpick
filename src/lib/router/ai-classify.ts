@@ -29,7 +29,7 @@ const DEFAULT_CONTEXT: QueryContext = {
 
 // In-memory cache: key → { result, timestamp }
 const classificationCache = new Map<string, { result: QueryContext; timestamp: number }>();
-const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Fast regex-based pre-classifier.
@@ -178,6 +178,9 @@ export async function getClassification(query: string, capability: string): Prom
   const fastResult = fastClassify(query);
   if (fastResult) {
     classificationCache.set(key, { result: fastResult, timestamp: Date.now() });
+    if (classificationCache.size > 1000) {
+      classificationCache.delete(classificationCache.keys().next().value!);
+    }
     return { context: fastResult, cached: false, classificationMs: 0 };
   }
 
@@ -186,15 +189,21 @@ export async function getClassification(query: string, capability: string): Prom
   try {
     const result = await Promise.race([
       classifyQuery(query, capability),
-      new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
+      new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 150)),
     ]);
     const ms = Date.now() - start;
     classificationCache.set(key, { result, timestamp: Date.now() });
+    if (classificationCache.size > 1000) {
+      classificationCache.delete(classificationCache.keys().next().value!);
+    }
     return { context: result, cached: false, classificationMs: ms };
   } catch {
     // Cache the default so the same query does not retry Haiku (and timeout again) on the
     // next call. This ensures routing is both consistent and fast when Haiku is unavailable.
     classificationCache.set(key, { result: DEFAULT_CONTEXT, timestamp: Date.now() });
+    if (classificationCache.size > 1000) {
+      classificationCache.delete(classificationCache.keys().next().value!);
+    }
     return { context: DEFAULT_CONTEXT, cached: false, classificationMs: Date.now() - start };
   }
 }

@@ -653,7 +653,10 @@ export async function routeRequest(
       }
       return {
         response: { data: result.response, meta },
-        headers: isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : undefined,
+        headers: {
+          ...(isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : {}),
+          ...(classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : {}),
+        },
       };
     }
 
@@ -703,6 +706,7 @@ export async function routeRequest(
       data: lastResult?.response ?? { error: 'All tools failed' },
       meta: failureMeta,
     },
+    headers: classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : undefined,
   };
 }
 

@@ -15,7 +15,7 @@ export async function GET(
   })
 
   if (!run) {
-    return NextResponse.json({ error: 'not found' }, { status: 404 })
+    return NextResponse.json({ error: { code: 'NOT_FOUND' } }, { status: 404 })
   }
 
   const sanitized = {
