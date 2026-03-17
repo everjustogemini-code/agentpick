@@ -1,190 +1,277 @@
-# TASK_CLAUDE_CODE.md — 2026-03-16
-**Agent:** Claude Code
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1a + P1b) + Must-Have #3 (backend routes)
+# TASK_CLAUDE_CODE.md
+**Agent:** Claude Code (backend/API/complex multi-file)
+**Date:** 2026-03-17
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1a + P1b) + Must-Have #3 (backend API)
 
 ---
 
-## Overview
+## Files to Modify / Create
 
-This task covers:
-- **P1a:** AI classification latency optimization — reduce timeout, extend cache TTL, cap cache size, add `X-Classification-Ms` response header
-- **P1b:** Automated rate limit regression test — add `test_rate_limit_429` vitest case
-- **#3 backend:** Review and fix the three already-existing benchmark permalink backend files
+| File | Action |
+|------|--------|
+| `src/lib/router/ai-classify.ts` | Modify — LRU cache upgrade + query normalization |
+| `src/__tests__/rate-limit-429.test.ts` | Create — automated 429 regression test |
+| `src/app/api/v1/benchmarks/[runId]/public/route.ts` | Modify — add multi-tool BenchmarkAgentRun data |
 
-TASK_CODEX.md owns all frontend/component files. **Zero file overlap.**
-
-Ship order: P1a + P1b must pass before #3 merges to main.
+**DO NOT touch any files owned by TASK_CODEX.md:**
+`src/app/globals.css`, `src/app/page.tsx`, `src/components/StatsBar.tsx`,
+`src/components/AgentCTA.tsx`, `src/components/RouterCTA.tsx`,
+`src/app/connect/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/b/[runId]/page.tsx`
 
 ---
 
-## P1a — AI Classification Latency Fix
+## Task 1 — P1a: AI Classification Latency Fix
 
-**Problem:** `POST /api/v1/route/search` classification step clocks ~500ms (Haiku timeout). Target ≤200ms.
+**NEXT_VERSION.md ref:** Must-Have #1a — classification sub-step ≤ 200ms p95
+**File:** `src/lib/router/ai-classify.ts`
 
-### File: `src/lib/router/ai-classify.ts`
+### Background (read first)
+- Current cache: `classificationCache` is a plain `Map` (line 31). Eviction at lines 181–183, 196–198, 204–206 deletes only the oldest-inserted key (`.keys().next().value`), NOT the least-recently-used. Frequently-hit queries can be evicted while stale entries persist.
+- Cache key (line 171): `${capability}:${query}` — no normalization. `"What is AI"` and `"what is ai  "` are separate cache misses, both fall through to Haiku.
+- LLM timeout is already 150ms (line 192) and Haiku is already used (line 257). Header `X-Classification-Ms` is already emitted in `src/lib/router/index.ts` lines 658/709. **Do not touch index.ts.**
 
-**Change 1 — Reduce Haiku timeout (line 189):**
-Lower the `Promise.race` timeout from `500` ms to `150` ms:
-```ts
-// BEFORE
-new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
-// AFTER
-new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 150)),
+### Change 1 — Add inline LRU class before the import block (top of file, before line 14)
+
+```typescript
+class LRUCache<K, V> {
+  private map = new Map<K, V>();
+  constructor(private maxSize: number) {}
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const val = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, val); // promote to MRU position
+    return val;
+  }
+  set(key: K, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.maxSize) {
+      this.map.delete(this.map.keys().next().value!); // evict LRU
+    }
+    this.map.set(key, value);
+  }
+  get size() { return this.map.size; }
+}
 ```
 
-**Change 2 — Extend cache TTL (line ~32):**
-Increase `CACHE_TTL_MS` from 2 minutes to 10 minutes. Queries repeat heavily in production; longer TTL eliminates most Haiku calls:
-```ts
-// BEFORE
-const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
-// AFTER
+### Change 2 — Replace `classificationCache` declaration (lines 31–32)
+
+Old:
+```typescript
+const classificationCache = new Map<string, { result: QueryContext; timestamp: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 ```
 
-**Change 3 — Cap cache size (after every `classificationCache.set(...)` call):**
-The cache is a bare `Map` with no eviction. Add size capping (1000 entries max, LRU-style via insertion-order deletion) after every `classificationCache.set(key, ...)` call. There are 3 such calls (lines ~174, ~180, ~192, ~197). After each one, add:
-```ts
+New:
+```typescript
+const classificationCache = new LRUCache<string, { result: QueryContext; timestamp: number }>(500);
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+```
+
+### Change 3 — Add query normalization in `getClassification` (line 171)
+
+Old:
+```typescript
+const key = `${capability}:${query}`;
+```
+
+New:
+```typescript
+const key = `${capability}:${query.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+```
+
+### Change 4 — Remove all 3 manual size-check eviction blocks
+
+Remove ALL occurrences of this 3-line pattern (appears at lines 181–183, 196–198, 204–206):
+```typescript
 if (classificationCache.size > 1000) {
   classificationCache.delete(classificationCache.keys().next().value!);
 }
 ```
+LRUCache handles eviction automatically. Do not keep these.
 
-### File: `src/lib/router/index.ts`
-
-**Goal:** Surface `classificationMs` as `X-Classification-Ms` HTTP response header.
-
-The `routeRequest` function (line ~442) already tracks `classificationMs` (line ~449) and returns `{ response, headers?: Record<string, string> }`.
-
-Find the two return sites that include `headers:`:
-
-**Return 1 — success path (line ~654–657):**
-```ts
-// BEFORE
-headers: isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : undefined,
-
-// AFTER
-headers: {
-  ...(isFallbackAttempt ? { 'X-AgentPick-Fallback': candidateSlug } : {}),
-  ...(classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : {}),
-},
-```
-
-**Return 2 — failure/fallback path (line ~701):**
-Find the final `return {` that ends the function. Add `headers:` to it:
-```ts
-return {
-  response: { ... },
-  headers: classificationMs > 0 ? { 'X-Classification-Ms': String(classificationMs) } : undefined,
-};
-```
-
-`src/lib/router/handler.ts` (line ~337) already spreads `extraHeaders` into the HTTP response — **no handler changes needed**.
-
-**Acceptance criteria:**
-- `X-Classification-Ms` header present on search route responses using `strategy: "auto"`
-- Fast regex path: value `"0"` (still acceptable — indicates sub-ms)
-- Haiku path: value ≤ `"150"` due to new timeout
-- Cache hit: value `"0"`
-- All 51 existing QA tests still pass
+### Acceptance Criteria
+- `"What is AI  "` and `"what is ai"` produce the same cache key and share one cache slot
+- Max 500 entries; LRU entry is evicted (not oldest-inserted)
+- No new npm dependencies
+- `npx vitest run src/__tests__/ai-classify.test.ts` — all existing tests pass
 
 ---
 
-## P1b — Automated Rate Limit 429 Test
+## Task 2 — P1b: Automated Rate Limit 429 Test
 
-**Problem:** The 429 path (501st monthly call → `RATE_LIMITED`) has no automated regression test.
+**NEXT_VERSION.md ref:** Must-Have #1b — `test_rate_limit_429` must run in CI on every PR
+**File:** `src/__tests__/rate-limit-429.test.ts` (CREATE — does not exist)
 
-### File: `src/__tests__/router.test.ts`
+### Background
+`checkUsageLimit` in `src/lib/router/sdk.ts` (line 115) returns `{ allowed: false, hardCapped: true }` when `monthCount >= monthlyLimit` for a plan with no overage (`overagePerCall === null`). The handler uses this to return HTTP 429 with `RATE_LIMITED` error code and `Retry-After` header. No test currently validates this path.
 
-Append a new `describe` block at the end of the file:
+**Before writing the test:** Open `src/lib/router/sdk.ts` and confirm:
+1. The exact value of `ROUTER_PLAN_MONTHLY_LIMITS['FREE']` (expected: `500`)
+2. The exact string key for the free plan in `RouterPlanValue` type (expected: `'FREE'`)
+3. Whether `ROUTER_PLAN_OVERAGE_PER_CALL['FREE']` is `null` (confirms hard-cap branch fires)
 
-```ts
-describe('Rate limit — 429 on monthly exhaustion', () => {
-  it('returns 429 RATE_LIMITED with Retry-After when monthly limit is reached', async () => {
-    // Mock rate-limit module to report exhausted
-    vi.doMock('@/lib/rate-limit', () => ({
-      checkRateLimit: vi.fn().mockResolvedValue({ limited: true, retryAfter: 3600 }),
-    }));
+### Test File to Create
 
-    const { handleRouteRequest } = await import('@/lib/router/handler');
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-    const req = new Request('http://localhost/api/v1/route/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ah_test_rate_limit_key',
-      },
-      body: JSON.stringify({ query: 'test query', strategy: 'balanced' }),
-    });
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    routerCall: {
+      count: vi.fn(),
+    },
+  },
+}));
 
-    const response = await handleRouteRequest(req as any, 'search');
+import { prisma } from '@/lib/prisma';
+import { checkUsageLimit } from '@/lib/router/sdk';
 
-    expect(response.status).toBe(429);
-    const body = await response.json();
-    expect(body.error.code).toBe('RATE_LIMITED');
-    expect(response.headers.get('Retry-After')).not.toBeNull();
+const mockCount = prisma.routerCall.count as ReturnType<typeof vi.fn>;
+
+describe('Rate limit 429 path', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('test_rate_limit_429 — returns allowed:false + hardCapped:true when monthCount equals monthlyLimit', async () => {
+    // Free plan monthly limit = 500; seed at limit (501st call scenario)
+    mockCount
+      .mockResolvedValueOnce(0)   // todayCount
+      .mockResolvedValueOnce(500); // monthCount = at monthly limit
+
+    const result = await checkUsageLimit('dev-test-id', 'FREE');
+
+    expect(result.allowed).toBe(false);
+    expect(result.hardCapped).toBe(true);
+    expect(result.remaining).toBe(0);
+    expect(result.monthlyUsed).toBe(500);
+    expect(result.monthlyLimit).toBe(500);
+  });
+
+  it('allows call when monthCount is one below monthly limit', async () => {
+    mockCount
+      .mockResolvedValueOnce(0)   // todayCount
+      .mockResolvedValueOnce(499); // monthCount = one below limit
+
+    const result = await checkUsageLimit('dev-test-id', 'FREE');
+
+    expect(result.hardCapped).toBe(false);
+    expect(result.monthlyUsed).toBe(499);
   });
 });
 ```
 
-**Fallback:** If `router.test.ts` has setup that makes `vi.doMock` impractical, add the test to `src/__tests__/enterprise-qa.test.ts` inside (or after) the existing `describe('P0-3: Rate limiting response...')` block instead. Same assertions apply.
-
-**Acceptance criteria:**
-- `npx vitest run` includes a passing test matching "rate limit" / "429" / "RATE_LIMITED"
-- No existing tests broken
-- Test runs in CI on every PR to `main` (no skip flags)
+### Acceptance Criteria
+- `npx vitest run src/__tests__/rate-limit-429.test.ts` — `test_rate_limit_429` passes
+- No real DB or Redis required (pure mock)
+- Included in default vitest run (no special flag)
 
 ---
 
-## Must-Have #3 — Benchmark Permalink Backend (review + fix existing files)
+## Task 3 — Must-Have #3 Backend: Benchmark Public API — Multi-Tool Response
 
-These three files **already exist** in the repository. Read each one, verify correctness against the spec, and fix any gaps. Do not create new files.
+**NEXT_VERSION.md ref:** Must-Have #3 — `GET /api/v1/benchmarks/{runId}/public` unauthenticated, sanitized, multi-tool
+**File:** `src/app/api/v1/benchmarks/[runId]/public/route.ts` (Modify)
 
-### File: `src/app/api/v1/benchmarks/[runId]/public/route.ts`
+### Current State
+Lines 1–43: returns a `tools` array with a single entry built from `BenchmarkRun`'s own columns. Per-agent results from `BenchmarkAgentRun` are not included. The spec requires multi-tool side-by-side comparison.
 
-Verify and fix:
-- [ ] Unauthenticated (no API key check)
-- [ ] Returns HTTP 404 with `{ error: { code: "NOT_FOUND" } }` if runId missing
-- [ ] Reads from `BenchmarkRun` Prisma model
-- [ ] Strips internal cost fields (`costUsd`, `apiKey`, `userId`, etc.) from response
-- [ ] Returns: `{ id, query, domain, tools: [{ name, latencyMs, resultCount, relevanceScore, success }], createdAt, winningTool }`
-- [ ] Sets `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+### Before Writing
+Check `prisma/schema.prisma` for the exact relation field name on `BenchmarkRun` that links to `BenchmarkAgentRun` records (look for `@@relation` or field type `BenchmarkAgentRun[]`). The field is likely named `agentRuns` or `BenchmarkAgentRun`. Use the exact name from the schema.
 
-### File: `src/app/b/[runId]/badge.svg/route.ts`
+Also confirm `BenchmarkAgentRun` fields: `latencyMs`, `resultCount`, `relevanceScore`, `statusCode`, and its relation back to `BenchmarkAgent` which has a relation to `Product`.
 
-Verify and fix:
-- [ ] Returns `Content-Type: image/svg+xml`
-- [ ] Adds `X-Response-Time` header (measure ms from handler start to response write)
-- [ ] Returns a fallback 404 SVG (not a 500/crash) if runId not found
-- [ ] Badge shows: winning tool name + best latency in ms on dark background
-- [ ] No authentication required
-- [ ] Single `prisma.benchmarkRun.findUnique` call only — no heavy joins
+### Replace Entire File With
 
-### File: `src/app/b/[runId]/opengraph-image.tsx`
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
-Verify and fix:
-- [ ] Uses `ImageResponse` from `next/og`
-- [ ] `size = { width: 1200, height: 630 }`
-- [ ] Shows: tool winner name, query snippet (truncated ≤60 chars), latency
-- [ ] Handles missing runId gracefully (fallback OG image, not a 500)
-- [ ] `export const runtime = 'edge'`
+const db = prisma as any
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ runId: string }> }
+) {
+  const { runId } = await params
+
+  const run = await db.benchmarkRun.findUnique({
+    where: { id: runId },
+    include: {
+      product: true,
+      // Replace 'agentRuns' with actual relation name from prisma/schema.prisma
+      agentRuns: {
+        include: { agent: { include: { product: true } } },
+        orderBy: { latencyMs: 'asc' },
+      },
+    },
+  })
+
+  if (!run) {
+    return NextResponse.json({ error: { code: 'NOT_FOUND' } }, { status: 404 })
+  }
+
+  // Multi-tool array from BenchmarkAgentRun; fall back to single-tool for legacy rows
+  const tools: Array<{
+    name: string | null
+    latencyMs: number | null
+    resultCount: number | null
+    relevanceScore: number | null
+    success: boolean
+  }> =
+    Array.isArray(run.agentRuns) && run.agentRuns.length > 0
+      ? run.agentRuns.map((ar: any) => ({
+          name: ar.agent?.product?.name ?? ar.agent?.name ?? 'Unknown',
+          latencyMs: ar.latencyMs ?? null,
+          resultCount: ar.resultCount ?? null,
+          relevanceScore: ar.relevanceScore ?? null,
+          success: ar.statusCode === 200,
+        }))
+      : [
+          {
+            name: run.product?.name ?? null,
+            latencyMs: run.latencyMs ?? null,
+            resultCount: run.resultCount ?? null,
+            relevanceScore: run.relevanceScore ?? null,
+            success: run.statusCode === 200,
+          },
+        ]
+
+  const winningTool =
+    tools.find((t) => t.success && t.latencyMs != null)?.name ??
+    run.product?.name ??
+    null
+
+  const sanitized = {
+    id: run.id,
+    query: run.query,
+    domain: run.domain,
+    tools,
+    winningTool,
+    createdAt: run.createdAt,
+  }
+
+  return NextResponse.json(sanitized, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    },
+  })
+}
+```
+
+### Acceptance Criteria
+- `GET /api/v1/benchmarks/{runId}/public` — no auth required, HTTP 200
+- `tools` array has one entry per `BenchmarkAgentRun` when available
+- Falls back to single-entry array for legacy records with no agent runs
+- No internal cost/billing fields in response (`costPerCall`, `billingAmount`, etc.)
+- `Cache-Control: public, s-maxage=3600` header present
 
 ---
 
-## Files This Task Touches (exhaustive — no other files)
+## Final Verification
 
-| Action | File |
-|--------|------|
-| MODIFY | `src/lib/router/ai-classify.ts` |
-| MODIFY | `src/lib/router/index.ts` |
-| MODIFY | `src/__tests__/router.test.ts` (or `enterprise-qa.test.ts` as fallback) |
-| REVIEW + FIX | `src/app/api/v1/benchmarks/[runId]/public/route.ts` |
-| REVIEW + FIX | `src/app/b/[runId]/badge.svg/route.ts` |
-| REVIEW + FIX | `src/app/b/[runId]/opengraph-image.tsx` |
-
-**DO NOT touch (Codex owns these):**
-- `src/app/b/[runId]/page.tsx`
-- `src/app/page.tsx`
-- `src/app/connect/page.tsx`
-- `src/app/dashboard/page.tsx`
-- `src/app/globals.css`
-- `src/components/*`
+- [ ] All 3 tasks complete with no changes to CODEX-owned files
+- [ ] `npx vitest run` — all tests pass (including new rate-limit-429 test)
+- [ ] No new npm dependencies introduced
+- [ ] Write progress log entry to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`

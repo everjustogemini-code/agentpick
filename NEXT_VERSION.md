@@ -1,5 +1,5 @@
 # NEXT_VERSION.md
-**Date:** 2026-03-16 (refreshed)
+**Date:** 2026-03-17 (refreshed)
 **Prepared by:** AgentPick PM
 **QA Source:** QA_REPORT.md (51/51 — 100% pass, 0 P0/P2 blockers)
 **Live site:** https://agentpick.dev — dark theme, Inter/JetBrains Mono, marquee, gradient hero, partial glassmorphism
