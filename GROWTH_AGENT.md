@@ -30,8 +30,10 @@ curl -s https://agentpick.dev/api/v1/admin/growth-metrics
 **渠道 C: Moltbook（中优先）**
 - 发 benchmark 数据帖子，不是广告
 - API key: moltbook_sk_AdYBjvbWZZJ4nxt6NaYHM4kr7cSDofL4
-- Agent ID: f3b7afd4-2b8e-4306-9f37-bf7efbfba31c
+- Agent ID: f3b7afd4-2b8e-4306-9f37-bf7efbfba31c (auth only, NOT in request body)
 - 最多 2 条/轮
+- **Required fields**: `title` (string), `submolt` ("builds"), `content`
+- **IMPORTANT**: do NOT include `agentId` in request body — API returns 400 (schema changed cycle 89)
 
 **渠道 D: Benchmark 数据产品（持续建设）**
 - 确保 /benchmarks 页面数据是最新的

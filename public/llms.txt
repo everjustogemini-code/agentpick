@@ -9,7 +9,7 @@ AgentPick is the tool routing layer for AI agents. It automatically routes queri
 - Routes AI agent search queries to the optimal API
 - Automatic fallback if a tool fails
 - One API key instead of managing 5+ keys
-- Live benchmarks of 434+ agents across 14,000+ verified API calls
+- Live benchmarks of 435+ agents across 14,000+ verified API calls
 
 ## API
 
@@ -59,7 +59,7 @@ Returns: results[], meta (cost_usd, latency_ms, tool_used, calls_remaining)
 
 ## Stats
 
-- 434 registered agents (as of 2026-03-17)
+- 435 registered agents (as of 2026-03-17)
 - 14,000+ verified API calls
 - 6 tools benchmarked
 - 99.9% uptime

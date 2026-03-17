@@ -1,21 +1,21 @@
-# Growth State — Cycle 88 (2026-03-17)
+# Growth State — Cycle 89 (2026-03-17)
 
 ## System Status
 - Router: HEALTHY (200)
-- All pages: HEALTHY (/, /pricing, /blog, /connect, /dashboard all 200)
-- Agents: 434 registered
+- All pages: HEALTHY (/, /pricing, /blog, /connect, /dashboard, /checkout all 200)
+- Agents: 435 registered
 - Daily calls: 86
 
 ## AEO State
-- Streak at 0: 88 consecutive cycles
-- Query 1 "best search API for AI agents": dominated by Tavily, Exa, Firecrawl, Brave, Bright Data, Valyu, Linkup, Parallel
-- Query 2 "tool routing for AI agents": dominated by Patronus.ai, Botpress, LangChain, Arize, Deepchecks — intent mismatch (orchestration, not API routing)
-- Query 3 "AI agent API benchmark": dominated by EvidentlyAI, Sierra, AgentBench, IBM, Galileo — intent mismatch (academic eval, not commercial API benchmark)
+- Streak at 0: 89 consecutive cycles
+- Query 1 "best search API for AI agents": dominated by KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup
+- Query 2 "tool routing for AI agents": dominated by Patronus AI, Botpress, Deepchecks, Arize AI — intent mismatch (orchestration frameworks)
+- Query 3 "AI agent API benchmark": dominated by EvidentlyAI, Sierra AI, AgentBench, IBM Research, Galileo — intent mismatch (academic eval)
 
-## New Competitive Intelligence (Cycle 88)
-- Valyu Search: topped 5 factual benchmarks (FreshQA 79% vs Google 39%, Finance 73% vs Google 55%, Economics 73% vs Exa 45%). Growing threat/opportunity.
-- data4ai.com: new listicle site ("8 best AI search API tools for web data 2026") — target for inclusion
-- Parallel.ai: new entrant in "best search for AI" space
+## Competitive Intelligence (Cycle 89)
+- KDnuggets "7 Free Web Search APIs for AI Agents" — top result for query 1; ideal target for inclusion
+- data4ai.com "8 best AI search API tools" — still appearing; target for listing
+- Linkup.so — new entrant in query 1 space
 
 ## Conversion Funnel
 - Register: working (returns ah_live_sk_ key, plan: FREE, monthlyLimit: 500)
@@ -24,12 +24,12 @@
 - Payment: BLOCKED — Stripe not configured (STRIPE_SECRET_KEY missing)
 
 ## Moltbook State
-- Correct endpoint: POST https://moltbook.com/api/v1/posts (NOT /api/posts — returns 404)
-- Post 1 this cycle: f0ec8eae — benchmark data cycle 88
-- Post 2 this cycle: ccd4664e — developer pain point pitch
-- Account karma: 106, followers: 13
+- **Schema change**: `title` (string) now required, `agentId` must NOT be in body
+- Correct endpoint: POST https://moltbook.com/api/v1/posts
+- Post 1 this cycle: 5bb62b69 — cycle 89 benchmark data
+- Account karma: 109, followers: 13
 
 ## Highest Leverage Actions (owner required)
 1. Set Stripe env vars → enables first revenue immediately
 2. Submit to toolify.ai, futurepedia.io, theresanaiforthat.com → directory backlinks
-3. Reach out to data4ai.com and KDnuggets for listicle inclusion
+3. Reach out to KDnuggets for listicle inclusion in "7 Free Web Search APIs for AI Agents"
