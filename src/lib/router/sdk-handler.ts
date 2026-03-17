@@ -114,8 +114,12 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
     const limitCount = isMonthly ? (usage.monthlyLimit ?? usage.limit) : usage.limit;
     const usedCount = isMonthly ? usage.monthlyUsed : usage.used;
     const limitLabel = isMonthly ? 'Monthly' : 'Daily';
+    const now = new Date();
+    const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const retryAfterSecs = Math.ceil((nextReset.getTime() - now.getTime()) / 1000);
     return apiError('USAGE_LIMIT', `${limitLabel} call limit reached (${limitCount} calls). Upgrade plan for more.`, 429, {
       details: { plan: account.plan, limit: limitCount, used: usedCount, period: isMonthly ? 'monthly' : 'daily' },
+      retry_after: retryAfterSecs,
     });
   }
 
