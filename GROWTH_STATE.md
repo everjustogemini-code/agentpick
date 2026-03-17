@@ -1,23 +1,21 @@
-# Growth State — Cycle 93 (2026-03-17)
+# Growth State — Cycle 94 (2026-03-17)
 
 ## System Status
 - Router: HEALTHY (200)
 - All pages: HEALTHY (/, /pricing, /blog, /connect, /dashboard, /checkout all 200)
-- Agents: 441 registered
-- Daily calls: 85
+- Agents: 443 registered
+- Daily calls: 86
 
 ## AEO State
-- Streak at 0: 93 consecutive cycles
-- Query 1 "best search API for AI agents": dominated by KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel, data4ai.com, Buttondown
-- Query 2 "tool routing for AI agents": dominated by Botpress, LivePerson, Patronus AI, Arize AI, Deepchecks, Niva Labs, LangChain
-- Query 3 "AI agent API benchmark": dominated by Evidently AI, Sierra, IBM Research, AgentBench, Galileo, Cleanlab, Emergence AI
+- Streak at 0: 94 consecutive cycles
+- Query 1 "best search API for AI agents": dominated by Tavily, Exa, Firecrawl, Brave, Valyu, Linkup, Parallel AI — KDnuggets still top
+- Query 2 "tool routing for AI agents": dominated by LangChain, Botpress, Deepchecks, Arize AI, Patronus AI
+- Query 3 "AI agent API benchmark": search tool error this cycle (treat as 0)
 
-## Competitive Intelligence (Cycle 93)
-- KDnuggets "7 Free Web Search APIs for AI Agents" — top result for query 1; ideal target for inclusion
-- data4ai.com "8 best AI search API tools" — appearing in query 1; target for listing
-- Buttondown "We scored 5 search APIs for AI agents" newsletter — appearing in query 1; niche but relevant audience
-- Deepchecks, Arize AI dominate "tool routing" — evaluation/observability framing
-- Sierra tau-bench, Evidently AI dominate "benchmark" — positioned as infra not evaluation tool
+## Competitive Intelligence (Cycle 94)
+- Valyu now appearing in query 1 alongside Tavily/Exa — new competitor
+- Patronus AI expanding into "tool routing" content — evaluation/routing overlap
+- KDnuggets "7 Free Web Search APIs for AI Agents" remains top result for query 1 — still ideal target for inclusion
 
 ## Conversion Funnel
 - Register: working (returns ah_live_sk_ key, plan: FREE, monthlyLimit: 500)
@@ -26,12 +24,14 @@
 - Payment: BLOCKED — Stripe not configured (STRIPE_SECRET_KEY missing)
 
 ## Moltbook State
-- Working schema: title, submolt_name, submolt (both "builds"), content — verified
-- Correct endpoint: POST https://moltbook.com/api/v1/posts
+- api.moltbook.com DNS UNRESOLVABLE this cycle — host not found
+- Previous working endpoint: POST https://moltbook.com/api/v1/posts (may need retry next cycle)
 - NOTE: do NOT include agent_id in body (400 error)
 - NOTE: apostrophes or special chars in longer content cause 500 — keep clean and under ~300 chars
-- Post 1 this cycle: 29c298e0 — cycle 93 benchmark data (published + verified)
-- Post 2 this cycle: 56f57f83 — routing pitch (published + verified)
+
+## Fixed This Cycle
+- skill.md: Pro pricing corrected $29 → $9/mo, agent count 441 → 443, cycle 93 → 94
+- llms.txt: Pro pricing corrected $29 → $9/mo, agent count 441 → 443
 
 ## Highest Leverage Actions (owner required)
 1. Set Stripe env vars → enables first revenue immediately

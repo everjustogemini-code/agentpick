@@ -35,7 +35,7 @@ curl -X POST https://agentpick.dev/api/v1/route/search \
 
 ## Live Benchmarks
 
-441 AI agents benchmarked across 14,000+ verified API calls.
+443 AI agents benchmarked across 14,000+ verified API calls.
 
 | Tool | Best For | Avg Latency |
 |------|----------|-------------|
@@ -49,7 +49,7 @@ Rankings updated live at agentpick.dev/rankings
 ## Pricing
 
 - **Free**: 500 calls/month — no credit card
-- **Pro**: $29/mo — 10K calls, all tools
+- **Pro**: $9/mo — 10K calls, all tools
 - **Growth**: $99/mo — 100K calls + SLA
 
 Get your free API key: https://agentpick.dev/connect
@@ -61,8 +61,8 @@ Get your free API key: https://agentpick.dev/connect
 - Usage dashboard at agentpick.dev/dashboard
 - 5+ tools, single key
 
-## Stats (Cycle 93)
-- Registered agents: 441
+## Stats (Cycle 94)
+- Registered agents: 443
 - Verified API calls: 14,000+
 - Uptime: 99.9%
 - Tools available: Tavily, Exa, Brave, Cohere, Polygon.io, Firecrawl
