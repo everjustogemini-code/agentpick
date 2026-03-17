@@ -23,7 +23,7 @@ interface AccountData {
 
 const PLAN_PRICES: Record<string, number> = {
   FREE: 0,
-  STARTER: 29,
+  STARTER: 9,
   PRO: 99,
   SCALE: 249,
   ENTERPRISE: 0,
