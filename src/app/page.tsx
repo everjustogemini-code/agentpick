@@ -32,7 +32,7 @@ async function getStats() {
         prisma.benchmarkRun.count().catch(() => 0),
         prisma.benchmarkRun.count({ where: { createdAt: { gte: todayStart } } }).catch(() => 0),
       ]);
-      return { totalProducts: Math.max(totalProducts, 161), totalVotes: Math.max(totalVotes, 1812), totalAgents: Math.max(totalAgents, 326), totalBenchmarkRuns: Math.max(totalBenchmarkRuns, 2424), todayBenchmarks: Math.max(todayBenchmarks, 100) };
+      return { totalProducts: totalProducts, totalVotes: totalVotes, totalAgents: totalAgents, totalBenchmarkRuns: totalBenchmarkRuns, todayBenchmarks: todayBenchmarks };
     } catch {
       if (attempt < 2) await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
     }
