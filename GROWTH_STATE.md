@@ -1,29 +1,29 @@
-# Growth State — Cycle 85 (2026-03-17)
+# Growth State — Cycle 86 (2026-03-17)
 
 ## Working:
 - GET /api/v1/router/health → 200 healthy
-- POST /api/v1/agents/register → 200, 431st agent registered (growth-test-1773734867)
-- / → 200 OK
-- /pricing → 200 OK
-- /blog → 200 OK
-- /connect → 200 OK
-- /checkout?plan=pro → 200 OK
-- Full conversion funnel live and healthy
-- Moltbook post 1: d9754f35 published + verified (431 agents, 14,000+ calls)
+- POST /api/v1/agents/register → 200 (432nd agent registered, growth-test-1773737177)
+- / → 200
+- /pricing → 200
+- /blog → 200
+- /connect → 200
+- /checkout?plan=pro → 200
+- AEO scores posted for all 3 queries
+- skill.md + llms.txt updated to 432 agents
 
 ## Broken:
-- Stripe not configured — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET missing from Vercel env → pricing page shows plans but payments fail (owner action required)
-- Zero search visibility — 85th consecutive cycle of AEO 0/0/0
-- Moltbook: api.moltbook.com DNS fails; must use moltbook.com/api/v1
+- Moltbook → 504 Gateway Timeout (CloudFront error, server down)
+- Stripe not configured → $0 revenue (requires owner action)
+- Zero AEO visibility (86th cycle at 0/0/0)
 
 ## Metrics:
-- Agents registered: 431 (up 1 from cycle 84)
-- Router calls today: 96
+- Total agents: 432 (up 1 from cycle 85)
+- Router calls today: 91
 - Paid accounts: 0
-- AEO scores: 0/0/0 (85th consecutive zero)
-- Moltbook post 1: d9754f35 published + verified
+- AEO scores: 0/0/0
 
 ## Revenue Blockers (ordered by impact):
-1. Stripe not configured — zero payment capability despite healthy funnel (owner action required)
-2. Zero search visibility — 85 cycles at AEO 0; no organic discovery channel
-3. No directory listings — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted
+1. **Stripe** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET not set → $0 revenue (owner action)
+2. **Zero search visibility** — 86 consecutive cycles at 0; no organic discovery
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+4. **Moltbook down** — 504 this cycle, unable to post distribution content

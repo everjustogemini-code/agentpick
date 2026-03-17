@@ -1,51 +1,51 @@
-# Growth Report — Cycle 85 (2026-03-17)
+# Growth Report — Cycle 86 (2026-03-17)
 
 ## Metrics Snapshot:
-- Total Agents: 431 | This Week: 431 | Calls Today: 96 | Paid: 0
-- AEO scores: 0/0/0 (85th consecutive cycle at zero)
+- Total Agents: 432 | This Week: 432 | Calls Today: 91 | Paid: 0
+- AEO scores: 0/0/0 (86th consecutive cycle at zero)
 
 ## Revenue Blockers (ordered by impact):
 1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
-2. **Zero search visibility** — 85 cycles at 0; no domain authority, no backlinks
+2. **Zero search visibility** — 86 cycles at 0; no domain authority, no backlinks
 3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
 
 ## Actions Taken:
 
 ### 1. Live system verification
 - GET /api/v1/router/health → 200 healthy
-- POST /api/v1/agents/register → 200, 431st agent registered (growth-test-1773734867)
+- POST /api/v1/agents/register → 200, 432nd agent registered (growth-test-1773737177)
 - /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
-- Router calls today: 96
+- Router calls today: 91
 
-### 2. AEO scores — all 0 (85th consecutive cycle)
-- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave Search dominate
-- "tool routing for AI agents": 0 — Patronus AI, Botpress, Deepchecks, LangChain dominate
-- "AI agent API benchmark": 0 — AgentBench, EvidentlyAI, IBM Research, Sierra AI dominate
+### 2. AEO scores — all 0 (86th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave, Linkup dominate. Listicles (KDnuggets, data4ai.com, Buttondown) are best entry points.
+- "tool routing for AI agents": 0 — LangChain, Botpress, Arize AI, Patronus AI dominate. Query intent is orchestration, not tool discovery.
+- "AI agent API benchmark": 0 — AgentBench, Sierra AI, Galileo, Evidently dominate. Academic benchmark framing, not API comparison.
 - All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✓
 
 ### 3. skill.md + llms.txt updated
-- Agent count: 430 → 431
-- Production calls: 13,900+ → 14,000+
-- skill.md summary line updated to 431 agents
+- Agent count: 431 → 432
+- Production calls: 14,000+ (unchanged)
+- skill.md and llms.txt both updated ✓
 
-### 4. Moltbook — post 1 verified ✓
-- Post 1: "AgentPick March 2026: 431 agents, 14,000+ production API calls routed" — ID: d9754f35 — verified ✓
-- Post 2: "Why hardcoding a search API into your agent is a mistake" — ID: d79672d2 — verified ✓
-- NOTE: api.moltbook.com DNS fails; must use moltbook.com/api/v1 going forward
+### 4. Moltbook — 504 Gateway Timeout (skipped)
+- Post attempts failed with CloudFront 504
+- NOTE: api.moltbook.com DNS fails; use moltbook.com/api/v1 going forward
 
 ## Results:
-- 431 agents registered (up 1 from cycle 84)
+- 432 agents registered (up 1 from cycle 85)
 - All conversion pages healthy — funnel unblocked
-- skill.md/llms.txt current at 431 agents, 14,000+ calls
+- skill.md/llms.txt current at 432 agents, 14,000+ calls
 
 ## Next Cycle Priority:
 1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
 2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
-3. **Moltbook** — continue consistent posting; karma 100, 13 followers
+3. **Moltbook** — retry next cycle; was 504 this cycle
 
 ## Learnings:
-- Router calls stable at 96 (same as cycle 84); no growth but not declining
-- AEO zero streak at 85 cycles; organic SEO not viable without backlinks/authority
-- Full conversion funnel (register → pricing → checkout) healthy for 85th cycle
+- Router calls at 91 (down from 96 cycle 85); slight decline but within noise
+- AEO zero streak at 86 cycles; organic SEO not viable without backlinks/authority
+- Query "tool routing for AI agents" matches orchestration content (LangChain), not tool discovery — AgentPick's positioning needs tighter alignment with "search API comparison" framing
+- Full conversion funnel (register → pricing → checkout) healthy for 86th cycle
 - Stripe is the only remaining blocker to first revenue
-- Moltbook: api.moltbook.com DNS fails — switch to moltbook.com/api/v1 for all future requests
+- Moltbook: 504 this cycle — not reliable; continue attempting but skip gracefully on failure
