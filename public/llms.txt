@@ -63,3 +63,28 @@ Returns: results[], meta (cost_usd, latency_ms, tool_used, calls_remaining)
 - 14,000+ verified API calls
 - 6 tools benchmarked
 - 99.9% uptime
+
+## OpenAI-Compatible Endpoint (added cycle 9)
+
+POST /v1/chat/completions
+Authorization: Bearer <agentpick-router-key>
+
+Drop-in replacement for OpenAI chat completions. Point any OpenAI SDK at AgentPick:
+
+  import OpenAI from 'openai'
+  const client = new OpenAI({ baseURL: 'https://agentpick.dev/v1', apiKey: '<your-key>' })
+  const res = await client.chat.completions.create({
+    model: 'agentpick/auto',
+    messages: [{ role: 'user', content: 'What is the AAPL stock price?' }],
+  })
+
+Supported model strings:
+  agentpick/auto      — automatic routing (recommended)
+  agentpick/search    — pin to web search capability
+  agentpick/finance   — pin to finance/market data capability
+  agentpick/<domain>  — pin to any supported capability
+
+Streaming: supported (stream: true → SSE, data: [DONE] terminator)
+Auth: same API keys as /api/v1/route/*
+Metering: identical to /api/v1/route/* calls
+Response: OpenAI-compatible schema + x-agentpick-tool + x-agentpick-latency-ms extensions
