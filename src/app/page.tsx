@@ -136,7 +136,7 @@ export default async function HomePage() {
             style={{ boxShadow: '0 0 24px 0 rgba(47,233,43,0.12)' }}
           >
             <p className="text-[2rem] font-extrabold tracking-tight text-text-primary leading-tight">
-              Tell your AI:{' '}
+              Tell your OpenClaw:{' '}
               <span className="font-mono" style={{ color: '#2fe92b', textShadow: '0 0 16px rgba(47,233,43,0.5)' }}>
                 &ldquo;install agentpick&rdquo;
               </span>
@@ -238,7 +238,7 @@ export default async function HomePage() {
               Conversational
             </h3>
             <p className="mb-4 text-[13px] text-text-tertiary">
-              Send one message to your AI agent — everything else happens in chat.
+              Send one message to your OpenClaw agent — everything else happens in chat.
             </p>
 
             {/* Chat bubble demo */}
@@ -286,7 +286,7 @@ export default async function HomePage() {
             </p>
 
             <p className="mb-3 text-[13px] text-text-tertiary leading-relaxed">
-              Not a developer? Just tell your AI assistant{' '}
+              Not a developer? Just tell your OpenClaw agent{' '}
               <span className="font-mono text-text-primary">&ldquo;install agentpick&rdquo;</span>{' '}
               — it handles everything automatically.
             </p>
