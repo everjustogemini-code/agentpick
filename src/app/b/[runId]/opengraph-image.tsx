@@ -30,7 +30,7 @@ export default async function OGImage({
     // fall through with empty data
   }
 
-  const query = (data.query ?? 'Benchmark Result').slice(0, 120)
+  const query = (data.query ?? 'Benchmark Result').slice(0, 60)
   const tools = data.tools ?? []
   const winningTool = data.winningTool ?? ''
 

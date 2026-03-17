@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getRankedToolsForCapability, CAPABILITY_TOOLS } from '@/lib/router/index';
 
 describe('Capability validation', () => {
@@ -69,5 +69,32 @@ describe('Strategy-based ranking', () => {
     expect(ranked).not.toContain('serpapi');
     expect(ranked).not.toContain('tavily');
     expect(ranked.length).toBe(7); // 9 - 2
+  });
+});
+
+describe('Rate limit — 429 on monthly exhaustion', () => {
+  it('returns 429 RATE_LIMITED with Retry-After when monthly limit is reached', async () => {
+    // Mock rate-limit module to report exhausted
+    vi.doMock('@/lib/rate-limit', () => ({
+      checkRateLimit: vi.fn().mockResolvedValue({ limited: true, retryAfter: 3600 }),
+    }));
+
+    const { handleRouteRequest } = await import('@/lib/router/handler');
+
+    const req = new Request('http://localhost/api/v1/route/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ah_test_rate_limit_key',
+      },
+      body: JSON.stringify({ query: 'test query', strategy: 'balanced' }),
+    });
+
+    const response = await handleRouteRequest(req as any, 'search');
+
+    expect(response.status).toBe(429);
+    const body = await response.json();
+    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(response.headers.get('Retry-After')).not.toBeNull();
   });
 });

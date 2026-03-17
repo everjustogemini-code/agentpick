@@ -1,217 +1,485 @@
 # TASK_CODEX.md
-**Agent:** Codex
-**Date:** 2026-03-16
+**Agent:** Codex (frontend/UI/components)
+**Date:** 2026-03-17
 **Source:** NEXT_VERSION.md — Must-Have #2 (UI Upgrade) + Must-Have #3 (frontend page)
 
 ---
 
-## Overview
+## Files to Modify / Create
 
-This file covers:
-- **Must-Have #2:** Major UI Upgrade — Glassmorphism + Micro-animations + Typography Overhaul
-- **Must-Have #3 (frontend):** Shareable Benchmark Permalinks — `/b/[runId]` Next.js ISR page
+| File | Action |
+|------|--------|
+| `src/app/globals.css` | Modify — gradient mesh keyframes, glassmorphism vars, reduced-motion guards |
+| `src/app/page.tsx` | Modify — glassmorphism stat cards, hero h1 gradient typography |
+| `src/components/StatsBar.tsx` | Modify — hero stat counter animation (IntersectionObserver + CSS count-up) |
+| `src/components/AgentCTA.tsx` | Modify — CTA glow pulse on hover |
+| `src/components/RouterCTA.tsx` | Modify — CTA glow pulse on hover |
+| `src/app/connect/page.tsx` | Modify — glassmorphism feature grid cards |
+| `src/app/dashboard/page.tsx` | Modify — glassmorphism stat panels |
+| `src/app/b/[runId]/page.tsx` | Create — ISR benchmark permalink page |
 
-TASK_CLAUDE_CODE.md owns all API routes and backend files. No file overlap.
+**DO NOT touch any files owned by TASK_CLAUDE_CODE.md:**
+`src/lib/router/ai-classify.ts`, `src/__tests__/rate-limit-429.test.ts`,
+`src/app/api/v1/benchmarks/[runId]/public/route.ts`
 
 ---
 
-## Must-Have #2 — Major UI Upgrade
+## Task 1 — Must-Have #2: UI Upgrade
 
-**Priority:** High — parallel track, no API surface changes required.
+**NEXT_VERSION.md ref:** Must-Have #2 — Glassmorphism + Motion + Typography
+**Constraint:** Lighthouse Performance ≥ 90 mobile. No CLS on 375px. All motion gated behind `@media (prefers-reduced-motion: no-preference)`. No animation library, no canvas, no WebGL.
 
 ---
 
-### 2.1 — Glassmorphism Cards
+### 1a — `src/app/globals.css`
 
-**Files to MODIFY:**
-- `src/app/page.tsx` — homepage stat cards, feature cards section
-- `src/app/connect/page.tsx` — all info/feature cards
-- `src/app/dashboard/page.tsx` — stat cards, agent-counter widget
-- `src/components/ProductCard.tsx` — card root element
-- `src/components/PricingSection.tsx` — all pricing tier cards
+**Read the file first.** Then make the following additions:
 
-**Change:** Replace flat `bg-card` / solid background classes on cards with:
-
-```
-Tailwind: bg-white/5 backdrop-blur-[12px] border border-white/10
-```
-
-Raw CSS equivalent:
+**Add CSS custom properties** (in the `:root` block or a new `:root` block):
 ```css
-backdrop-filter: blur(12px);
-background: rgba(255, 255, 255, 0.05);
-border: 1px solid rgba(255, 255, 255, 0.10);
+/* Glassmorphism */
+--glass-bg: rgba(255, 255, 255, 0.05);
+--glass-border: rgba(255, 255, 255, 0.1);
+--glass-blur: 12px;
+
+/* Gradient mesh animation */
+--mesh-cycle: 20s;
 ```
 
-Apply this to every stat card, feature card, pricing tier card, and agent-counter widget on those three pages and two components.
-
----
-
-### 2.2 — Hero Stat Counter Animation
-
-**File to MODIFY:** `src/app/page.tsx`
-
-**Change:** Animate the live network stats in the hero ("413 agents / 125 calls routed today") from 0 → final value on `IntersectionObserver` trigger.
-
-1. Locate the hero stat numbers (elements like "413", "125", etc.)
-2. Wrap each in a `<span>` with `data-target="{finalValue}"` and a `count-up` class identifier
-3. Add a `useEffect` (this is a Client Component section — add `'use client'` if needed, or extract a `<StatCounter>` client component):
-   - Use `IntersectionObserver` to detect when hero enters viewport
-   - On trigger: animate 0 → `data-target` over **800ms ease-out** using `requestAnimationFrame` (no `setInterval`)
-   - Under `prefers-reduced-motion: reduce`: skip animation, snap to final value immediately
-4. No external animation library
-
----
-
-### 2.3 — Typography Overhaul
-
-**File to MODIFY:** `src/app/page.tsx`
-
-**Changes:**
-
-1. **Hero `<h1>` font size:** Set to `clamp(2.5rem, 6vw, 4.5rem)` via inline style or Tailwind `text-[clamp(2.5rem,6vw,4.5rem)]`
-
-2. **Hero `<h1>` gradient text:**
-   ```
-   Tailwind: text-transparent bg-clip-text bg-gradient-to-br from-blue-500 to-purple-500
-   ```
-   (gradient: accent-blue → accent-purple, matching `background-clip: text`)
-
-3. **JetBrains Mono on code snippets:** Ensure all `<code>` and `<pre>` elements use `font-family: 'JetBrains Mono', monospace`. Check `src/app/layout.tsx` and `src/app/globals.css` — if the font is not already imported, add the import there. Only touch `layout.tsx` / `globals.css` for the font import if it is missing.
-
-4. **Section header labels:** Add `font-mono tracking-widest text-xs uppercase` to all section category labels (e.g., "Features", "Pricing", "How it works" overline text above section headings).
-
----
-
-### 2.4 — Animated Gradient Mesh Background
-
-**File to MODIFY:** `src/app/globals.css` (or inline in `src/app/page.tsx` via `<style jsx global>` / Tailwind `@layer`)
-
-**Change:** Replace the flat dark background on the homepage with a slow-drifting radial gradient mesh using CSS `@keyframes` only — **no canvas, no WebGL, no JS**.
-
+**Add gradient mesh keyframes** (after existing keyframes, or at end of file):
 ```css
-@keyframes mesh-drift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@keyframes mesh-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.1); }
+  66% { transform: translate(-30px, 50px) scale(0.95); }
+}
+@keyframes mesh-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(-50px, 30px) scale(1.05); }
+  70% { transform: translate(40px, -60px) scale(0.9); }
+}
+@keyframes mesh-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 40px) scale(1.08); }
 }
 
-.bg-mesh {
-  background: radial-gradient(ellipse at 20% 50%, rgba(59,130,246,0.15) 0%, transparent 60%),
-              radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.15) 0%, transparent 60%),
-              radial-gradient(ellipse at 50% 80%, rgba(99,102,241,0.10) 0%, transparent 60%),
-              #0a0a0f;
-  background-size: 200% 200%;
-  animation: mesh-drift 18s ease infinite;
+/* Gradient mesh background container */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: #0a0a0a;
 }
-```
+.mesh-bg::before,
+.mesh-bg::after,
+.mesh-bg > span {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+}
+.mesh-bg::before {
+  width: 600px;
+  height: 600px;
+  top: -100px;
+  left: -100px;
+  background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+}
+.mesh-bg::after {
+  width: 500px;
+  height: 500px;
+  bottom: -80px;
+  right: 10%;
+  background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
+}
+.mesh-bg > span {
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  left: 50%;
+  background: radial-gradient(circle, #4f46e5 0%, transparent 70%);
+}
 
-Apply the `bg-mesh` class (or equivalent inline styles) to the `<main>` or outermost layout wrapper on `src/app/page.tsx`.
+@media (prefers-reduced-motion: no-preference) {
+  .mesh-bg::before { animation: mesh-drift-1 var(--mesh-cycle) ease-in-out infinite; }
+  .mesh-bg::after  { animation: mesh-drift-2 var(--mesh-cycle) ease-in-out infinite 7s; }
+  .mesh-bg > span  { animation: mesh-drift-3 var(--mesh-cycle) ease-in-out infinite 14s; }
+}
 
-**Accessibility:** Under `prefers-reduced-motion: reduce`, set `animation: none` on `.bg-mesh`.
+/* Glassmorphism card utility */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
 
----
+/* CTA glow pulse */
+.cta-glow {
+  transition: box-shadow 0.3s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cta-glow:hover {
+    box-shadow: 0 0 32px rgba(99, 102, 241, 0.6), 0 0 64px rgba(99, 102, 241, 0.2);
+  }
+}
 
-### 2.5 — CTA Glow Effect
+/* Hero gradient text */
+.hero-gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
 
-**Files to MODIFY:**
-- `src/app/page.tsx` — "Get API Key" and "Install AgentPick" buttons
-- `src/app/connect/page.tsx` — primary CTA buttons
-- `src/components/AgentCTA.tsx` — CTA button element
-- `src/components/RouterCTA.tsx` — CTA button element
+/* Hero h1 fluid size */
+.hero-h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1.1;
+}
 
-**Change:** On the primary CTA buttons, add a pulse glow on hover. Replace or augment any existing shimmer effect:
+/* Category label */
+.category-label {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: 0.15em;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
 
-```css
-/* On :hover */
-box-shadow: 0 0 32px rgba(99, 102, 241, 0.6);
-transition: box-shadow 300ms ease;
-```
-
-In Tailwind + inline style: add `hover:shadow-[0_0_32px_rgba(99,102,241,0.6)] transition-shadow duration-300` to the button element.
-
-**Accessibility:** Under `prefers-reduced-motion: reduce`, suppress the transition (`transition: none`).
-
----
-
-## Must-Have #3 — Shareable Benchmark Permalinks: Frontend Page
-
-**Priority:** High — ships after Must-Have #1 confirmed 56/56 by QA.
-
----
-
-### File to CREATE: `src/app/b/[runId]/page.tsx`
-
-Public shareable benchmark result page at `agentpick.dev/b/{runId}`. Next.js **Server Component with ISR** (`revalidate: 3600`).
-
-**Data fetching:**
-```ts
-const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/v1/benchmarks/${runId}/public`, {
-  next: { revalidate: 3600 },
-})
-```
-(Endpoint created by CLAUDE CODE — do not create the API route yourself.)
-
-**OG metadata export:**
-```ts
-export async function generateMetadata({ params }) {
-  return {
-    openGraph: {
-      images: [`/b/${params.runId}/opengraph-image`],
-    },
+/* Stat counter */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stat-animate {
+    animation: count-up 0.8s ease-out both;
   }
 }
 ```
 
-**Page sections (top to bottom):**
+---
 
-1. **Header bar** — AgentPick logo + "Benchmark Result" breadcrumb
-2. **Query card** — domain badge + full query text. Apply glassmorphism: `bg-white/5 backdrop-blur-[12px] border border-white/10`
-3. **Tool comparison table** — columns: Tool | Latency (ms) | Results | Relevance | Status. Winning tool row highlighted (accent green background). Apply glassmorphism to the card wrapping the table.
-4. **"Run this benchmark" CTA** — pre-filled Python / JS / curl code tabs. Reuse `HeroCodeBlock` or adapt inline. Apply glassmorphism to this card.
-5. **Share / Embed section:**
-   - "Copy link" button → copies `window.location.href`
-   - "Embed" button → copies `<iframe src="https://agentpick.dev/b/{runId}" width="600" height="400"></iframe>`
-   - "Copy badge" button → copies `[![AgentPick](https://agentpick.dev/b/{runId}/badge.svg)](https://agentpick.dev/b/{runId})`
-6. **Not Found:** If `fetch` returns 404, render a friendly "Benchmark not found" message with a link back to `/`
+### 1b — `src/app/page.tsx`
 
-**Styling:** Match existing site design. Use same color palette and component patterns as the rest of the app.
+**Read the file first.** Make the following targeted changes:
+
+**1. Add gradient mesh background** — add `<div className="mesh-bg"><span /></div>` as the very first child of the root layout element (before the `<header>` or first section).
+
+**2. Hero h1 typography** — find the main hero `<h1>` element. Add classes `hero-h1 hero-gradient-text` (remove any existing hard-coded font-size classes that conflict).
+
+**3. Glassmorphism on stat cards** — find the hero stat counter widgets / network-stats cards (look for `bg-card`, `bg-white/5`, or similar solid card classes on small stat display elements). Replace solid background classes with `glass-card` class.
+
+**4. Category labels** — find any existing section label spans with `text-xs uppercase tracking-widest` (or similar). Add class `category-label` to them (keep existing classes, just add this one).
+
+**Do NOT:** change page routing, server components to client components, or any data-fetching logic.
 
 ---
 
-## Files Summary — CODEX
+### 1c — `src/components/StatsBar.tsx`
 
-| Action     | File                                   |
-|------------|----------------------------------------|
-| **MODIFY** | `src/app/page.tsx`                     |
-| **MODIFY** | `src/app/connect/page.tsx`             |
-| **MODIFY** | `src/app/dashboard/page.tsx`           |
-| **MODIFY** | `src/components/ProductCard.tsx`       |
-| **MODIFY** | `src/components/PricingSection.tsx`    |
-| **MODIFY** | `src/components/AgentCTA.tsx`          |
-| **MODIFY** | `src/components/RouterCTA.tsx`         |
-| **MODIFY** | `src/app/globals.css`                  |
-| **CREATE** | `src/app/b/[runId]/page.tsx`           |
+**Read the file first.** Add animated count-up to the live stats display.
 
-`src/app/layout.tsx` — read-only unless JetBrains Mono font import is genuinely missing.
+**Add at top of file (after existing imports):**
+```typescript
+'use client';
+import { useEffect, useRef, useState } from 'react';
+```
+(Only add `'use client'` if the component is not already a client component.)
 
-**Files owned by TASK_CLAUDE_CODE.md (do NOT touch):**
-- `src/app/api/v1/keys/register/route.ts`
-- `src/app/api/v1/agents/register/route.ts`
-- `src/app/api/v1/benchmarks/[runId]/public/route.ts`
-- `src/app/b/[runId]/opengraph-image.tsx`
-- `src/app/b/[runId]/badge.svg/route.ts`
-- `prisma/schema.prisma`
-- Any file under `src/lib/`
+**Add a `CountUp` helper component inside the file** (before the default export):
+```typescript
+function CountUp({ target, duration = 800 }: { target: number; duration?: number }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const startTime = performance.now();
+          const tick = (now: number) => {
+            const progress = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            setCount(Math.round(eased * target));
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          // Respect prefers-reduced-motion
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (reduced) { setCount(target); }
+          else { requestAnimationFrame(tick); }
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return <span ref={ref} className="stat-animate">{count.toLocaleString()}</span>;
+}
+```
+
+**Replace static number displays** — for each stat value that shows agent count or calls-routed count (currently rendered as a plain number or string), wrap the numeric value with `<CountUp target={numericValue} />`.
+
+Example pattern to replace:
+```tsx
+<span>{agentCount}</span>
+```
+Replace with:
+```tsx
+<CountUp target={agentCount} />
+```
+
+Only apply `CountUp` to the primary hero/landing stats. Do not apply to table cells, pagination counts, or dashboard data tables.
 
 ---
 
-## Acceptance Criteria
+### 1d — `src/components/AgentCTA.tsx` and `src/components/RouterCTA.tsx`
 
-- [ ] Lighthouse Performance ≥ 90 on mobile (no animation regression)
-- [ ] All 4 QA page load checks return 200 OK
-- [ ] No CLS on 375px viewport
-- [ ] All animations respect `prefers-reduced-motion: reduce`
-- [ ] `/b/{runId}` page loads and shows benchmark data
-- [ ] OG metadata present on `/b/{runId}` (references CLAUDE CODE's opengraph-image handler)
-- [ ] Share / Embed / Badge copy buttons functional
+**Read both files first.** For each:
+
+Find the primary "Get API Key" (or equivalent primary action) `<button>` or `<a>` element. Add class `cta-glow` to it. Do not remove existing classes.
+
+Example:
+```tsx
+// Before
+<button className="bg-indigo-600 text-white px-6 py-3 rounded-lg">
+  Get API Key
+</button>
+
+// After
+<button className="bg-indigo-600 text-white px-6 py-3 rounded-lg cta-glow">
+  Get API Key
+</button>
+```
+
+---
+
+### 1e — `src/app/connect/page.tsx`
+
+**Read the file first.** Find the feature grid cards (typically rendered with `bg-card`, `rounded-xl`, `border`, or similar). Replace their background/border classes with `glass-card`. Keep padding, gap, and layout classes.
+
+---
+
+### 1f — `src/app/dashboard/page.tsx`
+
+**Read the file first.** Find the stat panels (cards showing usage numbers, call counts, plan info). Replace their solid background classes with `glass-card`. Keep layout and text classes.
+
+---
+
+## Task 2 — Must-Have #3 Frontend: Shareable Benchmark Permalink Page
+
+**NEXT_VERSION.md ref:** Must-Have #3 — `/b/[runId]` ISR page
+**File:** `src/app/b/[runId]/page.tsx` (CREATE — does not exist)
+
+### Context
+- `src/app/b/[runId]/opengraph-image.tsx` already exists (OG image generation)
+- `src/app/b/[runId]/badge.svg/route.ts` already exists (SVG badge)
+- `src/app/api/v1/benchmarks/[runId]/public/route.ts` already exists (API, owned by TASK_CLAUDE_CODE.md)
+
+### File to Create
+
+The page must:
+- Use Next.js ISR with `revalidate: 3600`
+- Fetch from `/api/v1/benchmarks/{runId}/public` (no auth, GET)
+- Show: query used, tools compared (side-by-side latency/relevance table), winning tool callout
+- Show "Run this benchmark" CTA with pre-filled Python / JS / curl snippets (use `<pre>` / `<code>` blocks)
+- Be a **server component** (no `'use client'`)
+- Return 404 via `notFound()` if the API returns 404
+
+```typescript
+import { notFound } from 'next/navigation';
+
+export const revalidate = 3600;
+
+interface Tool {
+  name: string | null;
+  latencyMs: number | null;
+  resultCount: number | null;
+  relevanceScore: number | null;
+  success: boolean;
+}
+
+interface BenchmarkData {
+  id: string;
+  query: string;
+  domain: string | null;
+  tools: Tool[];
+  winningTool: string | null;
+  createdAt: string;
+}
+
+async function getBenchmarkRun(runId: string): Promise<BenchmarkData | null> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://agentpick.dev';
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/benchmarks/${runId}/public`, {
+      next: { revalidate: 3600 },
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Unexpected status ${res.status}`);
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ runId: string }> }) {
+  const { runId } = await params;
+  const data = await getBenchmarkRun(runId);
+  if (!data) return { title: 'Benchmark Not Found — AgentPick' };
+  return {
+    title: `Benchmark: "${data.query}" — AgentPick`,
+    description: `${data.tools.length} tools compared. Winner: ${data.winningTool ?? 'N/A'}. AgentPick benchmark result.`,
+    openGraph: { title: `AgentPick Benchmark`, description: data.query },
+  };
+}
+
+export default async function BenchmarkPermalinkPage({
+  params,
+}: {
+  params: Promise<{ runId: string }>;
+}) {
+  const { runId } = await params;
+  const data = await getBenchmarkRun(runId);
+  if (!data) notFound();
+
+  const curlSnippet = `curl https://agentpick.dev/api/v1/benchmarks/${data.id}/public`;
+  const pySnippet = `import requests
+result = requests.get("https://agentpick.dev/api/v1/benchmarks/${data.id}/public")
+print(result.json())`;
+  const jsSnippet = `const res = await fetch("https://agentpick.dev/api/v1/benchmarks/${data.id}/public");
+const data = await res.json();
+console.log(data);`;
+
+  return (
+    <main className="max-w-4xl mx-auto px-4 py-16">
+      {/* Header */}
+      <div className="mb-8">
+        <p className="category-label mb-2">AgentPick Benchmark</p>
+        <h1 className="text-2xl font-semibold text-white mb-1">
+          &ldquo;{data.query}&rdquo;
+        </h1>
+        {data.domain && (
+          <p className="text-sm text-white/50">Domain: {data.domain}</p>
+        )}
+      </div>
+
+      {/* Winning tool callout */}
+      {data.winningTool && (
+        <div className="glass-card p-4 mb-8 flex items-center gap-3">
+          <span className="text-indigo-400 font-mono text-sm">Winner</span>
+          <span className="text-white font-semibold">{data.winningTool}</span>
+        </div>
+      )}
+
+      {/* Tools comparison table */}
+      <div className="glass-card overflow-x-auto mb-10">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-white/50 text-left">
+              <th className="px-4 py-3 font-normal">Tool</th>
+              <th className="px-4 py-3 font-normal">Latency (ms)</th>
+              <th className="px-4 py-3 font-normal">Results</th>
+              <th className="px-4 py-3 font-normal">Relevance</th>
+              <th className="px-4 py-3 font-normal">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.tools.map((tool, i) => (
+              <tr key={i} className="border-b border-white/5 last:border-0">
+                <td className="px-4 py-3 text-white font-medium">
+                  {tool.name ?? '—'}
+                  {tool.name === data.winningTool && (
+                    <span className="ml-2 text-indigo-400 text-xs">★</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-white/80 font-mono">
+                  {tool.latencyMs != null ? tool.latencyMs : '—'}
+                </td>
+                <td className="px-4 py-3 text-white/80">
+                  {tool.resultCount != null ? tool.resultCount : '—'}
+                </td>
+                <td className="px-4 py-3 text-white/80">
+                  {tool.relevanceScore != null
+                    ? `${(tool.relevanceScore * 100).toFixed(0)}%`
+                    : '—'}
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={
+                      tool.success
+                        ? 'text-green-400 text-xs font-mono'
+                        : 'text-red-400 text-xs font-mono'
+                    }
+                  >
+                    {tool.success ? 'OK' : 'FAIL'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Badge embed */}
+      <div className="mb-10">
+        <p className="category-label mb-3">Embed this benchmark</p>
+        <div className="glass-card p-4">
+          <p className="text-white/60 text-xs mb-2">Markdown badge:</p>
+          <pre className="text-xs text-white/80 font-mono overflow-x-auto whitespace-pre-wrap break-all">
+            {`![AgentPick Benchmark](https://agentpick.dev/b/${data.id}/badge.svg)`}
+          </pre>
+        </div>
+      </div>
+
+      {/* Reproduce section */}
+      <div>
+        <p className="category-label mb-4">Run this benchmark</p>
+        <div className="space-y-4">
+          <div className="glass-card p-4">
+            <p className="text-white/40 text-xs mb-2 font-mono">curl</p>
+            <pre className="text-xs text-white/80 font-mono overflow-x-auto">{curlSnippet}</pre>
+          </div>
+          <div className="glass-card p-4">
+            <p className="text-white/40 text-xs mb-2 font-mono">Python</p>
+            <pre className="text-xs text-white/80 font-mono overflow-x-auto">{pySnippet}</pre>
+          </div>
+          <div className="glass-card p-4">
+            <p className="text-white/40 text-xs mb-2 font-mono">JavaScript</p>
+            <pre className="text-xs text-white/80 font-mono overflow-x-auto">{jsSnippet}</pre>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+```
+
+### Acceptance Criteria
+- `GET /b/{runId}` returns HTTP 200 for a valid runId
+- `GET /b/nonexistent-id` returns HTTP 404
+- ISR revalidation every 3600s
+- OG metadata populated for Twitter/LinkedIn previews
+- No `'use client'` (server component)
+- Displays multi-tool table when `tools.length > 1`
+
+---
+
+## Final Verification
+
+- [ ] All 8 files addressed (7 modified, 1 created)
+- [ ] No changes to CLAUDE_CODE-owned files
+- [ ] `@media (prefers-reduced-motion: no-preference)` wraps ALL animation/transition rules
+- [ ] No new npm dependencies (no animation library, no canvas)
+- [ ] Lighthouse Performance ≥ 90 mobile not regressed (avoid adding render-blocking resources)
+- [ ] Write progress log entry to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`

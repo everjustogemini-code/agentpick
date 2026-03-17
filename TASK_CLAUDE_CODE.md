@@ -1,190 +1,277 @@
 # TASK_CLAUDE_CODE.md
-**Agent:** Claude Code
-**Date:** 2026-03-16
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1) + Must-Have #3 (backend)
+**Agent:** Claude Code (backend/API/complex multi-file)
+**Date:** 2026-03-17
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1a + P1b) + Must-Have #3 (backend API)
 
 ---
 
-## Overview
+## Files to Modify / Create
 
-This file covers:
-- **Must-Have #1 (P1 — ships first):** Fix `/api/v1/keys/register` 404 + add `apiKey` camelCase alias
-- **Must-Have #3 (backend):** Shareable Benchmark Permalinks — public API endpoint, OG image, SVG badge
+| File | Action |
+|------|--------|
+| `src/lib/router/ai-classify.ts` | Modify — LRU cache upgrade + query normalization |
+| `src/__tests__/rate-limit-429.test.ts` | Create — automated 429 regression test |
+| `src/app/api/v1/benchmarks/[runId]/public/route.ts` | Modify — add multi-tool BenchmarkAgentRun data |
 
-TASK_CODEX.md owns all frontend files. No file overlap.
+**DO NOT touch any files owned by TASK_CODEX.md:**
+`src/app/globals.css`, `src/app/page.tsx`, `src/components/StatsBar.tsx`,
+`src/components/AgentCTA.tsx`, `src/components/RouterCTA.tsx`,
+`src/app/connect/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/b/[runId]/page.tsx`
 
 ---
 
-## Must-Have #1 — Fix P1: `/api/v1/keys/register` 404 + `apiKey` Inconsistency
+## Task 1 — P1a: AI Classification Latency Fix
 
-**Priority:** CRITICAL — must ship and pass QA (56/56) before any other feature deploys.
+**NEXT_VERSION.md ref:** Must-Have #1a — classification sub-step ≤ 200ms p95
+**File:** `src/lib/router/ai-classify.ts`
 
----
+### Background (read first)
+- Current cache: `classificationCache` is a plain `Map` (line 31). Eviction at lines 181–183, 196–198, 204–206 deletes only the oldest-inserted key (`.keys().next().value`), NOT the least-recently-used. Frequently-hit queries can be evicted while stale entries persist.
+- Cache key (line 171): `${capability}:${query}` — no normalization. `"What is AI"` and `"what is ai  "` are separate cache misses, both fall through to Haiku.
+- LLM timeout is already 150ms (line 192) and Haiku is already used (line 257). Header `X-Classification-Ms` is already emitted in `src/lib/router/index.ts` lines 658/709. **Do not touch index.ts.**
 
-### File 1 — CREATE: `src/app/api/v1/keys/register/route.ts`
+### Change 1 — Add inline LRU class before the import block (top of file, before line 14)
 
-**Goal:** Alias `/api/v1/keys/register` → `/api/v1/agents/register`. Proxy the full POST body, add `Deprecation: true` header.
-
-**Before writing:** Read `src/app/api/v1/agents/register/route.ts` to confirm request/response shape.
-
-**Implementation:**
-
-```ts
-import { NextRequest, NextResponse } from 'next/server'
-
-export async function POST(req: NextRequest) {
-  const body = await req.json()
-
-  const upstream = await fetch(
-    new URL('/api/v1/agents/register', req.nextUrl.origin).toString(),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+```typescript
+class LRUCache<K, V> {
+  private map = new Map<K, V>();
+  constructor(private maxSize: number) {}
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const val = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, val); // promote to MRU position
+    return val;
+  }
+  set(key: K, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.maxSize) {
+      this.map.delete(this.map.keys().next().value!); // evict LRU
     }
-  )
+    this.map.set(key, value);
+  }
+  get size() { return this.map.size; }
+}
+```
 
-  const data = await upstream.json()
+### Change 2 — Replace `classificationCache` declaration (lines 31–32)
 
-  return NextResponse.json(data, {
-    status: upstream.status,
-    headers: { Deprecation: 'true' },
+Old:
+```typescript
+const classificationCache = new Map<string, { result: QueryContext; timestamp: number }>();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+```
+
+New:
+```typescript
+const classificationCache = new LRUCache<string, { result: QueryContext; timestamp: number }>(500);
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+```
+
+### Change 3 — Add query normalization in `getClassification` (line 171)
+
+Old:
+```typescript
+const key = `${capability}:${query}`;
+```
+
+New:
+```typescript
+const key = `${capability}:${query.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+```
+
+### Change 4 — Remove all 3 manual size-check eviction blocks
+
+Remove ALL occurrences of this 3-line pattern (appears at lines 181–183, 196–198, 204–206):
+```typescript
+if (classificationCache.size > 1000) {
+  classificationCache.delete(classificationCache.keys().next().value!);
+}
+```
+LRUCache handles eviction automatically. Do not keep these.
+
+### Acceptance Criteria
+- `"What is AI  "` and `"what is ai"` produce the same cache key and share one cache slot
+- Max 500 entries; LRU entry is evicted (not oldest-inserted)
+- No new npm dependencies
+- `npx vitest run src/__tests__/ai-classify.test.ts` — all existing tests pass
+
+---
+
+## Task 2 — P1b: Automated Rate Limit 429 Test
+
+**NEXT_VERSION.md ref:** Must-Have #1b — `test_rate_limit_429` must run in CI on every PR
+**File:** `src/__tests__/rate-limit-429.test.ts` (CREATE — does not exist)
+
+### Background
+`checkUsageLimit` in `src/lib/router/sdk.ts` (line 115) returns `{ allowed: false, hardCapped: true }` when `monthCount >= monthlyLimit` for a plan with no overage (`overagePerCall === null`). The handler uses this to return HTTP 429 with `RATE_LIMITED` error code and `Retry-After` header. No test currently validates this path.
+
+**Before writing the test:** Open `src/lib/router/sdk.ts` and confirm:
+1. The exact value of `ROUTER_PLAN_MONTHLY_LIMITS['FREE']` (expected: `500`)
+2. The exact string key for the free plan in `RouterPlanValue` type (expected: `'FREE'`)
+3. Whether `ROUTER_PLAN_OVERAGE_PER_CALL['FREE']` is `null` (confirms hard-cap branch fires)
+
+### Test File to Create
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    routerCall: {
+      count: vi.fn(),
+    },
+  },
+}));
+
+import { prisma } from '@/lib/prisma';
+import { checkUsageLimit } from '@/lib/router/sdk';
+
+const mockCount = prisma.routerCall.count as ReturnType<typeof vi.fn>;
+
+describe('Rate limit 429 path', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('test_rate_limit_429 — returns allowed:false + hardCapped:true when monthCount equals monthlyLimit', async () => {
+    // Free plan monthly limit = 500; seed at limit (501st call scenario)
+    mockCount
+      .mockResolvedValueOnce(0)   // todayCount
+      .mockResolvedValueOnce(500); // monthCount = at monthly limit
+
+    const result = await checkUsageLimit('dev-test-id', 'FREE');
+
+    expect(result.allowed).toBe(false);
+    expect(result.hardCapped).toBe(true);
+    expect(result.remaining).toBe(0);
+    expect(result.monthlyUsed).toBe(500);
+    expect(result.monthlyLimit).toBe(500);
+  });
+
+  it('allows call when monthCount is one below monthly limit', async () => {
+    mockCount
+      .mockResolvedValueOnce(0)   // todayCount
+      .mockResolvedValueOnce(499); // monthCount = one below limit
+
+    const result = await checkUsageLimit('dev-test-id', 'FREE');
+
+    expect(result.hardCapped).toBe(false);
+    expect(result.monthlyUsed).toBe(499);
+  });
+});
+```
+
+### Acceptance Criteria
+- `npx vitest run src/__tests__/rate-limit-429.test.ts` — `test_rate_limit_429` passes
+- No real DB or Redis required (pure mock)
+- Included in default vitest run (no special flag)
+
+---
+
+## Task 3 — Must-Have #3 Backend: Benchmark Public API — Multi-Tool Response
+
+**NEXT_VERSION.md ref:** Must-Have #3 — `GET /api/v1/benchmarks/{runId}/public` unauthenticated, sanitized, multi-tool
+**File:** `src/app/api/v1/benchmarks/[runId]/public/route.ts` (Modify)
+
+### Current State
+Lines 1–43: returns a `tools` array with a single entry built from `BenchmarkRun`'s own columns. Per-agent results from `BenchmarkAgentRun` are not included. The spec requires multi-tool side-by-side comparison.
+
+### Before Writing
+Check `prisma/schema.prisma` for the exact relation field name on `BenchmarkRun` that links to `BenchmarkAgentRun` records (look for `@@relation` or field type `BenchmarkAgentRun[]`). The field is likely named `agentRuns` or `BenchmarkAgentRun`. Use the exact name from the schema.
+
+Also confirm `BenchmarkAgentRun` fields: `latencyMs`, `resultCount`, `relevanceScore`, `statusCode`, and its relation back to `BenchmarkAgent` which has a relation to `Product`.
+
+### Replace Entire File With
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+const db = prisma as any
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ runId: string }> }
+) {
+  const { runId } = await params
+
+  const run = await db.benchmarkRun.findUnique({
+    where: { id: runId },
+    include: {
+      product: true,
+      // Replace 'agentRuns' with actual relation name from prisma/schema.prisma
+      agentRuns: {
+        include: { agent: { include: { product: true } } },
+        orderBy: { latencyMs: 'asc' },
+      },
+    },
+  })
+
+  if (!run) {
+    return NextResponse.json({ error: { code: 'NOT_FOUND' } }, { status: 404 })
+  }
+
+  // Multi-tool array from BenchmarkAgentRun; fall back to single-tool for legacy rows
+  const tools: Array<{
+    name: string | null
+    latencyMs: number | null
+    resultCount: number | null
+    relevanceScore: number | null
+    success: boolean
+  }> =
+    Array.isArray(run.agentRuns) && run.agentRuns.length > 0
+      ? run.agentRuns.map((ar: any) => ({
+          name: ar.agent?.product?.name ?? ar.agent?.name ?? 'Unknown',
+          latencyMs: ar.latencyMs ?? null,
+          resultCount: ar.resultCount ?? null,
+          relevanceScore: ar.relevanceScore ?? null,
+          success: ar.statusCode === 200,
+        }))
+      : [
+          {
+            name: run.product?.name ?? null,
+            latencyMs: run.latencyMs ?? null,
+            resultCount: run.resultCount ?? null,
+            relevanceScore: run.relevanceScore ?? null,
+            success: run.statusCode === 200,
+          },
+        ]
+
+  const winningTool =
+    tools.find((t) => t.success && t.latencyMs != null)?.name ??
+    run.product?.name ??
+    null
+
+  const sanitized = {
+    id: run.id,
+    query: run.query,
+    domain: run.domain,
+    tools,
+    winningTool,
+    createdAt: run.createdAt,
+  }
+
+  return NextResponse.json(sanitized, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    },
   })
 }
 ```
 
-**Acceptance:**
-- `POST /api/v1/keys/register` with valid payload returns same body as `/api/v1/agents/register`
-- Response includes header `Deprecation: true`
-- Existing `/api/v1/agents/register` is NOT modified by this task
+### Acceptance Criteria
+- `GET /api/v1/benchmarks/{runId}/public` — no auth required, HTTP 200
+- `tools` array has one entry per `BenchmarkAgentRun` when available
+- Falls back to single-entry array for legacy records with no agent runs
+- No internal cost/billing fields in response (`costPerCall`, `billingAmount`, etc.)
+- `Cache-Control: public, s-maxage=3600` header present
 
 ---
 
-### File 2 — MODIFY: `src/app/api/v1/agents/register/route.ts`
+## Final Verification
 
-**Goal:** Add `apiKey` (camelCase) as a backwards-compatible alias alongside the existing `api_key` field.
-
-**Change:** Find the `NextResponse.json(...)` call that returns the registration response. Add `apiKey` mirroring the same value as `api_key`.
-
-```ts
-// BEFORE (example — match actual field names in file)
-return NextResponse.json({ api_key: generatedKey, plan, monthlyLimit })
-
-// AFTER
-return NextResponse.json({ api_key: generatedKey, apiKey: generatedKey, plan, monthlyLimit })
-```
-
-- Do NOT remove `api_key` — this is a backwards-compatible addition only.
-- Do NOT change any other logic in this file.
-
-**Acceptance:**
-- `POST /api/v1/agents/register` response body contains both `api_key` and `apiKey` with identical values
-- No regression on existing behavior
-- QA score: 55/56 → 56/56
-
----
-
-## Must-Have #3 — Shareable Benchmark Permalinks: Backend
-
-**Priority:** High — ships after #1 confirmed 56/56 by QA.
-
----
-
-### File 3 — CREATE: `src/app/api/v1/benchmarks/[runId]/public/route.ts`
-
-Unauthenticated public endpoint returning sanitized benchmark run data.
-
-**Before writing:** Read `prisma/schema.prisma` to confirm `BenchmarkRun` model field names.
-
-**Logic:**
-1. Parse `runId` from route `params`
-2. Query: `prisma.benchmarkRun.findUnique({ where: { id: runId }, include: { benchmarkQuery: true, benchmarkAgent: true } })`
-3. If not found → `NextResponse.json({ error: 'not found' }, { status: 404 })`
-4. Return sanitized shape (strip apiKey, userId, internal fields):
-   ```ts
-   {
-     id,
-     query: run.benchmarkQuery?.queryText,
-     domain: run.benchmarkQuery?.domain,
-     tools: [{
-       name: run.benchmarkAgent?.name,
-       latencyMs: run.latencyMs,
-       resultCount: run.resultCount,
-       relevanceScore: run.relevanceScore,
-       success: run.statusCode === 200,
-     }],
-     createdAt: run.createdAt,
-     winningTool: run.benchmarkAgent?.name,
-   }
-   ```
-5. Set `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
-6. No authentication required
-
----
-
-### File 4 — CREATE: `src/app/b/[runId]/opengraph-image.tsx`
-
-Dynamic OG social card using `@vercel/og` (`next/og`).
-
-**Logic:**
-1. `export const runtime = 'edge'`
-2. Fetch run data via internal call to `/api/v1/benchmarks/{runId}/public`
-3. Return `ImageResponse` (1200×630) with:
-   - AgentPick wordmark top-left
-   - Query text (truncate at 120 chars)
-   - Tool comparison row: tool name | latency | relevance
-   - Winning tool highlighted in accent green (`#2ea44f`)
-   - Footer: `agentpick.dev/b/{runId}`
-4. Use `font-family: sans-serif` — no external font fetch (keeps response < 200ms)
-5. Set `Cache-Control: public, max-age=86400`
-
----
-
-### File 5 — CREATE: `src/app/b/[runId]/badge.svg/route.ts`
-
-Lightweight SVG badge for GitHub README embedding. Target response: **< 200ms**.
-
-**Logic:**
-1. Query Prisma directly (single DB read — winning tool name + latencyMs)
-2. Build shields.io-style flat SVG:
-   ```svg
-   <svg xmlns="http://www.w3.org/2000/svg" width="210" height="20">
-     <rect width="80" height="20" fill="#555"/>
-     <rect x="80" width="130" height="20" fill="#2ea44f"/>
-     <text x="8" y="14" fill="#fff" font-family="sans-serif" font-size="11">agentpick</text>
-     <text x="88" y="14" fill="#fff" font-family="sans-serif" font-size="11">{winningTool} · {latencyMs}ms</text>
-   </svg>
-   ```
-3. Return:
-   ```ts
-   new Response(svgString, {
-     headers: {
-       'Content-Type': 'image/svg+xml',
-       'Cache-Control': 'public, s-maxage=3600',
-     },
-   })
-   ```
-
----
-
-## Files Summary — CLAUDE CODE
-
-| Action     | File                                                        |
-|------------|-------------------------------------------------------------|
-| **CREATE** | `src/app/api/v1/keys/register/route.ts`                     |
-| **MODIFY** | `src/app/api/v1/agents/register/route.ts`                   |
-| **CREATE** | `src/app/api/v1/benchmarks/[runId]/public/route.ts`         |
-| **CREATE** | `src/app/b/[runId]/opengraph-image.tsx`                     |
-| **CREATE** | `src/app/b/[runId]/badge.svg/route.ts`                      |
-
-**Files owned by TASK_CODEX.md (do NOT touch):**
-- `src/app/page.tsx`
-- `src/app/connect/page.tsx`
-- `src/app/dashboard/page.tsx`
-- `src/app/b/[runId]/page.tsx`
-- `src/components/ProductCard.tsx`
-- `src/components/PricingSection.tsx`
-- `src/components/StatsBar.tsx`
-- `src/components/AgentCTA.tsx`
-- `src/components/RouterCTA.tsx`
-- `src/app/globals.css`
+- [ ] All 3 tasks complete with no changes to CODEX-owned files
+- [ ] `npx vitest run` — all tests pass (including new rate-limit-429 test)
+- [ ] No new npm dependencies introduced
+- [ ] Write progress log entry to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`

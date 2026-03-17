@@ -6,6 +6,26 @@
  * to avoid LLM calls when the query type is obvious.
  */
 
+class LRUCache<K, V> {
+  private map = new Map<K, V>();
+  constructor(private maxSize: number) {}
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const val = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, val); // promote to MRU position
+    return val;
+  }
+  set(key: K, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.maxSize) {
+      this.map.delete(this.map.keys().next().value!); // evict LRU
+    }
+    this.map.set(key, value);
+  }
+  get size() { return this.map.size; }
+}
+
 import Anthropic from '@anthropic-ai/sdk';
 import { CAPABILITY_TOOLS } from './index';
 
@@ -28,8 +48,8 @@ const DEFAULT_CONTEXT: QueryContext = {
 };
 
 // In-memory cache: key → { result, timestamp }
-const classificationCache = new Map<string, { result: QueryContext; timestamp: number }>();
-const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const classificationCache = new LRUCache<string, { result: QueryContext; timestamp: number }>(500);
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Fast regex-based pre-classifier.
@@ -168,7 +188,7 @@ export function fastClassify(query: string): QueryContext | null {
  * Cached for 2 minutes. Fails safe with default context.
  */
 export async function getClassification(query: string, capability: string): Promise<{ context: QueryContext; cached: boolean; classificationMs: number }> {
-  const key = `${capability}:${query}`;
+  const key = `${capability}:${query.trim().toLowerCase().replace(/\s+/g, ' ')}`;
   const cached = classificationCache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return { context: cached.result, cached: true, classificationMs: 0 };
@@ -186,7 +206,7 @@ export async function getClassification(query: string, capability: string): Prom
   try {
     const result = await Promise.race([
       classifyQuery(query, capability),
-      new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500)),
+      new Promise<QueryContext>((_, reject) => setTimeout(() => reject(new Error('timeout')), 150)),
     ]);
     const ms = Date.now() - start;
     classificationCache.set(key, { result, timestamp: Date.now() });
