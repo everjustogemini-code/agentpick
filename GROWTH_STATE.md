@@ -1,22 +1,23 @@
-# Growth State — Cycle 92 (2026-03-17)
+# Growth State — Cycle 93 (2026-03-17)
 
 ## System Status
 - Router: HEALTHY (200)
 - All pages: HEALTHY (/, /pricing, /blog, /connect, /dashboard, /checkout all 200)
-- Agents: 438 registered
-- Daily calls: 81
+- Agents: 441 registered
+- Daily calls: 85
 
 ## AEO State
-- Streak at 0: 92 consecutive cycles
-- Query 1 "best search API for AI agents": dominated by KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel, Valyu, Bright Data
-- Query 2 "tool routing for AI agents": dominated by LivePerson, Patronus AI, Botpress, Arize AI, LangChain
-- Query 3 "AI agent API benchmark": dominated by AgentBench, Tau-Bench, GAIA, ToolBench, IBM SEAL (academic benchmarks)
+- Streak at 0: 93 consecutive cycles
+- Query 1 "best search API for AI agents": dominated by KDnuggets, Tavily, Firecrawl, Exa, Brave, Linkup, Parallel, data4ai.com, Buttondown
+- Query 2 "tool routing for AI agents": dominated by Botpress, LivePerson, Patronus AI, Arize AI, Deepchecks, Niva Labs, LangChain
+- Query 3 "AI agent API benchmark": dominated by Evidently AI, Sierra, IBM Research, AgentBench, Galileo, Cleanlab, Emergence AI
 
-## Competitive Intelligence (Cycle 92)
+## Competitive Intelligence (Cycle 93)
 - KDnuggets "7 Free Web Search APIs for AI Agents" — top result for query 1; ideal target for inclusion
-- data4ai.com "8 best AI search API tools" — still appearing; target for listing
-- Parallel Search (parallel.ai) — competitor in query 1 and benchmark results
-- Valyu Search — ranked #1 on 5 benchmarks per AImultiple study (cited by researchers = AEO gold standard)
+- data4ai.com "8 best AI search API tools" — appearing in query 1; target for listing
+- Buttondown "We scored 5 search APIs for AI agents" newsletter — appearing in query 1; niche but relevant audience
+- Deepchecks, Arize AI dominate "tool routing" — evaluation/observability framing
+- Sierra tau-bench, Evidently AI dominate "benchmark" — positioned as infra not evaluation tool
 
 ## Conversion Funnel
 - Register: working (returns ah_live_sk_ key, plan: FREE, monthlyLimit: 500)
@@ -25,14 +26,15 @@
 - Payment: BLOCKED — Stripe not configured (STRIPE_SECRET_KEY missing)
 
 ## Moltbook State
-- Working schema: title, submolt_name, submolt (both "builds"), content — verified cycle 92
+- Working schema: title, submolt_name, submolt (both "builds"), content — verified
 - Correct endpoint: POST https://moltbook.com/api/v1/posts
 - NOTE: do NOT include agent_id in body (400 error)
 - NOTE: apostrophes or special chars in longer content cause 500 — keep clean and under ~300 chars
-- Post 1 this cycle: 24cd36b5 — cycle 92 benchmark data (published + verified)
-- Post 2 this cycle: 889adc41 — routing layer pitch (published + verified)
+- Post 1 this cycle: 29c298e0 — cycle 93 benchmark data (published + verified)
+- Post 2 this cycle: in progress (background, 2.5 min rate limit)
 
 ## Highest Leverage Actions (owner required)
 1. Set Stripe env vars → enables first revenue immediately
 2. Submit to toolify.ai, futurepedia.io, theresanaiforthat.com → directory backlinks
 3. Reach out to KDnuggets for listicle inclusion in "7 Free Web Search APIs for AI Agents"
+4. Reach out to data4ai.com for listing in "8 best AI search API tools"
