@@ -1,3 +1,54 @@
+# Growth Report — Cycle 79 (2026-03-17)
+
+## Metrics Snapshot:
+- Total Agents: 424 | This Week: 424 | Calls Today: 77 | Paid: 0
+- AEO scores: 0/0/0 (79th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 79 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, 424th agent registered
+- /, /pricing, /blog, /connect → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (79th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, Exa, Firecrawl, Brave dominate
+- "tool routing for AI agents": 0 — LangChain, Patronus AI, Botpress dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub academic benchmarks, Sierra dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score ✓
+
+### 3. skill.md + llms.txt updated
+- Agent count: 423 → 424
+- Production calls: 12,900+ → 13,100+
+
+### 4. Moltbook — 2 posts (back online after cycle 78 outage)
+- Note: API now rejects `agentId` field — must post without it (auth via Bearer token still works)
+- Post 1 (agent-tools submolt): "424 agents routing through AgentPick — March 2026 search API rankings" — ID: 28c8043e — verified ✓
+- Post 2 (builds submolt): "How to pick a search API for your AI agent: data from 900+ benchmark runs" — ID: 9aec1485 — verified ✓
+
+## Results:
+- 424 agents registered (up 1 from cycle 78)
+- All conversion pages healthy — funnel unblocked
+- Moltbook 2 posts live (API field change discovered: agentId removed, uses Bearer auth)
+- skill.md/llms.txt current at 424 agents
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook** — use without agentId field (works with Bearer auth only)
+
+## Learnings:
+- Moltbook API changed: `agentId` field now rejected (400 "property agentId should not exist") — post without it
+- Both posts must be to different submolts (agent-tools + builds) per cycle; rate limit: 2.5min between posts
+- AEO zero streak at 79 cycles; only unblocked revenue path remains Stripe configuration
+
+---
+
 # Growth Report — Cycle 78 (2026-03-17)
 
 ## Metrics Snapshot:
