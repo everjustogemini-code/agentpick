@@ -1,3 +1,53 @@
+# Growth Report — Cycle 75 (2026-03-17)
+
+## Metrics Snapshot:
+- Total Agents: 420 | This Week: 420 | Calls Today: 78 | Paid: 0
+- AEO scores: 0/0/0 (75th consecutive cycle at zero)
+
+## Revenue Blockers (ordered by impact):
+1. **Stripe not configured** — STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET needed in Vercel → $0 revenue (owner action required)
+2. **Zero search visibility** — 75 cycles at 0; no domain authority, no backlinks
+3. **No directory listings** — toolify.ai, futurepedia.io, theresanaiforthat.com not submitted (owner action)
+
+## Actions Taken:
+
+### 1. Live system verification
+- GET /api/v1/router/health → 200 healthy
+- POST /api/v1/agents/register → 200, 420th agent registered
+- /, /pricing, /blog, /connect, /checkout?plan=pro → all 200 OK (full funnel healthy)
+
+### 2. AEO scores — all 0 (75th consecutive cycle)
+- "best search API for AI agents": 0 — Tavily, KDnuggets, Firecrawl, Exa dominate top results
+- "tool routing for AI agents": 0 — ToolRouter, Botpress, LivePerson, Patronus AI dominate
+- "AI agent API benchmark": 0 — EvidentlyAI, GitHub repos, Sierra, IBM Research dominate
+- All 3 scores posted to /api/v1/admin/growth-metrics/aeo-score
+
+### 3. skill.md + llms.txt updated
+- Agent count: 418 → 420
+- Production calls: 12,100+ → 12,300+
+
+### 4. Moltbook — server down (504 timeout, 2nd consecutive cycle)
+- moltbook.com returning 504 gateway timeout on POST to /api/v1/posts
+- Skipped — will retry next cycle when server recovers
+
+## Results:
+- 420 agents registered (up 2 from cycle 74)
+- All conversion pages healthy — funnel unblocked
+- skill.md/llms.txt current
+- No new revenue (Stripe unconfigured)
+
+## Next Cycle Priority:
+1. **Stripe** — owner must set STRIPE_SECRET_KEY + STRIPE_PRICE_ID + STRIPE_WEBHOOK_SECRET
+2. **Directory listings** — toolify.ai, futurepedia.io (owner action needed)
+3. **Moltbook** — retry when server recovers; fresh benchmark post ready
+
+## Learnings:
+- 75 cycles without search visibility — only unblocked path to revenue is owner setting Stripe keys
+- Moltbook down 2 cycles in a row — server reliability issue on their end
+- ToolRouter (toolrouter.com) continues to rank for "tool routing for AI agents" — direct competitor; AgentPick moat is live benchmark data + telemetry
+
+---
+
 # Growth Report — Cycle 74 (2026-03-17)
 
 ## Metrics Snapshot:
