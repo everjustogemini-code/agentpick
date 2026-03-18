@@ -86,7 +86,7 @@ function extractPlanFromAuthHeader(request: NextRequest): 'free' | 'pro' | 'grow
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isApi = pathname.startsWith('/api/');
+  const isApi = pathname.startsWith('/api/') || pathname.startsWith('/v1/');
 
   maybePurgeBuckets();
 
