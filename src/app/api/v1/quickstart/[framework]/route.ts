@@ -8,11 +8,10 @@ const SNIPPETS: Record<string, {
   langchain: {
     installCmd: 'pip install langchain agentpick',
     codeSnippet: `import os
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    base_url="https://agentpick.com/v1",
+    base_url="https://agentpick.dev/v1",
     api_key=os.environ["AGENTPICK_API_KEY"],
     model="auto",
 )
@@ -27,7 +26,7 @@ from crewai import Agent, Task, Crew, LLM
 
 llm = LLM(
     model="openai/auto",
-    base_url="https://agentpick.com/v1",
+    base_url="https://agentpick.dev/v1",
     api_key=os.environ["AGENTPICK_API_KEY"],
 )
 researcher = Agent(role="Researcher", goal="Find information", llm=llm,
@@ -45,7 +44,7 @@ from autogen import AssistantAgent
 
 config_list = [{
     "model": "auto",
-    "base_url": "https://agentpick.com/v1",
+    "base_url": "https://agentpick.dev/v1",
     "api_key": os.environ["AGENTPICK_API_KEY"],
 }]
 assistant = AssistantAgent(

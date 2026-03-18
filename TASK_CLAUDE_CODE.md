@@ -1,5 +1,5 @@
 # TASK_CLAUDE_CODE.md — Cycle 3
-**Agent:** Claude Code (API / backend / config)
+**Agent:** Claude Code (API / backend / QA script)
 **Date:** 2026-03-18
 **Source:** NEXT_VERSION.md Cycle 3
 
@@ -7,130 +7,132 @@
 
 ## Coverage Summary
 
-| NEXT_VERSION.md Item | Task | Owner |
+| NEXT_VERSION.md Item | Task | Files |
 |---|---|---|
-| P2 — Dead endpoint 301 redirects | Add redirects in `next.config.ts` | **CLAUDE CODE** |
-| P1-A — SDK wrapper types wrong shape | Fix response types in `src/lib/router/sdk.ts` | **CLAUDE CODE** |
-| Item 3 — Quickstart API route | Create `src/app/api/v1/quickstart/[framework]/route.ts` | **CLAUDE CODE** |
+| P1-A — Flatten `calls`/`cost_usd` in usage response | Add top-level aliases to usage route | `src/app/api/v1/router/usage/route.ts` |
+| P1-A — Fix QA stub assertion | Replace hard-coded `True` with real assertion | `agentpick-router-qa.py` |
+| P2 — 301 redirect `/api/v1/account` → `/api/v1/router/usage` | Create redirect route handler | `src/app/api/v1/account/route.ts` (new) |
+| Item 3 — Quickstart API endpoint | Create `GET /api/v1/quickstart/[framework]` | `src/app/api/v1/quickstart/[framework]/route.ts` (new) |
 
 ---
 
-## Files Owned by This Agent
+## Files Owned by This Agent (Codex must NOT touch these)
 
 | Action | File |
 |---|---|
-| **MODIFY** | `next.config.ts` |
-| **MODIFY** | `src/lib/router/sdk.ts` |
+| **MODIFY** | `src/app/api/v1/router/usage/route.ts` |
+| **MODIFY** | `agentpick-router-qa.py` |
+| **CREATE** | `src/app/api/v1/account/route.ts` |
 | **CREATE** | `src/app/api/v1/quickstart/[framework]/route.ts` |
 
-> **DO NOT TOUCH** any file listed in TASK_CODEX.md.
-> Specifically: `src/app/page.tsx`, `src/app/globals.css`, `src/app/layout.tsx`,
-> `src/app/connect/page.tsx`, `src/components/Playground.tsx`,
-> `src/app/quickstart/page.tsx`, and any arena/pricing component files.
+> **DO NOT TOUCH** any file in Codex's list:
+> `src/app/page.tsx`, `src/app/globals.css`, `src/app/layout.tsx`,
+> `src/app/connect/page.tsx`, `src/app/quickstart/page.tsx`,
+> arena/pricing component files under `src/components/`.
 
 ---
 
-## Task 1 — P2: Add 301 Redirects for Dead Endpoints
+## Task 1 — P1-A (Backend): Add `calls` and `cost_usd` top-level aliases to usage response
 
-**Bug:** `/api/v1/account/usage` and `/api/v1/developer/usage` return 404. Correct path is `/api/v1/router/usage`.
+**File:** `src/app/api/v1/router/usage/route.ts`
 
-**File:** `next.config.ts`
-
-Read the current file first, then add an `async redirects()` method inside `nextConfig`:
-
-```ts
-async redirects() {
-  return [
-    {
-      source: '/api/v1/account/usage',
-      destination: '/api/v1/router/usage',
-      permanent: true,   // HTTP 301
-    },
-    {
-      source: '/api/v1/developer/usage',
-      destination: '/api/v1/router/usage',
-      permanent: true,   // HTTP 301
-    },
-  ];
-},
-```
-
-Place it alongside the existing `headers()` method in the same `nextConfig` object.
-
-**Acceptance:**
-- `GET /api/v1/account/usage` → 301 with `Location: /api/v1/router/usage`
-- `GET /api/v1/developer/usage` → 301 with `Location: /api/v1/router/usage`
-- Existing security headers remain unchanged.
-
----
-
-## Task 2 — P1-A: Fix SDK Response Types to Match Actual `meta`/`data` Shape
-
-**Bug:** `src/lib/router/sdk.ts` contains response types/interfaces that have top-level `tool`, `results`, or `tool_used` keys. Actual API response is:
-```json
-{
-  "meta": { "tool_used": "...", "latency_ms": 120, "cost_usd": 0.001, "ai_classification": "...", "calls_remaining": 99 },
-  "data": { "results": [...] }
-}
-```
-
-**File:** `src/lib/router/sdk.ts`
+**Problem:** `GET /api/v1/router/usage` returns `callsThisMonth` and `stats.totalCostUsd` but the documented API contract requires top-level `calls` (int) and `cost_usd` (float). Client code using `data['calls']` or `data['cost_usd']` gets `undefined`.
 
 **Actions:**
-1. Grep file for any interface/type that declares `tool?:`, `results?:`, `tool_used?:` at the response root level.
-2. Replace with the correct two-level structure:
+1. Read the file. Find the `NextResponse.json(...)` call that builds the response body.
+2. Identify the variable holding the call count (likely `callsThisMonth` or similar) and the variable holding total cost (likely `stats.totalCostUsd` or similar).
+3. Add two top-level alias fields **without removing** any existing fields (backwards-compatible):
 
 ```ts
-// Replace flat response type with:
-export interface RouterResponseMeta {
-  tool_used: string;
-  latency_ms: number;
-  cost_usd: number;
-  /** null when strategy !== 'auto' */
-  ai_classification: string | null;
-  calls_remaining: number;
-}
-
-export interface RouterResponse {
-  meta: RouterResponseMeta;
-  data: {
-    results: SearchResult[];
-  };
-}
+return NextResponse.json({
+  calls: callsThisMonth,          // NEW — integer, canonical field name
+  cost_usd: stats.totalCostUsd,   // NEW — float, canonical field name
+  callsThisMonth,                 // KEEP existing
+  stats,                          // KEEP existing
+  // ...all other existing fields unchanged
+});
 ```
 
-3. Find any code in `sdk.ts` that reads `response.tool` or `response.results` at the top level — update those references to `response.meta.tool_used` and `response.data.results`.
-4. Export the updated interfaces so frontend code can import them.
-
-**Acceptance:**
-- No exported type in `sdk.ts` has top-level `tool` or `results` on a response object.
-- `RouterResponse` (or equivalent name) uses `meta` + `data` nesting.
-- TypeScript compilation passes with no new type errors.
+**Done when:** `GET /api/v1/router/usage` JSON body contains top-level `calls` (integer) and `cost_usd` (float) alongside all existing fields.
 
 ---
 
-## Task 3 — Item 3: New `GET /api/v1/quickstart/[framework]` Route
+## Task 2 — P1-A (QA): Fix stub assertion in QA script
 
-**New file:** `src/app/api/v1/quickstart/[framework]/route.ts`
+**File:** `agentpick-router-qa.py`
 
-Create the directory `src/app/api/v1/quickstart/[framework]/` and the file `route.ts`:
+**Problem:** The QA script hard-codes `True` for the `calls`/`cost_usd` top-level check, so broken API responses silently pass the suite. The score shows 59/60 but this check is a lie.
+
+**Actions:**
+1. Read the file. Search for the test block that checks `/api/v1/router/usage` for `calls` and `cost_usd`.
+2. Find the line(s) that unconditionally assign `result = True` or `passed = True` (or equivalent) instead of actually inspecting the response JSON.
+3. Replace with a real assertion:
+
+```python
+data = response.json()
+result = (
+    isinstance(data.get('calls'), int) and
+    isinstance(data.get('cost_usd'), (int, float))
+)
+```
+
+4. Do not change any other QA checks.
+
+**Done when:** The QA script actually validates `data['calls']` (int) and `data['cost_usd']` (float) exist at top-level. Running against the fixed backend → PASS; running against the old backend (without Task 1) → FAIL.
+
+---
+
+## Task 3 — P2: Add 301 redirect from `/api/v1/account` to `/api/v1/router/usage`
+
+**File:** `src/app/api/v1/account/route.ts` **(new file — create the directory and file)**
+
+**Problem:** Any docs or third-party guides referencing `/api/v1/account` return 404. The correct path is `/api/v1/router/usage`.
+
+**Actions:**
+1. Create directory `src/app/api/v1/account/` if it does not exist.
+2. Create `route.ts` with a permanent redirect that also preserves query parameters:
 
 ```ts
 import { NextRequest, NextResponse } from 'next/server';
 
-const SNIPPETS: Record<string, {
+export async function GET(request: NextRequest) {
+  const { search } = new URL(request.url);
+  return NextResponse.redirect(
+    new URL('/api/v1/router/usage' + search, request.url),
+    { status: 301 }
+  );
+}
+```
+
+**Done when:** `GET /api/v1/account` → HTTP 301 with `Location: /api/v1/router/usage`. `GET /api/v1/account?period=7d` → 301 with `Location: /api/v1/router/usage?period=7d`. Zero 404s from the account path.
+
+---
+
+## Task 4 — Item 3 (API): New `GET /api/v1/quickstart/[framework]` route
+
+**File:** `src/app/api/v1/quickstart/[framework]/route.ts` **(new file — create the directory and file)**
+
+**Actions:**
+1. Create directory `src/app/api/v1/quickstart/[framework]/`.
+2. Create `route.ts` with the following content (hard-coded payload map, no DB):
+
+```ts
+import { NextRequest, NextResponse } from 'next/server';
+
+interface SnippetPayload {
   installCmd: string;
   codeSnippet: string;
   playgroundUrl: string;
-}> = {
+}
+
+const SNIPPETS: Record<string, SnippetPayload> = {
   langchain: {
     installCmd: 'pip install langchain agentpick',
     codeSnippet: `import os
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    base_url="https://agentpick.com/v1",
+    base_url="https://agentpick.dev/v1",
     api_key=os.environ["AGENTPICK_API_KEY"],
     model="auto",
 )
@@ -145,13 +147,13 @@ from crewai import Agent, Task, Crew, LLM
 
 llm = LLM(
     model="openai/auto",
-    base_url="https://agentpick.com/v1",
+    base_url="https://agentpick.dev/v1",
     api_key=os.environ["AGENTPICK_API_KEY"],
 )
-researcher = Agent(role="Researcher", goal="Find information", llm=llm,
-                   backstory="Expert researcher")
-task = Task(description="Research latest LLM benchmarks", agent=researcher,
-            expected_output="Summary")
+researcher = Agent(role="Researcher", goal="Find information",
+                   llm=llm, backstory="Expert researcher")
+task = Task(description="Research latest LLM benchmarks",
+            agent=researcher, expected_output="Summary")
 crew = Crew(agents=[researcher], tasks=[task])
 result = crew.kickoff()`,
     playgroundUrl: '/playground?framework=crewai&query=research+latest+LLM+benchmarks',
@@ -163,7 +165,7 @@ from autogen import AssistantAgent
 
 config_list = [{
     "model": "auto",
-    "base_url": "https://agentpick.com/v1",
+    "base_url": "https://agentpick.dev/v1",
     "api_key": os.environ["AGENTPICK_API_KEY"],
 }]
 assistant = AssistantAgent(
@@ -192,8 +194,8 @@ export async function GET(
 }
 ```
 
-**Acceptance:**
-- `GET /api/v1/quickstart/langchain` → 200 JSON with `installCmd`, `codeSnippet`, `playgroundUrl`.
+**Done when:**
+- `GET /api/v1/quickstart/langchain` → 200 JSON with `framework`, `installCmd`, `codeSnippet`, `playgroundUrl`.
 - `GET /api/v1/quickstart/crewai` → 200 JSON.
 - `GET /api/v1/quickstart/autogen` → 200 JSON.
 - `GET /api/v1/quickstart/unknown` → 404 JSON `{ "error": "..." }`.
@@ -201,12 +203,17 @@ export async function GET(
 
 ---
 
-## Verification Checklist (Claude Code)
+## Verification Checklist
 
-- [ ] `next.config.ts` — both 301 redirects added; app compiles; existing headers intact.
-- [ ] `src/lib/router/sdk.ts` — no flat `tool`/`results` response types; `meta` + `data` shape used; TypeScript passes.
-- [ ] `src/app/api/v1/quickstart/[framework]/route.ts` — created; all three frameworks return 200; unknown returns 404.
-- [ ] Zero files from CODEX's list were modified.
+- [ ] `GET /api/v1/router/usage` — response body includes top-level `calls` (int) and `cost_usd` (float); all pre-existing fields still present
+- [ ] `agentpick-router-qa.py` — no hard-coded `True` for calls/cost_usd check; assertion inspects actual JSON
+- [ ] `GET /api/v1/account` → HTTP 301 → `/api/v1/router/usage`
+- [ ] `GET /api/v1/account?period=7d` → HTTP 301 → `/api/v1/router/usage?period=7d`
+- [ ] `GET /api/v1/quickstart/langchain` → 200 with all four fields
+- [ ] `GET /api/v1/quickstart/crewai` → 200
+- [ ] `GET /api/v1/quickstart/autogen` → 200
+- [ ] `GET /api/v1/quickstart/unknown` → 404
+- [ ] Zero files from Codex's list were modified
 
 ---
 
@@ -214,5 +221,5 @@ export async function GET(
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 3: 301 redirects, SDK response types fixed, /api/v1/quickstart/[framework] route created
+[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 3: usage route aliases, QA stub fix, /account 301 redirect, /api/v1/quickstart/[framework] route
 ```

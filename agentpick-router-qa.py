@@ -34,6 +34,24 @@ class TestRateLimitPath(unittest.TestCase):
         self.assertIn("Retry-After", r.headers)                     # 7.3b-3
 
 
+class TestUsageAliases(unittest.TestCase):
+
+    def test_usage_calls_and_cost_usd_top_level(self):
+        """P1-A — /api/v1/router/usage must expose top-level `calls` (int) and `cost_usd` (float)."""
+        r = requests.get(
+            f"{BASE_URL}/api/v1/router/usage",
+            headers={"Authorization": f"Bearer {KEY_499}"},
+            timeout=10,
+        )
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        result = (
+            isinstance(data.get('calls'), int) and
+            isinstance(data.get('cost_usd'), (int, float))
+        )
+        self.assertTrue(result, f"Expected top-level `calls` (int) and `cost_usd` (float), got: {data}")
+
+
 class TestBenchmarkPermalinks(unittest.TestCase):
 
     def test_permalink_public_api(self):

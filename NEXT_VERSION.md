@@ -1,49 +1,61 @@
 # NEXT_VERSION.md — Cycle 3
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM
-**QA Source:** QA_REPORT.md (2026-03-18) — score 56/57; 1× P1 + 1× P2 open
+**QA Source:** QA_REPORT.md (2026-03-18) — score 59/60; 2× P1 + 1× P2 open
 **Live site:** https://agentpick.dev (checked 2026-03-18)
 **Rule:** Bugs first. No new features ship while P1/P2 remain.
 
 ---
 
-## Must-Have Item 1 — Fix ALL Remaining P1/P2 Bugs (QA 56/57 → 57/57)
+## Must-Have Item 1 — Fix ALL Remaining P1/P2 Bugs
 
-Three issues flagged in QA_REPORT.md. All are documentation/contract bugs — no core routing logic is broken. They must be resolved before Item 2 or 3 begins.
+Three issues flagged in QA_REPORT.md. All are API contract bugs — no core routing logic is broken. Must be resolved before Items 2 or 3 begin.
 
-### P1-A — Docs must reflect actual `meta`/`data` response shape
+### P1-A — Flatten `calls` and `cost_usd` in `/api/v1/router/usage` response
 
-**Issue:** Public code examples (homepage API carousel, `/connect` page, any README snippets) imply a flat response with top-level `tool` and `results` keys. The live response is:
+**Issue:** `GET /api/v1/router/usage?period=7d` returns:
 ```json
 {
-  "meta": { "tool_used": "...", "latency_ms": 120, "cost_usd": 0.001, "ai_classification": "...", "calls_remaining": 99 },
-  "data": { "results": [...] }
+  "callsThisMonth": 42,
+  "stats": { "totalCostUsd": 0.087 }
 }
 ```
-Any client following current docs does `response.results` → `undefined`. Silent breakage.
+Documented contract exposes top-level `calls` and `cost_usd`. Any client doing `data['calls']` or `data['cost_usd']` gets `None`/`undefined`. The automated QA script hard-codes `True` for this check, so it silently passes — real client integrations break.
 
 **Actions:**
-- Grep codebase for `response.tool`, `response.results`, `.tool_used` at root — replace with `response.meta.tool_used` and `response.data.results`.
-- Add a response schema table in the API reference section of `/connect` showing the full two-level shape.
-- Update SDK wrapper type definitions to `{ meta: { tool_used, latency_ms, cost_usd, ai_classification, calls_remaining }, data: { results: [] } }`.
+- Add top-level aliases `calls` and `cost_usd` to the usage response (keep existing fields for backwards compatibility):
+  ```json
+  { "calls": 42, "cost_usd": 0.087, "callsThisMonth": 42, "stats": { "totalCostUsd": 0.087 } }
+  ```
+- Update the API reference table on `/connect` to show the canonical field names `calls` and `cost_usd`.
+- Fix the QA script to actually assert `data['calls']` and `data['cost_usd']` exist at top-level (remove the hard-coded `True`).
+
+**Done when:** `GET /api/v1/router/usage` returns top-level `calls` (int) and `cost_usd` (float). QA assertion is a real check, not a stub.
+
+---
 
 ### P1-B — Document that `meta.ai_classification` is null for non-`auto` strategies
 
-**Issue:** `meta.ai_classification` is `null` when strategy is `balanced`, `best_performance`, or `cheapest`. Undocumented. Clients expecting a string silently get null and may crash.
+**Issue:** `meta.ai_classification` is `null` when strategy is `balanced`, `best_performance`, or `cheapest`. Undocumented. Clients expecting a non-null string may crash at `classification.toLowerCase()` etc.
 
 **Actions:**
-- Add inline callout on `/connect` strategy selector and in the API reference: *"`ai_classification` is only populated when `strategy=auto`. For all other strategies the field is `null`."*
+- Add inline callout on `/connect` strategy selector section and in the API reference:
+  > `ai_classification` is only populated when `strategy=auto`. For all other strategies the field is `null`.
 - No backend change needed — documentation gap only.
 
-### P2 — Remove dead endpoint references; add 301 redirects
+**Done when:** Both the strategy selector UI and the API reference table document the null behavior explicitly.
 
-**Issue:** `/api/v1/account/usage` and `/api/v1/developer/usage` return 404. Correct path is `/api/v1/router/usage`. Any docs or client code on old paths fails silently.
+---
+
+### P2 — Add 301 redirect from `/api/v1/account` to `/api/v1/router/usage`
+
+**Issue:** Any docs or third-party guides referencing a standalone `/api/v1/account` path return 404. The correct path is `/api/v1/router/usage`, which already returns `plan`, `monthlyLimit`, `callsThisMonth`, `strategy`, and `account` fields.
 
 **Actions:**
-- Grep codebase + all doc pages for `/account/usage` and `/developer/usage`; replace with `/api/v1/router/usage`.
-- Add server 301 redirects from both dead paths to `/api/v1/router/usage` so existing integrations don't hard-fail.
+- Add a server-side 301 redirect: `GET /api/v1/account` → `GET /api/v1/router/usage`.
+- Grep all doc pages and code for `/api/v1/account` references; update to `/api/v1/router/usage`.
 
-**Done when:** QA score 57/57. Zero flat-key references in public docs. Dead endpoints return 301. `ai_classification` null behavior is documented inline.
+**Done when:** `GET /api/v1/account` returns HTTP 301 → `/api/v1/router/usage`. Zero 404s from account path.
 
 ---
 
@@ -76,7 +88,7 @@ Any client following current docs does `response.results` → `undefined`. Silen
 **Scroll animations**
 - `@keyframes fadeInUp` + `IntersectionObserver` stagger-reveal per section. Pure CSS + vanilla JS, no Framer Motion dependency.
 
-**Mobile marquee fix** (noted as overflowing on < 640px)
+**Mobile marquee fix** (overflowing on < 640px)
 - Constrain marquee items: `white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis` on mobile viewport.
 
 **Files:** `src/app/page.tsx`, `src/app/globals.css`, `src/app/layout.tsx`, arena and pricing component files.
@@ -90,7 +102,7 @@ Any client following current docs does `response.results` → `undefined`. Silen
 
 ## Must-Have Item 3 — Framework Quickstart Templates (LangChain / CrewAI / AutoGen)
 
-**Why:** The #1 developer adoption blocker for a routing layer is integration friction. Developers using popular agent frameworks need a 30-second path to AgentPick. This is the single highest-leverage unlock — no new backend infra required, pure DX investment.
+**Why:** The #1 developer adoption blocker for a routing layer is integration friction. Developers using popular agent frameworks need a 30-second path to AgentPick. No new backend infra required — pure DX investment with the highest leverage per hour of work.
 
 **Deliverables:**
 
@@ -119,10 +131,9 @@ Any client following current docs does `response.results` → `undefined`. Silen
 
 ## Definition of Done (all 3 items)
 
-- [ ] QA automated suite: 51/51 PASS
-- [ ] QA manual score: 57/57 (all P1/P2 resolved)
-- [ ] Zero doc or code references to flat `response.tool` / `response.results`
-- [ ] `/api/v1/account/usage` + `/api/v1/developer/usage` → 301 to `/api/v1/router/usage`
+- [ ] QA automated suite: 51/51 PASS (with real assertion on `calls`/`cost_usd`, not stub)
+- [ ] `GET /api/v1/router/usage` returns top-level `calls` (int) and `cost_usd` (float)
+- [ ] `GET /api/v1/account` → 301 to `/api/v1/router/usage`
 - [ ] `ai_classification` null behavior documented on `/connect` and in API reference
 - [ ] Lighthouse ≥ 90 on homepage (mobile + desktop)
 - [ ] Glassmorphism cards, animated hero, frosted nav live on https://agentpick.dev
