@@ -1,115 +1,177 @@
-# TASK_CODEX.md
-**Cycle:** 10
-**Agent:** Codex
-**Date:** 2026-03-17
-**Source:** NEXT_VERSION.md — QA-P0-1 post-fix documentation updates
+# TASK_CODEX.md — Cycle 11
+**Agent:** Codex (frontend / components / styling)
+**Date:** 2026-03-18
+**Source:** NEXT_VERSION.md Cycle 11 — Must-Have Items 2 & 3 (frontend portion)
 
 ---
 
 ## Coverage Summary
 
-| Issue | Item | Owner |
-|-------|------|-------|
-| QA-P0-1 | Update `QA_REPORT.md` to reflect fix (57/58 → 58/58) | **CODEX** |
-| QA-P0-1 | Update `NEXT_VERSION.md` — mark cycle 10 as shipped | **CODEX** |
+| Item | Task | Owner |
+|------|------|-------|
+| Must-Have Item 2 | Glassmorphism UI overhaul (hero, nav, cards, typography, animations) | **CODEX** |
+| Must-Have Item 3 | New `/quickstart` page + homepage logo strip | **CODEX** |
 
 ---
 
-## Files to Modify
+## Files Owned by This Agent
 
 | Action | File |
 |--------|------|
-| **MODIFY** | `QA_REPORT.md` |
-| **MODIFY** | `NEXT_VERSION.md` |
+| **MODIFY** | `src/app/page.tsx` |
+| **MODIFY** | `src/app/globals.css` |
+| **MODIFY** | `src/app/layout.tsx` |
+| **MODIFY** | Arena result tile component (find under `src/components/`) |
+| **MODIFY** | Pricing card component (find under `src/components/`) |
+| **CREATE** | `src/app/quickstart/page.tsx` |
 
 > **DO NOT TOUCH** any file listed in TASK_CLAUDE_CODE.md.
-> Specifically: `src/middleware.ts` and any file under `src/`.
+> Specifically: `src/app/api/v1/quickstart/[framework]/route.ts` and any
+> file under `src/app/api/`.
 
 ---
 
-## Task 1 — Update `QA_REPORT.md` (score 57/58 → 58/58)
+## Task 1 — Glassmorphism UI Overhaul (`src/app/page.tsx`, `src/app/globals.css`, `src/app/layout.tsx`)
 
-Read the file first. Make the following targeted changes.
+### 1A — Hero section (`src/app/page.tsx`)
 
-### 1A. Update header score
+- Replace flat dark background with animated gradient mesh using CSS `@keyframes`.
+  Gradient: indigo → violet → slate.
+- Add subtle dot/grid overlay via:
+  `background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)`
+- Hero headline: `text-[72px] font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent`
+- Subheadline: `text-[20px] font-normal text-slate-300`
+- Load `Inter` via `next/font/google` in `src/app/layout.tsx` (add if not present).
 
-Change:
+### 1B — CTA buttons (`src/app/page.tsx`)
+
+Replace all flat primary buttons with:
 ```
-## Score: 57/58
-```
-To:
-```
-## Score: 58/58
-```
-
-### 1B. Update P0 Blockers section
-
-Replace the failing P0 entry:
-```markdown
-## P0 Blockers
-
-### ❌ `POST /v1/chat/completions` — 404 Not Found
-The new OpenAI-compatible endpoint returns a 404 HTML page (Next.js "Page not found").
-Neither `/v1/chat/completions` nor `/api/v1/chat/completions` exist.
-This endpoint was listed as a required test item and is not yet deployed.
+bg-gradient-to-r from-indigo-500 to-violet-600
+hover:shadow-lg hover:shadow-indigo-500/40
+transition-all
 ```
 
-With the fixed version:
-```markdown
-## P0 Blockers
+### 1C — Homepage code block (`src/app/page.tsx`)
 
-None. All P0 issues resolved in cycle 10.
+- Replace bare `<pre>` with a `shiki`-highlighted block.
+  - Add `shiki` dependency if absent (`npm install shiki`).
+  - Use `createHighlighter` (shiki v1 API) with `github-dark` theme.
+- Add a copy-button next to the code block:
+  - On click: scale up briefly (CSS transform scale) + swap icon to checkmark for 1.5 s.
+  - No external animation library — pure CSS transitions + `setTimeout`.
 
-### ✅ `POST /v1/chat/completions` — Fixed (cycle 10)
-Root cause: `src/middleware.ts` only applied CORS handling to `/api/` paths.
-Fix: added `|| pathname.startsWith('/v1/')` to the `isApi` check (line 89).
-`OPTIONS /v1/chat/completions` → 204, `POST` with valid key → 200.
+### 1D — Scroll animations (`src/app/globals.css` + `src/app/page.tsx`)
+
+In `globals.css`, add:
+```css
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
 ```
 
-### 1C. Update the final line
+In `page.tsx`, add an `IntersectionObserver` (vanilla JS via `useEffect`) that
+adds the `fade-in-up` class to each homepage section element as it enters the viewport.
+Stagger delay: `0.1s * sectionIndex`.
 
-Change the trailing `FAIL` at the end of the file to `PASS`.
+### 1E — Frosted nav (`src/app/layout.tsx`)
+
+Apply to the `<nav>` (or equivalent top-bar element):
+```
+backdrop-blur-md bg-black/30 border-b border-white/10 fixed w-full top-0 z-50
+```
+Add fade-in-on-scroll via `IntersectionObserver` (or detect scroll offset ≥ 10px
+with a `scroll` event listener in a `useEffect`).
 
 ---
 
-## Task 2 — Update `NEXT_VERSION.md` — mark cycle 10 complete
+## Task 2 — Glassmorphism Cards (Arena tiles + Pricing cards)
 
-Read the file first. Append the following block at the very end of the file:
+Find the arena result tile component and the pricing card component under `src/components/`.
 
-```markdown
+Apply to **both** component root elements:
+```
+backdrop-filter: blur(12px)   /* via Tailwind: backdrop-blur-xl */
+bg-white/5 border border-white/10 rounded-2xl
+```
+
+No logic changes — styling only.
+
 ---
 
-## Cycle 10 Outcome
+## Task 3 — Quickstart Page (`src/app/quickstart/page.tsx`) — NEW FILE
 
-**Status:** SHIPPED
-**Deployed:** 2026-03-17
+Create a new Next.js page at `/quickstart`.
 
-### QA-P0-1 — FIXED
-- `src/middleware.ts` line 89: added `|| pathname.startsWith('/v1/')` to `isApi`
-- `OPTIONS /v1/chat/completions` → 204 ✅
-- `POST /v1/chat/completions` with valid key → 200 ✅
-- `POST /v1/chat/completions` with no key → 401 ✅
-- All 51 cycle-9 automated checks continue to pass ✅
-- QA score: 58/58
-```
+### Layout
+
+Three tab-panels: **LangChain** | **CrewAI** | **AutoGen**
+
+Use client-side tab state (`useState`). No router push needed.
+
+### Each tab panel contains
+
+1. **Install command** (copyable `<pre>` block with copy button — reuse copy-button pattern from Task 1C)
+   - LangChain: `pip install langchain agentpick`
+   - CrewAI: `pip install crewai agentpick`
+   - AutoGen: `pip install pyautogen agentpick`
+
+2. **Code snippet** — shiki-highlighted, ≤15 lines of Python showing `AGENTPICK_API_KEY` usage.
+   Fetch the snippet from `GET /api/v1/quickstart/<framework>` (the route Claude Code creates)
+   using `useEffect` + `fetch`, or inline the same strings statically.
+
+3. **Two buttons:**
+   - "Copy" — copies the code snippet to clipboard.
+   - "Run in Playground" — links to the `playgroundUrl` from the API response:
+     - LangChain: `/playground?framework=langchain&query=search+the+web+for+AI+news`
+     - CrewAI: `/playground?framework=crewai&query=research+latest+LLM+benchmarks`
+     - AutoGen: `/playground?framework=autogen&query=find+top+AI+tools+2025`
+
+### Styling
+
+Apply glassmorphism card style to each tab panel container (consistent with Task 2).
+Tab buttons: active tab → `bg-indigo-500/30 border border-indigo-400/40`, inactive → `bg-white/5`.
+
+---
+
+## Task 4 — Homepage "Works with your stack" logo strip (`src/app/page.tsx`)
+
+Below the hero code block, add a horizontal logo strip with four items:
+**LangChain** | **CrewAI** | **AutoGen** | **OpenAI Agents SDK**
+
+- Use text badges (or simple SVG/PNG if assets exist in `public/`; otherwise text is fine).
+- Each badge links to `/quickstart#langchain`, `/quickstart#crewai`, `/quickstart#autogen`,
+  and `/quickstart#openai-agents` respectively.
+- No new backend logic. Section label: `Works with your stack` in `text-slate-400 text-sm uppercase tracking-widest`.
 
 ---
 
 ## Acceptance criteria
 
-- [ ] `QA_REPORT.md` header shows `## Score: 58/58`
-- [ ] `QA_REPORT.md` P0 Blockers section shows no open blockers (the ❌ entry replaced with ✅)
-- [ ] `QA_REPORT.md` final line reads `PASS` (not `FAIL`)
-- [ ] `NEXT_VERSION.md` ends with a "Cycle 10 Outcome — SHIPPED" block
-- [ ] Zero files from TASK_CLAUDE_CODE.md were modified
+- [ ] Hero gradient animates on load (CSS `@keyframes` running).
+- [ ] Hero headline is 72px / weight 800 / gradient text clip visible.
+- [ ] All feature cards, pricing cards, and arena tiles show `backdrop-blur` + `bg-white/5 border border-white/10 rounded-2xl`.
+- [ ] Fixed nav is frosted (`backdrop-blur-md bg-black/30`).
+- [ ] Homepage code block is shiki-highlighted; copy button works with checkmark swap.
+- [ ] Homepage sections stagger-reveal on scroll via `IntersectionObserver`.
+- [ ] `/quickstart` renders all three framework tabs with correct install commands and code snippets.
+- [ ] "Run in Playground" buttons deep-link to `/playground?framework=<name>&query=<example>`.
+- [ ] Logo strip appears below hero code block; each logo links to the correct `/quickstart#` anchor.
+- [ ] Lighthouse performance ≥ 90 on mobile and desktop.
+- [ ] All 51 existing QA checks remain green.
 
 ---
 
 ## Progress log
 
-After completing this task, append one line to
+After completing these tasks, append one line to
 `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 
 ```
-[<ISO timestamp>] [CODEX] [done] QA-P0-1: updated QA_REPORT.md (58/58 PASS) and NEXT_VERSION.md cycle 10 shipped
+[<ISO timestamp>] [CODEX] [done] Cycle 11: glassmorphism UI overhaul + /quickstart page + logo strip
 ```
