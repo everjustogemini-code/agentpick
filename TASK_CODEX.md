@@ -7,128 +7,83 @@
 
 ## Coverage Summary
 
-| NEXT_VERSION.md Item | Task | Owner |
+| NEXT_VERSION.md Item | Task | Files |
 |---|---|---|
-| P1-A — Flat key refs in docs/frontend | Fix `response.tool` → `response.meta.tool_used` in Playground + `/connect`; add schema table | **CODEX** |
-| P1-B — `ai_classification` null undocumented | Add callout on `/connect` strategy selector and API reference | **CODEX** |
-| P2 — Frontend doc refs to dead endpoints | Replace `/account/usage` and `/developer/usage` strings in frontend/component files | **CODEX** |
-| Item 2 — Glassmorphism UI overhaul | `page.tsx`, `globals.css`, `layout.tsx`, arena/pricing components; mobile marquee fix | **CODEX** |
-| Item 3 — `/quickstart` page + logo strip | `src/app/quickstart/page.tsx` (new), `src/app/page.tsx` logo strip | **CODEX** |
+| P1-A — Update API reference on `/connect` | Show canonical `calls`/`cost_usd` field names in reference table | `src/app/connect/page.tsx` |
+| P1-B — Document `ai_classification` null behavior | Add callout on strategy selector + API reference | `src/app/connect/page.tsx` |
+| Item 2 — Glassmorphism + Motion UI overhaul | Hero gradient, typography, glassmorphism cards, frosted nav, shiki code blocks, CTA buttons, scroll animations, mobile marquee fix | `src/app/page.tsx`, `src/app/globals.css`, `src/app/layout.tsx`, arena tile component, pricing card component |
+| Item 3 — `/quickstart` page + logo strip | New quickstart page with three tabs; logo strip on homepage | `src/app/quickstart/page.tsx` (new), `src/app/page.tsx` |
 
 ---
 
-## Files Owned by This Agent
+## Files Owned by This Agent (Claude Code must NOT touch these)
 
 | Action | File |
 |---|---|
-| **MODIFY** | `src/components/Playground.tsx` |
 | **MODIFY** | `src/app/connect/page.tsx` |
 | **MODIFY** | `src/app/page.tsx` |
 | **MODIFY** | `src/app/globals.css` |
 | **MODIFY** | `src/app/layout.tsx` |
-| **MODIFY** | Arena result tile component (find under `src/components/`) |
-| **MODIFY** | Pricing card component (find under `src/components/`) |
+| **MODIFY** | Arena result tile component (find under `src/components/` — grep for "arena" or "ArenaResult") |
+| **MODIFY** | Pricing card component (find under `src/components/` — grep for "PricingCard" or "pricing") |
 | **CREATE** | `src/app/quickstart/page.tsx` |
 
-> **DO NOT TOUCH** any file listed in TASK_CLAUDE_CODE.md.
-> Specifically: `next.config.ts`, `src/lib/router/sdk.ts`,
-> `src/app/api/v1/quickstart/[framework]/route.ts`, and any file under `src/app/api/`.
+> **DO NOT TOUCH** any file listed in TASK_CLAUDE_CODE.md:
+> `src/app/api/v1/router/usage/route.ts`, `agentpick-router-qa.py`,
+> `src/app/api/v1/account/route.ts`, `src/app/api/v1/quickstart/[framework]/route.ts`,
+> or any other file under `src/app/api/`.
 
 ---
 
-## Task 1 — P1-A: Fix Flat Key References in Frontend/Docs
+## Task 1 — P1-A (Frontend): Update API reference table on `/connect` to show `calls` and `cost_usd`
 
-**Bug:** Frontend code and doc pages reference `response.tool`, `response.results` at the top level. Actual shape is `response.meta.tool_used` and `response.data.results`.
+**File:** `src/app/connect/page.tsx`
 
-### 1A — Fix `src/components/Playground.tsx`
+**Problem:** The API reference table on `/connect` shows the old field names. The documented contract now exposes top-level `calls` and `cost_usd` as canonical fields.
 
-1. Read the file and locate the `PlaygroundResponse` interface (around the `tool?: string | null` and `results?:` lines).
-2. Replace the flat interface with the correct nested shape:
-
-```ts
-// BEFORE (wrong — flat)
-interface PlaygroundResponse {
-  tool?: string | null;
-  results?: PlaygroundResult[];
-  // ...
-}
-
-// AFTER (correct)
-interface PlaygroundResponseMeta {
-  tool_used: string;
-  latency_ms: number;
-  cost_usd: number;
-  ai_classification: string | null;
-  calls_remaining: number;
-}
-interface PlaygroundResponse {
-  meta: PlaygroundResponseMeta;
-  data: {
-    results: PlaygroundResult[];
-  };
-}
-```
-
-3. Update all usages in `Playground.tsx` that read `response.tool` → `response.meta.tool_used`, and `response.results` → `response.data.results`.
-
-### 1B — Add Response Schema Table on `/connect` Page
-
-File: `src/app/connect/page.tsx`. In the API reference section:
-
-1. Grep the file for `response.tool`, `response.results`, `.tool_used` at root level — fix every occurrence.
-2. Add an explicit **Response Schema** table showing the full two-level shape:
+**Actions:**
+1. Read the file. Find the API reference table in the usage/response section.
+2. Ensure the table lists `calls` and `cost_usd` as the **canonical** (primary) field names. Example rows to add or update:
 
 ```
-| Field | Type | Description |
-|---|---|---|
-| meta.tool_used | string | Which search tool was selected |
-| meta.latency_ms | number | Round-trip latency in ms |
-| meta.cost_usd | number | Cost of this call |
-| meta.ai_classification | string \| null | Query classification — null when strategy ≠ auto |
-| meta.calls_remaining | number | Remaining calls in quota |
-| data.results | array | Array of search result objects |
+| calls        | integer | Total calls made this period (canonical) |
+| cost_usd     | float   | Total cost in USD this period (canonical) |
 ```
 
-Place this table directly after the first code example showing an API response.
+3. If the table only shows `callsThisMonth` / `stats.totalCostUsd`, add `calls` and `cost_usd` rows above them with a note that the others are kept for backwards compatibility.
+4. Do not remove any existing documentation rows.
+
+**Done when:** `/connect` API reference table clearly shows `calls` (int) and `cost_usd` (float) as top-level fields.
 
 ---
 
-## Task 2 — P1-B: Document `ai_classification` Null Behavior
+## Task 2 — P1-B: Document `ai_classification` null behavior on `/connect`
 
-**Bug:** No documentation that `meta.ai_classification` is `null` when strategy is not `auto`.
+**File:** `src/app/connect/page.tsx` (coordinate edits with Task 1 — same file)
 
-**File:** `src/app/connect/page.tsx` (coordinate with Task 1B edits — do not create conflicts within the file)
+**Problem:** `meta.ai_classification` is `null` when strategy is `balanced`, `best_performance`, or `cheapest`. This is undocumented. Clients calling `.toLowerCase()` on the value crash.
 
-Find the strategy selector section (where `balanced`, `best_performance`, `cheapest`, `auto` are described). Add an inline callout immediately below the strategy options list:
+**Actions:**
+1. Find the strategy selector section (where `auto`, `balanced`, `best_performance`, `cheapest` are described).
+2. Add an inline callout immediately below the strategy options list:
 
 ```
 > **Note:** `meta.ai_classification` is only populated when `strategy=auto`.
-> For all other strategies (`balanced`, `best_performance`, `cheapest`) it is `null`.
+> For all other strategies (`balanced`, `best_performance`, `cheapest`) the field is `null`.
 ```
 
-Also add this callout near the response schema table added in Task 1B.
+3. Also add this callout near the response schema / API reference table (near the `meta.ai_classification` row if one exists, or add a row for it).
+
+**Done when:** Both the strategy selector UI section and the API reference table on `/connect` explicitly document that `ai_classification` is `null` for non-`auto` strategies.
 
 ---
 
-## Task 3 — P2: Fix Frontend Doc References to Dead Endpoints
+## Task 3 — Item 2: Glassmorphism + Motion Design System
 
-**Bug:** Any frontend page or component that shows example URLs `/api/v1/account/usage` or `/api/v1/developer/usage` points to dead paths.
+### 3A — Animated hero gradient (`src/app/globals.css` + `src/app/page.tsx`)
 
-**Action:**
-1. Grep `src/app/` and `src/components/` for `/account/usage` and `/developer/usage`.
-2. For each occurrence in a frontend file (NOT in `src/app/api/` — those belong to Claude Code):
-   - Replace `/api/v1/account/usage` → `/api/v1/router/usage`
-   - Replace `/api/v1/developer/usage` → `/api/v1/router/usage`
+In `src/app/globals.css`, add:
 
-**Note:** The server-side 301 redirects are handled by Claude Code in `next.config.ts`. This task only fixes hardcoded display strings in frontend/doc files.
-
----
-
-## Task 4 — Item 2: Glassmorphism UI Overhaul
-
-### 4A — Animated gradient hero (`src/app/page.tsx` + `src/app/globals.css`)
-
-In `globals.css`, add the animated gradient keyframes and dot overlay:
 ```css
 @keyframes gradientShift {
   0%   { background-position: 0% 50%; }
@@ -154,116 +109,154 @@ In `globals.css`, add the animated gradient keyframes and dot overlay:
 }
 ```
 
-In `page.tsx`, apply `.hero-gradient` and `.hero-dot-overlay` classes to the hero section wrapper. Add an `IntersectionObserver` in a `useEffect` that adds `fade-in-up` class to each section as it enters the viewport, with stagger delay `0.1s * index`.
+In `src/app/page.tsx`:
+- Apply `hero-gradient` and `hero-dot-overlay` CSS classes to the hero section wrapper `<div>`.
+- Add a `useEffect` with `IntersectionObserver` that, on entry, adds `fade-in-up` class to each `<section>` element, with a stagger delay of `0.1s * index` applied via `style.animationDelay`.
 
-### 4B — Hero typography (`src/app/page.tsx`)
+### 3B — Hero typography (`src/app/page.tsx`)
 
-- Hero headline: Tailwind classes `text-[72px] font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent leading-none`
-- Subheadline: `text-[20px] font-normal text-slate-300 leading-[1.65]`
+- Hero headline element: add Tailwind classes `text-[72px] font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent leading-none`.
+- Subheadline element: add `text-[20px] font-normal text-slate-300 leading-[1.65]`.
 
-### 4C — Load Inter font (`src/app/layout.tsx`)
+### 3C — Load Inter font (`src/app/layout.tsx`)
 
-Add `Inter` via `next/font/google` if not already present:
+Read the file first. If `Inter` from `next/font/google` is not already imported:
+
 ```ts
 import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
-// Apply inter.className to the <html> or <body> element
 ```
 
-### 4D — Frosted nav (`src/app/layout.tsx`)
+Apply `inter.className` to the `<html>` or `<body>` element.
 
-Find the `<nav>` or top-bar element. Apply:
+### 3D — Frosted glass fixed nav (`src/app/layout.tsx`)
+
+Find the `<nav>` or top navigation bar element. Replace or extend its className:
+
 ```
-className="... backdrop-blur-md bg-black/30 border-b border-white/10 fixed w-full top-0 z-50"
+backdrop-blur-md bg-black/30 border-b border-white/10 fixed w-full top-0 z-50
 ```
-Add scroll-based fade-in: in a `useEffect`, listen for `scroll` event — once `window.scrollY >= 40`, add an `opacity-100` class (remove `opacity-0` initial state).
 
-### 4E — CTA buttons (`src/app/page.tsx`)
+Add scroll-based fade-in via `useEffect`:
+- Set initial style `opacity: 0` on the nav (or a wrapper).
+- Listen for `window` `scroll` event; once `window.scrollY >= 40`, set `opacity: 1` (CSS transition `transition-opacity duration-300`).
+- Add `'use client'` directive to `layout.tsx` if not already present, or extract the nav into a separate `'use client'` component.
 
-Replace all flat primary CTA button classes with:
+### 3E — CTA button gradient (`src/app/page.tsx`)
+
+Find all primary CTA `<button>` or `<a>` elements with a solid dark/green background. Replace their bg classes with:
+
 ```
 bg-gradient-to-r from-indigo-500 to-violet-600 hover:shadow-lg hover:shadow-indigo-500/40 transition-all
 ```
 
-### 4F — Shiki code blocks + copy button (`src/app/page.tsx`)
+### 3F — Shiki code blocks + copy button (`src/app/page.tsx`)
 
-1. Install `shiki` if not present (`npm install shiki`).
-2. Replace bare `<pre>` tags in the hero/homepage code examples with shiki-highlighted blocks using `createHighlighter` (shiki v1 API) with `github-dark` theme. Use a server component or `useEffect` for async highlighting.
-3. Add a copy button next to each code block:
-   - On click: `navigator.clipboard.writeText(code)`, then briefly scale the button (`transform scale-110`) and swap the icon to a checkmark for 1.5s via `setTimeout`.
-   - No external animation library — CSS transitions + `setTimeout`.
+1. Check if `shiki` is already a dependency. If not, add it: the implementation should use dynamic `import('shiki')` or a server component to avoid bundle bloat.
+2. For each bare `<pre>` tag in the hero/homepage code examples, replace with a shiki-highlighted block using the `github-dark` theme.
+3. Add a copy button next to each highlighted block:
+   - On click: `navigator.clipboard.writeText(codeString)`.
+   - For 1.5s after click: scale button with `transform scale-110` (CSS transition) and swap icon to a checkmark via `useState`. Revert after `setTimeout(reset, 1500)`.
+   - No external animation library.
 
-### 4G — Glassmorphism cards (arena tile + pricing card components)
+### 3G — Glassmorphism cards (arena tile + pricing card components)
 
-Find the arena result tile component and pricing card component under `src/components/`. Apply to each component's root card element:
+1. Grep `src/components/` for the arena result tile component (likely named `ArenaResult`, `ArenaTile`, or similar).
+2. Grep `src/components/` for the pricing card component (likely named `PricingCard`, `PriceCard`, or similar).
+3. On the root card `<div>` of each component, replace solid background classes with:
+
 ```
 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl
 ```
-No logic changes — styling only.
 
-### 4H — Mobile marquee fix (`src/app/page.tsx` or relevant marquee component)
+Styling only — no logic changes.
 
-The marquee overflows on viewports < 640px. Fix:
-```css
-/* On marquee item elements */
-white-space: nowrap;
-max-width: 160px;
-overflow: hidden;
-text-overflow: ellipsis;
+### 3H — Mobile marquee fix (`src/app/page.tsx` or relevant marquee component)
+
+The marquee overflows on viewports < 640px. Find the marquee item elements and add:
+
 ```
-Apply via Tailwind: `whitespace-nowrap max-w-[160px] overflow-hidden text-ellipsis sm:max-w-none` so the constraint only applies below `sm` breakpoint.
+whitespace-nowrap max-w-[160px] overflow-hidden text-ellipsis sm:max-w-none
+```
+
+This constrains items to 160px with ellipsis on mobile, removes the constraint on `sm` (≥640px) and above.
 
 ---
 
-## Task 5 — Item 3: New `/quickstart` Page
+## Task 4 — Item 3: New `/quickstart` Page
 
 **New file:** `src/app/quickstart/page.tsx`
 
-### Layout
+### Structure
 
-- Page title: "Framework Quickstart Templates"
+```tsx
+'use client';
+import { useState } from 'react';
+
+const FRAMEWORKS = ['langchain', 'crewai', 'autogen'] as const;
+
+// Hard-code the same payload as the API route (no fetch needed, avoids loading state)
+const SNIPPETS = {
+  langchain: {
+    installCmd: 'pip install langchain agentpick',
+    codeSnippet: `import os\nfrom langchain_openai import ChatOpenAI\n\nllm = ChatOpenAI(\n    base_url="https://agentpick.dev/v1",\n    api_key=os.environ["AGENTPICK_API_KEY"],\n    model="auto",\n)\nresponse = llm.invoke("Search the web for AI news")\nprint(response.content)`,
+    playgroundUrl: '/playground?framework=langchain&query=search+the+web+for+AI+news',
+  },
+  crewai: {
+    installCmd: 'pip install crewai agentpick',
+    codeSnippet: `import os\nfrom crewai import Agent, Task, Crew, LLM\n\nllm = LLM(\n    model="openai/auto",\n    base_url="https://agentpick.dev/v1",\n    api_key=os.environ["AGENTPICK_API_KEY"],\n)\nresearcher = Agent(role="Researcher", goal="Find information",\n                   llm=llm, backstory="Expert researcher")\ntask = Task(description="Research latest LLM benchmarks",\n            agent=researcher, expected_output="Summary")\ncrew = Crew(agents=[researcher], tasks=[task])\nresult = crew.kickoff()`,
+    playgroundUrl: '/playground?framework=crewai&query=research+latest+LLM+benchmarks',
+  },
+  autogen: {
+    installCmd: 'pip install pyautogen agentpick',
+    codeSnippet: `import os\nfrom autogen import AssistantAgent\n\nconfig_list = [{\n    "model": "auto",\n    "base_url": "https://agentpick.dev/v1",\n    "api_key": os.environ["AGENTPICK_API_KEY"],\n}]\nassistant = AssistantAgent(\n    name="assistant",\n    llm_config={"config_list": config_list},\n)\nassistant.initiate_chat(assistant,\n    message="Find top AI tools 2025", max_turns=1)`,
+    playgroundUrl: '/playground?framework=autogen&query=find+top+AI+tools+2025',
+  },
+};
+```
+
+### Tab layout
+
 - Three tab buttons: **LangChain** | **CrewAI** | **AutoGen**
-- Use `'use client'` + `useState` for active tab. No router.push needed.
+- Active tab: `bg-indigo-500/30 border border-indigo-400/40`
+- Inactive tab: `bg-white/5 border border-white/10`
 
-### Per-tab content
+### Per-tab panel content
 
-Fetch snippets from `GET /api/v1/quickstart/<framework>` via `useEffect` + `fetch`, or inline the same strings as fallback.
+1. **Install command** — styled `<pre>` with a copy button (same scale+checkmark micro-animation: `useState`, `setTimeout(reset, 1500)`).
+2. **Code snippet** — `<pre>` with syntax-highlighted code (shiki or `<code className="language-python">` styled block). Copy button.
+3. **Two action buttons:**
+   - "Copy" — copies full code snippet.
+   - "Run in Playground" — `<a href={snippet.playgroundUrl}>` styled as a button.
+     `bg-gradient-to-r from-indigo-500 to-violet-600 hover:shadow-lg hover:shadow-indigo-500/40 transition-all`
 
-Each tab panel shows:
-1. **Install command** — copyable `<pre>` block with copy button (same micro-animation as Task 4F: scale + checkmark swap for 1.5s).
-   - LangChain: `pip install langchain agentpick`
-   - CrewAI: `pip install crewai agentpick`
-   - AutoGen: `pip install pyautogen agentpick`
+### Panel container styling
 
-2. **Code snippet** — shiki-highlighted Python (≤15 lines, uses `AGENTPICK_API_KEY` env var).
+```
+backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6
+```
 
-3. **Two buttons:**
-   - "Copy" — copies the full code snippet to clipboard.
-   - "Run in Playground" — `<a href="/playground?framework=<name>&query=<example>">` as a styled button link.
-     - LangChain: `/playground?framework=langchain&query=search+the+web+for+AI+news`
-     - CrewAI: `/playground?framework=crewai&query=research+latest+LLM+benchmarks`
-     - AutoGen: `/playground?framework=autogen&query=find+top+AI+tools+2025`
+### Page title
 
-### Styling
-
-- Tab panel container: `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6`
-- Active tab button: `bg-indigo-500/30 border border-indigo-400/40`
-- Inactive tab button: `bg-white/5 border border-white/10`
+```tsx
+<h1 className="text-4xl font-bold text-white mb-2">Framework Quickstart</h1>
+<p className="text-slate-400 mb-8">30-second integration with LangChain, CrewAI, and AutoGen</p>
+```
 
 ---
 
-## Task 6 — Item 3: "Works with your stack" Logo Strip (`src/app/page.tsx`)
+## Task 5 — Item 3: "Works with your stack" Logo Strip (`src/app/page.tsx`)
 
-Below the hero code block, add a horizontal strip:
+Below the hero code block, add a static section — no backend logic required:
 
 ```tsx
 <section className="flex flex-col items-center gap-4 py-8">
   <p className="text-slate-400 text-sm uppercase tracking-widest">Works with your stack</p>
   <div className="flex flex-wrap justify-center gap-6">
     {[
-      { label: 'LangChain', href: '/quickstart#langchain' },
-      { label: 'CrewAI',    href: '/quickstart#crewai' },
-      { label: 'AutoGen',   href: '/quickstart#autogen' },
+      { label: 'LangChain',        href: '/quickstart#langchain' },
+      { label: 'CrewAI',           href: '/quickstart#crewai' },
+      { label: 'AutoGen',          href: '/quickstart#autogen' },
       { label: 'OpenAI Agents SDK', href: '/quickstart#openai-agents' },
     ].map(({ label, href }) => (
       <a key={label} href={href}
@@ -275,26 +268,31 @@ Below the hero code block, add a horizontal strip:
 </section>
 ```
 
-No new backend logic needed.
+Place it immediately after the hero code block, before the features section.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `src/components/Playground.tsx` — no flat `tool`/`results` on `PlaygroundResponse`; all usages updated to `meta.tool_used` / `data.results`.
-- [ ] `/connect` page — response schema table present showing full `meta`/`data` shape; no flat key examples remain.
-- [ ] `/connect` page — `ai_classification` null callout present near strategy selector AND near response schema table.
-- [ ] No `/account/usage` or `/developer/usage` strings remain in frontend/component files.
-- [ ] Hero gradient animates on load; headline is 72px gradient clip text; subheadline is `text-slate-300`.
-- [ ] Fixed nav has `backdrop-blur-md bg-black/30`; fades in at scroll offset 40px.
-- [ ] Homepage code block is shiki-highlighted; copy button shows checkmark for 1.5s.
-- [ ] Homepage sections stagger-reveal on scroll via `IntersectionObserver`.
-- [ ] All feature cards, pricing cards, arena tiles show `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl`.
-- [ ] Marquee items constrained to `max-w-[160px]` with ellipsis on mobile (< 640px); unconstrained on sm+.
-- [ ] `/quickstart` page renders all three tabs with correct install commands, code snippets, and "Run in Playground" deep-links.
-- [ ] "Works with your stack" logo strip appears below hero code block with four framework badges.
-- [ ] Lighthouse performance ≥ 90 on mobile and desktop.
-- [ ] All 51 existing QA checks remain green.
+- [ ] `/connect` — API reference table shows `calls` (int) and `cost_usd` (float) as canonical top-level fields
+- [ ] `/connect` — `ai_classification` null callout present in strategy selector section
+- [ ] `/connect` — `ai_classification` null callout present near API reference table
+- [ ] `src/app/page.tsx` — hero section has animated indigo→violet→slate gradient (`gradientShift` keyframes)
+- [ ] `src/app/page.tsx` — hero headline is 72px / weight 800 / gradient clip text (indigo-400 → violet-400)
+- [ ] `src/app/page.tsx` — subheadline is 20px / `text-slate-300` / line-height 1.65
+- [ ] `src/app/layout.tsx` — Inter font loaded via `next/font`
+- [ ] `src/app/layout.tsx` — nav has `backdrop-blur-md bg-black/30`; fades in at scroll offset 40px
+- [ ] `src/app/page.tsx` — primary CTA buttons use indigo→violet gradient with glow on hover
+- [ ] `src/app/page.tsx` — homepage code examples are shiki-highlighted; copy button shows checkmark for 1.5s
+- [ ] `src/app/page.tsx` — sections stagger-reveal on scroll via `IntersectionObserver`
+- [ ] Arena tile component — root card has `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl`
+- [ ] Pricing card component — root card has `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl`
+- [ ] Marquee items: `max-w-[160px]` with ellipsis on mobile; unconstrained on sm+
+- [ ] `/quickstart` renders all three tabs with correct install commands, code snippets, and "Run in Playground" deep-links
+- [ ] "Works with your stack" strip with four badges appears below hero code block
+- [ ] Lighthouse performance ≥ 90 on mobile and desktop
+- [ ] All 51 existing QA checks remain green
+- [ ] Zero files from TASK_CLAUDE_CODE.md were modified
 
 ---
 
@@ -302,5 +300,5 @@ No new backend logic needed.
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CODEX] [done] Cycle 3: P1-A/P1-B/P2 doc fixes, glassmorphism UI overhaul, mobile marquee fix, /quickstart page, logo strip
+[<ISO timestamp>] [CODEX] [done] Cycle 3: /connect P1-A/P1-B docs, glassmorphism UI overhaul, mobile marquee fix, /quickstart page + logo strip
 ```
