@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
     const monthlyLimit = (ROUTER_PLAN_MONTHLY_LIMITS as Record<string, number | null>)[account.plan] ?? null;
 
     return Response.json({
+      calls: callsThisMonth,
+      cost_usd: stats.totalCostUsd,
       plan: account.plan,
       plan_label: getRouterPlanLabel(account.plan),
       daily_limit: limits.limit,
