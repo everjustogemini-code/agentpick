@@ -6,7 +6,30 @@
 import { Prisma } from '@/generated/prisma/client';
 import { prisma, withRetry } from '@/lib/prisma';
 import { ROUTER_PLAN_DAILY_LIMITS, ROUTER_PLAN_MONTHLY_LIMITS, ROUTER_PLAN_OVERAGE_PER_CALL, type RouterPlanCode } from './plans';
-import type { RouterRequest, RouterResponse, Strategy } from './index';
+import type { RouterRequest, RouterResponse as InternalRouterResponse, Strategy } from './index';
+
+export interface SearchResult {
+  title?: string;
+  url?: string;
+  snippet?: string;
+  [key: string]: unknown;
+}
+
+export interface RouterResponseMeta {
+  tool_used: string;
+  latency_ms: number;
+  cost_usd: number;
+  /** null when strategy !== 'auto' */
+  ai_classification: string | null;
+  calls_remaining: number;
+}
+
+export interface RouterResponse {
+  meta: RouterResponseMeta;
+  data: {
+    results: SearchResult[];
+  };
+}
 import { getRankedToolsForCapability } from './index';
 
 const db = prisma;
@@ -272,13 +295,13 @@ export async function recordRouterCall(
   capability: string,
   query: string,
   request: RouterRequest,
-  response: RouterResponse,
+  response: InternalRouterResponse,
   strategyUsed: RouterStrategyValue,
   byokUsed: boolean,
   fallbackChain: string[],
   isOverageCall = false,
 ) {
-  const meta = response.meta as RouterResponse['meta'] & {
+  const meta = response.meta as InternalRouterResponse['meta'] & {
     cost_usd?: number;
     result_count?: number;
     classification_ms?: number;
