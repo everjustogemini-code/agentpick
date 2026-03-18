@@ -1,7 +1,7 @@
-# TASK_CLAUDE_CODE.md — Cycle 2
+# TASK_CLAUDE_CODE.md — Cycle 3
 **Agent:** Claude Code (API / backend / config)
 **Date:** 2026-03-18
-**Source:** NEXT_VERSION.md Cycle 2
+**Source:** NEXT_VERSION.md Cycle 3
 
 ---
 
@@ -214,5 +214,5 @@ export async function GET(
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 2: 301 redirects, SDK response types fixed, /api/v1/quickstart/[framework] route created
+[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 3: 301 redirects, SDK response types fixed, /api/v1/quickstart/[framework] route created
 ```

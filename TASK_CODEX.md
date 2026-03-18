@@ -1,7 +1,7 @@
-# TASK_CODEX.md — Cycle 2
+# TASK_CODEX.md — Cycle 3
 **Agent:** Codex (frontend / components / styling / docs)
 **Date:** 2026-03-18
-**Source:** NEXT_VERSION.md Cycle 2
+**Source:** NEXT_VERSION.md Cycle 3
 
 ---
 
@@ -9,10 +9,10 @@
 
 | NEXT_VERSION.md Item | Task | Owner |
 |---|---|---|
-| P1-A — Flat key refs in docs/frontend | Fix `response.tool` → `response.meta.tool_used`, add schema table on `/connect` | **CODEX** |
-| P1-B — `ai_classification` null undocumented | Add callout on `/connect` and API reference docs | **CODEX** |
-| P2 — Frontend doc refs to dead endpoints | Replace `/account/usage` and `/developer/usage` mentions in frontend/docs | **CODEX** |
-| Item 2 — Glassmorphism UI overhaul | `page.tsx`, `globals.css`, `layout.tsx`, arena/pricing components | **CODEX** |
+| P1-A — Flat key refs in docs/frontend | Fix `response.tool` → `response.meta.tool_used` in Playground + `/connect`; add schema table | **CODEX** |
+| P1-B — `ai_classification` null undocumented | Add callout on `/connect` strategy selector and API reference | **CODEX** |
+| P2 — Frontend doc refs to dead endpoints | Replace `/account/usage` and `/developer/usage` strings in frontend/component files | **CODEX** |
+| Item 2 — Glassmorphism UI overhaul | `page.tsx`, `globals.css`, `layout.tsx`, arena/pricing components; mobile marquee fix | **CODEX** |
 | Item 3 — `/quickstart` page + logo strip | `src/app/quickstart/page.tsx` (new), `src/app/page.tsx` logo strip | **CODEX** |
 
 ---
@@ -22,7 +22,7 @@
 | Action | File |
 |---|---|
 | **MODIFY** | `src/components/Playground.tsx` |
-| **MODIFY** | `src/app/connect/page.tsx` (or equivalent connect/docs page) |
+| **MODIFY** | `src/app/connect/page.tsx` |
 | **MODIFY** | `src/app/page.tsx` |
 | **MODIFY** | `src/app/globals.css` |
 | **MODIFY** | `src/app/layout.tsx` |
@@ -73,7 +73,7 @@ interface PlaygroundResponse {
 
 ### 1B — Add Response Schema Table on `/connect` Page
 
-Find the `/connect` page file (likely `src/app/connect/page.tsx`). In the API reference section:
+File: `src/app/connect/page.tsx`. In the API reference section:
 
 1. Grep the file for `response.tool`, `response.results`, `.tool_used` at root level — fix every occurrence.
 2. Add an explicit **Response Schema** table showing the full two-level shape:
@@ -97,7 +97,7 @@ Place this table directly after the first code example showing an API response.
 
 **Bug:** No documentation that `meta.ai_classification` is `null` when strategy is not `auto`.
 
-**File:** `src/app/connect/page.tsx` (same file as Task 1B — coordinate edits, do not create conflicts within the file)
+**File:** `src/app/connect/page.tsx` (coordinate with Task 1B edits — do not create conflicts within the file)
 
 Find the strategy selector section (where `balanced`, `best_performance`, `cheapest`, `auto` are described). Add an inline callout immediately below the strategy options list:
 
@@ -106,7 +106,7 @@ Find the strategy selector section (where `balanced`, `best_performance`, `cheap
 > For all other strategies (`balanced`, `best_performance`, `cheapest`) it is `null`.
 ```
 
-Also add this callout in the API reference section near the response schema table added in Task 1B.
+Also add this callout near the response schema table added in Task 1B.
 
 ---
 
@@ -116,11 +116,11 @@ Also add this callout in the API reference section near the response schema tabl
 
 **Action:**
 1. Grep `src/app/` and `src/components/` for `/account/usage` and `/developer/usage`.
-2. For each occurrence in a frontend file (NOT in `src/app/api/` — those are for Claude Code):
-   - Replace `/api/v1/account/usage` with `/api/v1/router/usage`
-   - Replace `/api/v1/developer/usage` with `/api/v1/router/usage`
+2. For each occurrence in a frontend file (NOT in `src/app/api/` — those belong to Claude Code):
+   - Replace `/api/v1/account/usage` → `/api/v1/router/usage`
+   - Replace `/api/v1/developer/usage` → `/api/v1/router/usage`
 
-**Note:** The server-side 301 redirects are handled by Claude Code in `next.config.ts`. This task only fixes hardcoded strings in frontend/doc files.
+**Note:** The server-side 301 redirects are handled by Claude Code in `next.config.ts`. This task only fixes hardcoded display strings in frontend/doc files.
 
 ---
 
@@ -159,7 +159,7 @@ In `page.tsx`, apply `.hero-gradient` and `.hero-dot-overlay` classes to the her
 ### 4B — Hero typography (`src/app/page.tsx`)
 
 - Hero headline: Tailwind classes `text-[72px] font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent leading-none`
-- Subheadline: `text-[20px] font-normal text-slate-300`
+- Subheadline: `text-[20px] font-normal text-slate-300 leading-[1.65]`
 
 ### 4C — Load Inter font (`src/app/layout.tsx`)
 
@@ -176,7 +176,7 @@ Find the `<nav>` or top-bar element. Apply:
 ```
 className="... backdrop-blur-md bg-black/30 border-b border-white/10 fixed w-full top-0 z-50"
 ```
-Add scroll-based fade-in: in a `useEffect`, listen for `scroll` event — once `window.scrollY >= 10`, add an `opacity-100` class (remove `opacity-0` initial state).
+Add scroll-based fade-in: in a `useEffect`, listen for `scroll` event — once `window.scrollY >= 40`, add an `opacity-100` class (remove `opacity-0` initial state).
 
 ### 4E — CTA buttons (`src/app/page.tsx`)
 
@@ -201,6 +201,18 @@ backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl
 ```
 No logic changes — styling only.
 
+### 4H — Mobile marquee fix (`src/app/page.tsx` or relevant marquee component)
+
+The marquee overflows on viewports < 640px. Fix:
+```css
+/* On marquee item elements */
+white-space: nowrap;
+max-width: 160px;
+overflow: hidden;
+text-overflow: ellipsis;
+```
+Apply via Tailwind: `whitespace-nowrap max-w-[160px] overflow-hidden text-ellipsis sm:max-w-none` so the constraint only applies below `sm` breakpoint.
+
 ---
 
 ## Task 5 — Item 3: New `/quickstart` Page
@@ -218,7 +230,7 @@ No logic changes — styling only.
 Fetch snippets from `GET /api/v1/quickstart/<framework>` via `useEffect` + `fetch`, or inline the same strings as fallback.
 
 Each tab panel shows:
-1. **Install command** — copyable `<pre>` block with copy button (same micro-animation as Task 4F).
+1. **Install command** — copyable `<pre>` block with copy button (same micro-animation as Task 4F: scale + checkmark swap for 1.5s).
    - LangChain: `pip install langchain agentpick`
    - CrewAI: `pip install crewai agentpick`
    - AutoGen: `pip install pyautogen agentpick`
@@ -274,10 +286,11 @@ No new backend logic needed.
 - [ ] `/connect` page — `ai_classification` null callout present near strategy selector AND near response schema table.
 - [ ] No `/account/usage` or `/developer/usage` strings remain in frontend/component files.
 - [ ] Hero gradient animates on load; headline is 72px gradient clip text; subheadline is `text-slate-300`.
-- [ ] Fixed nav has `backdrop-blur-md bg-black/30`.
+- [ ] Fixed nav has `backdrop-blur-md bg-black/30`; fades in at scroll offset 40px.
 - [ ] Homepage code block is shiki-highlighted; copy button shows checkmark for 1.5s.
 - [ ] Homepage sections stagger-reveal on scroll via `IntersectionObserver`.
 - [ ] All feature cards, pricing cards, arena tiles show `backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl`.
+- [ ] Marquee items constrained to `max-w-[160px]` with ellipsis on mobile (< 640px); unconstrained on sm+.
 - [ ] `/quickstart` page renders all three tabs with correct install commands, code snippets, and "Run in Playground" deep-links.
 - [ ] "Works with your stack" logo strip appears below hero code block with four framework badges.
 - [ ] Lighthouse performance ≥ 90 on mobile and desktop.
@@ -289,5 +302,5 @@ No new backend logic needed.
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CODEX] [done] Cycle 2: P1-A/P1-B/P2 doc fixes, glassmorphism UI overhaul, /quickstart page, logo strip
+[<ISO timestamp>] [CODEX] [done] Cycle 3: P1-A/P1-B/P2 doc fixes, glassmorphism UI overhaul, mobile marquee fix, /quickstart page, logo strip
 ```
