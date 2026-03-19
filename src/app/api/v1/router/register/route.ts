@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
 
       return Response.json({
         apiKey,
+        key: apiKey,
+        _note: 'key is deprecated, use apiKey',
         plan,
         monthlyLimit,
         message: 'Existing account found. New API key issued.',
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
 
       return Response.json({
         apiKey,
+        key: apiKey,
+        _note: 'key is deprecated, use apiKey',
         plan: 'FREE',
         monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
       }, { status: 201 });
@@ -124,6 +128,8 @@ export async function POST(request: NextRequest) {
 
     return Response.json({
       apiKey,
+      key: apiKey,
+      _note: 'key is deprecated, use apiKey',
       plan: 'FREE',
       monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
     }, { status: 201 });

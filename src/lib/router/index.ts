@@ -104,7 +104,7 @@ export interface RouterResponse {
     /** Complete ordered list of all tools attempted (primary + every fallback), including failed ones. */
     tried_chain?: string[];
     trace_id: string;
-    ai_classification?: QueryContext & { reasoning?: string };
+    ai_classification?: (QueryContext & { reasoning?: string }) | { mode: string; reason: string; query_type: null };
     classification_ms?: number;
     cost_usd?: number;
     result_count?: number;
@@ -644,13 +644,10 @@ export async function routeRequest(
         byok_used: byokUsed,
         byok_service: byokUsed ? (byokService ?? candidateSlug) : undefined,
       };
-      if (aiClassificationResult) {
-        meta.ai_classification = {
-          ...aiClassificationResult,
-          reasoning: buildAiReasoning(aiClassificationResult, candidateSlug),
-        };
-        meta.classification_ms = classificationMs;
-      }
+      meta.ai_classification = aiClassificationResult
+        ? { ...aiClassificationResult, reasoning: buildAiReasoning(aiClassificationResult, candidateSlug) }
+        : { mode: strategy, reason: 'strategy_override', query_type: null };
+      if (classificationMs > 0) meta.classification_ms = classificationMs;
       return {
         response: { data: result.response, meta },
         headers: {
@@ -694,13 +691,10 @@ export async function routeRequest(
     byok_used: lastAttemptUsedByok,
     byok_service: lastByokService,
   };
-  if (aiClassificationResult) {
-    failureMeta.ai_classification = {
-      ...aiClassificationResult,
-      reasoning: buildAiReasoning(aiClassificationResult, lastTriedTool),
-    };
-    failureMeta.classification_ms = classificationMs;
-  }
+  failureMeta.ai_classification = aiClassificationResult
+    ? { ...aiClassificationResult, reasoning: buildAiReasoning(aiClassificationResult, lastTriedTool) }
+    : { mode: strategy, reason: 'strategy_override', query_type: null };
+  if (classificationMs > 0) failureMeta.classification_ms = classificationMs;
   return {
     response: {
       data: lastResult?.response ?? { error: 'All tools failed' },
