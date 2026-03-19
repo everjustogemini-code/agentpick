@@ -1,238 +1,180 @@
 # TASK_CLAUDE_CODE.md — v-next (2026-03-18)
 **Agent:** Claude Code
-**Source:** NEXT_VERSION.md — Must-Have #1 (all three P1/P2 API bugs)
-**Rule:** Bugs first. No features while P1/P2 remain.
+**Source:** NEXT_VERSION.md — Must-Have #3 (Public Leaderboard API hardening)
+**QA baseline:** 57/57 — no bugs. This cycle is polish + developer adoption.
 
 ---
 
 ## Scope Summary
 
-Claude Code owns all three API contract bugs. Codex owns all frontend/CSS work.
+Claude Code owns all API/backend files for this cycle. The leaderboard routes were scaffolded in
+cycle 2 but have several gaps to close before the public announcement. Codex owns all
+frontend/CSS/animation work.
 
 **DO NOT TOUCH any of these files** (owned by Codex):
 - `src/app/globals.css`
 - `src/app/page.tsx`
 - `src/app/connect/page.tsx`
-- `src/components/PricingSection.tsx`
-- `src/components/StrategyCards.tsx`
-- Any other `src/components/**/*.tsx`
+- `src/components/**/*.tsx` (any component file)
 
 ---
 
-## Bug Fix A — P1: Add `key` deprecation alias in registration response
+## Task 1 — `src/app/api/v1/leaderboard/route.ts`: harden for public launch
 
-**File to modify:** `src/app/api/v1/router/register/route.ts`
+Read the file first (it currently has ~233 lines). Make the following targeted changes.
 
-**Problem:** The route returns `apiKey` (correct canonical name). Some external SDK consumers may
-have been using the old `key` field. Per spec: add `key` alias + `_note` in every response so
-consumers can migrate without breaking. (No rename — `apiKey` stays as the primary field.)
-
-There are **three** `Response.json(...)` return points. Add `key` and `_note` to all three:
-
-### Return 1 — Existing account re-key (around line 65)
+### 1a — Add OPTIONS preflight handler
+After the `GET` export, add:
 ```ts
-// BEFORE
-return Response.json({
-  apiKey,
-  plan,
-  monthlyLimit,
-  message: 'Existing account found. New API key issued.',
-}, { status: 200 });
-
-// AFTER
-return Response.json({
-  apiKey,
-  key: apiKey,
-  _note: 'key is deprecated, use apiKey',
-  plan,
-  monthlyLimit,
-  message: 'Existing account found. New API key issued.',
-}, { status: 200 });
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
 ```
 
-### Return 2 — Agent-without-DeveloperAccount path (around line 94)
-```ts
-// BEFORE
-return Response.json({
-  apiKey,
-  plan: 'FREE',
-  monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-}, { status: 201 });
+### 1b — Add `stale-while-revalidate` to Cache-Control header
+Both the cache-HIT and cache-MISS response headers currently set:
+```
+'Cache-Control': 'public, max-age=300'
+```
+Change both to:
+```
+'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
+```
+There are two places: the HIT branch and the MISS branch.
 
-// AFTER
-return Response.json({
-  apiKey,
-  key: apiKey,
-  _note: 'key is deprecated, use apiKey',
-  plan: 'FREE',
-  monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-}, { status: 201 });
+### 1c — Input validation returning 400
+After the `searchParams` parsing block (currently lines 195–199), add validation before the cache
+lookup:
+
+```ts
+const VALID_DOMAINS = new Set(['finance', 'devtools', 'news', 'general']);
+const VALID_TASKS   = new Set(['research', 'realtime', 'simple']);
+
+if (domain && !VALID_DOMAINS.has(domain)) {
+  return NextResponse.json(
+    { error: `invalid domain — must be one of: ${[...VALID_DOMAINS].join(', ')}` },
+    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+  );
+}
+if (task && !VALID_TASKS.has(task)) {
+  return NextResponse.json(
+    { error: `invalid task — must be one of: ${[...VALID_TASKS].join(', ')}` },
+    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+  );
+}
+if (!isNaN(limitParam) && (limitParam < 1 || limitParam > 50)) {
+  return NextResponse.json(
+    { error: 'limit must be 1–50' },
+    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+  );
+}
 ```
 
-### Return 3 — New agent+account creation path (around line 125)
-```ts
-// BEFORE
-return Response.json({
-  apiKey,
-  plan: 'FREE',
-  monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-}, { status: 201 });
-
-// AFTER
-return Response.json({
-  apiKey,
-  key: apiKey,
-  _note: 'key is deprecated, use apiKey',
-  plan: 'FREE',
-  monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-}, { status: 201 });
-```
-
-### Also: read-audit the SDK directory
-- Read files under `sdk/` (if present) for any `.key` or `response.key` field access on the
-  register response. Add a comment noting deprecation. Do NOT change SDK behavior.
+Note: `limitParam` is already parsed from `searchParams` just before this block. The existing
+`Math.min(Math.max(...))` clamp inside `fetchLeaderboardData` can stay as a safety net, but the
+explicit 400 must fire first for out-of-range values.
 
 ---
 
-## Bug Fix B — P2: Align `/api/v1/account` payload with `/api/v1/router/usage`
+## Task 2 — `src/app/api/v1/leaderboard/badge/[slug]/route.ts`: fix 404 + rank coloring
 
-**File to modify:** `src/app/api/v1/account/route.ts`
+Read the file first (~95 lines).
 
-**Current state:** The route exists and correctly returns `Deprecation: true` header. However it
-returns a minimal payload `{ plan, monthlyLimit, callsThisMonth, strategy, _note }` — it does NOT
-include `cost_usd`, `daily_limit`, `daily_used`, `daily_remaining`, `stats`, `ai_routing_summary`,
-or the full `account` sub-object that `/router/usage` returns.
+### 2a — Fix 404: return SVG not JSON
+The current 404 path returns `NextResponse.json(...)`. Replace it with an SVG "not ranked" badge:
 
-**Fix:** Rewrite the handler body to mirror `src/app/api/v1/router/usage/route.ts` exactly, then
-append the `_note` deprecation field to the response body.
-
-Steps:
-1. Import `getUsageStats` and `getRouterPlanLabel` (already used in `router/usage/route.ts`).
-2. Replicate the `days` param parsing logic from `router/usage/route.ts` (lines 29–39).
-3. Call `getUsageStats(account.id, days)` in the `Promise.all`.
-4. Build the same response body as `router/usage/route.ts` (lines 59–84), then add `_note` and
-   `billingCycleStart` to the `account` sub-object.
-
-Target response shape (must match `GET /api/v1/router/usage` payload exactly, plus `_note`):
-```json
-{
-  "calls": 42,
-  "cost_usd": 0.084,
-  "plan": "FREE",
-  "plan_label": "Free",
-  "daily_limit": 200,
-  "daily_used": 5,
-  "daily_remaining": 195,
-  "monthlyLimit": 500,
-  "callsThisMonth": 42,
-  "strategy": "AUTO",
-  "stats": { "...": "..." },
-  "ai_routing_summary": { "...": "..." },
-  "account": {
-    "plan": "FREE",
-    "monthlyLimit": 500,
-    "callsThisMonth": 42,
-    "billingCycleStart": "2026-03-01T00:00:00.000Z",
-    "strategy": "AUTO"
-  },
-  "_note": "Prefer /api/v1/router/usage — this alias will be removed in v2"
+```ts
+if (!result) {
+  const notRankedSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <rect rx="3" width="130" height="20" fill="#555"/>
+  <rect rx="3" x="75" width="55" height="20" fill="#777"/>
+  <rect x="75" width="4" height="20" fill="#777"/>
+  <rect rx="3" width="130" height="20" fill="url(#s)"/>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">
+    <text x="38" y="15" fill="#010101" fill-opacity=".3">AgentPick</text>
+    <text x="38" y="14">AgentPick</text>
+    <text x="102" y="15" fill="#010101" fill-opacity=".3">not ranked</text>
+    <text x="102" y="14">not ranked</text>
+  </g>
+</svg>`;
+  return new NextResponse(notRankedSvg, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
 }
 ```
 
-Keep the response headers exactly as-is:
+Returning 200 (not 404) ensures GitHub's image proxy renders the SVG rather than showing a broken
+image in READMEs.
+
+### 2b — Rank-based right-panel color in `buildSvgBadge`
+Replace the hardcoded `fill="#e05d17"` with a color chosen by rank:
 ```ts
-headers: {
-  'Deprecation': 'true',
-  'Cache-Control': 'no-store',
-  'Vary': 'Authorization',
-}
+function buildSvgBadge(rank: number, score: number): string {
+  const scoreStr = score.toFixed(1);
+  const rightColor = rank <= 3 ? '#e05d17' : rank <= 10 ? '#4c9a2a' : '#777';
+  // ... rest of template — replace both occurrences of `fill="#e05d17"` with `fill="${rightColor}"`
 ```
 
----
-
-## Bug Fix C — P2: Always populate `meta.ai_classification` for all routing strategies
-
-**File to modify:** `src/lib/router/index.ts`
-
-**Problem:** `aiClassificationResult` is only set when `strategy === 'auto'` (line 452) or when
-`strategy === 'best_performance'` AND the query matches research/deep pattern (lines 457–468).
-For `balanced`, `cheapest`, and non-deep `best_performance` queries the variable stays `undefined`,
-so `meta.ai_classification` is absent/null in the router response envelope. SDK consumers must never
-null-check this field.
-
-**Fix:** Replace the conditional `if (aiClassificationResult)` blocks with unconditional assignments
-that fall back to a structured override object for non-AUTO strategies.
-
-### Block 1 — success path (lines ~647–653)
-
-```ts
-// BEFORE
-if (aiClassificationResult) {
-  meta.ai_classification = {
-    ...aiClassificationResult,
-    reasoning: buildAiReasoning(aiClassificationResult, candidateSlug),
-  };
-  meta.classification_ms = classificationMs;
-}
-
-// AFTER
-meta.ai_classification = aiClassificationResult
-  ? { ...aiClassificationResult, reasoning: buildAiReasoning(aiClassificationResult, candidateSlug) }
-  : { mode: strategy, reason: 'strategy_override', query_type: null };
-if (classificationMs > 0) meta.classification_ms = classificationMs;
+### 2c — Add `stale-while-revalidate` to the success response Cache-Control
+Change:
+```
+'Cache-Control': 'public, max-age=300'
+```
+to:
+```
+'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
 ```
 
-### Block 2 — all-tools-failed path (lines ~697–703)
-
+### 2d — Add ETag with rank included
+Current ETag is `"${slug}-${score}"`. Update to include rank so GitHub's proxy re-fetches on rank
+change:
 ```ts
-// BEFORE
-if (aiClassificationResult) {
-  failureMeta.ai_classification = {
-    ...aiClassificationResult,
-    reasoning: buildAiReasoning(aiClassificationResult, lastTriedTool),
-  };
-  failureMeta.classification_ms = classificationMs;
-}
-
-// AFTER
-failureMeta.ai_classification = aiClassificationResult
-  ? { ...aiClassificationResult, reasoning: buildAiReasoning(aiClassificationResult, lastTriedTool) }
-  : { mode: strategy, reason: 'strategy_override', query_type: null };
-if (classificationMs > 0) failureMeta.classification_ms = classificationMs;
-```
-
-### Type fix — line ~107
-
-The `ai_classification` field is typed as optional `QueryContext & { reasoning?: string }`.
-Update its type to accept the fallback shape too:
-
-```ts
-// BEFORE
-ai_classification?: QueryContext & { reasoning?: string };
-
-// AFTER
-ai_classification?: (QueryContext & { reasoning?: string }) | { mode: string; reason: string; query_type: null };
+'ETag': `"${slug}-${rank}-${score}"`,
 ```
 
 ---
 
 ## Files to Create / Modify
 
-| Action | File                                              | Reason                                     |
-|--------|---------------------------------------------------|--------------------------------------------|
-| MODIFY | `src/app/api/v1/router/register/route.ts`        | Add `key` deprecation alias (Fix A)        |
-| MODIFY | `src/app/api/v1/account/route.ts`                | Full payload alignment with router/usage (Fix B) |
-| MODIFY | `src/lib/router/index.ts`                        | Always set `ai_classification` (Fix C)     |
-| READ   | `sdk/` (any files referencing register response) | Audit for `key` field usage (Fix A)        |
+| Action | File                                                        | Reason                                              |
+|--------|-------------------------------------------------------------|-----------------------------------------------------|
+| MODIFY | `src/app/api/v1/leaderboard/route.ts`                      | OPTIONS preflight, stale-while-revalidate, 400 validation |
+| MODIFY | `src/app/api/v1/leaderboard/badge/[slug]/route.ts`         | SVG 404, rank color, stale-while-revalidate, ETag+rank |
+
+Do NOT touch `src/middleware.ts` — the existing CORS handling there is sufficient and leaderboard
+routes already have `Access-Control-Allow-Origin: *` set explicitly in every response.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `POST /api/v1/router/register` → response includes both `apiKey` and `key` with `_note`
-- [ ] `GET /api/v1/account` → 200, `Deprecation: true` header, full payload matching `/router/usage`
-- [ ] `meta.ai_classification` is never null/absent for `balanced`, `cheapest`, `best_performance` strategies
-- [ ] All 51 automated QA checks remain green
+- [ ] `OPTIONS /api/v1/leaderboard` → 204 with CORS headers
+- [ ] `GET /api/v1/leaderboard` response has `Cache-Control: public, max-age=300, stale-while-revalidate=60`
+- [ ] `GET /api/v1/leaderboard?limit=51` → 400 `{ "error": "limit must be 1–50" }`
+- [ ] `GET /api/v1/leaderboard?domain=invalid` → 400 with error message
+- [ ] `GET /api/v1/leaderboard?task=invalid` → 400 with error message
+- [ ] `GET /api/v1/leaderboard/badge/nonexistent-slug` → 200 `image/svg+xml` showing "not ranked"
+- [ ] `GET /api/v1/leaderboard/badge/tavily` (top-3 tool) → orange right panel `#e05d17`
+- [ ] `GET /api/v1/leaderboard/badge/[rank-4-10 tool]` → green right panel `#4c9a2a`
+- [ ] Badge ETag includes rank: `"slug-rank-score"`
+- [ ] All 57 QA checks remain green post-deploy
 
 ---
 
@@ -240,5 +182,5 @@ ai_classification?: (QueryContext & { reasoning?: string }) | { mode: string; re
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] v-next: Fix A/B/C API bugs — key alias, account payload, ai_classification always set
+[<ISO timestamp>] [CLAUDE-CODE] [done] v-next: Leaderboard API hardening — OPTIONS preflight, 400 validation, SVG 404 badge, rank-color, stale-while-revalidate
 ```
