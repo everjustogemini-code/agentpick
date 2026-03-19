@@ -1,166 +1,146 @@
-# TASK_CLAUDE_CODE.md — v-next
-**Agent:** Claude Code (API / backend / database)
+# TASK_CLAUDE_CODE.md — v-next Cycle 2
+**Agent:** Claude Code (CSS infrastructure + homepage page.tsx)
 **Date:** 2026-03-18
 **Source:** NEXT_VERSION.md v-next
 
 ---
 
-## Coverage Summary
+## Status Check
 
-| NEXT_VERSION.md Item | Task | Files |
-|---|---|---|
-| Item 1 — Fix `/api/v1/account` (P2) | Rewrite account route as alias with deprecation header | `src/app/api/v1/account/route.ts` |
-| Item 3 — Public Leaderboard API | New leaderboard + badge routes; new rate limiter | `src/app/api/v1/leaderboard/route.ts` (new), `src/app/api/v1/leaderboard/badge/[slug]/route.ts` (new), `src/lib/rate-limit.ts` |
+All backend API routes are **already implemented** from Cycle 1:
+- `src/app/api/v1/account/route.ts` — ✅ 200 + `Deprecation: true` header + `_note` field
+- `src/app/api/v1/leaderboard/route.ts` — ✅ unauthenticated, rate-limited, 5-min cache, CORS
+- `src/app/api/v1/leaderboard/badge/[slug]/route.ts` — ✅ SVG, ETag, CORS
+
+Your job is **CSS global tokens** and **homepage `page.tsx`** only.
 
 ---
 
-## Files Owned by This Agent (Codex must NOT touch these)
+## Coverage
+
+| NEXT_VERSION.md Item | This agent's scope |
+|---|---|
+| Item 2 — Dark-Glass Design System (global tokens) | `src/app/globals.css`: body bg, `--bg-card`, `--text-primary` |
+| Item 2 — Hero section, stats ScrollReveal, headline upgrade | `src/app/page.tsx` |
+
+---
+
+## Files Owned — Codex MUST NOT touch these
 
 | Action | File |
 |---|---|
-| **MODIFY** | `src/app/api/v1/account/route.ts` |
-| **CREATE** | `src/app/api/v1/leaderboard/route.ts` |
-| **CREATE** | `src/app/api/v1/leaderboard/badge/[slug]/route.ts` |
-| **MODIFY** | `src/lib/rate-limit.ts` |
+| **MODIFY** | `src/app/globals.css` |
+| **MODIFY** | `src/app/page.tsx` |
 
-> **DO NOT TOUCH** any file in Codex's list:
-> `src/app/globals.css`, `src/app/page.tsx`, `src/app/connect/page.tsx`,
-> or any file under `src/components/`.
+> **DO NOT TOUCH:** `src/app/connect/page.tsx`, any file under `src/components/`, or any file under `src/app/api/`.
 
 ---
 
-## Task 1 — Fix `GET /api/v1/account` (Item 1 — backend)
+## Task 1 — `src/app/globals.css`: Activate Dark Theme as Default
 
-**File:** `src/app/api/v1/account/route.ts`
+**Exact changes (3 lines total):**
 
-The route currently exists but returns 404. Rewrite it as an alias for `/api/v1/router/usage`.
+1. Find the `body` rule. Change the background value:
+   - **Before:** `background: var(--bg-primary)` (or `background-color: var(--bg-primary)`)
+   - **After:** `background: var(--bg-base)`
 
-**Actions:**
-1. Read both `src/app/api/v1/account/route.ts` and `src/app/api/v1/router/usage/route.ts`.
-2. Identify how `/router/usage` fetches account data — reuse the same helper function(s) or DB queries.
-3. Rewrite `account/route.ts` so `GET /api/v1/account` returns HTTP 200 with this exact shape:
-   ```json
-   {
-     "plan": "<user plan>",
-     "monthlyLimit": <number>,
-     "callsThisMonth": <number>,
-     "strategy": "<strategy>",
-     "_note": "Prefer /api/v1/router/usage — this alias will be removed in v2"
-   }
-   ```
-4. Add response header `Deprecation: true` on every 200 response (use `NextResponse.json(body, { headers: { 'Deprecation': 'true' } })`).
-5. Apply the same Bearer-key auth that `/router/usage` uses — reuse the existing auth middleware/helper, do not weaken it.
-6. On auth failure, return 401 as normal.
+2. In the `:root` block, update two existing token values:
+   - `--bg-card: #FFFFFF;` → `--bg-card: rgba(255, 255, 255, 0.05);`
+   - `--text-primary: #0A0A0A;` → `--text-primary: #E2E8F0;`
 
-**Done when:**
-- `GET /api/v1/account` (valid key) → 200 JSON with all five fields including `_note`; response header `Deprecation: true` present.
-- `GET /api/v1/account` (no key) → 401.
-- No 404.
+`--bg-base: #0a0a0f` is already defined in `:root` (around line 63). Do not add a new declaration — just update the three values listed above.
 
 ---
 
-## Task 2 — Public Leaderboard API (Item 3 — backend)
+## Task 2 — `src/app/page.tsx`: Hero Upgrade + Stats ScrollReveal
 
-### 2a — `GET /api/v1/leaderboard`
+Read the file. Make these targeted changes:
 
-**File to create:** `src/app/api/v1/leaderboard/route.ts`
+### 2a — Outer wrapper background (line ~126)
 
-**Requirements:**
-- **No auth required.**
-- **Rate limit:** 60 req/min per IP (unauthenticated). Use the new `leaderboardLimiter` added in Task 2c below.
-- **Cache:** 5-minute in-memory TTL. Set `Cache-Control: public, max-age=300` on responses.
-- **CORS:** `Access-Control-Allow-Origin: *` (required for badge images and third-party tooling).
-- **Data source:** Same benchmark/score tables powering `/api/v1/products/[slug]`. Aggregate by tool slug. No new computation.
+```tsx
+// Before:
+<div className="min-h-screen bg-bg-primary">
 
-**Query params:**
-```
-?domain=finance|devtools|news|general|...   (optional, filter by domain)
-?task=research|realtime|simple              (optional, filter by task type)
-?limit=10                                   (default 10, max 50 — clamp to 1–50)
+// After:
+<div className="min-h-screen bg-[#0a0a0f]">
 ```
 
-**Response 200:**
-```json
-{
-  "updated_at": "<ISO timestamp of last benchmark run>",
-  "tools": [
-    {
-      "rank": 1,
-      "slug": "tavily",
-      "name": "Tavily",
-      "score": 8.4,
-      "latency_p50_ms": 898,
-      "success_rate": 1.0,
-      "best_for": ["research", "realtime"],
-      "domains": ["general", "news", "finance"]
-    }
-  ]
-}
+### 2b — Headline upgrade (lines ~156–164)
+
+Find the `<h1>` hero headline. Replace the current `fontSize` style and gradient span:
+
+```tsx
+// Before:
+<h1
+  className="mb-5 font-extrabold leading-[1.05] tracking-tight text-text-primary"
+  style={{ fontSize: 'clamp(38px, 5vw, 56px)', maxWidth: 700 }}
+>
+  Your agent is picking tools blindly.{' '}
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-purple">
+    We fix that.
+  </span>
+</h1>
+
+// After:
+<h1
+  className="mb-5 font-extrabold leading-[1.05] text-white"
+  style={{ fontSize: 'clamp(2.8rem, 5vw, 4.5rem)', fontWeight: 800, letterSpacing: '-0.03em', maxWidth: 700 }}
+>
+  Your agent is picking tools blindly.{' '}
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-orange-400">
+    We fix that.
+  </span>
+</h1>
 ```
 
-**Implementation notes:**
-- Apply `domain` and `task` filters before ranking if query params are present.
-- Rank tools by `score` descending; assign sequential `rank` starting at 1.
-- `latency_p50_ms`: 50th-percentile latency from benchmark runs for that tool.
-- `success_rate`: fraction of successful runs (0.0–1.0).
-- `best_for`: top 2–3 task types by result quality for that tool.
-- `domains`: distinct domain values from benchmark runs for that tool.
+### 2c — Wrap headline + CTA in glass-card panel
 
-### 2b — `GET /api/v1/leaderboard/badge/[slug]`
+Wrap the `<h1>`, the subtitle `<p>`, and the CTA `<div>` (containing the "Get API key" and "Try the router" buttons) in a glass-card div:
 
-**File to create:** `src/app/api/v1/leaderboard/badge/[slug]/route.ts`
-
-- Look up current rank and score for `slug` from the leaderboard data (reuse the leaderboard helper — no second DB query).
-- Return a Shields.io-compatible SVG badge. Use this template (substitute `{{RANK}}` and `{{SCORE}}`):
-
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
-  <linearGradient id="s" x2="0" y2="100%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <rect rx="3" width="130" height="20" fill="#555"/>
-  <rect rx="3" x="75" width="55" height="20" fill="#e05d17"/>
-  <rect x="75" width="4" height="20" fill="#e05d17"/>
-  <rect rx="3" width="130" height="20" fill="url(#s)"/>
-  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">
-    <text x="38" y="15" fill="#010101" fill-opacity=".3">AgentPick</text>
-    <text x="38" y="14">AgentPick</text>
-    <text x="102" y="15" fill="#010101" fill-opacity=".3">#{{RANK}} · {{SCORE}}</text>
-    <text x="102" y="14">#{{RANK}} · {{SCORE}}</text>
-  </g>
-</svg>
+```tsx
+<div className="glass-card rounded-2xl p-8 mb-6">
+  {/* h1 here */}
+  {/* subtitle p here */}
+  {/* CTA buttons div here */}
+</div>
 ```
 
-- Response headers: `Content-Type: image/svg+xml`, `Cache-Control: public, max-age=300`, `ETag: "<slug>-<score>"`, `Access-Control-Allow-Origin: *`.
-- If slug not found: return 404 with `Content-Type: application/json` and body `{ "error": "tool not found" }`.
+### 2d — Stats bar: wire ScrollReveal
 
-### 2c — Add `leaderboardLimiter` to rate-limit module
+`ScrollReveal` is already imported at the top of the file. Locate the data-flywheel stats div (the `<div className="mb-6 rounded-xl border border-border bg-bg-card/50 ...">` block). Wrap it:
 
-**File to modify:** `src/lib/rate-limit.ts`
-
-Read the file first. Add and export a new limiter following the exact same pattern as existing limiters (e.g., `productsLimiter`, `voteLimiter`):
-
-```ts
-export const leaderboardLimiter = ratelimit(60, '1 m')  // 60 req/min per IP, unauthenticated
+```tsx
+<ScrollReveal>
+  {/* existing stats div */}
+</ScrollReveal>
 ```
 
-Apply it in the leaderboard route handler (Task 2a): extract client IP from the request, call `leaderboardLimiter.limit(ip)`, return 429 with `{ "error": "rate limit exceeded" }` if `!success`.
+### 2e — How It Works: wire ScrollReveal
+
+Locate the `<HowItWorks />` component render (or inline "How it works" section) in `page.tsx`. Wrap it:
+
+```tsx
+<ScrollReveal>
+  <HowItWorks />
+</ScrollReveal>
+```
 
 ---
 
-## Verification Checklist
+## Acceptance Criteria
 
-- [ ] `GET /api/v1/account` (valid key) → 200, body contains `_note` field, header `Deprecation: true` present
-- [ ] `GET /api/v1/account` (no key) → 401
-- [ ] `GET /api/v1/leaderboard` (no key) → 200 JSON, `tools[0].rank === 1`
-- [ ] `GET /api/v1/leaderboard?domain=finance&limit=3` → ≤3 results, all finance domain
-- [ ] `GET /api/v1/leaderboard` response has `Cache-Control: public, max-age=300` and `Access-Control-Allow-Origin: *`
-- [ ] `GET /api/v1/leaderboard/badge/tavily` → `Content-Type: image/svg+xml`, valid SVG
-- [ ] `GET /api/v1/leaderboard/badge/tavily` response has `Access-Control-Allow-Origin: *`
-- [ ] `GET /api/v1/leaderboard/badge/nonexistent-slug` → 404 JSON `{ "error": "tool not found" }`
-- [ ] 61st unauthenticated request to `/api/v1/leaderboard` within 1 min → 429
-- [ ] Zero files from Codex's list (`globals.css`, `page.tsx`, `connect/page.tsx`, `src/components/`) were modified
+- [ ] No white flash on load — body background is `#0a0a0f` (var(--bg-base))
+- [ ] `--bg-card` is `rgba(255,255,255,0.05)` and `--text-primary` is `#E2E8F0` in `:root`
+- [ ] Hero outer div uses `bg-[#0a0a0f]` instead of `bg-bg-primary`
+- [ ] Headline: `clamp(2.8rem, 5vw, 4.5rem)`, weight 800, `letterSpacing: '-0.03em'`
+- [ ] Headline gradient: `from-white to-orange-400` (not `from-accent to-accent-purple`)
+- [ ] Headline + CTA buttons wrapped in `glass-card rounded-2xl p-8` div
+- [ ] Stats bar wrapped in `<ScrollReveal>`
+- [ ] HowItWorks wrapped in `<ScrollReveal>`
+- [ ] `src/app/connect/page.tsx` NOT modified
+- [ ] No files under `src/components/` modified
+- [ ] No files under `src/app/api/` modified
 
 ---
 
@@ -168,5 +148,5 @@ Apply it in the leaderboard route handler (Task 2a): extract client IP from the 
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] v-next: /api/v1/account alias+deprecation, leaderboard API + badge SVG route
+[<ISO timestamp>] [CLAUDE-CODE] [done] v-next cycle 2: dark-glass CSS tokens + homepage hero upgrade + ScrollReveal wiring
 ```

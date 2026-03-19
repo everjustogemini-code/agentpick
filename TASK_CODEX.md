@@ -1,164 +1,177 @@
-# TASK_CODEX.md — v-next
-**Agent:** Codex (frontend / components / styling)
+# TASK_CODEX.md — v-next Cycle 2
+**Agent:** Codex (frontend components + connect page)
 **Date:** 2026-03-18
 **Source:** NEXT_VERSION.md v-next
 
 ---
 
-## Coverage Summary
+## Status Check
 
-| NEXT_VERSION.md Item | Task | Files |
-|---|---|---|
-| Item 1 — Fix `/api/v1/account` (frontend half) | Update `/connect` API reference table to document both paths | `src/app/connect/page.tsx` |
-| Item 2 — Dark-Glass Design System | globals.css dark defaults; hero-mesh + glass-card + gradient-border-card; ScrollReveal wiring; typography | `src/app/globals.css`, `src/app/page.tsx`, feature card component(s), pricing card component(s) |
-| Item 3 — Leaderboard API (frontend half) | Add Leaderboard API section to `/connect` with curl + "Try it" + badge snippet | `src/app/connect/page.tsx` |
+All backend API routes are **already implemented** from Cycle 1:
+- `src/app/api/v1/account/route.ts` — ✅ done
+- `src/app/api/v1/leaderboard/route.ts` — ✅ done
+- `src/app/api/v1/leaderboard/badge/[slug]/route.ts` — ✅ done
+
+Your job is **component styling**, **ScrollReveal wiring in components**, and **connect page additions**.
 
 ---
 
-## Files Owned by This Agent (Claude Code must NOT touch these)
+## Coverage
+
+| NEXT_VERSION.md Item | This agent's scope |
+|---|---|
+| Item 1 — `/connect` API reference update | `src/app/connect/page.tsx`: add deprecation note for `/api/v1/account` |
+| Item 2 — Feature cards glass-card styling | `src/components/StrategyCards.tsx` (or equivalent feature card component) |
+| Item 2 — Pricing cards glass-card + glow styling | `src/components/PricingSection.tsx` |
+| Item 2 — ScrollReveal for feature + pricing | Wrap inside `StrategyCards.tsx` and `PricingSection.tsx` |
+| Item 2 — Typography data-value class | `src/components/StatsBar.tsx` and `src/components/AnimatedCounter.tsx` |
+| Item 3 — Leaderboard API section on `/connect` | `src/app/connect/page.tsx` |
+
+---
+
+## Files Owned — Claude Code MUST NOT touch these
 
 | Action | File |
 |---|---|
-| **MODIFY** | `src/app/globals.css` |
-| **MODIFY** | `src/app/page.tsx` |
 | **MODIFY** | `src/app/connect/page.tsx` |
-| **MODIFY** | Feature card component under `src/components/` (grep for "feature" or "FeatureCard") |
-| **MODIFY** | Pricing card component under `src/components/` (grep for "PricingCard" or "pricing") |
+| **MODIFY** | `src/components/StrategyCards.tsx` |
+| **MODIFY** | `src/components/PricingSection.tsx` |
+| **MODIFY** | `src/components/StatsBar.tsx` |
+| **MODIFY** | `src/components/AnimatedCounter.tsx` |
 
-> **DO NOT TOUCH** any file listed in TASK_CLAUDE_CODE.md:
-> `src/app/api/v1/account/route.ts`, `src/app/api/v1/leaderboard/route.ts`,
-> `src/app/api/v1/leaderboard/badge/[slug]/route.ts`, `src/lib/rate-limit.ts`,
-> or any other file under `src/app/api/`.
-
----
-
-## Task 1 — Update `/connect` API Reference Table (Item 1 — frontend)
-
-**File:** `src/app/connect/page.tsx`
-
-**Problem:** The API reference on `/connect` shows only the old path. It must document both `/api/v1/router/usage` (canonical) and `/api/v1/account` (deprecated alias).
-
-**Actions:**
-1. Read the file. Find the API reference table or endpoint listing section.
-2. In the endpoint list, add a row for `GET /api/v1/account` marked as deprecated, pointing to `/api/v1/router/usage`. Example:
-
-   | Endpoint | Auth | Notes |
-   |---|---|---|
-   | `GET /api/v1/router/usage` | Bearer key | Canonical — use this |
-   | `GET /api/v1/account` | Bearer key | **Deprecated alias** — returns same data + `Deprecation: true` header; will be removed in v2 |
-
-3. If there is already an `/account` row, update it to show "deprecated alias" clearly.
-4. Do not remove any existing documentation rows.
-
-**Done when:** `/connect` API reference clearly shows both paths with the alias marked deprecated.
+> **DO NOT TOUCH:** `src/app/globals.css`, `src/app/page.tsx`, or any file under `src/app/api/`.
+> Note: `globals.css` and `page.tsx` are owned by Claude Code this cycle — conflicts would break the build.
 
 ---
 
-## Task 2 — Dark-Glass Design System (Item 2)
+## Task 1 — Feature Cards: glass-card styling (`src/components/StrategyCards.tsx`)
 
-### 2a — Dark by default (`src/app/globals.css`)
+Read the file. For each rendered card `<div>`:
 
-Read the file. Apply these changes:
+1. Add classes `glass-card gradient-border-card` to the root card element.
+2. Replace any explicit `bg-white`, `bg-bg-card`, or light-background classes on that element — the `glass-card` class handles background.
+3. Styling only. Do not change component logic, props, or data.
+4. If the component renders 3 cards, all 3 must get these classes.
 
-1. Find `body { background: var(--bg-primary) }` (or equivalent `background-color` on `body`). Change it to `background: var(--bg-base)`.
-2. Find the CSS variable declaration block (`:root` or equivalent). Update:
-   - `--bg-card` → `rgba(255, 255, 255, 0.05)`
-   - `--text-primary` → `#E2E8F0`
-3. These variables are already defined — update their values, do not add new declarations.
-
-### 2b — Homepage hero (`src/app/page.tsx`)
-
-Read the file. Locate the hero section wrapper `<div>` (the outermost container for the headline + CTA):
-
-1. Add class `hero-mesh` to the hero wrapper div. (`hero-mesh` is already defined in `globals.css`.)
-2. Wrap the headline and CTA button(s) in a `<div>` with class `glass-card` if not already wrapped.
-3. Update the hero headline element:
-   - Replace current font-size/weight classes with: `font-size: clamp(2.8rem, 5vw, 4.5rem)` (inline style or Tailwind equivalent), `font-weight: 800`, `letter-spacing: -0.03em`.
-   - Apply gradient text: add Tailwind classes `bg-gradient-to-r from-white to-orange-400 bg-clip-text text-transparent`.
-
-### 2c — Feature and pricing cards
-
-**Feature card component** (find via `grep -r "feature" src/components/ --include="*.tsx" -l` or similar):
-1. On the root card `<div>`, replace any existing background/border classes with `glass-card gradient-border-card`.
-2. Styling only — no logic changes.
-
-**Pricing card component** (find via `grep -r "PricingCard\|pricing" src/components/ --include="*.tsx" -l`):
-1. On the root card `<div>`, add classes `glass-card gradient-border-card`.
-2. For the **primary CTA** pricing card (e.g., the "Pro" or highlighted tier), also add class `shadow-glow-orange` on hover (Tailwind: `hover:shadow-glow-orange` — this class is already defined in `globals.css`).
-3. For the **secondary** pricing card, add `hover:shadow-glow-cyan` instead.
-4. Styling only — no logic changes.
-
-### 2d — ScrollReveal wiring (`src/app/page.tsx`)
-
-`ScrollReveal` component is at `src/components/ScrollReveal.tsx` and the `.scroll-reveal` + `.visible` CSS already exists in `globals.css`. Wire it in `page.tsx`:
-
-1. Import `ScrollReveal` from `@/components/ScrollReveal` (or the correct relative path).
-2. Wrap each of these sections with `<ScrollReveal>`:
-   - The **live-feed stats bar** (the row showing live call counts / scores).
-   - Each of the **three feature cards**.
-   - The **pricing section** container.
-   - Each **"How it works" step**.
-3. Pass a `delay` prop (stagger by `0`, `100`, `200`, `300` ms respectively for multi-item sections) if the component supports it; otherwise wrap each item individually.
-
-### 2e — Typography (`src/app/page.tsx` and components)
-
-Find every element that displays a latency value, score, or call count (look for `ms`, numeric scores, and call-count stat elements). Add class `data-value` (or `font-jetbrains-mono` if Tailwind JetBrains Mono is configured) to those elements. The `data-value` class is already defined in `globals.css` — just apply it.
-
-**Scope:** `src/app/page.tsx` only (not other pages — those are out of scope this cycle).
+**Done when:** All feature cards have `glass-card gradient-border-card` on their root element.
 
 ---
 
-## Task 3 — Leaderboard API Section on `/connect` (Item 3 — frontend)
+## Task 2 — Pricing Cards: glass-card + glow styling (`src/components/PricingSection.tsx`)
 
-**File:** `src/app/connect/page.tsx` (coordinate edits with Task 1 — same file)
+Read the file. For each pricing tier card:
 
-Add a new **"Leaderboard API"** section to the `/connect` page. Place it after the existing endpoint reference section and before the footer.
+1. Add classes `glass-card gradient-border-card` to the root card element.
+2. For the **primary/highlighted tier** (usually "Pro" or the middle tier with a CTA): also add `hover:shadow-glow-orange`.
+3. For the **secondary tier** (free or lower tier): also add `hover:shadow-glow-cyan`.
+4. Replace any explicit light-background classes on those elements.
+5. Styling only. Do not change pricing data, logic, or CTAs.
 
-### Section content
+**Done when:** All pricing cards have `glass-card gradient-border-card`; primary has `hover:shadow-glow-orange`, secondary has `hover:shadow-glow-cyan`.
 
-**Heading:** `Leaderboard API` (h2 or equivalent section heading)
+---
 
-**Description:** "Free, unauthenticated read access to AgentPick benchmark rankings. No API key required."
+## Task 3 — ScrollReveal wiring in components
 
-**Curl example block:**
+### 3a — Feature cards (`src/components/StrategyCards.tsx`)
+
+After the glass-card styling edits:
+
+1. Import `ScrollReveal` from `@/components/ScrollReveal`.
+2. Wrap each individual card in `<ScrollReveal delay={n}>` where `n` is staggered: `0`, `100`, `200` ms.
+   ```tsx
+   <ScrollReveal delay={0}><CardComponent ... /></ScrollReveal>
+   <ScrollReveal delay={100}><CardComponent ... /></ScrollReveal>
+   <ScrollReveal delay={200}><CardComponent ... /></ScrollReveal>
+   ```
+3. If `ScrollReveal` does not accept a `delay` prop, wrap without it.
+
+### 3b — Pricing section (`src/components/PricingSection.tsx`)
+
+1. Import `ScrollReveal` from `@/components/ScrollReveal`.
+2. Wrap the outermost pricing container div in `<ScrollReveal>`.
+
+**Done when:** Feature cards and pricing section animate in on scroll.
+
+---
+
+## Task 4 — Typography: data-value class
+
+The `data-value` CSS class (JetBrains Mono font) is already defined in `globals.css`. Apply it to numeric display elements.
+
+### `src/components/StatsBar.tsx`
+
+Read the file. Find every element that renders a numeric value (latency in ms, score numbers, call counts). Add class `data-value` to those `<span>` or `<p>` elements.
+
+### `src/components/AnimatedCounter.tsx`
+
+Read the file. The component renders an animated number. Add class `data-value` to the element that renders the counter value.
+
+**Scope:** Only these two files. Do not touch other component files.
+
+---
+
+## Task 5 — `/connect` Page: API Reference Table + Leaderboard Section (`src/app/connect/page.tsx`)
+
+Read the file. Make two additions:
+
+### 5a — API reference: document `/api/v1/account` alias
+
+Find the existing API endpoint reference section or table. Add a row or entry for `GET /api/v1/account` as a deprecated alias:
+
+```
+GET /api/v1/account   →  Bearer key required
+Deprecated alias for /api/v1/router/usage.
+Returns same fields + Deprecation: true header.
+Will be removed in v2 — prefer /api/v1/router/usage.
+```
+
+If the section is prose (not a table), add an inline note. If it is a table, add a table row. Match the visual style of existing entries.
+
+### 5b — Leaderboard API section
+
+Add a new section below the existing endpoint documentation. Use the same styling as other sections on the page (dark panel, monospace font).
+
+**Section heading:** `Leaderboard API`
+
+**Description text:** `Free, unauthenticated read access to AgentPick benchmark rankings. No API key required.`
+
+**Curl block** (render in a styled `<pre>` or `<code>` with dark background + copy button):
 ```
 curl https://agentpick.dev/api/v1/leaderboard
 ```
-Render this in a styled `<pre>` or code block (dark background, monospace font). Include a copy button.
 
 **"Try it" button:**
+- An `<a href="https://agentpick.dev/api/v1/leaderboard" target="_blank" rel="noopener noreferrer">` styled as a primary button.
 - Label: `Try it`
-- On click: `window.open('https://agentpick.dev/api/v1/leaderboard', '_blank')` (or use an `<a target="_blank">` styled as a button).
-- Style: `bg-gradient-to-r from-orange-500 to-orange-400` or match the site's primary CTA style.
+- Use the site's existing button style (match the orange CTA on the page).
 
-**Badge Markdown snippet:**
-Below the curl example, add a sub-section titled "README Badge". Show a copy-paste Markdown snippet for the top-ranked tool:
-```markdown
-[![Ranked #1 on AgentPick](https://agentpick.dev/api/v1/leaderboard/badge/tavily)](https://agentpick.dev/products/tavily)
-```
-Include a brief note: "Replace `tavily` with any tool slug. Badge auto-updates every 5 minutes."
+**Badge Markdown subsection:**
+- Sub-heading or label: `README Badge`
+- A `<pre>` block (copy button) containing:
+  ```
+  [![Ranked #1 on AgentPick](https://agentpick.dev/api/v1/leaderboard/badge/tavily)](https://agentpick.dev/products/tavily)
+  ```
+- Below the block, add note text: `Replace tavily with any tool slug. Badge auto-updates every 5 minutes.`
 
-Render the snippet in a `<pre>` code block with a copy button.
-
-**Done when:** The `/connect` page has a "Leaderboard API" section with the curl one-liner, "Try it" button, and badge Markdown snippet.
+**Done when:** `/connect` shows the Leaderboard API section with curl one-liner, "Try it" button, and badge Markdown snippet with copy button.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `body` defaults to `var(--bg-base)` (dark background) — no white flash on load
-- [ ] `--bg-card` → `rgba(255,255,255,0.05)`, `--text-primary` → `#E2E8F0` in `:root`
-- [ ] Hero wrapper has `hero-mesh` class; headline + CTA wrapped in `glass-card`
-- [ ] Hero headline: `clamp(2.8rem, 5vw, 4.5rem)`, weight 800, `letter-spacing: -0.03em`, `from-white to-orange-400` gradient text
-- [ ] All three feature cards have `glass-card gradient-border-card`
-- [ ] All pricing tier cards have `glass-card gradient-border-card`; primary card has `hover:shadow-glow-orange`, secondary has `hover:shadow-glow-cyan`
-- [ ] `<ScrollReveal>` wraps: stats bar, feature cards (×3), pricing section, "How it works" steps
-- [ ] Latency/score/call-count elements on homepage have `data-value` class (JetBrains Mono font)
-- [ ] `/connect` API reference shows both `/api/v1/router/usage` (canonical) and `/api/v1/account` (deprecated alias)
-- [ ] `/connect` has "Leaderboard API" section with curl one-liner, "Try it" button, and badge Markdown snippet
-- [ ] Lighthouse LCP < 2.5s; consistent dark glass on `/`, `/connect`
-- [ ] All 51 automated QA checks remain green
-- [ ] Zero files from TASK_CLAUDE_CODE.md were modified
+- [ ] All three feature cards in `StrategyCards.tsx` have `glass-card gradient-border-card`
+- [ ] All pricing cards in `PricingSection.tsx` have `glass-card gradient-border-card`
+- [ ] Primary pricing card has `hover:shadow-glow-orange`, secondary has `hover:shadow-glow-cyan`
+- [ ] Feature cards wrapped in `<ScrollReveal>` with staggered delay
+- [ ] Pricing section container wrapped in `<ScrollReveal>`
+- [ ] `StatsBar.tsx` numeric elements have `data-value` class
+- [ ] `AnimatedCounter.tsx` counter element has `data-value` class
+- [ ] `/connect` API reference documents `GET /api/v1/account` as deprecated alias
+- [ ] `/connect` has "Leaderboard API" section with curl, "Try it" button, and badge Markdown snippet
+- [ ] `src/app/globals.css` NOT modified
+- [ ] `src/app/page.tsx` NOT modified
+- [ ] No files under `src/app/api/` modified
 
 ---
 
@@ -166,5 +179,5 @@ Render the snippet in a `<pre>` code block with a copy button.
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CODEX] [done] v-next: dark-glass design system, /connect deprecation docs + leaderboard section, ScrollReveal wiring
+[<ISO timestamp>] [CODEX] [done] v-next cycle 2: feature+pricing glass-card, ScrollReveal in components, /connect leaderboard section + deprecation docs
 ```

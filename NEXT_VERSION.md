@@ -1,9 +1,11 @@
 # NEXT_VERSION.md — v-next
 **Date:** 2026-03-18
-**Prepared by:** AgentPick PM
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **60/60, zero P1/P2 bugs**
-**Live site:** https://agentpick.dev (checked 2026-03-18 — dark glass design, animated hero, functional)
+**Prepared by:** AgentPick PM (reviewed & confirmed 2026-03-18)
+**QA baseline:** QA_REPORT.md (2026-03-18) — score **60/60, zero P0/P1/P2 bugs**
+**Live site:** https://agentpick.dev (checked 2026-03-18 — dark neon design, animated hero metrics, 3-tier pricing, functional)
 **Rule:** Bugs first. No features while P1/P2 remain. **All clear — features unlocked.**
+
+> PM review notes: QA 60/60 confirmed clean. One P2 docs/routing gap remains (`/api/v1/account` 404). Live site UI functional but green-neon aesthetic is dated vs current SaaS bar (Vercel/Resend/Linear tier). CSS dark-glass tokens exist but inconsistently applied — no rewrite needed, just activation. Leaderboard API is the highest-leverage zero-auth adoption hook given the product's core value is benchmark data.
 
 ---
 
