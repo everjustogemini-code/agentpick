@@ -4,11 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentpick"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for AgentPick — AI-powered API routing"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dependencies = ["httpx>=0.27"]
 
 [project.urls]
 Homepage = "https://agentpick.dev/quickstart"
+Repository = "https://github.com/agentpick/sdk-python"
