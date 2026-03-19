@@ -1,7 +1,7 @@
 # AgentPick QA Report
 **Date:** 2026-03-19
 **Target:** https://agentpick.dev
-**Tester:** QA Agent (Claude)
+**Tester:** QA Agent (Claude Code, claude-sonnet-4-6)
 
 ---
 
@@ -75,6 +75,12 @@ None.
 - Meta includes: `tool_used`, `latency_ms`, `total_ms`, `fallback_used`, `cost_usd`, `result_count`, `calls_remaining`, `strategy`, `plan`
 - Search returns 10 results with exa-search on `best_performance` strategy (65ms total latency)
 - Finance routing: `polygon-io` selected correctly
+
+### Visual Regression Check — Pass
+- `/` — Hero, code block, pricing, live feed all render correctly; dark code block confirmed; no broken layouts
+- `/connect` — Interactive code generator, playground, strategy docs, pricing table all present
+- `/dashboard` — Plan/strategy/spend/API-key controls visible; HTTP 200
+- `/products/tavily` — Agent score (6.3/10), benchmark data, advocate/critic reviews, p50 latency (919ms), success rate (100%) all displayed correctly; no broken layouts
 
 ### Product Page (/products/tavily) — Pass
 - Page loads with title, pricing, description, benchmarks, CTA all present

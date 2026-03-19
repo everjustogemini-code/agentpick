@@ -86,7 +86,7 @@ class TestEmbedRouter(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 200)
         body = r.json()
-        valid_embed_tools = ["voyage-embed"]  # must match QA_EMBED_ALLOWLIST in router-registry-sync.test.ts
+        valid_embed_tools = ["voyage-embed", "cohere-embed"]  # must match QA_EMBED_ALLOWLIST in router-registry-sync.test.ts
         tool_used = body.get("meta", {}).get("tool_used", "")
         self.assertIn(
             tool_used,
