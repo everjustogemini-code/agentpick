@@ -18,11 +18,6 @@ const nextConfig: NextConfig = {
         destination: '/connect',
         permanent: true,
       },
-      {
-        source: '/api/v1/register',
-        destination: '/api/v1/router/register',
-        permanent: true,
-      },
     ];
   },
   async headers() {
