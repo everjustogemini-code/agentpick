@@ -6,7 +6,7 @@ import { CAPABILITY_TOOLS } from '@/lib/router/index';
  * Must match agentpick-router-qa.py TestEmbedRouter.valid_embed_tools.
  * When adding a new embed adapter, update BOTH this constant AND the QA script.
  */
-export const QA_EMBED_ALLOWLIST = ['voyage-embed'] as const;
+export const QA_EMBED_ALLOWLIST = ['voyage-embed', 'cohere-embed'] as const;
 
 describe('router-registry ↔ QA allowlist sync', () => {
   it('CAPABILITY_TOOLS.embed[0] must be voyage-embed', () => {
@@ -20,7 +20,7 @@ describe('router-registry ↔ QA allowlist sync', () => {
   });
 
   it('retired embed slugs must NOT be in QA_EMBED_ALLOWLIST', () => {
-    const retired = ['voyage-ai', 'cohere-embed', 'jina-embeddings'];
+    const retired = ['voyage-ai', 'jina-embeddings'];
     for (const slug of retired) {
       expect(QA_EMBED_ALLOWLIST as readonly string[]).not.toContain(slug);
     }
