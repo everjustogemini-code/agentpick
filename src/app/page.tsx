@@ -9,7 +9,7 @@ import StrategyCards from '@/components/StrategyCards';
 import PricingSection from '@/components/PricingSection';
 import Link from 'next/link';
 import CopyButton from '@/components/CopyButton';
-import AnimatedCounter from '@/components/AnimatedCounter';
+import OnceAnimatedCounter from '@/components/OnceAnimatedCounter';
 
 export const revalidate = 300;
 
@@ -128,6 +128,22 @@ export default async function HomePage() {
 
       {/* ============ Hero ============ */}
       <div className="hero-mesh relative overflow-hidden">
+        {/* Glow orb */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '800px',
+            height: '800px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle 400px at 50% 30%, rgba(47,233,43,0.08), transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
         <section className="mx-auto max-w-[1200px] px-6 pb-8 pt-16 md:pt-24 relative z-10">
 
             {/* ── Install Banner ── */}
@@ -156,10 +172,13 @@ export default async function HomePage() {
           <div className="glass-card rounded-2xl p-8 mb-6">
           <h1
             className="mb-5 font-extrabold leading-[1.05] text-white"
-            style={{ fontSize: 'clamp(2.8rem, 5vw, 4.5rem)', fontWeight: 800, letterSpacing: '-0.03em', maxWidth: 700 }}
+            style={{ fontSize: 'clamp(2.8rem, 5vw, 4.5rem)', fontWeight: 800, letterSpacing: '-1.5px', maxWidth: 700 }}
           >
             Your agent is picking tools blindly.{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-orange-400">
+            <span
+              className="text-transparent bg-clip-text"
+              style={{ backgroundImage: 'linear-gradient(90deg, #2fe92b, #00d4ff)' }}
+            >
               We fix that.
             </span>
           </h1>
@@ -193,13 +212,13 @@ export default async function HomePage() {
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
                 <span className="text-[14px] font-semibold text-text-primary">
-                  <span className="text-[18px] font-extrabold" style={{ color: '#2fe92b' }}>{stats.totalAgents.toLocaleString()}</span>{' '}agents on the network
+                  <span className="text-[18px] font-extrabold" style={{ color: '#2fe92b' }}><OnceAnimatedCounter value={stats.totalAgents} /></span>{' '}agents on the network
                 </span>
               </div>
               <div className="hidden sm:block text-text-tertiary select-none">·</div>
               <div className="text-[13px] text-text-secondary">
                 <span className="font-semibold text-text-primary">
-                  <span>{stats.todayBenchmarks.toLocaleString()}</span>
+                  <OnceAnimatedCounter value={stats.todayBenchmarks} />
                 </span>{' '}
                 calls routed today
               </div>
