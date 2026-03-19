@@ -2,6 +2,7 @@
 **Date:** 2026-03-19
 **Target:** https://agentpick.dev
 **Tester:** QA Agent (Claude Code, claude-sonnet-4-6)
+**Script:** `/Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py`
 
 ---
 
@@ -18,72 +19,80 @@ None.
 ## P1 Issues
 
 ### 1. Embed tool name mismatch (B.1-embed)
-- **What:** The QA test expected `voyage-ai` or `cohere-embed` as the embed tool name. The API returns `voyage-embed`.
-- **Root cause:** The embed capability works correctly (cohere-embed is primary, voyage-embed is the fallback). Fallback is functioning. The issue is the QA test's valid-tools list is stale — it checks for `voyage-ai` but the tool ID in the registry is `voyage-embed`.
-- **Impact:** No user-facing breakage; embed calls succeed and return valid data (1024-dim embeddings, correct token count). The fallback mechanism is working. Cohere-embed appears to be unavailable or deprioritized.
-- **Fix:** Update QA script valid tools for B.1-embed to include `voyage-embed`, OR investigate why cohere-embed is not being selected as primary.
+- **What:** QA test expects `voyage-ai` or `cohere-embed`. API returns `voyage-embed`.
+- **Root cause:** Embed capability routes correctly (cohere-embed primary, voyage-embed fallback). The fallback is functioning. The QA script's valid-tools list is stale — `voyage-ai` is the old ID; current registry ID is `voyage-embed`.
+- **Impact:** No user-facing breakage. Embed calls succeed with valid 1024-dim embeddings. Cohere-embed appears to be deprioritized/unavailable.
+- **Fix:** Update QA script to accept `voyage-embed`, or investigate why `cohere-embed` is not selected as primary.
 
 ---
 
 ## What Looks Good
 
-### Router Core (Part 1) — All Pass
-- Registration endpoint `POST /api/v1/router/register` works, returns API key with FREE plan
-- Search routing correctly routes to `tavily` by default
-- Crawl routing correctly routes to `jina-ai`
-- Real data returned from adapters (actual search results)
-- Fallback mechanism works: unknown tool → falls back to `tavily`
-- Strategy differentiation verified: `best_performance→exa-search`, `cheapest→brave-search`, `balanced→tavily`, `most_stable` as expected
-- Call recording works (8 calls logged)
-- Health endpoint returns healthy with stats
-
-### Developer Dashboard API (Part 2) — All Pass
-- Usage stats, fallback stats, strategy comparison all return correctly
-- Strategy/budget/priority settings update correctly
-- Weekly report generates with correct call counts
-
-### Pages (Parts 3-5, 8) — All Pass
-- `/connect`: pip install, strategies, pricing, API endpoint, API key CTA, auto-fallback, dashboard link all present
-- `/`: pip install block, dark code styling, /connect link all present
-- Nav: Router nav item present, all 4 nav items (`Live`, `Rankings`, `Benchmarks`, `Agents`) correct
-- `/dashboard` page loads with calls, strategy, tools, settings sections
-- All pages return HTTP 200 with fast response times (96ms–645ms)
-
-### AI-Powered Routing (Part 6) — All Pass
-- Deep research queries → `exa-search`, classified as `research/deep`
-- Realtime queries → `tavily`, classified as `realtime`
-- Simple queries → `tavily`, classified as `simple/shallow`
-- AI classification latency: 151ms, total: 1208ms (within acceptable range)
-- AI insights in usage API working
-
-### Data Integrity & Security (Part 7) — All Pass
-- Account schema has all required fields
-- Call log schema complete with latency, cost, tool used
-- Invalid API keys return HTTP 401
-- Missing auth returns HTTP 401
-
-### Edge Cases — All Pass
-- Empty query → HTTP 400
-- Invalid capability → HTTP 404
-- 5000-char query → HTTP 413
-- Invalid strategy → HTTP 400
-- 5 concurrent calls → all succeed (200)
+### Pages — All Pass
+| Page | Status | Latency |
+|------|--------|---------|
+| `/` | 200 OK | 388ms |
+| `/connect` | 200 OK | 160ms |
+| `/dashboard` | 200 OK | 65ms |
+| `/products/tavily` | 200 OK | 595ms |
 
 ### Paid User Flow — Pass
-- Register → get key → search → calls recorded: confirmed working end-to-end
-- `POST /api/v1/router/search` with Bearer auth returns `{data, meta}` structure
-- Meta includes: `tool_used`, `latency_ms`, `total_ms`, `fallback_used`, `cost_usd`, `result_count`, `calls_remaining`, `strategy`, `plan`
-- Search returns 10 results with exa-search on `best_performance` strategy (65ms total latency)
-- Finance routing: `polygon-io` selected correctly
+- `POST /api/v1/router/register` → returns `apiKey` + `plan: FREE` + `monthlyLimit: 500`
+- `POST /api/v1/router/search` with Bearer auth → returns `{data, meta}` structure
+- `data.results`: 10 items, each with `id, title, url, publishedDate, author, score, text, image, favicon`
+- `meta`: `tool_used: exa-search`, `result_count: 10`, `total_ms: ~363ms`, `plan: FREE`, `cost_usd: 0.002`
+- Calls recorded to account history
 
-### Visual Regression Check — Pass
-- `/` — Hero, code block, pricing, live feed all render correctly; dark code block confirmed; no broken layouts
-- `/connect` — Interactive code generator, playground, strategy docs, pricing table all present
-- `/dashboard` — Plan/strategy/spend/API-key controls visible; HTTP 200
-- `/products/tavily` — Agent score (6.3/10), benchmark data, advocate/critic reviews, p50 latency (919ms), success rate (100%) all displayed correctly; no broken layouts
+### API — Pass
+- `GET /api/v1/router/health` → `{"status":"healthy","message":"AgentPick router is operational."}`
+- `POST /api/v1/router/search` with valid Bearer → 200, correct `{data, meta}` response
+- Invalid key → 401; Missing auth → 401
 
-### Product Page (/products/tavily) — Pass
-- Page loads with title, pricing, description, benchmarks, CTA all present
+### Router Core (Part 1) — 7/7 Pass
+- Registration returns API key with FREE plan
+- Default routing → `tavily`; Crawl routing → `jina-ai`
+- Real results returned from adapters
+- Unknown tool → fallback to `tavily` works
+- Strategy differentiation: `best_performance→exa-search`, `cheapest→brave-search`, `balanced→tavily`
+- Calls recorded (8 calls logged in health lastHour)
+- Health endpoint returns healthy
+
+### Developer Dashboard API (Part 2) — 7/7 Pass
+- Usage stats, fallback stats, strategy comparison all correct
+- Strategy/budget/priority updates work
+- Weekly report generates with call counts
+
+### /connect Page (Part 3) — 7/7 Pass
+- pip install, strategies, pricing, API endpoint, get-API-key CTA, auto-fallback, dashboard link all present
+
+### Homepage (Part 4) — 3/3 Pass
+- pip install block, dark code styling, /connect link all present
+
+### Nav (Part 5) — 2/2 Pass
+- Router nav item present; Nav items: `Live`, `Rankings`, `Benchmarks`, `Agents`
+
+### AI-Powered Routing (Part 6) — 5/5 Pass
+- Deep research → `exa-search` (classified `research/deep`)
+- Realtime queries → `tavily` (classified `realtime`)
+- Simple queries → `tavily` (classified `simple/shallow`)
+- AI classification latency: ~149ms; total: ~1242ms
+- AI insights in usage API working
+
+### Schema & Data Integrity (Part 7) — 5/5 Pass
+- Account fields: `plan`, `monthlyLimit`, `callsThisMonth`, `strategy`
+- Call log fields: `id`, `capability`, `query`, `toolRequested`, `toolUsed`, `strategyUsed`, `latencyMs`, `costUsd`, `resultCount`, etc.
+- Invalid/missing API key → 401
+
+### Dashboard Web UI (Part 8) — 5/5 Pass
+- Loads 200, shows calls/strategy/tools/settings
+
+### Edge Cases (Bonus) — 5/5 Pass
+- Empty query → 400; Invalid capability → 404; 5000-char query → 413
+- Invalid strategy → 400; 5 concurrent calls → all 200
+
+### Cross-Capability (Bonus) — 1/2 Pass
+- Finance routing → `polygon-io` ✅
+- Embed routing → `voyage-embed` (test expects `cohere-embed` or `voyage-ai`) ❌ (P1, not P0)
 
 ---
 

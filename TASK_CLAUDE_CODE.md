@@ -3,7 +3,7 @@
 **Date:** 2026-03-19
 **QA baseline:** 50/51 — P1 open (embed B.1 failing)
 **Target:** 51/51
-**Scope:** Must-Have #1 backend (router logging + registry cleanup + CI lint) + Must-Have #3 backend (OpenAI-compat endpoint + DB recording)
+**Scope:** Must-Have #1 backend (router logging + registry cleanup + CI lint + QA script) + Must-Have #3 backend (OpenAI-compat endpoint + DB recording + QA test)
 **Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
@@ -110,7 +110,7 @@ If it already exists, just update `valid_embed_tools` to `["voyage-embed", "cohe
 
 **File:** `src/app/api/v1/chat/completions/route.ts`
 
-The directory already exists. Implement (or fully replace any stub with) the handler below. Read the current file first to understand what's there before overwriting.
+Read the current file first; if a stub exists, fully replace it. Implement:
 
 ```typescript
 // src/app/api/v1/chat/completions/route.ts
@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
 
 **File:** `agentpick-router-qa.py`
 
-Append a new test class after `TestEmbedRouter` (do not conflict with Task 2 edits at the top of that class area):
+Append a new test class after `TestEmbedRouter`:
 
 ```python
 class TestOpenAICompat(unittest.TestCase):
@@ -260,8 +260,8 @@ class TestOpenAICompat(unittest.TestCase):
 |--------|------|
 | Modify | `agentpick-router-qa.py` |
 | Modify | `src/lib/router/index.ts` |
-| Modify (if needed) | `src/lib/ops/service-probes.ts` |
-| Modify (if needed) | `src/__tests__/router-registry-sync.test.ts` |
+| Modify if needed | `src/lib/ops/service-probes.ts` |
+| Modify if needed | `src/__tests__/router-registry-sync.test.ts` |
 | Modify / implement | `src/app/api/v1/chat/completions/route.ts` |
 
 **DO NOT touch** (Codex-owned this cycle):
