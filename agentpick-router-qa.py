@@ -70,5 +70,30 @@ class TestBenchmarkPermalinks(unittest.TestCase):
         self.assertTrue(r.headers.get("Content-Type", "").startswith("image/svg+xml"))
 
 
+KEY_EMBED = os.environ.get('QA_TEST_KEY_EMBED', KEY_499)
+
+class TestEmbedRouter(unittest.TestCase):
+
+    def test_b1_embed_tool_used(self):
+        """B.1 — embed route must return meta.tool_used = voyage-embed.
+        Allowlist is pinned in src/__tests__/router-registry-sync.test.ts (QA_EMBED_ALLOWLIST).
+        """
+        r = requests.post(
+            f"{BASE_URL}/api/v1/route/embed",
+            headers={"Authorization": f"Bearer {KEY_EMBED}"},
+            json={"params": {"query": "semantic similarity for developer tools"}},
+            timeout=15,
+        )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        valid_embed_tools = ["voyage-embed"]  # must match QA_EMBED_ALLOWLIST in router-registry-sync.test.ts
+        tool_used = body.get("meta", {}).get("tool_used", "")
+        self.assertIn(
+            tool_used,
+            valid_embed_tools,
+            f"Expected tool_used in {valid_embed_tools}, got: {tool_used!r}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
