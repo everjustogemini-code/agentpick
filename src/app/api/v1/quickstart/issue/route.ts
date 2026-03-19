@@ -7,19 +7,17 @@ import { apiError } from '@/types';
 
 const db = prisma as any;
 
-const REGISTRATION_SOURCE = 'quickstart';
-
 /**
  * PUBLIC endpoint — no auth required.
  * Issues a trial API key for the /quickstart page.
- * Always tags keys with registrationSource = "quickstart".
+ * Always tags registrationSource = "quickstart".
  */
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
 
   const { limited, retryAfter } = await checkRateLimit(registerLimiter, ip);
   if (limited) {
-    return apiError('RATE_LIMITED', 'Too many requests.', 429, { retry_after: retryAfter });
+    return apiError('RATE_LIMITED', 'Too many registration attempts.', 429, { retry_after: retryAfter });
   }
 
   let body: { email?: string };
@@ -34,9 +32,9 @@ export async function POST(request: NextRequest) {
   }
 
   const email = body.email.trim().toLowerCase();
+  const name = email.split('@')[0].trim();
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingAgent: any = await withRetry(() => db.agent.findFirst({
       where: { ownerEmail: email },
       include: { developerAccount: true },
@@ -48,7 +46,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash, registrationSource: REGISTRATION_SOURCE },
+        data: { apiKeyHash, registrationSource: 'quickstart' },
       }));
 
       const plan = existingAgent.developerAccount.plan;
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash, registrationSource: REGISTRATION_SOURCE },
+        data: { apiKeyHash, registrationSource: 'quickstart' },
       }));
 
       await withRetry(() => db.developerAccount.create({
@@ -80,22 +78,20 @@ export async function POST(request: NextRequest) {
         apiKey,
         plan: 'FREE',
         monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-      }, { status: 201 });
+      }, { status: 200 });
     }
 
-    // New agent
+    // New user
     const apiKey = generateApiKey();
     const apiKeyHash = hashApiKey(apiKey);
-    const name = email.split('@')[0];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const agent: any = await withRetry(() => db.agent.create({
       data: {
         apiKeyHash,
         name: `${name}-router`,
         ownerEmail: email,
         description: `Router SDK developer: ${name}`,
-        registrationSource: REGISTRATION_SOURCE,
+        registrationSource: 'quickstart',
       },
     }));
 
@@ -113,9 +109,9 @@ export async function POST(request: NextRequest) {
       apiKey,
       plan: 'FREE',
       monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
-    }, { status: 201 });
+    }, { status: 200 });
   } catch (err) {
     console.error('Quickstart issue error:', err);
-    return apiError('INTERNAL_ERROR', 'Failed to issue API key. Please try again.', 500);
+    return apiError('INTERNAL_ERROR', 'Key issuance failed. Please try again.', 500);
   }
 }

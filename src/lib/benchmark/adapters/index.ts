@@ -145,7 +145,6 @@ export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
   'financial-modeling-prep': 'financial-modeling-prep',
   // === Embedding ===
   voyage: 'voyage-embed',
-  'voyage-ai': 'voyage-embed',
   'voyage-embed': 'voyage-embed',
   'voyage-embeddings': 'voyage-embed',
   'jina-embed': 'jina-embed',
