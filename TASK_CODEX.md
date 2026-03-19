@@ -1,70 +1,50 @@
-# TASK_CODEX.md — Cycle 7 (Frontend / UI + QA fix)
+# TASK_CODEX.md — Cycle 8 (Frontend / UI + QA fix)
 **Agent:** Codex
-**Source:** NEXT_VERSION.md (2026-03-18, cycle 7)
+**Source:** NEXT_VERSION.md (2026-03-18, cycle 8)
 **QA baseline:** 50/51 — P1 fix here (Task 1) brings it to 51/51
-**Must NOT touch:** `src/app/page.tsx`, `src/app/api/`, `src/components/AnimatedCounter.tsx`, `src/components/OnceAnimatedCounter.tsx`
+**Scope:** Must-Have #1 QA fix + Must-Have #2 full dark-glass design system + Must-Have #3 frontend docs
+**Must NOT touch:** `src/lib/`, `src/app/api/`, `src/app/v1/`, `src/lib/benchmark/adapters/`
 
 ---
 
-## Task 1 — Fix P1: QA Script `voyage-ai` → `voyage-embed` (Must-Have #1)
+## Task 1 — Fix P1 QA Validator: Update `voyage-embed` → `voyage-ai` Valid Slug
 
 **File:** `agentpick-router-qa.py`
 
-The script currently has 4 test methods across 3 classes (`TestRateLimitPath`, `TestUsageAliases`, `TestBenchmarkPermalinks`). The `TestEmbedRoute` class was never written. Add it now.
+The backend (Claude Code Task 1) is updating the embed adapter to emit `"voyage-ai"`. The QA validator's valid list must match the new canonical slug.
 
-Append the following class **before** the `if __name__ == "__main__":` block (line 73):
+Find the `TestEmbedRoute` class (or `test_embed_route_valid_tool` method) in the file. Locate the `valid` list:
 
 ```python
-class TestEmbedRoute(unittest.TestCase):
+# before (cycle 7)
+valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]
 
-    def test_embed_route_valid_tool(self):
-        """B.1-embed — POST /api/v1/route/embed must return a known embed tool name."""
-        r = requests.post(
-            f"{BASE_URL}/api/v1/route/embed",
-            headers={"Authorization": f"Bearer {KEY_499}"},
-            json={"params": {"input": "embedding regression test"}},
-            timeout=15,
-        )
-        self.assertEqual(r.status_code, 200)
-        body = r.json()
-        valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]   # voyage-embed (not voyage-ai)
-        self.assertIn(
-            body.get("tool_used"),
-            valid,
-            f"Expected one of {valid}, got: {body.get('tool_used')!r}",
-        )
+# after (cycle 8)
+valid = ["cohere-embed", "voyage-ai", "jina-embeddings"]
 ```
 
-**Key change:** the valid list uses `"voyage-embed"` (not `"voyage-ai"`). The backend was renamed in a prior cycle; this test was never written. After this change the suite reports **51/51**.
+Change `"voyage-embed"` → `"voyage-ai"` in the valid list. No other changes to this file.
 
-**Acceptance:** `python agentpick-router-qa.py` reports 5 tests, all pass.
+**Acceptance:** `python agentpick-router-qa.py` reports **51/51** once Claude Code's backend fix is deployed.
 
 ---
 
-## Task 2 — Dark-Glass Design System: CSS Tokens & Global Styles (Must-Have #2)
+## Task 2 — Dark-Glass Design System: CSS Tokens & Global Styles
 
 **File:** `src/app/globals.css`
 
-### 2a — Add/update CSS custom properties (add inside `:root { }` block)
+### 2a — Ensure/add CSS custom properties in `:root { }`
 
+Add these if not already present (do not duplicate existing definitions):
 ```css
-/* Glass system */
 --glass-bg: rgba(255, 255, 255, 0.04);
 --glass-border: rgba(255, 255, 255, 0.12);
 --glass-blur: 16px;
 ```
 
-### 2b — Update `.glass-card` class (currently lines 519–522)
+### 2b — Update `.glass-card` to full spec
 
-Replace existing:
-```css
-.glass-card {
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-}
-```
-
-With full spec implementation:
+Find the existing `.glass-card` block and update it to:
 ```css
 .glass-card {
   -webkit-backdrop-filter: blur(var(--glass-blur, 16px));
@@ -74,7 +54,7 @@ With full spec implementation:
 }
 ```
 
-### 2c — Add monospace data class
+### 2c — Add `.data-mono` class for monospace numeric data
 
 Append after `.glass-card`:
 ```css
@@ -87,7 +67,7 @@ Append after `.glass-card`:
 
 ### 2d — Add micro-interaction classes (gated on prefers-reduced-motion)
 
-Append to end of file:
+Append near end of file (before any existing `@media (prefers-reduced-motion)` blocks, or merge into one):
 ```css
 /* === Micro-interactions (prefers-reduced-motion safe) === */
 @media (prefers-reduced-motion: no-preference) {
@@ -115,276 +95,202 @@ Append to end of file:
   .btn-shimmer:hover {
     animation: shimmer-sweep 600ms linear;
   }
-
-  @keyframes strategy-pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.65; }
-  }
-  .strategy-pulse:hover {
-    animation: strategy-pulse 1.2s ease-in-out infinite;
-  }
 }
 ```
 
-### 2e — Ensure body uses `var(--bg-base)` (no white flash)
+### 2e — Ensure `body` uses `var(--bg-base)` (prevent white flash)
 
-Find the `body` rule in globals.css. Ensure it contains:
-```css
-body {
-  background: var(--bg-base);
-  color: var(--text-primary);
-  /* existing properties ... */
-}
-```
+Find the `body { }` rule. Confirm it includes `background: var(--bg-base);`. Add it if missing.
 
 ---
 
-## Task 3 — Glass Cards + ScrollReveal: Benchmarks Page (Must-Have #2)
+## Task 3 — Homepage: Count-Up Hero Stats + "OpenAI-compatible" Feature
+
+**File:** `src/app/page.tsx`
+
+### 3a — Count-up hero stats (sessionStorage one-shot)
+
+Find the "X agents ranked" and "Y calls routed" stat figures in the hero section. If they already use `AnimatedCounter` or `OnceAnimatedCounter` from cycle 7, verify the sessionStorage one-shot guard is in place (look for `sessionStorage.getItem('ap_stats_animated')`). If not, apply the `OnceAnimatedCounter` pattern (component is at `src/components/OnceAnimatedCounter.tsx` — created in cycle 7; import and use it):
+
+```tsx
+import OnceAnimatedCounter from '@/components/OnceAnimatedCounter';
+// ...
+<OnceAnimatedCounter value={agentCount} suffix="+" />
+<OnceAnimatedCounter value={callsRouted} suffix="+" />
+```
+
+### 3b — Add "OpenAI-compatible" to homepage feature list
+
+Find the homepage feature/capability list (likely a grid of feature cards or bullet points). Add a new entry:
+
+```tsx
+{
+  icon: '🔗',   // or whichever icon pattern the page uses
+  title: 'OpenAI-compatible',
+  description: 'Drop-in replacement — change only base_url, keep your existing OpenAI client.',
+}
+```
+
+Match the exact JSX pattern used by the existing feature items (icon, title, description props or inline structure). Apply `glass-card card-hover-lift` to the new card container if other cards use it.
+
+---
+
+## Task 4 — Glass Cards + ScrollReveal: Benchmarks Page
 
 **File:** `src/app/benchmarks/page.tsx`
 
 1. Import `ScrollReveal` at top: `import ScrollReveal from '@/components/ScrollReveal';`
-2. Find the benchmark domain tile elements (cards rendered per domain/task). Apply:
-   - Add `glass-card card-hover-lift` to the card container's `className`
-   - Wrap each sibling group in `<ScrollReveal staggerMs={60}>` (check if `ScrollReveal` accepts a stagger prop; if not, add `style={{ transitionDelay: \`${index * 60}ms\`` }} className="scroll-reveal"` to each card directly)
-3. Find any latency or score numbers inside cards → add `className="data-mono"` to their wrapper `<span>` or `<td>`.
+2. Find benchmark domain tile elements. Add `glass-card card-hover-lift` to each tile's `className`.
+3. Add `scroll-reveal` class + `style={{ transitionDelay: \`${index * 60}ms\` }}` to each tile (or wrap sibling groups in `<ScrollReveal staggerMs={60}>` if the component supports it).
+4. Find latency/score numeric values inside tiles → add `className="data-mono"` to their `<span>` or `<td>`.
 
 ---
 
-## Task 4 — Glass Cards + ScrollReveal: Rankings Page (Must-Have #2)
+## Task 5 — Glass Cards + ScrollReveal: Rankings Page
 
 **File:** `src/app/rankings/page.tsx`
 
 1. Import `ScrollReveal` at top.
-2. Find the rankings row elements. Apply `glass-card card-hover-lift` to each row container.
-3. Wrap the rows list in a ScrollReveal parent or add `scroll-reveal` class + `transitionDelay` to each row (60ms stagger).
+2. Find ranking row elements. Add `glass-card card-hover-lift` to each row container's `className`.
+3. Add scroll-reveal stagger (60ms) to rows.
 4. Add `data-mono` to score/latency numeric cells.
 
 ---
 
-## Task 5 — Glass Cards + ScrollReveal: Agents Directory (Must-Have #2)
+## Task 6 — Glass Cards + ScrollReveal: Agents Directory
 
 **File:** `src/app/agents/page.tsx`
 
 1. Import `ScrollReveal` at top.
-2. Find the agent directory card elements. Apply `glass-card card-hover-lift` to each card container's `className`.
-3. Add `scroll-reveal` + `transitionDelay: \`${index * 60}ms\`` on each card (or wrap in ScrollReveal if it accepts stagger).
+2. Find agent directory card elements. Add `glass-card card-hover-lift` to each card container's `className`.
+3. Add `scroll-reveal` + `transitionDelay: \`${index * 60}ms\`` to each card.
 
 ---
 
-## Task 6 — Glass Cards + ScrollReveal: Dashboard (Must-Have #2)
+## Task 7 — Glass Cards + ScrollReveal: Dashboard
 
 **File:** `src/app/dashboard/page.tsx`
 
 1. Import `ScrollReveal` at top.
-2. Find stat tiles (call count, cost, usage cards). Apply `glass-card` to each tile.
+2. Find stat tiles (call count, cost, usage, etc.). Add `glass-card` to each tile `className`.
 3. Add `data-mono` class to all numeric stat values (call counts, costs, latencies).
 4. Wrap stat tile groups in ScrollReveal with 60ms stagger.
 
 ---
 
-## Task 7 — Glass Cards + ScrollReveal + Code Switcher: `/connect` Page (Must-Have #2 + #3)
+## Task 8 — Glass Cards + ScrollReveal + Migration Snippet: `/connect` Page
 
 **File:** `src/app/connect/page.tsx`
 
-### 7a — Apply glass cards to strategy blocks
+### 8a — Apply glass cards to major sections
 
-Find the "Strategies" section (around line 140–167). The outer `<div>` already has `rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm`. Update it to use the new tokens:
+Find the strategy blocks, "Quick Start", "Two Ways to Start", and pricing sections. Replace inline Tailwind glass patterns (`border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm`) with the CSS class tokens:
 
 ```tsx
+// before (example)
+<div className="mb-8 rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm">
+// after
 <div className="mb-8 rounded-xl glass-card card-hover-lift p-6">
 ```
 
-Apply similarly to the "Two Ways to Start" section (line 58–99), "Quick Start" (line 102–127), "What you get" (line 170–181), and "Pricing" (line 184–211) blocks — replace `border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm` with `glass-card`.
+Apply to all major section blocks on this page.
 
-### 7b — Wire ScrollReveal
+### 8b — Wire ScrollReveal
 
-Import `ScrollReveal` at top and wrap each major `<div className="mb-8 ...">` section in a `<div className="scroll-reveal">` wrapper (or use ScrollReveal component). Add inline `transitionDelay` to stagger sections at 60ms each.
+Import `ScrollReveal` at top. Wrap each major `<div className="mb-8 ...">` section with `<div className="scroll-reveal">` and add `style={{ transitionDelay: \`${sectionIndex * 60}ms\` }}`.
 
-### 7c — Pass full 4-language data to ConnectTabs
+### 8c — Add "Migration" section (Must-Have #3 docs)
 
-The `tsExamples` object (lines 13–25) currently only has TypeScript examples. Expand it to include all 4 languages OR create a new `codeExamples` object and pass it to `<ConnectTabs>`. Update the `ConnectTabs` import to use the new prop shape.
-
-Example new prop object to pass:
-```tsx
-const codeExamples = {
-  python: {
-    install: 'pip install agentpick',
-    example: `from agentpick import AgentPick\n\nap = AgentPick(api_key="YOUR_KEY", strategy="auto")\nresults = ap.search("SEC filings NVDA 2025")\nprint(results)`,
-  },
-  typescript: {
-    install: 'npm install agentpick',
-    example: `import { AgentPickClient } from 'agentpick';\n\nconst client = new AgentPickClient({ apiKey: process.env.AGENTPICK_API_KEY! });\nconst result = await client.route('search', 'latest AI benchmarks 2026');\nconsole.log(result.tool_used, result.latency_ms);`,
-  },
-  curl: {
-    install: '',
-    example: `curl -X POST https://agentpick.dev/api/v1/route/search \\\n  -H "Authorization: Bearer YOUR_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"query": "latest AI benchmarks 2026", "strategy": "auto"}'`,
-  },
-  go: {
-    install: '# stdlib only',
-    example: `req, _ := http.NewRequest("POST", "https://agentpick.dev/api/v1/route/search", body)\nreq.Header.Set("Authorization", "Bearer YOUR_KEY")`,
-  },
-};
-```
-
-Update `<ConnectTabs tsExamples={tsExamples} />` → `<ConnectTabs examples={codeExamples} />` (align with whatever prop name you use in Task 8 below).
-
----
-
-## Task 8 — Implement 4-Tab Code Switcher Component (Must-Have #3)
-
-**File:** `src/components/ConnectTabs.tsx`
-
-Current state: placeholder that renders `null` (line 17). Implement the full tab switcher.
-
-### Requirements:
-- Tabs: `Python` | `TypeScript` | `cURL` | `Go`
-- Keyboard navigable: `←` / `→` arrow keys move focus between tabs
-- ARIA roles: `role="tablist"` on container, `role="tab"` on each tab, `role="tabpanel"` on content area
-- `aria-selected`, `aria-controls`, `tabIndex` wired correctly
-- Last selected tab persisted in `localStorage` key `'ap_code_tab'`; restored on mount
-- Each tab shows: install command block + example code block
-
-### Implementation:
+**This is the only frontend change for Must-Have #3.** Add a new section to the page (below the "Quick Start" block or at the end of the main content), showing the OpenAI → AgentPick one-line migration:
 
 ```tsx
-'use client';
+{/* Migration section */}
+<div className="mb-8 rounded-xl glass-card p-6 scroll-reveal">
+  <h2 className="text-lg font-bold mb-3 text-white">Already using OpenAI? One change.</h2>
+  <p className="text-white/60 mb-4 text-sm">
+    AgentPick is OpenAI Responses API compatible. Change only <code>base_url</code> — keep your existing client, auth, and code.
+  </p>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-red-400/70 mb-2">Before</div>
+      <pre className="rounded-lg bg-black/40 p-3 text-[12px] text-red-300 overflow-x-auto font-mono">{`from openai import OpenAI
 
-import { useEffect, useRef, useState } from 'react';
-
-type Lang = 'python' | 'typescript' | 'curl' | 'go';
-
-interface LangSnippet {
-  install: string;
-  example: string;
-}
-
-interface ConnectTabsProps {
-  examples: Record<Lang, LangSnippet>;
-}
-
-const LANGS: { id: Lang; label: string }[] = [
-  { id: 'python',     label: 'Python'     },
-  { id: 'typescript', label: 'TypeScript' },
-  { id: 'curl',       label: 'cURL'       },
-  { id: 'go',         label: 'Go'         },
-];
-
-const LS_KEY = 'ap_code_tab';
-
-export default function ConnectTabs({ examples }: ConnectTabsProps) {
-  const [active, setActive] = useState<Lang>('python');
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  // Restore from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(LS_KEY) as Lang | null;
-    if (saved && LANGS.some((l) => l.id === saved)) setActive(saved);
-  }, []);
-
-  function select(lang: Lang) {
-    setActive(lang);
-    localStorage.setItem(LS_KEY, lang);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent, idx: number) {
-    if (e.key === 'ArrowRight') {
-      const next = (idx + 1) % LANGS.length;
-      tabRefs.current[next]?.focus();
-      select(LANGS[next].id);
-    } else if (e.key === 'ArrowLeft') {
-      const prev = (idx - 1 + LANGS.length) % LANGS.length;
-      tabRefs.current[prev]?.focus();
-      select(LANGS[prev].id);
-    }
-  }
-
-  const snippet = examples[active];
-
-  return (
-    <div className="mb-6">
-      {/* Tab list */}
-      <div role="tablist" aria-label="Code language" className="flex gap-1 mb-3 border-b border-white/[0.08]">
-        {LANGS.map(({ id, label }, idx) => (
-          <button
-            key={id}
-            ref={(el) => { tabRefs.current[idx] = el; }}
-            role="tab"
-            id={`tab-${id}`}
-            aria-selected={active === id}
-            aria-controls={`panel-${id}`}
-            tabIndex={active === id ? 0 : -1}
-            onClick={() => select(id)}
-            onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={[
-              'px-4 py-2 text-[12px] font-semibold font-mono rounded-t transition-colors',
-              active === id
-                ? 'bg-white/[0.08] text-white border-b-2 border-orange-400'
-                : 'text-white/40 hover:text-white/70',
-            ].join(' ')}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab panel */}
-      <div
-        role="tabpanel"
-        id={`panel-${active}`}
-        aria-labelledby={`tab-${active}`}
-        className="rounded-lg bg-black/40 p-4 font-mono text-[13px] text-green-400 overflow-x-auto"
-      >
-        {snippet.install && (
-          <div className="mb-3 text-white/50">
-            <div className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Install</div>
-            <pre className="whitespace-pre-wrap">{snippet.install}</pre>
-          </div>
-        )}
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Example</div>
-          <pre className="whitespace-pre-wrap">{snippet.example}</pre>
-        </div>
-      </div>
+client = OpenAI(api_key="sk-...")
+response = client.responses.create(
+    model="gpt-4o",
+    input="search for X",
+)`}</pre>
     </div>
-  );
-}
-```
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-green-400/70 mb-2">After (AgentPick)</div>
+      <pre className="rounded-lg bg-black/40 p-3 text-[12px] text-green-300 overflow-x-auto font-mono">{`from openai import OpenAI
 
-**Note on prop compatibility:** The old `ConnectTabs` accepted `tsExamples: TsExamples`. You are replacing the entire component. Coordinate with `connect/page.tsx` (Task 7) — both files change together in this PR.
+client = OpenAI(
+    api_key="ah_live_sk_...",
+    base_url="https://agentpick.dev",  # ← only change
+)
+response = client.responses.create(
+    model="auto",
+    input="search for X",
+)`}</pre>
+    </div>
+  </div>
+</div>
+```
 
 ---
 
-## Files to Create/Modify
+## Task 9 — Extend ScrollReveal to All Pages
+
+**File:** `src/components/ScrollReveal.tsx`
+
+The component currently activates only on the homepage (or has a guard that prevents it from running elsewhere). Remove any homepage-specific guard. The `IntersectionObserver` logic should work on any page that renders elements with `className="scroll-reveal"`. If the component accepts a `staggerMs` prop, ensure it applies `transitionDelay` to each child based on its index × `staggerMs`. Example:
+
+```tsx
+// If not already present, add stagger support:
+interface ScrollRevealProps {
+  children: React.ReactNode;
+  staggerMs?: number;  // default 60
+}
+```
+
+Do NOT change the observer threshold or animation keyframes — only remove the page-scope guard and add stagger prop if missing.
+
+---
+
+## Files to Create/Modify (summary)
 
 | Action | File | Task |
 |--------|------|------|
-| MODIFY | `agentpick-router-qa.py` | Task 1 — add `TestEmbedRoute` class |
-| MODIFY | `src/app/globals.css` | Task 2 — glass tokens, `.glass-card`, `.data-mono`, micro-interactions |
-| MODIFY | `src/app/benchmarks/page.tsx` | Task 3 — glass cards + ScrollReveal |
-| MODIFY | `src/app/rankings/page.tsx` | Task 4 — glass cards + ScrollReveal |
-| MODIFY | `src/app/agents/page.tsx` | Task 5 — glass cards + ScrollReveal |
-| MODIFY | `src/app/dashboard/page.tsx` | Task 6 — glass cards + data-mono + ScrollReveal |
-| MODIFY | `src/app/connect/page.tsx` | Task 7 — glass cards + ScrollReveal + pass 4-lang data |
-| MODIFY | `src/components/ConnectTabs.tsx` | Task 8 — full 4-tab switcher implementation |
+| MODIFY | `agentpick-router-qa.py` | 1 — `"voyage-embed"` → `"voyage-ai"` in valid list |
+| MODIFY | `src/app/globals.css` | 2 — glass tokens, `.glass-card`, `.data-mono`, micro-interactions |
+| MODIFY | `src/app/page.tsx` | 3 — count-up sessionStorage guard + "OpenAI-compatible" feature |
+| MODIFY | `src/app/benchmarks/page.tsx` | 4 — glass cards + ScrollReveal + data-mono |
+| MODIFY | `src/app/rankings/page.tsx` | 5 — glass cards + ScrollReveal + data-mono |
+| MODIFY | `src/app/agents/page.tsx` | 6 — glass cards + ScrollReveal |
+| MODIFY | `src/app/dashboard/page.tsx` | 7 — glass cards + data-mono + ScrollReveal |
+| MODIFY | `src/app/connect/page.tsx` | 8 — glass cards + ScrollReveal + Migration snippet |
+| MODIFY | `src/components/ScrollReveal.tsx` | 9 — remove homepage guard, add stagger prop |
 
-**Do NOT touch:** `src/app/page.tsx`, `src/app/api/`, `src/components/AnimatedCounter.tsx`
+**Do NOT touch:** `src/lib/`, `src/app/api/`, `src/app/v1/`, `src/lib/benchmark/adapters/`, `src/components/ConnectTabs.tsx` (no change needed this cycle)
 
 ---
 
 ## Verification Checklist (Codex)
 
-- [ ] `agentpick-router-qa.py` has `TestEmbedRoute` class with `"voyage-embed"` in valid list (not `"voyage-ai"`)
-- [ ] `python agentpick-router-qa.py` reports **51/51** (5 tests, all pass)
+- [ ] `agentpick-router-qa.py` valid list contains `"voyage-ai"` (not `"voyage-embed"`)
 - [ ] `globals.css` `.glass-card` uses `blur(16px)`, `rgba(255,255,255,0.04)` bg, 1px border at `rgba(255,255,255,0.12)`
-- [ ] `globals.css` has `--glass-bg`, `--glass-border` CSS custom properties defined
+- [ ] `globals.css` has `--glass-bg`, `--glass-border` CSS vars in `:root`
 - [ ] `globals.css` has `.data-mono` with `font-variant-numeric: tabular-nums` + JetBrains Mono
-- [ ] `globals.css` has `.card-hover-lift` (translateY(-4px)), `.btn-shimmer` shimmer, `.strategy-pulse` pulse — all inside `@media (prefers-reduced-motion: no-preference)`
-- [ ] `body` uses `var(--bg-base)` background — no white flash on any route
-- [ ] `benchmarks/page.tsx`: benchmark domain tiles have `glass-card card-hover-lift`; latency/score values have `data-mono`
+- [ ] `globals.css` has `.card-hover-lift` (translateY(-4px)) inside `@media (prefers-reduced-motion: no-preference)`
+- [ ] `globals.css` has `.btn-shimmer` shimmer sweep, 600ms
+- [ ] `body` rule uses `var(--bg-base)` — no white flash on any route
+- [ ] `page.tsx`: hero stat counters use sessionStorage one-shot guard
+- [ ] `page.tsx`: homepage feature list includes "OpenAI-compatible" entry with glass card
+- [ ] `benchmarks/page.tsx`: domain tiles have `glass-card card-hover-lift`; latency/score values have `data-mono`; scroll-reveal stagger applied
 - [ ] `rankings/page.tsx`: ranking rows have `glass-card card-hover-lift`; score cells have `data-mono`
-- [ ] `agents/page.tsx`: agent directory cards have `glass-card card-hover-lift`
-- [ ] `dashboard/page.tsx`: stat tiles have `glass-card`; all stat numbers have `data-mono`
-- [ ] `connect/page.tsx`: strategy blocks and major sections use `glass-card`; ScrollReveal wired
-- [ ] `ConnectTabs.tsx`: renders 4 tabs (Python, TypeScript, cURL, Go); keyboard `←`/`→` navigation works; `localStorage` persists selection; `role="tablist"` / `role="tab"` / `role="tabpanel"` present
-- [ ] Tab switcher on `/connect` shows correct runnable snippet per language
+- [ ] `agents/page.tsx`: agent cards have `glass-card card-hover-lift`; scroll-reveal stagger applied
+- [ ] `dashboard/page.tsx`: stat tiles have `glass-card`; all stat numbers have `data-mono`; scroll-reveal applied
+- [ ] `connect/page.tsx`: strategy/section blocks use `glass-card`; ScrollReveal wired; Migration section present with before/after code snippets
+- [ ] `ScrollReveal.tsx`: activates on all pages (no homepage-only guard); supports `staggerMs` prop
+- [ ] QA 51/51 after Claude Code backend fix deploys
