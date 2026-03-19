@@ -28,6 +28,7 @@ export const submitLimiterAnon = createLimiter(5, '1h', 'agentpick:submit:anon')
 export const productsLimiter = createLimiter(100, '1m', 'agentpick:products');
 export const routerSdkLimiter = createLimiter(500, '1m', 'agentpick:router-sdk');
 export const leaderboardLimiter = createLimiter(60, '1m', 'agentpick:leaderboard');
+export const demoIpLimiter = createLimiter(10, '1 h', 'demo-ip');
 
 // In-memory sliding-window rate limiter (resets on server restart — acceptable for demo keys)
 const _memSlidingStore = new Map<string, number[]>()
