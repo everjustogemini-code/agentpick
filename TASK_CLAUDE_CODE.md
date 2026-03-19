@@ -1,129 +1,138 @@
-# TASK_CLAUDE_CODE.md — cycle 13 (post-cycle-12)
+# TASK_CLAUDE_CODE.md — cycle 14
 
 **Agent:** Claude Code (Sonnet 4.6)
 **Date:** 2026-03-18
-**QA baseline:** 50/51 — P0: 1 open | P1: 3 open (P1-2 assigned to Codex)
-**Scope:** Bug fixes ONLY — no new features, no UI changes, no refactors
-**Do NOT touch:** `agentpick-router-qa.py` (owned by Codex)
+**QA baseline:** 50/51 — P1-1 open
+**Scope:** Backend: registration endpoint update + quickstart API + DB schema (Must-Have #1 partial + Must-Have #3 backend)
+**Do NOT touch:** Any file owned by Codex (see list at bottom)
 
 ---
 
-## P0-1 — Embed endpoint drops vector data
+## Task A — Registration endpoint: accept and store `source` (Must-Have #3 backend, step 1)
 
-**File:** `src/lib/benchmark/adapters/voyage-embed.ts`
-**Line:** ~43
+**File:** `src/app/api/v1/router/register/route.ts`
 
-**Current (buggy):**
-```typescript
-response: { dimensions: embeddings[0]?.embedding?.length ?? 0, tokens, count: embeddings.length },
-```
+### What to do
 
-**Fix:**
-```typescript
-response: {
-  dimensions: embeddings[0]?.embedding?.length ?? 0,
-  tokens,
-  count: embeddings.length,
-  embeddings: embeddings.map((e: { embedding: number[] }) => e.embedding),
-},
-```
+1. **Extract `source` from request body** — alongside the existing `email`, `name`, `skillUrl` fields:
+   ```ts
+   const { email, name, skillUrl, source } = body;
+   ```
 
-No other files need to change. The router passes `response` through as `data` unchanged.
+2. **Store on `Agent.registrationSource`** — when calling `prisma.agent.create(...)`, add:
+   ```ts
+   registrationSource: typeof source === 'string' ? source : 'direct',
+   ```
+   Do the same in the `prisma.agent.update(...)` path (re-key for existing accounts) — only overwrite if `source` is provided.
 
-**Acceptance:** `POST /api/v1/route/embed` response `data` contains an `embeddings` key with an array of float arrays; `data.embeddings[0].length === data.dimensions`.
+3. **Return `registrationSource` in the response JSON** so callers can confirm it was stored:
+   ```ts
+   return NextResponse.json({ apiKey, plan, monthlyLimit, registrationSource: agent.registrationSource });
+   ```
+
+No rate-limit changes. No email confirmation changes. No other behavioural changes.
 
 ---
 
-## P1-1 — Remove dead embed providers from ALL routing/config paths
+## Task B — New database field: `Agent.registrationSource` (Must-Have #3 backend, step 2)
 
-**Priority:** P1 — four cycles of partial fixes; this time grep everything first.
+### Schema change
 
-### Step 0: Mandatory exhaustive grep BEFORE ANY EDITS
+**File:** `prisma/schema.prisma`
+
+Locate the `Agent` model. Add one field after `ownerEmail`:
+```prisma
+registrationSource  String  @default("direct")
+```
+
+Valid values: `"direct"`, `"quickstart"`, `"quickstart_homepage"`.
+
+### Migration file
+
+**File to create:** `prisma/migrations/20260318_add_agent_registration_source/migration.sql`
+
+```sql
+ALTER TABLE "Agent" ADD COLUMN IF NOT EXISTS "registrationSource" TEXT NOT NULL DEFAULT 'direct';
+```
+
+Run `npx prisma generate` after editing the schema.
+
+---
+
+## Task C — New endpoint: `POST /api/v1/quickstart/issue` (Must-Have #3 backend, step 3)
+
+**File to create:** `src/app/api/v1/quickstart/issue/route.ts`
+
+This is a thin, dedicated endpoint for the `/quickstart` page so the frontend can:
+1. Issue a trial API key without any email confirmation gate (same behaviour as register — no confirmation is already the case).
+2. Always tag issued keys with `registrationSource = "quickstart"`.
+
+**Contract:**
+- Method: `POST`
+- Auth: None (public)
+- Body: `{ email: string }`
+- Response (success): `{ apiKey: string, plan: string, monthlyLimit: number }`
+- Response (error): `{ error: { code: string, message: string } }`
+
+**Implementation guidance:**
+- Reuse the same Prisma logic as `register/route.ts` (copy the minimal create/lookup path — do NOT add a shared helper; this is a single new file).
+- Hard-code `source = "quickstart"` — ignore any `source` from the request body.
+- Reuse the same IP-based `rateLimit` call already used in `register/route.ts`.
+- Return HTTP 400 for missing/invalid email.
+- Return HTTP 429 (pass-through from rate limiter) for abuse.
+
+**Do NOT** create any UI, page, or component file — those are owned by Codex.
+
+---
+
+## Task D — If `/connect` page or docs copy still references `voyage-ai` as an embed slug
+
+After the Codex cycle-13 QA fix, check if any backend API response, skill.md route, or server-side copy still returns the `voyage-ai` slug:
 
 ```bash
-grep -rn "openai-embed\|cohere-embed" src/ --include="*.ts" --include="*.tsx" --include="*.js"
+grep -rn "voyage-ai" src/ --include="*.ts" --include="*.tsx"
 ```
 
-Fix EVERY occurrence in routing, fallback chains, tool lists, capability registries, health probes, and docs. Do not commit until the grep returns zero hits in `src/`.
-
-### Files to fix (known locations):
-
-**1. `src/lib/router/index.ts` (~line 43)**
-- `CAPABILITY_TOOLS.embed` must be `['voyage-embed']` — no other slugs.
-- `TOOL_CHARACTERISTICS` must have no `openai-embed` or `cohere-embed` entries.
-- Check for any secondary fallback array or inline tool-list that bypasses `CAPABILITY_TOOLS`.
-
-**2. `src/lib/ops/constants.ts` (~line 41)**
-- `suggestedTools` for embed must contain only `["voyage-embed"]`.
-- Remove `"openai-embed"` and `"cohere-embed"` if present.
-
-**3. `src/lib/ops/service-probes.ts` (~lines 217–220)**
-- Probe slug map must contain no `openai-embed`, `cohere-embed`, or `voyage-ai` entries.
-- Dead-provider probes corrupt circuit-breaker state and inject dead slugs into the fallback chain.
-
-**4. `src/app/api/v1/router/skill.md/route.ts` (~line 55)**
-- Remove `openai-embed` and `cohere-embed` from the embed row in the capability table.
-
-**5. Any additional file flagged by the Step 0 grep — fix ALL occurrences.**
-
-### Verification
-```bash
-# Must return zero hits:
-grep -rn "openai-embed\|cohere-embed" src/ --include="*.ts" --include="*.tsx" --include="*.js"
-```
-
-**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length exactly 1) on every normal call.
+If any hits come back in backend/API files (not frontend), fix them in the relevant file. Frontend occurrences are Codex's responsibility.
 
 ---
 
-## P1-3 — AI classifier fires on non-search/non-finance capabilities (wastes Haiku call, wrong type)
+## Files owned by CLAUDE CODE this cycle
 
-**File:** `src/lib/router/ai-classify.ts`
-**Function:** `getClassification(query: string, capability: string)`
+| Action | File |
+|--------|------|
+| Modify | `src/app/api/v1/router/register/route.ts` |
+| Modify | `prisma/schema.prisma` |
+| Create | `prisma/migrations/20260318_add_agent_registration_source/migration.sql` |
+| Create | `src/app/api/v1/quickstart/issue/route.ts` |
+| Conditionally modify | Any `src/` backend file flagged by the `voyage-ai` grep (Task D) |
 
-**Fix — add early-return guard at top of `getClassification`, before any `fastClassify` or LLM call:**
-```typescript
-export async function getClassification(
-  query: string,
-  capability: string
-): Promise<{ context: QueryContext; cached: boolean; classificationMs: number }> {
-  // Classification is only meaningful for search and finance routing.
-  // For other capabilities (embed, crawl, code, etc.) return a neutral default immediately.
-  if (capability !== 'search' && capability !== 'finance') {
-    return {
-      context: { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' },
-      cached: false,
-      classificationMs: 0,
-    };
-  }
-  // ... existing logic unchanged below this point ...
-```
-
-No other files need to change.
-
-**Acceptance:** `POST /api/v1/route/embed` with body `{"params":{"text":"machine learning fundamentals"}}` returns `meta.ai_classification.type` of `"simple"` (NOT `"news"`). No Haiku LLM call is made for embed requests.
+**DO NOT touch** (Codex-owned):
+- `agentpick-router-qa.py`
+- `src/app/page.tsx`
+- `src/app/quickstart/page.tsx` (new file — Codex creates it)
+- `src/components/HeroCodeBlock.tsx`
+- `src/components/PricingSection.tsx`
+- `src/components/PricingPageClient.tsx`
+- `src/app/pricing/page.tsx`
+- `src/components/StatsBar.tsx`
+- Any `*.css` or `*.module.css` file
 
 ---
 
-## Files owned by CLAUDE_CODE
+## Acceptance criteria
 
-| File | Bug |
-|------|-----|
-| `src/lib/benchmark/adapters/voyage-embed.ts` | P0-1 |
-| `src/lib/router/index.ts` | P1-1 |
-| `src/lib/ops/constants.ts` | P1-1 |
-| `src/lib/ops/service-probes.ts` | P1-1 |
-| `src/app/api/v1/router/skill.md/route.ts` | P1-1 |
-| `src/lib/router/ai-classify.ts` | P1-3 |
-| *(any additional file from grep)* | P1-1 |
-
-**DO NOT touch:** `agentpick-router-qa.py` — owned by Codex.
+- [ ] `POST /api/v1/quickstart/issue` with `{ "email": "test@example.com" }` → 200, returns `{ apiKey, plan, monthlyLimit }`
+- [ ] `Agent.registrationSource` in DB equals `"quickstart"` for keys issued via the new endpoint
+- [ ] `POST /api/v1/router/register` with `{ "email": "...", "source": "quickstart_homepage" }` → `registrationSource = "quickstart_homepage"` in DB
+- [ ] `npx prisma migrate deploy` succeeds cleanly
+- [ ] `grep -rn "voyage-ai" src/ --include="*.ts"` → zero hits in backend files
 
 ---
 
 ## Progress log
 
-After each fix, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
+After each task, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
 [<ISO timestamp>] [CLAUDE-CODE] [done] <brief description>
 ```
