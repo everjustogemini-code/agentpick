@@ -1,18 +1,18 @@
-# NEXT_VERSION.md — v-next (cycle 11)
+# NEXT_VERSION.md — v-next (cycle 12)
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
-**QA baseline:** QA_REPORT.md (2026-03-18, run 22:42 UTC post-cycle-10 deploy) — score **62/63** | P0: none | P1: **2 open**
-**Recently shipped (cycle 10):** Attempted to remove dead embed providers from routing chain — fix is incomplete; P1-1 still confirmed open in post-deploy QA run
+**QA baseline:** QA_REPORT.md (2026-03-18, run 22:55 UTC post-cycle-11 deploy) — score **62/63** | P0: none | P1: **2 open**
+**Recently shipped (cycle 11):** "Remove dead embed providers from ALL locations" — fix is still incomplete; P1-1 confirmed open in post-deploy QA run (three cycles, still not resolved)
 
 ---
 
 ## Must-Have #1 — Fix both P1 embed bugs (bugs before features — no exceptions)
 
-### P1-1: Remove dead providers from the embed chain — cycle 9 fix is incomplete
+### P1-1: Remove dead providers from the embed chain — THREE cycles of fixes have failed
 
-**QA evidence (22:42 UTC, post cycle-10 deploy):** Every `POST /api/v1/route/embed` *still* returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. Cycle 9 promoted voyage-embed to primary; cycle 10 attempted to remove dead providers — neither fully resolved the chain. Post-deploy QA confirms the issue is still live.
+**QA evidence (22:55 UTC, post cycle-11 deploy):** Every `POST /api/v1/route/embed` *still* returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. Cycle 9 promoted voyage-embed to primary; cycle 10 attempted to remove dead providers; cycle 11 explicitly targeted "ALL locations" — none resolved the chain. Three consecutive deploy-and-check cycles have not fixed this.
 
-**Root cause:** Two cycles of fixes have not eliminated `openai-embed` and `cohere-embed` from the active provider list. There are likely multiple config locations (e.g., a tool registry, a capability-defaults file, and a runtime fallback list) and only one has been updated each cycle.
+**Root cause:** There are definitely multiple config locations holding the dead providers, and the previous fixes have only patched some of them. A grep across the entire codebase for `openai-embed` and `cohere-embed` strings is required before touching any file, to find every registration point. Fix all occurrences atomically in one commit.
 
 **Required fix:** Delete (or disable) `openai-embed` and `cohere-embed` from the embed tool chain config entirely. `voyage-embed` must be the sole entry — not just "primary." No BYOK keys are configured for the other two; they serve no purpose in the chain.
 
