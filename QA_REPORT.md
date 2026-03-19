@@ -1,5 +1,5 @@
 # AgentPick QA Report
-**Date:** 2026-03-18 (run: 22:10 UTC)
+**Date:** 2026-03-18 (run: 22:27 UTC)
 **Target:** https://agentpick.dev
 **QA Agent:** Claude Code (Sonnet 4.6)
 
@@ -8,6 +8,8 @@
 ## Score: 62/63
 
 > Automated suite: 50/51 · All page load checks pass · All manual flow checks pass · API Bearer auth: 5/5 · Paid user flow: 3/3
+>
+> **Re-verified at 22:27 UTC:** Fresh registration + Bearer auth search confirmed working. Embed P1 confirmed: fallback chain `openai-embed → cohere-embed → voyage-embed` on every call (voyage-embed lands with HTTP 200, real 1024-dim embeddings). QA script stale slug confirmed.
 
 ---
 

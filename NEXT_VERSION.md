@@ -1,24 +1,22 @@
-# NEXT_VERSION.md — v-next (cycle 9)
+# NEXT_VERSION.md — v-next (cycle 10)
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
-**QA baseline:** QA_REPORT.md (2026-03-18, run 22:10 UTC) — score **62/63** | P0: none | P1: **2 open**
-**Recently shipped (cycle 8):** voyage-ai slug fix (partial), `POST /v1/responses` OpenAI-compat endpoint
+**QA baseline:** QA_REPORT.md (2026-03-18, re-verified 22:27 UTC) — score **62/63** | P0: none | P1: **2 open**
+**Recently shipped (cycle 9):** Promoted voyage-embed to primary (partial — chain still exhausts openai-embed + cohere-embed first per re-verification)
 
 ---
 
 ## Must-Have #1 — Fix both P1 embed bugs (bugs before features — no exceptions)
 
-### P1-1: Promote `voyage-embed` to primary in the embed tool chain
+### P1-1: Remove dead providers from the embed chain — cycle 9 fix is incomplete
 
-**QA evidence:** Every `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. The chain exhausts two failing providers on every call.
+**QA evidence (re-verified 22:27 UTC, post cycle-9 deploy):** Every `POST /api/v1/route/embed` *still* returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. Cycle 9 committed "promote voyage-embed to primary" but did not eliminate the dead providers from the front of the chain.
 
-**Root cause:** `openai-embed` and `cohere-embed` lack valid BYOK keys (or their adapters are broken), so they fail silently and the router falls through to voyage-embed every time.
+**Root cause:** The cycle-9 change likely updated a default/fallback config pointer but left `openai-embed` and `cohere-embed` as active entries in the embed capability's provider list. They still get attempted (and fail) before reaching voyage-embed.
 
-**Required fix — choose one:**
-- **Option A (preferred):** Reorder the embed chain config so `voyage-embed` is at index 0. Remove or demote the broken providers until keys are configured.
-- **Option B:** Configure working `OPENAI_API_KEY` / `COHERE_API_KEY` env vars so the first provider in the chain actually succeeds.
+**Required fix:** Delete (or disable) `openai-embed` and `cohere-embed` from the embed tool chain config entirely. `voyage-embed` must be the sole entry — not just "primary." No BYOK keys are configured for the other two; they serve no purpose in the chain.
 
-**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain` length of 1 on normal calls.
+**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length 1) on every normal call.
 
 ---
 

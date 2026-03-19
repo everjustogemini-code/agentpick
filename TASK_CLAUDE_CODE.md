@@ -1,87 +1,125 @@
-# TASK_CLAUDE_CODE.md — Cycle 9
+# TASK_CLAUDE_CODE.md — Cycle 10 (Backend / API)
 
 **Agent:** Claude Code (Sonnet 4.6)
-**Source:** NEXT_VERSION.md (2026-03-18, cycle 9)
-**QA baseline:** 62/63 — P1-1 fix here brings fallback_used to false
-**Scope:** P1-1 embed chain fix (backend only)
-**Must NOT touch:** `agentpick-router-qa.py`, `src/app/globals.css`, `src/app/page.tsx`, `src/app/benchmarks/`, `src/app/rankings/`, `src/app/agents/`, `src/app/dashboard/`, `src/app/connect/`, `src/app/playground/`, `src/components/`
+**Cycle:** 10
+**Date:** 2026-03-18
+**QA baseline:** 62/63 — P0 embed chain fix below brings `fallback_used` to false
+**Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
 
-## Task 1 — P1-1: Promote `voyage-embed` to primary provider in embed chain
+## Must-Have #1 — Fix P1-1: Remove dead providers from embed chain
 
-**Goal:** `POST /api/v1/route/embed` must return `fallback_used: false` and `tried_chain: ["voyage-embed"]` on a normal call with no user BYOK keys.
+**Bug:** `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true` on every call. Cycle 9 updated `CAPABILITY_TOOLS.embed` in `src/lib/router/index.ts:43` to `['voyage-embed', 'jina-embed', 'edenai-embed']`, but dead-provider references in downstream config files still inject openai-embed and cohere-embed into the routing path before the CAPABILITY_TOOLS guard fires.
 
-**Root cause:** `openai-embed` and `cohere-embed` are at index 0–1 in the embed chain but have no valid platform API keys — they fail silently on every call, forcing a fallthrough to `voyage-embed` (listed as `voyage-ai` at index 2). Fix: promote `voyage-embed` to index 0 and drop the two broken providers from the chain.
+**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length 1) on every normal call.
 
 ---
 
-### 1a. `src/lib/router/index.ts`
+### File 1: `src/lib/ops/constants.ts`
 
-**Line 43** — `CAPABILITY_TOOLS.embed` array:
+**Location:** Line 41 — the `embedding` capability entry in the domain/capability config array.
 
-Current:
-```ts
-embed: ['openai-embed', 'cohere-embed', 'voyage-ai', 'jina-embed', 'edenai-embed'],
+**Current (broken):**
+```typescript
+suggestedTools: ["openai-embed", "cohere-embed", "voyage-ai", "jina-embed"]
 ```
 
-Change to (Option A — reorder + rename slug to canonical form):
-```ts
-embed: ['voyage-embed', 'jina-embed', 'edenai-embed'],
+**Fix:** Replace with:
+```typescript
+suggestedTools: ["voyage-embed", "jina-embed", "edenai-embed"]
 ```
 
-- Remove `openai-embed` and `cohere-embed` (no valid platform keys; fail every call).
-- Rename `voyage-ai` → `voyage-embed` to match the canonical live slug. The `voyage-embed` entry already exists in `TOOL_CHARACTERISTICS` at line 76 (with identical stats).
+Rationale: `openai-embed` and `cohere-embed` have no configured platform API keys. `voyage-ai` is a stale slug — the live slug is `voyage-embed`. `edenai-embed` is already in `CAPABILITY_TOOLS.embed`. This list must exactly mirror `CAPABILITY_TOOLS.embed` so any code that reads `suggestedTools` cannot re-introduce dead providers.
 
-**Lines 75–76** — `TOOL_CHARACTERISTICS` map has a duplicate `voyage-ai` key alongside `voyage-embed`:
+---
 
-```ts
-// line 75 — DELETE this entry:
-'voyage-ai':    { quality: 4.2, cost: 0.0001, latency: 130, stability: 0.97 },
-// line 76 — KEEP, remove the "// alias" comment:
-'voyage-embed': { quality: 4.2, cost: 0.0001, latency: 130, stability: 0.97 },
+### File 2: `src/lib/ops/service-probes.ts`
+
+**Location:** Lines 217–220 — embed provider entries in the probe slug map.
+
+**Current (broken):**
+```typescript
+"openai-embed": "openai",
+"cohere-embed": "cohere",
+"voyage-ai": "voyage",
+"voyage-embed": "voyage", // backward-compat alias
 ```
 
-After the edit, run:
+**Fix:** Remove `openai-embed`, `cohere-embed`, and `voyage-ai` entries. Retain (or add if needed) only the active embed tools:
+```typescript
+"voyage-embed": "voyage",
+"jina-embed": "jina",
+"edenai-embed": "edenai",
+```
+
+Rationale: Service probes run health checks against configured providers. Probing openai-embed and cohere-embed (no keys) generates noise and may trigger health-check failures that affect circuit-breaker state, indirectly influencing fallback ordering.
+
+---
+
+### File 3: `src/lib/router/index.ts`
+
+**Location:** Lines 73–74 — `TOOL_CHARACTERISTICS` map.
+
+**Current (broken):**
+```typescript
+'openai-embed':  { quality: 4.5, cost: 0.0001, latency: 150, stability: 0.99 },
+'cohere-embed':  { quality: 4.0, cost: 0.0001, latency: 120, stability: 0.98 },
+```
+
+**Fix:** Delete both lines (73 and 74).
+
+Rationale: `TOOL_CHARACTERISTICS` keys feed the `latencyBudgetMs` filter and circuit breaker logic at lines 520 and 615. While `CAPABILITY_TOOLS.embed` is the authoritative allowlist (line 242 guard), removing dead entries from TOOL_CHARACTERISTICS eliminates any future risk of these providers being re-introduced via a characteristics-keyset scan.
+
+---
+
+### File 4: `src/lib/router/handler.ts`
+
+**Location:** Audit only — no specific line known.
+
+Search `handler.ts` for any of: `openai-embed`, `cohere-embed`, `voyage-ai`, `suggestedTools`. If any of these strings appear in code that constructs a tool list, fallback list, or request body passed to `routeRequest`, remove the dead entries. The `CAPABILITY_TOOLS[capability]` guard in `index.ts:242` is authoritative — nothing in handler.ts should bypass it by injecting extra slugs.
+
+---
+
+### File 5: `src/app/api/v1/router/skill.md/route.ts`
+
+**Location:** Line 55 — the embed row in the capability table (documentation endpoint).
+
+**Current:**
+```
+| embed | `/router/embed` | openai-embed, cohere-embed, voyage-ai, jina-embed, edenai-embed |
+```
+
+**Fix:**
+```
+| embed | `/router/embed` | voyage-embed, jina-embed, edenai-embed |
+```
+
+---
+
+## Verification
+
+After making all changes, run:
 ```bash
-grep -n "voyage-ai" src/lib/router/index.ts
+curl -s -X POST http://localhost:3000/api/v1/route/embed \
+  -H "Authorization: Bearer $TEST_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"params":{"text":"test embedding"}}' | jq '{tried_chain:.meta.tried_chain, fallback_used:.meta.fallback_used}'
 ```
-Must return zero matches.
-
----
-
-### 1b. `src/lib/benchmark/adapters/index.ts`
-
-Search for `voyage-ai` in the `ADAPTERS` map key or any adapter import. If present, rename the key from `'voyage-ai'` → `'voyage-embed'` so the map key matches the canonical slug now used in `CAPABILITY_TOOLS`.
-
-Example pattern to find:
-```ts
-// before
-'voyage-ai': voyageEmbedAdapter,
-// after
-'voyage-embed': voyageEmbedAdapter,
+Expected output:
+```json
+{ "tried_chain": ["voyage-embed"], "fallback_used": false }
 ```
 
-If `voyage-ai` does not appear in this file, no change needed.
+Also run: `grep -r "openai-embed\|cohere-embed" src/lib/router/ src/lib/ops/` — must return zero results in active routing/probing code.
 
 ---
 
-## Files to Modify (summary)
+## Out of Scope for This Agent
 
-| File | Change |
-|------|--------|
-| `src/lib/router/index.ts` | Line 43: remove `openai-embed`, `cohere-embed`; rename `voyage-ai` → `voyage-embed`; keep `jina-embed`, `edenai-embed`. Lines 75–76: delete duplicate `voyage-ai` TOOL_CHARACTERISTICS entry. |
-| `src/lib/benchmark/adapters/index.ts` | Rename `'voyage-ai'` key → `'voyage-embed'` in ADAPTERS map (if present). |
-
-**Do NOT touch:** Any frontend pages, CSS files, QA script, playground components, or API route handlers.
-
----
-
-## Verification Checklist
-
-- [ ] `grep -rn "voyage-ai" src/lib/router/index.ts` — zero results
-- [ ] `grep -rn "voyage-ai" src/lib/benchmark/adapters/index.ts` — zero results
-- [ ] `CAPABILITY_TOOLS.embed` starts with `'voyage-embed'`; length is 3 (`voyage-embed`, `jina-embed`, `edenai-embed`)
-- [ ] `TOOL_CHARACTERISTICS` has exactly one entry for voyage: `'voyage-embed'`
-- [ ] `POST /api/v1/route/embed` returns `fallback_used: false`, `tried_chain: ["voyage-embed"]`
-- [ ] QA 63/63 after Codex also ships P1-2 (QA script slug fix)
+- `agentpick-router-qa.py` — assigned to Codex (P1-2 slug fix)
+- All frontend page files under `src/app/` (pages) and `src/components/`
+- `src/app/globals.css`
+- Dark-glass UI, ScrollReveal, count-up animations
+- Playground page (`src/app/playground/page.tsx`, `src/components/PlaygroundShell.tsx`)
+- Benchmark runner endpoint — explicitly out of scope this cycle (NEXT_VERSION.md § Out of Scope)
