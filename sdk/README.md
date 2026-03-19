@@ -73,6 +73,8 @@ interface BudgetConfig {
 }
 ```
 
+See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walkthrough.
+
 ## License
 
 MIT

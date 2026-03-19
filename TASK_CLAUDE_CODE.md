@@ -1,95 +1,207 @@
-# TASK_CLAUDE_CODE.md — cycle 21
+# TASK_CLAUDE_CODE.md — cycle 22
 **Agent:** Claude Code (Sonnet 4.6)
 **Date:** 2026-03-19
-**QA baseline:** 55/56 — P1 open (embed B.1-embed still failing on `best_performance` strategy)
-**Target:** 56/56
-**Source:** NEXT_VERSION.md Must-Have #1 + Must-Have #3 (backend portion)
+**QA baseline:** 62/62 — P0: none | P1: 2 open
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1-A, P1-B) + Must-Have #3 (Deliverable A backend, Deliverable B)
 **Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
 
-## Task 1 — Fix P1: `best_performance` branch missing capability filter
+## Task 1 — P1-A: Add 308 redirect `/api/v1/developer/*` → `/api/v1/router/*`
 
-**File:** `src/lib/router/index.ts`
-**Function:** `routeRequest()`
+**File:** `next.config.ts`
 
-### Background
+**What to do:**
+In the `redirects()` array (currently lines 5–21), append a wildcard entry **after** the existing `/api/v1/developer/usage` redirect (after line 14):
 
-The `auto` strategy path (lines ~460–464) already applies the capability filter after `aiRoute()` — that fix shipped last cycle. The `best_performance` branch (~line 475) calls `aiRoute(fastResult, capability)` **without** the same post-filter, so embed requests routed via `best_performance` still return `tavily` instead of `voyage-embed`.
-
-### Exact Change
-
-Locate this exact assignment inside the `best_performance` branch:
-```typescript
-aiRankedTools = aiRoute(fastResult, capability);
-```
-(~line 475 — confirm by searching for `aiRoute(fastResult, capability)`)
-
-Immediately after that line, insert:
-```typescript
-if (aiRankedTools) {
-  const allowed = new Set(CAPABILITY_TOOLS[capability] ?? []);
-  aiRankedTools = aiRankedTools.filter((t) => allowed.has(t));
-  if (aiRankedTools.length === 0) aiRankedTools = undefined;
-}
+```ts
+{
+  source: '/api/v1/developer/:path*',
+  destination: '/api/v1/router/:path*',
+  permanent: true,  // 308
+},
 ```
 
-**Do NOT touch** lines 460–464 (the `auto` path already has this fix — do not duplicate or modify it).
+**Also audit these files for any `/api/v1/developer/` references and replace with `/api/v1/router/`:**
+- `README.md` (root)
+- `sdk/README.md` (if exists)
+- `sdk/src/client.ts`
+- Any `.md` files under `docs/` if that directory exists
 
-### Acceptance
-- `POST /api/v1/router/search` with `strategy: "best_performance"` and `capability: "embed"` returns `meta.tool_used: "voyage-embed"` for any query, never `tavily`
-- QA B.1-embed passes with both `auto` and `best_performance` strategies
-- Full QA suite: **56/56**
+**Do NOT touch** `src/app/connect/page.tsx` for this task — that file is owned by TASK_CODEX.md.
+
+**Acceptance:** `POST /api/v1/developer/register` returns 308 → follows to `/api/v1/router/register` → 200. No README or SDK source references the dead path.
 
 ---
 
-## Task 2 — Verify QA Script: `voyage-ai` → `voyage-embed`
+## Task 2 — P1-B: Add Tavily API Pricing section to `/products/tavily`
 
-**File:** `/Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py`
+**File:** `src/app/products/[slug]/page.tsx`
 
-Run `grep -n "voyage-ai" /Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py`. If any hits remain, replace each `"voyage-ai"` with `"voyage-embed"`. If already clean (0 hits), no change needed.
+**What to do:**
+Add a static pricing-comparison section that renders only when `slug === 'tavily'`. Place it after the existing benchmark data section (search for the last closing `</section>` or the footer in the JSX return, and insert before it).
+
+Use a static data object inside the file:
+
+```ts
+const TAVILY_PRICING = [
+  { tier: 'Free',       tavilyDirect: '$0',      viaAgentPick: '$0',      searches: '1,000' },
+  { tier: 'Researcher', tavilyDirect: '$35/mo',  viaAgentPick: '~$38/mo', searches: '10,000' },
+  { tier: 'Business',   tavilyDirect: '$200/mo', viaAgentPick: '~$212/mo', searches: '100,000' },
+];
+```
+
+Render as a table with columns: **Tier | Searches/mo | Tavily Direct | Via AgentPick**.
+
+Apply existing Tailwind classes already used in the file (glass card pattern: `rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm`).
+
+Add a footer note inside the section:
+```
+* AgentPick routing fee added on top. † Estimate; data as of 2026-03-19 — verify current pricing at tavily.com.
+```
+
+**Do NOT** add this section for other slugs — guard with `{slug === 'tavily' && (…)}`.
+
+**Acceptance:** `/products/tavily` renders pricing comparison table. QA 200 page-load test still passes.
 
 ---
 
-## Task 3 — New Feature Backend: Demo key + IP rate limiting
+## Task 3 — Must-Have #3 Deliverable A: Backend for `/quickstart` inline key generation
 
-**Goal:** The frontend "Try it live" panel (built by Codex on `/connect`) needs a shared demo API key that enforces 10 requests/hour per IP with a friendly error message.
+### 3a — New API route
 
-### Files to Modify
+**File to create:** `src/app/api/v1/quickstart/register/route.ts`
 
-#### `src/app/api/v1/router/route.ts`
-Add IP-based rate limiting for demo-key requests at the top of the `POST` handler, before billing/auth logic:
+- `POST` handler accepting `{ email: string }`.
+- Reuse the key-generation logic from `src/app/api/v1/router/register/route.ts` — read that file first and call the same Prisma/key-gen helper.
+- Return `{ apiKey: string }` on success; `{ error: string }` with status 400/500 on failure.
+- Basic email format validation (check for `@`); reject blank emails with 400.
+- No rate limiting needed on this endpoint.
 
-1. Detect demo key: if the request's API key equals `process.env.DEMO_API_KEY`, apply the demo rate-limit path.
-2. Extract IP from `x-forwarded-for` header (fall back to `"anonymous"` if missing).
-3. Use existing `@upstash/ratelimit` + `@upstash/redis` (imports already present or add them):
-   ```typescript
-   const ratelimit = new Ratelimit({
-     redis,
-     limiter: Ratelimit.slidingWindow(10, "1 h"),
-     prefix: "demo-ip",
-   });
-   const { success, reset } = await ratelimit.limit(ip);
-   ```
-4. On limit exceeded, return HTTP 429:
-   ```json
-   { "error": "Demo limit reached — get your own key at /connect#register", "retryAfter": <seconds until reset> }
-   ```
-   Do NOT return a raw/unformatted 429.
-5. On success, continue normally (demo key uses `auto` strategy, no other special handling).
-6. Non-demo-key requests: skip this block entirely.
+### 3b — Quickstart page server shell
 
-#### `.env.example`
-Add one line documenting the new env var:
+**File to create:** `src/app/quickstart/page.tsx`
+
+- Export `metadata` with `title: "Get started in 60 seconds · AgentPick"` and an appropriate description.
+- Import `SiteHeader` from `@/components/SiteHeader`.
+- Import a `QuickstartWizard` client component from `@/components/QuickstartWizard` (this component is created by Codex — just import it; do not implement it here).
+- Render:
+  ```tsx
+  <div className="min-h-screen bg-[#0a0a0f]">
+    <SiteHeader />
+    <main className="mx-auto max-w-[680px] px-6 py-12">
+      <h1 className="mb-2 text-[28px] font-bold text-white">Get your API key in 60 seconds</h1>
+      <QuickstartWizard />
+    </main>
+  </div>
+  ```
+
+---
+
+## Task 4 — Must-Have #3 Deliverable B: npm + PyPI SDK packages
+
+### 4a — Node SDK (`sdk/` directory)
+
+**Files to read then modify:**
+- `sdk/package.json` — verify `"name": "agentpick"` is set; add `"publishConfig": { "access": "public" }` if missing; ensure `"main"`, `"module"`, and `"types"` fields point to `dist/` outputs.
+- `sdk/src/index.ts` — read existing exports first. Ensure a top-level convenience function `search(query, options)` is exported that wraps `AgentPickClient.route('search', query, options)`. Add only if not already exported.
+
+**File to create:** `sdk/README.md`
+```markdown
+# agentpick
+
+Official Node.js SDK for [AgentPick](https://agentpick.dev).
+
+## Install
+\`\`\`
+npm i agentpick
+\`\`\`
+
+## Usage
+\`\`\`ts
+import { AgentPickClient } from 'agentpick';
+const client = new AgentPickClient({ apiKey: 'ah_live_sk_...' });
+const result = await client.route('search', 'latest AI benchmarks 2026');
+console.log(result.tool, result.latency_ms);
+\`\`\`
+
+See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walkthrough.
 ```
-DEMO_API_KEY=demo_live_agentpick_shared
+
+### 4b — Python SDK (new package)
+
+**Directory to create:** `sdk-python/`
+
+Create these four files:
+
+**`sdk-python/pyproject.toml`**
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentpick"
+version = "0.1.0"
+description = "Python SDK for AgentPick — AI-powered API routing"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://agentpick.dev/quickstart"
 ```
 
-### Acceptance
-- Demo key requests #1–10 per IP per hour succeed (real API response)
-- Request #11 returns `{ "error": "Demo limit reached..." }` with HTTP 429
-- Real user API keys are completely unaffected
-- No new npm packages needed (use existing `@upstash/ratelimit` + `@upstash/redis`)
+**`sdk-python/agentpick/__init__.py`**
+```python
+from .client import AgentPick
+
+__all__ = ["AgentPick"]
+```
+
+**`sdk-python/agentpick/client.py`**
+```python
+import httpx
+
+BASE_URL = "https://agentpick.dev"
+
+class AgentPick:
+    def __init__(self, api_key: str, base_url: str = BASE_URL):
+        self.api_key = api_key
+        self.base_url = base_url
+
+    def search(self, query: str, **kwargs) -> dict:
+        response = httpx.post(
+            f"{self.base_url}/api/v1/route/search",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"query": query, **kwargs},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+```
+
+**`sdk-python/README.md`**
+```markdown
+# agentpick (Python)
+
+Official Python SDK for [AgentPick](https://agentpick.dev).
+
+## Install
+\`\`\`
+pip install agentpick
+\`\`\`
+
+## Usage
+\`\`\`python
+from agentpick import AgentPick
+ap = AgentPick(api_key="ah_live_sk_...")
+result = ap.search("latest AI benchmarks 2026")
+print(result)
+\`\`\`
+
+See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walkthrough.
+```
 
 ---
 
@@ -97,12 +209,20 @@ DEMO_API_KEY=demo_live_agentpick_shared
 
 | File | Action |
 |------|--------|
-| `src/lib/router/index.ts` | Add capability filter after `aiRoute(fastResult, capability)` in `best_performance` branch (~line 475) |
-| `/Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py` | Verify/fix `voyage-ai` → `voyage-embed` |
-| `src/app/api/v1/router/route.ts` | Add demo-key IP rate-limit block |
-| `.env.example` | Add `DEMO_API_KEY` entry |
+| `next.config.ts` | Add `/api/v1/developer/:path*` → `/api/v1/router/:path*` 308 redirect |
+| `README.md` | Audit + replace any `/api/v1/developer/` references |
+| `src/app/products/[slug]/page.tsx` | Add TAVILY_PRICING table section (slug === 'tavily' guard) |
+| `src/app/quickstart/page.tsx` | **CREATE** — page shell with metadata + QuickstartWizard import |
+| `src/app/api/v1/quickstart/register/route.ts` | **CREATE** — POST handler for inline key generation |
+| `sdk/package.json` | Verify/add publishConfig + dist field pointers |
+| `sdk/src/index.ts` | Add top-level `search()` export if missing |
+| `sdk/README.md` | **CREATE** — install + usage + quickstart link |
+| `sdk-python/pyproject.toml` | **CREATE** |
+| `sdk-python/agentpick/__init__.py` | **CREATE** |
+| `sdk-python/agentpick/client.py` | **CREATE** |
+| `sdk-python/README.md` | **CREATE** |
 
-**Do NOT touch:** `src/app/globals.css`, any page under `src/app/` (homepage, connect, dashboard, products), any component file.
+**Do NOT touch:** `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/connect/page.tsx`, `src/app/rankings/page.tsx`, or any component file under `src/components/`.
 
 ---
 
@@ -110,11 +230,12 @@ DEMO_API_KEY=demo_live_agentpick_shared
 
 | NEXT_VERSION.md item | Assigned to |
 |---|---|
-| Must-Have #1a — Router `best_performance` branch capability filter | **This file** |
-| Must-Have #1b — QA script `voyage-ai` → `voyage-embed` | **This file** |
-| Must-Have #2 — Glassmorphism UI upgrade | **TASK_CODEX.md** |
-| Must-Have #3 backend — Demo key + IP rate limiting | **This file** |
-| Must-Have #3 frontend — "Try it live" panel on /connect | **TASK_CODEX.md** |
+| Must-Have #1 P1-A — `/api/v1/developer/*` 308 redirect | **This file** |
+| Must-Have #1 P1-B — Tavily pricing table on `/products/tavily` | **This file** |
+| Must-Have #2 — Glassmorphism UI overhaul | **TASK_CODEX.md** |
+| Must-Have #3 Deliverable A — `/quickstart` page backend + shell | **This file** |
+| Must-Have #3 Deliverable B — npm + PyPI packages | **This file** |
+| Must-Have #3 Deliverable C — `/connect` tab upgrade | **TASK_CODEX.md** |
 
 ---
 
@@ -122,5 +243,5 @@ DEMO_API_KEY=demo_live_agentpick_shared
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 21: best_performance capability filter fix + demo key rate limiting
+[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 22: P1-A redirect + P1-B Tavily pricing + quickstart backend + Python/Node SDK packages
 ```

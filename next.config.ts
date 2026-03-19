@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/api/v1/developer/:path*',
+        destination: '/api/v1/router/:path*',
+        permanent: true,
+      },
+      {
         source: '/router',
         destination: '/connect',
         permanent: true,
