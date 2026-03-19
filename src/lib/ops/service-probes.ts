@@ -175,14 +175,6 @@ export async function probeVaultKey(service: string, encryptedKey: string): Prom
         return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
       }
       // --- Embedding probes ---
-      case "cohere": {
-        const { response, latencyMs, data } = await fetchWithTimeout("https://api.cohere.com/v1/embed", {
-          method: "POST",
-          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: "embed-english-v3.0", texts: ["health check"], input_type: "search_query", truncate: "END" }),
-        });
-        return { ok: response.ok, status: response.ok ? "active" : "failed", latencyMs, details: { sample: data } };
-      }
       case "voyage": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.voyageai.com/v1/embeddings", {
           method: "POST",
@@ -385,16 +377,6 @@ export async function runToolProbe(service: string, encryptedKey: string, query:
         break;
       }
       // --- Embedding probes ---
-      case "cohere": {
-        const { response, latencyMs, data } = await fetchWithTimeout("https://api.cohere.com/v1/embed", {
-          method: "POST",
-          headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: "embed-english-v3.0", texts: [query], input_type: "search_query", truncate: "END" }),
-        });
-        const embeddings = ((data as any)?.embeddings ?? []) as Array<any>;
-        result = { ok: response.ok, status: response.ok ? "completed" : "failed", latencyMs, details: { results: embeddings.length } };
-        break;
-      }
       case "voyage": {
         const { response, latencyMs, data } = await fetchWithTimeout("https://api.voyageai.com/v1/embeddings", {
           method: "POST",

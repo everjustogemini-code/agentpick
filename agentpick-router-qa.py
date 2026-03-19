@@ -95,5 +95,31 @@ class TestEmbedRouter(unittest.TestCase):
         )
 
 
+class TestOpenAICompat(unittest.TestCase):
+
+    def test_e1_openai_compat_search(self):
+        """E.1 — /v1/chat/completions returns OpenAI-schema response."""
+        r = requests.post(
+            f"{BASE_URL}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {KEY_499}"},
+            json={
+                "model": "agentpick",
+                "messages": [{"role": "user", "content": "latest AI agent frameworks 2025"}],
+                "tools": [{"type": "function", "function": {
+                    "name": "web_search",
+                    "description": "search the web",
+                    "parameters": {"type": "object", "properties": {}}
+                }}],
+            },
+            timeout=20,
+        )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertIn("choices", body)
+        self.assertTrue(len(body["choices"]) > 0)
+        self.assertIn("message", body["choices"][0])
+        self.assertTrue(r.headers.get("X-AgentPick-Tool-Used", "") != "")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

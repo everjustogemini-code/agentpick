@@ -659,6 +659,14 @@ export async function routeRequest(
       };
     }
 
+    // Failed — emit structured log so ops dashboard can diagnose skip reasons
+    console.log(JSON.stringify({
+      event: "tool_skipped",
+      tool: candidateSlug,
+      capability,
+      reason: `statusCode:${result.statusCode}`,
+      ts: new Date().toISOString(),
+    }));
     // Failed — record the failure and continue
     if (!firstFailedTool) firstFailedTool = candidateSlug;
     // NOTE: Do not let trace recording abort the fallback loop. If recordTrace throws
