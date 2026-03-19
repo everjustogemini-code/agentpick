@@ -684,6 +684,7 @@ model RouterCall {
   aiClassification Json?
   totalMs       Int?
   responsePreview String?
+  source        String         @default("router")
 
   createdAt     DateTime       @default(now())
 

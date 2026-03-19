@@ -75,6 +75,8 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
     );
   }
 
+  const isMcpSource = request.headers.get('x-mcp-source') === 'true';
+
   // 1. Authenticate — short-circuit immediately if there is no Authorization header
   // and no ?token= query param. This avoids any DB lookup for clearly unauthenticated
   // requests and closes the window for an intermittent auth-bypass edge case.
@@ -321,6 +323,7 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
           ? [...new Set(response.meta.tried_chain)]
           : (response.meta.fallback_used ? [response.meta.fallback_from ?? '', response.meta.tool_used].filter(Boolean) : [response.meta.tool_used].filter(Boolean)),
         preUsageIsOverage,
+        isMcpSource,
       );
     } catch (recordErr) {
       // Don't fail the request if recording fails — log structured details for Vercel diagnostics
@@ -380,6 +383,8 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
         strategyUsed as RouterStrategyValue,
         false,
         [],
+        preUsageIsOverage,
+        isMcpSource,
       ).catch((e) => console.error('Failed to record failed router call:', e));
     }
     return new Response(JSON.stringify({
