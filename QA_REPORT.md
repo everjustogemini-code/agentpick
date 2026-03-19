@@ -1,7 +1,7 @@
 # AgentPick QA Report
-**Date:** 2026-03-19
+**Date:** 2026-03-19 (run: 01:06 UTC)
 **Target:** https://agentpick.dev
-**Tester:** QA Agent (Claude Code, claude-sonnet-4-6)
+**Tester:** QA Agent (claude-sonnet-4-6)
 **Script:** `/Users/pwclaw/.openclaw/workspace/agentpick-router-qa.py`
 
 ---
@@ -18,11 +18,12 @@ None.
 
 ## P1 Issues
 
-### 1. Embed tool name mismatch (B.1-embed)
-- **What:** QA test expects `voyage-ai` or `cohere-embed`. API returns `voyage-embed`.
-- **Root cause:** Embed capability routes correctly (cohere-embed primary, voyage-embed fallback). The fallback is functioning. The QA script's valid-tools list is stale — `voyage-ai` is the old ID; current registry ID is `voyage-embed`.
-- **Impact:** No user-facing breakage. Embed calls succeed with valid 1024-dim embeddings. Cohere-embed appears to be deprioritized/unavailable.
-- **Fix:** Update QA script to accept `voyage-embed`, or investigate why `cohere-embed` is not selected as primary.
+### 1. Embed capability routing — tool name mismatch (B.1-embed)
+- **What:** QA script expects `voyage-ai` or `cohere-embed`. API returns `voyage-embed`.
+- **Additional finding:** Direct `POST /api/v1/router/search` with `capability: "embed"` and query `"embed this text"` routed to `tavily` (a search tool), returning web search results rather than vector embeddings. The AI classifier tagged it as `type=news` and skipped embed routing.
+- **Root cause (likely):** AI query classifier is over-riding capability hint when query text pattern doesn't match. The embed capability should be respected regardless of AI classification. Also, QA script valid-tools list is stale (`voyage-ai` → now `voyage-embed`).
+- **Impact:** Developers who request `capability: "embed"` with natural-language queries may receive search results instead of embeddings. Direct embed-style queries (e.g. from the script) work. P1 — could affect embed users in production.
+- **Fix:** Router should respect explicit `capability` parameter and bypass AI type-classification for capability routing decisions. Also update QA script to accept `voyage-embed`.
 
 ---
 
@@ -114,4 +115,4 @@ None.
 
 ---
 
-PASS
+FAIL
