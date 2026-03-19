@@ -1,5 +1,5 @@
 # AgentPick QA Report
-**Date:** 2026-03-18 (run: 22:27 UTC)
+**Date:** 2026-03-18 (run: 22:42 UTC)
 **Target:** https://agentpick.dev
 **QA Agent:** Claude Code (Sonnet 4.6)
 
@@ -7,9 +7,9 @@
 
 ## Score: 62/63
 
-> Automated suite: 50/51 · All page load checks pass · All manual flow checks pass · API Bearer auth: 5/5 · Paid user flow: 3/3
+> Automated suite: 50/51 · All page load checks pass · Manual paid-user flow: 3/3 · API Bearer auth: 5/5
 >
-> **Re-verified at 22:27 UTC:** Fresh registration + Bearer auth search confirmed working. Embed P1 confirmed: fallback chain `openai-embed → cohere-embed → voyage-embed` on every call (voyage-embed lands with HTTP 200, real 1024-dim embeddings). QA script stale slug confirmed.
+> Single failure is a stale slug in the QA script (B.1-embed): actual tool ID is `voyage-embed` but script's valid list contains `voyage-ai`. The embed route itself works correctly.
 
 ---
 
@@ -25,11 +25,11 @@
 - **Observed:** `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `tool_used: "voyage-embed"` and `fallback_used: true` on every call.
 - **Root cause:** openai-embed and cohere-embed are failing silently, forcing every embed request to exhaust two fallbacks before succeeding on voyage-embed.
 - **Fix needed:** Configure BYOK keys for openai-embed / cohere-embed, or promote voyage-embed to primary position in the embed tool chain.
-- **Product impact:** Embed works, but latency overhead from two failed attempts; all embed calls are effectively in a degraded state. No user-visible error, but reliability risk if voyage-embed goes down.
+- **Product impact:** Embed works (HTTP 200, real vectors returned), but latency overhead from two failed attempts; reliability risk if voyage-embed goes down.
 
 ### P1-2: QA script embed valid-list has stale tool slug
-- **Observed:** `agentpick-router-qa.py` line B.1 expects `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but actual slug is `"voyage-embed"` — causing a false negative failure in the QA report.
-- **Fix needed:** Update QA script line B.1 valid list to include `"voyage-embed"`.
+- **Observed:** `agentpick-router-qa.py` line B.1 expects `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but actual slug is `"voyage-embed"` — causing a false-negative failure.
+- **Fix needed:** Update QA script B.1 valid list to include `"voyage-embed"`.
 
 ---
 
@@ -38,10 +38,10 @@
 ### Page Loads — all 200 ✅
 | Page | Status | Notes |
 |---|---|---|
-| `/` | 200 | Hero, dark pip-install block, Router nav item, 26-tool carousel, all nav items present |
-| `/connect` | 200 | pip install, 5 strategies, API endpoint docs, auto-fallback section, dashboard link, pricing tiers |
+| `/` | 200 | Hero, dark pip-install block, Router nav item, tool carousel, all nav items present |
+| `/connect` | 200 | pip install, strategies, API endpoint docs, auto-fallback section, dashboard link, pricing tiers |
 | `/dashboard` | 200 | Plan capacity, strategy selector, budget controls, API key management |
-| `/products/tavily` | 200 | Agent score 6.2/10, 5,184 verified calls, P50:915ms, $0.001/call, benchmark breakdown |
+| `/products/tavily` | 200 | Agent score, verified call count, P50 latency, cost/call, benchmark breakdown |
 
 ### Router Core (Parts 1–2): 16/16 ✅
 - Registration → `ah_live_sk_...` key, plan=FREE, monthlyLimit=500
@@ -65,7 +65,7 @@
 - Deep research query → `exa-search` (`type=research`, `depth=deep`) ✅
 - Realtime query ("AAPL stock price right now") → `tavily` (`type=realtime`, `freshness=realtime`) ✅
 - Simple query ("what is Python") → `tavily` (`type=simple`, `depth=shallow`) ✅
-- Classification latency: **150ms** (under 200ms target) ✅
+- Classification latency: **151ms** (under 200ms target) ✅
 - Full `ai_classification` object returned in `meta` (type, domain, depth, freshness, reasoning) ✅
 - AI routing summary aggregated in `/usage` (`total_ai_routed_calls`, `by_type` breakdown) ✅
 
@@ -80,7 +80,7 @@
 
 ### Bonus / Edge Cases: 6/7
 - Finance route → `polygon-io` ✅
-- Embed route → routes correctly but tool ID mismatch (P1 above) ❌
+- Embed route → routes correctly but QA slug mismatch (P1-2 above) ❌
 - Empty query → 400 ✅
 - Invalid capability → 404 ✅
 - 5000-char query → 413 ✅
@@ -89,15 +89,15 @@
 
 ### Paid User Flow (manual): ✅
 1. `POST /api/v1/router/register` → `apiKey`, `plan: FREE`, `monthlyLimit: 500` ✅
-2. `POST /api/v1/route/search` with Bearer auth → 10 rich results via exa-search (real content, scores, URLs), full `meta` (tool_used, latency_ms, ai_classification, cost_usd, trace_id) ✅
-3. Usage tracking → `callsThisMonth` increments correctly; `/api/v1/router/usage` returns plan/daily_limit/daily_used/strategy ✅
+2. `POST /api/v1/router/search` with Bearer auth → 9 results via tavily (real content, URLs), full `meta` (tool_used, latency_ms, ai_classification, cost_usd, trace_id, calls_remaining) ✅
+3. Usage tracking → `callsThisMonth` increments correctly; `calls_remaining` decrements as expected ✅
 
 ### API Bearer Auth: 5/5 ✅
 | Test | Result |
 |------|--------|
 | Valid Bearer key → 200 with results | ✅ |
 | Missing Authorization header → 401 | ✅ |
-| Invalid key (`ah_fake_key_xyz`) → 401 | ✅ |
+| Invalid key (`Bearer invalid_key_xxx`) → 401 | ✅ |
 | Strategies endpoint → returns strategy map | ✅ |
 | Health endpoint → `status: healthy` | ✅ |
 
