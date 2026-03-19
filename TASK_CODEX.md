@@ -1,7 +1,7 @@
-# TASK_CODEX.md — Cycle 10 (Frontend / QA)
+# TASK_CODEX.md — Cycle 11 (Frontend / QA)
 
 **Agent:** Codex
-**Cycle:** 10
+**Cycle:** 11
 **Date:** 2026-03-18
 **QA baseline:** 62/63 — P1-2 slug fix below + embed chain fix (TASK_CLAUDE_CODE) together bring QA to 63/63
 **Do NOT touch:** Any file listed in TASK_CLAUDE_CODE.md
@@ -10,13 +10,24 @@
 
 ## Must-Have #1 — Fix P1-2: QA script embed slug (`voyage-ai` → `voyage-embed`)
 
-**Bug:** `agentpick-router-qa.py` is missing an embed tool validation test (or has a stale one) that checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` — `"voyage-ai"` is the wrong slug; the live slug is `"voyage-embed"`. This causes a false-negative on every QA run and keeps the score at 62/63.
+**Bug:** `agentpick-router-qa.py` line B.1 checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` — `"voyage-ai"` is the wrong slug; the live slug is `"voyage-embed"`. This causes a false-negative on every QA run, keeping score at 62/63.
 
 **Acceptance:** QA suite reports **63/63**. No reference to `"voyage-ai"` slug remains in the QA script.
 
 ### File: `agentpick-router-qa.py`
 
-Add a new test class `TestEmbedRouting` before the final `if __name__ == "__main__":` block:
+Find the line B.1 valid-list check (searches for `tool in [...]` containing `"voyage-ai"`).
+
+**Required change:** Update the valid-list from:
+```python
+tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]
+```
+to:
+```python
+tool in ["cohere-embed", "voyage-embed", "jina-embeddings", "jina-embed", "edenai-embed"]
+```
+
+If line B.1 does not exist yet, add a new test class `TestEmbedRouting` before the final `if __name__ == "__main__":` block:
 
 ```python
 class TestEmbedRouting(unittest.TestCase):
@@ -46,7 +57,7 @@ Apply the existing homepage dark-glass tokens (`--bg-base`, `--bg-surface`, `--b
 
 ### File 1: `src/app/globals.css`
 
-1. **ScrollReveal stagger** — Add a `--reveal-stagger` delay to sibling `.scroll-reveal` elements. After the existing `.scroll-reveal.visible` rule, add:
+1. **ScrollReveal stagger** — Add 60 ms stagger delays to sibling `.scroll-reveal` elements. After the existing `.scroll-reveal.visible` rule, add:
    ```css
    .scroll-reveal:nth-child(2) { transition-delay: 60ms; }
    .scroll-reveal:nth-child(3) { transition-delay: 120ms; }
@@ -98,30 +109,26 @@ Apply the existing homepage dark-glass tokens (`--bg-base`, `--bg-surface`, `--b
    }
    ```
 
-5. **No white flash** — Ensure `body` has:
-   ```css
-   body { background-color: var(--bg-base); }
-   ```
-   (Verify it's already there; add if missing.)
+5. **No white flash** — Verify `body` has `background-color: var(--bg-base);`. Add if missing.
 
 ---
 
 ### File 2: `src/app/benchmarks/page.tsx`
 
-- Wrap the page's `<body>` / outermost `<div>` background with `style={{ background: 'var(--bg-base)' }}` or the `bg-[var(--bg-base)]` Tailwind class.
-- Apply `.glass-card` class to each benchmark domain tile / card component.
+- Apply `bg-[var(--bg-base)]` or `style={{ background: 'var(--bg-base)' }}` to page root.
+- Apply `.glass-card` class to each benchmark domain tile.
 - Add `.glass-card-interactive` class to clickable tiles (hover lift).
-- Wrap each card or card group in `<ScrollReveal>` (import from `@/components/ScrollReveal`). Wrap sibling groups so the stagger CSS applies.
-- Apply `tabular-data` class to any latency or score numeric values.
+- Wrap card groups in `<ScrollReveal>` (import from `@/components/ScrollReveal`) so stagger CSS applies.
+- Apply `tabular-data` class to latency and score numeric values.
 
 ---
 
 ### File 3: `src/app/rankings/page.tsx`
 
 - Apply dark background (`var(--bg-base)`) to page root.
-- Wrap each ranking row container with `.glass-card` styling. Rows should use `bg-[var(--bg-surface)]` + `border border-[var(--border-subtle)]`.
+- Apply `.glass-card` + `bg-[var(--bg-surface)]` + `border border-[var(--border-subtle)]` to each ranking row container.
 - Add `.glass-card-interactive` to clickable rows.
-- Wrap ranking rows or sections in `<ScrollReveal>` with stagger.
+- Wrap rows/sections in `<ScrollReveal>` with stagger.
 - Apply `tabular-data` class to score and latency columns.
 
 ---
@@ -131,7 +138,7 @@ Apply the existing homepage dark-glass tokens (`--bg-base`, `--bg-surface`, `--b
 - Apply dark background to page root.
 - Wrap each agent directory card in `.glass-card` + `.glass-card-interactive`.
 - Wrap card grid in `<ScrollReveal>` with stagger.
-- Apply `tabular-data` to any numeric stats on cards.
+- Apply `tabular-data` to numeric stats on cards.
 
 ---
 
@@ -160,43 +167,43 @@ Apply the existing homepage dark-glass tokens (`--bg-base`, `--bg-surface`, `--b
 
 ### File 7: `src/app/page.tsx` (Homepage)
 
-**Count-up hero stats** — The `OnceAnimatedCounter` component already exists in `src/components/OnceAnimatedCounter.tsx` and uses `sessionStorage`. Verify it is wired to the "X agents ranked" and "Y calls routed" stats in the hero stat bar (lines ~206–229). If the counter is already there, no change needed. If any stat still uses a bare number, wrap it in `<OnceAnimatedCounter value={stats.X} />`.
+**Count-up hero stats** — `OnceAnimatedCounter` (`src/components/OnceAnimatedCounter.tsx`) uses `sessionStorage` for one-shot animation. Verify the "X agents ranked" and "Y calls routed" stats in the hero use `<OnceAnimatedCounter>`. If any stat still uses a bare number, wrap it.
 
-**"Try it live →" CTA** — Add the link to `/playground` in the hero section, near the existing CTA buttons ("Get API key" / "Try the router"). Example placement immediately after the existing CTA group:
+**"Try it live →" CTA** — Add link to `/playground` in the hero section near existing CTA buttons:
 ```tsx
 <a href="/playground" className="inline-flex items-center gap-1 text-sm font-semibold text-orange-400 hover:text-orange-300 transition-colors mt-2">
   Try it live →
 </a>
 ```
 
-**Monospace stats** — Add `tabular-data` class to the `<OnceAnimatedCounter>` wrappers or their parent `<span>` elements for the agents-count and calls-routed numbers.
+**Monospace stats** — Add `tabular-data` class to `<OnceAnimatedCounter>` wrappers or their parent `<span>` for agents-count and calls-routed numbers.
 
 ---
 
 ## Must-Have #3 — Live API Playground page (`/playground`)
 
-The page shell exists at `src/app/playground/page.tsx` and renders `<PlaygroundShell />`. The component files exist (`src/components/PlaygroundShell.tsx`, `src/components/PlaygroundRequestBuilder.tsx`, `src/components/PlaygroundResponsePanel.tsx`). Make them match the spec:
+The page shell exists at `src/app/playground/page.tsx` and renders `<PlaygroundShell />`. Components exist (`src/components/PlaygroundShell.tsx`, `src/components/PlaygroundRequestBuilder.tsx`, `src/components/PlaygroundResponsePanel.tsx`). Verify and ensure they match spec:
 
 ### File 8: `src/app/playground/page.tsx`
 
-- Replace `bg-gray-950` with `bg-[var(--bg-base)]` (dark-glass consistent).
+- Replace any `bg-gray-950` with `bg-[var(--bg-base)]` for dark-glass consistency.
 - Keep `<PlaygroundShell />` as the main content component.
 
 ### File 9: `src/components/PlaygroundShell.tsx`
 
-Ensure (or implement) the following in `PlaygroundShell`:
+Ensure (or implement) the following:
 
-1. **Query input** — text field (`<textarea>` or `<input>`) for the query string.
+1. **Query input** — text field for the query string.
 2. **Capability selector** — `<select>` with options: `search`, `embed`, `crawl`. Default: `search`.
 3. **Strategy dropdown** — `<select>` with options: `balanced`, `best_performance`, `cheapest`, `most_stable`. Default: `balanced`.
-4. **API key input** — text field labeled "API key (optional — demo key used if blank)". Pre-filled hint text only, never a real key in source.
+4. **API key input** — text field labeled "API key (optional — demo key used if blank)". Placeholder/hint text only — never a real key in source.
 5. **Run button** — on click, fires `POST /api/v1/route/{capability}` with:
    ```json
    { "params": { "query": "<input value>" }, "strategy": "<selected strategy>" }
    ```
-   Uses `Authorization: Bearer <key>` header. If key field is blank, use the demo key constant already defined in the codebase (check `src/app/connect/page.tsx` or `src/components/PlaygroundClient.tsx` for the existing `DEMO_KEY` constant — reuse it, do not define a second one).
-6. **Spinner** — show during the fetch.
-7. **Result pane** — on success, render in a `.glass-card`:
+   Uses `Authorization: Bearer <key>` header. If key blank, use the existing `DEMO_KEY` constant (find it in `src/app/connect/page.tsx` or `src/components/PlaygroundClient.tsx` — reuse, do not define a second one).
+6. **Spinner** — visible during fetch.
+7. **Result pane** — on success, render in `.glass-card`:
    - `tool_used`, `latency_ms`, `cost_usd`, `fallback_used`, `ai_classification` from `response.meta`
    - First 3 results: title + URL + snippet (from `response.data.results` or `response.data`)
    - Raw JSON toggle (collapsed by default, expandable `<pre>` block)
@@ -211,11 +218,11 @@ Ensure (or implement) the following in `PlaygroundShell`:
 
 ### File 10: `src/components/PlaygroundRequestBuilder.tsx`
 
-If this component handles the input form (query, capability, strategy, key), ensure it matches the field spec above and uses dark-glass styling (no `bg-gray-*` or white backgrounds).
+If this component handles the input form, ensure it matches the field spec above and uses dark-glass styling (no `bg-gray-*` or white backgrounds).
 
 ### File 11: `src/components/PlaygroundResponsePanel.tsx`
 
-If this component renders results, ensure it:
+Ensure it:
 - Uses `.glass-card` wrapper.
 - Renders `tool_used`, `latency_ms`, `cost_usd`, `fallback_used`, `ai_classification`.
 - Shows first 3 results (title + URL + snippet).
@@ -224,20 +231,18 @@ If this component renders results, ensure it:
 
 ---
 
-## Coverage Verification
-
-Every item from NEXT_VERSION.md § Definition of Done is covered:
+## Coverage Verification — Every NEXT_VERSION.md DoD item is assigned
 
 | DoD Item | Assigned to |
 |---|---|
 | `POST /api/v1/route/embed` returns `fallback_used: false`, `tried_chain` length 1 | TASK_CLAUDE_CODE |
-| QA script line B.1 slug updated; suite reports 63/63 | **This file — File `agentpick-router-qa.py`** |
+| QA script line B.1 slug updated; suite reports **63/63** | **This file — `agentpick-router-qa.py`** |
 | Glass cards on benchmarks, rankings, agents, connect, dashboard | **This file — Files 2–6** |
 | No white flash; all pages use `var(--bg-base)` body background | **This file — Files 1–6** |
 | ScrollReveal active on all pages (not homepage-only); 60 ms stagger | **This file — Files 1–6** |
 | Count-up stat animations on homepage hero (sessionStorage one-shot) | **This file — File 7** |
 | Card hover lift + CTA shimmer (respects `prefers-reduced-motion`) | **This file — File 1** |
-| Lighthouse Performance ≥ 90 on `/` and `/benchmarks`; LCP < 2.5 s; CLS < 0.1 | **This file — no new blocking resources added** |
+| Lighthouse Performance ≥ 90; LCP < 2.5 s; CLS < 0.1 | **This file — no new blocking resources added** |
 | `/playground` loads 200; demo key returns results; copy-as-curl works | **This file — Files 8–11** |
 | "Try it live →" CTA on homepage and `/connect` | **This file — Files 5 and 7** |
 
