@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     return apiError('RATE_LIMITED', 'Too many registration attempts.', 429, { retry_after: retryAfter });
   }
 
-  let body: { email?: string; name?: string; skillUrl?: string };
+  let body: { email?: string; name?: string; skillUrl?: string; source?: string };
   try {
     body = await request.json();
   } catch {
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     return apiError('VALIDATION_ERROR', 'name must be 1-100 characters.', 400);
   }
 
+  const source = typeof body.source === 'string' ? body.source : 'direct';
   const skillUrl = body.skillUrl?.trim() ?? undefined;
   if (skillUrl) {
     try { new URL(skillUrl); }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash },
+        data: { apiKeyHash, ...(body.source ? { registrationSource: source } : {}) },
       }));
 
       const plan = existingAgent.developerAccount.plan;
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
         _note: 'key is deprecated, use apiKey',
         plan,
         monthlyLimit,
+        registrationSource: body.source ? source : existingAgent.registrationSource ?? 'direct',
         message: 'Existing account found. New API key issued.',
         ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
       }, { status: 200 });
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash },
+        data: { apiKeyHash, ...(body.source ? { registrationSource: source } : {}) },
       }));
 
       await withRetry(() => db.developerAccount.create({
@@ -134,6 +136,7 @@ export async function POST(request: NextRequest) {
         _note: 'key is deprecated, use apiKey',
         plan: 'FREE',
         monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
+        registrationSource: source,
         ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
       }, { status: 201 });
     }
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
         name: `${name}-router`,
         ownerEmail: email,
         description: `Router SDK developer: ${name}`,
+        registrationSource: source,
       },
     }));
 
@@ -171,6 +175,7 @@ export async function POST(request: NextRequest) {
       _note: 'key is deprecated, use apiKey',
       plan: 'FREE',
       monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
+      registrationSource: source,
       ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
     }, { status: 201 });
   } catch (err) {
