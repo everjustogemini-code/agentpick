@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { authenticateAgent } from '@/lib/auth';
-import { checkRateLimit, routerSdkLimiter } from '@/lib/rate-limit';
+import { checkRateLimit, checkInMemoryRateLimit, demoIpLimiter, routerSdkLimiter } from '@/lib/rate-limit';
 import { apiError } from '@/types';
 import { routeRequest, CAPABILITY_TOOLS, getRankedToolsForCapability } from './index';
 import type { RouterRequest, Strategy } from './index';
@@ -78,6 +78,31 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
   const { limited, retryAfter } = await checkRateLimit(routerSdkLimiter, agent.id);
   if (limited) {
     return apiError('RATE_LIMITED', 'Too many requests. Slow down.', 429, { retry_after: retryAfter });
+  }
+
+  // Demo key IP rate limiting: 10 req/hour per IP
+  const _rawAuth = request.headers.get('authorization');
+  const _apiKey = _rawAuth?.startsWith('Bearer ') ? _rawAuth.slice(7).trim() : undefined;
+  if (_apiKey && process.env.DEMO_API_KEY && _apiKey === process.env.DEMO_API_KEY) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+    if (demoIpLimiter) {
+      const demoResult = await demoIpLimiter.limit(ip);
+      if (!demoResult.success) {
+        const demoRetryAfter = Math.ceil((demoResult.reset - Date.now()) / 1000);
+        return new Response(
+          JSON.stringify({ error: 'Demo limit reached — get your own key at /connect#register', retryAfter: demoRetryAfter }),
+          { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(demoRetryAfter) } },
+        );
+      }
+    } else {
+      const { allowed, retryAfterSecs } = checkInMemoryRateLimit(ip, 10, 60 * 60 * 1000);
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Demo limit reached — get your own key at /connect#register', retryAfter: retryAfterSecs }),
+          { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfterSecs) } },
+        );
+      }
+    }
   }
 
   let account: Awaited<ReturnType<typeof ensureDeveloperAccount>>;
