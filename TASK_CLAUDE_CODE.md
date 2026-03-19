@@ -1,241 +1,203 @@
-# TASK_CLAUDE_CODE.md — cycle 22
+# TASK_CLAUDE_CODE.md — cycle 24
 **Agent:** Claude Code (Sonnet 4.6)
 **Date:** 2026-03-19
-**QA baseline:** 62/62 — P0: none | P1: 2 open
-**Source:** NEXT_VERSION.md — Must-Have #1 (P1-A, P1-B) + Must-Have #3 (Deliverable A backend, Deliverable B)
+**QA baseline:** 57/58 — P0: none | P1: 1 open
+**Source:** NEXT_VERSION.md — Must-Have #1 (P1 envelope fix + Python SDK) + Must-Have #3 (playground backend)
 **Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
 
-## Task 1 — P1-A: Add 308 redirect `/api/v1/developer/*` → `/api/v1/router/*`
+## Task 1 — P1 Fix: Add `meta` Envelope to Router Search Response
 
-**File:** `next.config.ts`
+**Source:** NEXT_VERSION.md Must-Have #1
 
-**What to do:**
-In the `redirects()` array (currently lines 5–21), append a wildcard entry **after** the existing `/api/v1/developer/usage` redirect (after line 14):
+**Problem:** `POST /api/v1/router/search` wraps routing metadata (`tool`, `latencyMs`, `resultCount`, `strategy`) inside the `data` key. SDK consumers can't access these fields without drilling into `data`.
 
-```ts
-{
-  source: '/api/v1/developer/:path*',
-  destination: '/api/v1/router/:path*',
-  permanent: true,  // 308
-},
-```
+### 1a — Primary search route
 
-**Also audit these files for any `/api/v1/developer/` references and replace with `/api/v1/router/`:**
-- `README.md` (root)
-- `sdk/README.md` (if exists)
-- `sdk/src/client.ts`
-- Any `.md` files under `docs/` if that directory exists
+**File:** `src/app/api/v1/route/search/route.ts`
 
-**Do NOT touch** `src/app/connect/page.tsx` for this task — that file is owned by TASK_CODEX.md.
+Read this file first. Find the `NextResponse.json(...)` call that returns the search response.
 
-**Acceptance:** `POST /api/v1/developer/register` returns 308 → follows to `/api/v1/router/register` → 200. No README or SDK source references the dead path.
+- Extract `tool`, `latencyMs`, `resultCount`, `strategy` from wherever they are computed (likely local variables or a result object from the routing logic).
+- Restructure the response to:
+  ```json
+  {
+    "meta": { "tool": "tavily", "latencyMs": 151, "resultCount": 10, "strategy": "balanced" },
+    "data": { "query": "...", "answer": "...", "results": [...] }
+  }
+  ```
+- Keep the existing `data` object intact — do NOT move any `data` fields to top level. This is an additive change: add `meta`, preserve `data`.
+- If `latencyMs` is computed as `Date.now() - startTime`, ensure that variable exists before the response; add it if missing.
 
----
+### 1b — Audit other router routes for same pattern
 
-## Task 2 — P1-B: Add Tavily API Pricing section to `/products/tavily`
+**Files (read each, apply same `meta` envelope if they return search results):**
+- `src/app/api/v1/router/strategy/route.ts`
+- `src/app/api/v1/router/priority/route.ts`
+- `src/app/api/v1/router/fallbacks/route.ts`
+- `src/app/api/v1/router/[capability]/route.ts`
 
-**File:** `src/app/products/[slug]/page.tsx`
-
-**What to do:**
-Add a static pricing-comparison section that renders only when `slug === 'tavily'`. Place it after the existing benchmark data section (search for the last closing `</section>` or the footer in the JSX return, and insert before it).
-
-Use a static data object inside the file:
-
-```ts
-const TAVILY_PRICING = [
-  { tier: 'Free',       tavilyDirect: '$0',      viaAgentPick: '$0',      searches: '1,000' },
-  { tier: 'Researcher', tavilyDirect: '$35/mo',  viaAgentPick: '~$38/mo', searches: '10,000' },
-  { tier: 'Business',   tavilyDirect: '$200/mo', viaAgentPick: '~$212/mo', searches: '100,000' },
-];
-```
-
-Render as a table with columns: **Tier | Searches/mo | Tavily Direct | Via AgentPick**.
-
-Apply existing Tailwind classes already used in the file (glass card pattern: `rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm`).
-
-Add a footer note inside the section:
-```
-* AgentPick routing fee added on top. † Estimate; data as of 2026-03-19 — verify current pricing at tavily.com.
-```
-
-**Do NOT** add this section for other slugs — guard with `{slug === 'tavily' && (…)}`.
-
-**Acceptance:** `/products/tavily` renders pricing comparison table. QA 200 page-load test still passes.
+For each: if the route returns a search-result-style JSON response with `data`, add the same `meta` object at the top level. If a route doesn't return search results (e.g. it returns a config), leave it unchanged.
 
 ---
 
-## Task 3 — Must-Have #3 Deliverable A: Backend for `/quickstart` inline key generation
+## Task 2 — Python SDK: Expose `response.meta` as First-Class Attribute
 
-### 3a — New API route
+**Source:** NEXT_VERSION.md Must-Have #1, bullet 4
 
-**File to create:** `src/app/api/v1/quickstart/register/route.ts`
+**Files:** `sdk-python/agentpick/client.py`, `sdk-python/agentpick/__init__.py`
 
-- `POST` handler accepting `{ email: string }`.
-- Reuse the key-generation logic from `src/app/api/v1/router/register/route.ts` — read that file first and call the same Prisma/key-gen helper.
-- Return `{ apiKey: string }` on success; `{ error: string }` with status 400/500 on failure.
-- Basic email format validation (check for `@`); reject blank emails with 400.
-- No rate limiting needed on this endpoint.
+Read both files first to understand current structure.
 
-### 3b — Quickstart page server shell
+**`sdk-python/agentpick/client.py`:**
+- Find the response parsing / return logic in the `search()` method (or equivalent).
+- The current implementation likely returns `response.json()` directly as a dict.
+- Wrap the parsed JSON in a lightweight response object so callers can write `result.meta.tool`, `result.meta.latency_ms`, `result.data`:
 
-**File to create:** `src/app/quickstart/page.tsx`
+```python
+from dataclasses import dataclass
+from typing import Any
 
-- Export `metadata` with `title: "Get started in 60 seconds · AgentPick"` and an appropriate description.
-- Import `SiteHeader` from `@/components/SiteHeader`.
-- Import a `QuickstartWizard` client component from `@/components/QuickstartWizard` (this component is created by Codex — just import it; do not implement it here).
-- Render:
-  ```tsx
-  <div className="min-h-screen bg-[#0a0a0f]">
-    <SiteHeader />
-    <main className="mx-auto max-w-[680px] px-6 py-12">
-      <h1 className="mb-2 text-[28px] font-bold text-white">Get your API key in 60 seconds</h1>
-      <QuickstartWizard />
-    </main>
-  </div>
+@dataclass
+class SearchMeta:
+    tool: str = ""
+    latency_ms: int = 0      # snake_case mapping of latencyMs
+    result_count: int = 0    # snake_case mapping of resultCount
+    strategy: str = ""
+
+class SearchResponse:
+    def __init__(self, raw: dict):
+        self._raw = raw
+        meta_raw = raw.get("meta", {})
+        self.meta = SearchMeta(
+            tool=meta_raw.get("tool", ""),
+            latency_ms=meta_raw.get("latencyMs", 0),
+            result_count=meta_raw.get("resultCount", 0),
+            strategy=meta_raw.get("strategy", ""),
+        )
+        self.data = raw.get("data", raw)  # fallback: if no data key, expose whole response
+
+    def __getitem__(self, key):
+        return self._raw[key]  # keep dict-style access for backwards compat
+```
+
+- Change `search()` to return `SearchResponse(response.json())` instead of `response.json()`.
+- Ensure backwards compat: `result["data"]` and `result.data` both work.
+
+**`sdk-python/agentpick/__init__.py`:**
+- Export `SearchResponse` and `SearchMeta` alongside `AgentPick`:
+  ```python
+  from .client import AgentPick, SearchResponse, SearchMeta
+  __all__ = ["AgentPick", "SearchResponse", "SearchMeta"]
   ```
 
 ---
 
-## Task 4 — Must-Have #3 Deliverable B: npm + PyPI SDK packages
+## Task 3 — Playground Backend: Anonymous Rate-Limited API
 
-### 4a — Node SDK (`sdk/` directory)
+**Source:** NEXT_VERSION.md Must-Have #3
 
-**Files to read then modify:**
-- `sdk/package.json` — verify `"name": "agentpick"` is set; add `"publishConfig": { "access": "public" }` if missing; ensure `"main"`, `"module"`, and `"types"` fields point to `dist/` outputs.
-- `sdk/src/index.ts` — read existing exports first. Ensure a top-level convenience function `search(query, options)` is exported that wraps `AgentPickClient.route('search', query, options)`. Add only if not already exported.
+**Goal:** Anonymous users (no API key) can call the playground endpoint up to 10 times per day per IP. Server-side enforcement. Shareable `?q=` links supported.
 
-**File to create:** `sdk/README.md`
-```markdown
-# agentpick
+### 3a — Prisma schema
 
-Official Node.js SDK for [AgentPick](https://agentpick.dev).
+**File:** `prisma/schema.prisma`
 
-## Install
-\`\`\`
-npm i agentpick
-\`\`\`
+Read the file first. If a `PlaygroundAnonymousUsage` model does not already exist, add:
 
-## Usage
-\`\`\`ts
-import { AgentPickClient } from 'agentpick';
-const client = new AgentPickClient({ apiKey: 'ah_live_sk_...' });
-const result = await client.route('search', 'latest AI benchmarks 2026');
-console.log(result.tool, result.latency_ms);
-\`\`\`
+```prisma
+model PlaygroundAnonymousUsage {
+  id        String   @id @default(cuid())
+  ip        String
+  date      String   // YYYY-MM-DD format
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walkthrough.
+  @@unique([ip, date])
+}
 ```
 
-### 4b — Python SDK (new package)
-
-**Directory to create:** `sdk-python/`
-
-Create these four files:
-
-**`sdk-python/pyproject.toml`**
-```toml
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
-name = "agentpick"
-version = "0.1.0"
-description = "Python SDK for AgentPick — AI-powered API routing"
-readme = "README.md"
-requires-python = ">=3.9"
-dependencies = ["httpx>=0.27"]
-
-[project.urls]
-Homepage = "https://agentpick.dev/quickstart"
+After editing, run:
+```sh
+npx prisma generate
 ```
 
-**`sdk-python/agentpick/__init__.py`**
-```python
-from .client import AgentPick
+### 3b — Playground run endpoint
 
-__all__ = ["AgentPick"]
-```
+**File:** `src/app/api/v1/playground/run/route.ts`
 
-**`sdk-python/agentpick/client.py`**
-```python
-import httpx
+Read the file first to understand the existing structure.
 
-BASE_URL = "https://agentpick.dev"
+Add anonymous-user support:
+1. Check if `Authorization` header contains a valid API key (reuse existing auth logic).
+2. If **no valid API key** (anonymous request):
+   a. Extract IP from `request.headers.get('x-forwarded-for') ?? request.ip ?? '0.0.0.0'`.
+   b. Get today's date as `YYYY-MM-DD` (UTC): `new Date().toISOString().slice(0, 10)`.
+   c. Upsert `PlaygroundAnonymousUsage` for `{ ip, date }`: increment `count`.
+   d. If `count` **after** increment exceeds 10: return `429` JSON:
+      ```json
+      { "error": "Daily limit reached", "limit": 10, "resetAt": "<YYYY-MM-DDT00:00:00Z next day>" }
+      ```
+   e. If within limit, proceed with the search using an internal service key (read from `process.env.PLAYGROUND_ANONYMOUS_KEY` — document this env var requirement in a comment).
+3. If **valid API key**: bypass IP rate limit entirely, proceed normally.
+4. Response must include `meta` at top level (same envelope as Task 1).
 
-class AgentPick:
-    def __init__(self, api_key: str, base_url: str = BASE_URL):
-        self.api_key = api_key
-        self.base_url = base_url
+### 3c — Shareable `?q=` URL support
 
-    def search(self, query: str, **kwargs) -> dict:
-        response = httpx.post(
-            f"{self.base_url}/api/v1/route/search",
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"query": query, **kwargs},
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.json()
-```
+**File:** `src/app/api/v1/playground/run/route.ts` (same file as 3b)
 
-**`sdk-python/README.md`**
-```markdown
-# agentpick (Python)
-
-Official Python SDK for [AgentPick](https://agentpick.dev).
-
-## Install
-\`\`\`
-pip install agentpick
-\`\`\`
-
-## Usage
-\`\`\`python
-from agentpick import AgentPick
-ap = AgentPick(api_key="ah_live_sk_...")
-result = ap.search("latest AI benchmarks 2026")
-print(result)
-\`\`\`
-
-See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walkthrough.
-```
+- Accept query param `q` in addition to request body `query`:
+  ```ts
+  const body = await request.json().catch(() => ({}));
+  const urlQ = new URL(request.url).searchParams.get('q');
+  const query = body.query ?? urlQ ?? '';
+  ```
+- If `query` is empty string, return `400 { error: "query is required" }`.
 
 ---
 
-## Files This Task Owns (exhaustive)
+## Acceptance Criteria
+
+- `POST /api/v1/route/search` returns `{ meta: { tool, latencyMs, resultCount, strategy }, data: {...} }`.
+- Python: `from agentpick import AgentPick; r = ap.search("test"); r.meta.tool` works.
+- Playground: anonymous users (no key) get real results up to 10/day/IP; 11th call returns 429.
+- `POST /api/v1/playground/run?q=hello` and body `{ "query": "hello" }` both work.
+- `/connect` QA suite 7/7 still passes (no regression from envelope change).
+
+---
+
+## Files This Task Owns (do NOT edit these in TASK_CODEX.md)
 
 | File | Action |
 |------|--------|
-| `next.config.ts` | Add `/api/v1/developer/:path*` → `/api/v1/router/:path*` 308 redirect |
-| `README.md` | Audit + replace any `/api/v1/developer/` references |
-| `src/app/products/[slug]/page.tsx` | Add TAVILY_PRICING table section (slug === 'tavily' guard) |
-| `src/app/quickstart/page.tsx` | **CREATE** — page shell with metadata + QuickstartWizard import |
-| `src/app/api/v1/quickstart/register/route.ts` | **CREATE** — POST handler for inline key generation |
-| `sdk/package.json` | Verify/add publishConfig + dist field pointers |
-| `sdk/src/index.ts` | Add top-level `search()` export if missing |
-| `sdk/README.md` | **CREATE** — install + usage + quickstart link |
-| `sdk-python/pyproject.toml` | **CREATE** |
-| `sdk-python/agentpick/__init__.py` | **CREATE** |
-| `sdk-python/agentpick/client.py` | **CREATE** |
-| `sdk-python/README.md` | **CREATE** |
+| `src/app/api/v1/route/search/route.ts` | Add `meta` top-level envelope |
+| `src/app/api/v1/router/strategy/route.ts` | Add `meta` envelope if applicable |
+| `src/app/api/v1/router/priority/route.ts` | Add `meta` envelope if applicable |
+| `src/app/api/v1/router/fallbacks/route.ts` | Add `meta` envelope if applicable |
+| `src/app/api/v1/router/[capability]/route.ts` | Add `meta` envelope if applicable |
+| `src/app/api/v1/playground/run/route.ts` | Anonymous rate-limit + `?q=` support + `meta` envelope |
+| `prisma/schema.prisma` | Add `PlaygroundAnonymousUsage` model |
+| `sdk-python/agentpick/client.py` | Add `SearchResponse`/`SearchMeta` wrapper |
+| `sdk-python/agentpick/__init__.py` | Export `SearchResponse`, `SearchMeta` |
 
-**Do NOT touch:** `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/connect/page.tsx`, `src/app/rankings/page.tsx`, or any component file under `src/components/`.
+**Do NOT touch:** `src/app/globals.css`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/connect/page.tsx`, `src/app/rankings/page.tsx`, `src/app/playground/page.tsx`, or any component file under `src/components/`.
 
 ---
 
-## Coverage: Every NEXT_VERSION.md Item Assigned
+## Coverage Verification: Every NEXT_VERSION.md Item Assigned
 
 | NEXT_VERSION.md item | Assigned to |
 |---|---|
-| Must-Have #1 P1-A — `/api/v1/developer/*` 308 redirect | **This file** |
-| Must-Have #1 P1-B — Tavily pricing table on `/products/tavily` | **This file** |
-| Must-Have #2 — Glassmorphism UI overhaul | **TASK_CODEX.md** |
-| Must-Have #3 Deliverable A — `/quickstart` page backend + shell | **This file** |
-| Must-Have #3 Deliverable B — npm + PyPI packages | **This file** |
-| Must-Have #3 Deliverable C — `/connect` tab upgrade | **TASK_CODEX.md** |
+| Must-Have #1 — Add `meta` to search API response | **This file** |
+| Must-Have #1 — Update Python SDK with `response.meta` | **This file** |
+| Must-Have #1 — Update `/connect` API reference docs + code example | **TASK_CODEX.md** |
+| Must-Have #2 — Glassmorphism UI overhaul (all pages) | **TASK_CODEX.md** |
+| Must-Have #2 — Rankings sortable leaderboard table | **TASK_CODEX.md** |
+| Must-Have #2 — Mobile responsive pass | **TASK_CODEX.md** |
+| Must-Have #3 — Anonymous rate-limited playground API (backend) | **This file** |
+| Must-Have #3 — Playground frontend (Monaco editor, response panel, `?q=`) | **TASK_CODEX.md** |
 
 ---
 
@@ -243,5 +205,5 @@ See [agentpick.dev/quickstart](https://agentpick.dev/quickstart) for a full walk
 
 After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 22: P1-A redirect + P1-B Tavily pricing + quickstart backend + Python/Node SDK packages
+[<ISO timestamp>] [CLAUDE-CODE] [done] Cycle 24: P1 meta envelope + Python SDK SearchResponse + playground anon rate-limit backend
 ```

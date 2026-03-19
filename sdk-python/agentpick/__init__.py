@@ -1,3 +1,3 @@
-from .client import AgentPick
+from .client import AgentPick, SearchResponse, SearchMeta
 
-__all__ = ["AgentPick"]
+__all__ = ["AgentPick", "SearchResponse", "SearchMeta"]

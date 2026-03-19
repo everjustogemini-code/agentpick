@@ -725,3 +725,14 @@ model PlaygroundRateLimit {
   @@unique([ip, date])
   @@map("playground_rate_limits")
 }
+
+model PlaygroundAnonymousUsage {
+  id        String   @id @default(cuid())
+  ip        String
+  date      String   // YYYY-MM-DD format
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ip, date])
+}
