@@ -2,7 +2,7 @@
 **Date:** 2026-03-18
 **Target:** https://agentpick.dev
 **Tester:** AgentPick QA Agent (Claude Code)
-**Run time:** 2026-03-18T23:39Z (fresh run)
+**Run time:** 2026-03-18T23:53Z (fresh run)
 
 ---
 
@@ -18,12 +18,12 @@ None.
 
 ## P1 Issues
 
-### P1-1: Embed tool name mismatch — `voyage-embed` vs `voyage-ai`
-- **Endpoint:** `POST /api/v1/route/embed`
-- **Got:** `meta.tool_used = "voyage-embed"`
+### P1-1: Embed tool name mismatch — `voyage-embed` vs expected allowlist
+- **Test:** B.1-embed (cross-capability embed routing)
+- **Got:** router selected `voyage-embed`
 - **QA suite expected:** one of `["cohere-embed", "voyage-ai", "jina-embeddings"]`
-- Either the router renamed the tool ID from `voyage-ai` → `voyage-embed` without updating the QA allowlist, or vice versa. Needs reconciliation. HTTP 200 was returned and the call succeeded — this may be a QA script allowlist bug rather than a production bug.
-- **Action:** Verify correct tool ID in router registry; update QA allowlist to match.
+- The call returned HTTP 200 and succeeded, so this may be a QA script allowlist being outdated rather than a production regression. However, if `voyage-embed` is a renamed adapter, downstream users referencing the old ID could break.
+- **Action:** Verify the correct registered tool ID in the router registry; update QA allowlist to match production.
 
 ---
 

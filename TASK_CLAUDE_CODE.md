@@ -1,110 +1,86 @@
-# TASK_CLAUDE_CODE.md — cycle 15
+# TASK_CLAUDE_CODE.md — cycle 16
 
 **Agent:** Claude Code (Sonnet 4.6)
-**Date:** 2026-03-18
+**Date:** 2026-03-19
 **QA baseline:** 50/51 — P1-1 open
-**Scope:** Backend — register endpoint `source` field, new `/quickstart/issue` endpoint, DB schema, backend `voyage-ai` grep fix
+**Scope:** Backend — CI assertion test pinning `CAPABILITY_TOOLS.embed` against QA allowlist
 **Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
 
-## Task A — New DB field: `Agent.registrationSource` (Must-Have #3 backend, step 1)
+## Context: What Was Already Done in Cycle 15
 
-### Schema change
-
-**File:** `prisma/schema.prisma`
-
-Locate the `Agent` model. Add one field after `ownerEmail`:
-
-```prisma
-registrationSource  String  @default("direct")
-```
-
-Valid values: `"direct"`, `"quickstart"`, `"quickstart_homepage"`.
-
-### Migration file
-
-**File to create:** `prisma/migrations/20260318_add_agent_registration_source/migration.sql`
-
-```sql
-ALTER TABLE "Agent" ADD COLUMN IF NOT EXISTS "registrationSource" TEXT NOT NULL DEFAULT 'direct';
-```
-
-Run `npx prisma generate` after editing the schema.
+The following tasks from cycle 15 are **confirmed complete** — do not redo them:
+- `POST /api/v1/quickstart/issue/route.ts` — exists ✓
+- `prisma/schema.prisma` `Agent.registrationSource` field — exists ✓
+- `POST /api/v1/router/register/route.ts` `source` param handling — exists ✓
+- `src/app/globals.css` glassmorphism CSS classes (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `terminal-cursor`) — exists ✓
 
 ---
 
-## Task B — Registration endpoint: accept and store `source` (Must-Have #3 backend, step 2)
+## Task A — CI Assertion: Pin `CAPABILITY_TOOLS.embed` Against QA Allowlist (Must-Have #1, step 3)
 
-**File:** `src/app/api/v1/router/register/route.ts`
+**Status:** Not done. `src/__tests__/router-registry-sync.test.ts` does not exist.
 
-1. **Extract `source` from request body** alongside existing fields:
-   ```ts
-   const { email, name, skillUrl, source } = body;
-   ```
+**File to CREATE:** `src/__tests__/router-registry-sync.test.ts`
 
-2. **Store on `Agent.registrationSource`** in the `prisma.agent.create(...)` call:
-   ```ts
-   registrationSource: typeof source === 'string' ? source : 'direct',
-   ```
-   Also update the `prisma.agent.update(...)` path (re-key for existing accounts) — only overwrite if `source` is provided.
-
-3. **Return `registrationSource` in the response JSON:**
-   ```ts
-   return NextResponse.json({ apiKey, plan, monthlyLimit, registrationSource: agent.registrationSource });
-   ```
-
-No rate-limit changes. No email confirmation changes. No other behavioural changes.
-
----
-
-## Task C — New endpoint: `POST /api/v1/quickstart/issue` (Must-Have #3 backend, step 3)
-
-**File to create:** `src/app/api/v1/quickstart/issue/route.ts`
-
-This endpoint lets the `/quickstart` page issue a trial key without an email-confirmation gate, and always tags keys `registrationSource = "quickstart"`.
-
-**Contract:**
-- Method: `POST`
-- Auth: None (public)
-- Body: `{ email: string }`
-- Response (200): `{ apiKey: string, plan: string, monthlyLimit: number }`
-- Response (400): `{ error: { code: string, message: string } }` — missing/invalid email
-- Response (429): pass-through from rate limiter
+**Why:** `CAPABILITY_TOOLS.embed[0]` in `src/lib/router/index.ts` (line 43: `embed: ['voyage-embed']`) and the QA script's embed allowlist must never drift again. This test makes drift a CI failure.
 
 **Implementation:**
-- Reuse the same Prisma create/lookup logic as `src/app/api/v1/router/register/route.ts`.
-- Hard-code `registrationSource = "quickstart"` — ignore any `source` in the request body.
-- Reuse the same IP-based `rateLimit` call from the register route.
-- Do NOT create any UI, page, or component file.
 
----
+```typescript
+import { describe, it, expect } from 'vitest';
+import { CAPABILITY_TOOLS } from '@/lib/router/index';
 
-## Task D — Backend `voyage-ai` grep fix (Must-Have #1 partial)
+/**
+ * Single source of truth for the embed tool allowlist.
+ * Must match agentpick-router-qa.py TestEmbedRouter.valid_embed_tools.
+ * When adding a new embed adapter, update BOTH this constant AND the QA script.
+ */
+export const QA_EMBED_ALLOWLIST = ['voyage-embed'] as const;
 
-Run:
-```bash
-grep -rn "voyage-ai" src/ --include="*.ts" --include="*.tsx"
+describe('router-registry ↔ QA allowlist sync', () => {
+  it('CAPABILITY_TOOLS.embed[0] must be voyage-embed', () => {
+    expect(CAPABILITY_TOOLS.embed[0]).toBe('voyage-embed');
+  });
+
+  it('every embed tool slug in registry must appear in QA_EMBED_ALLOWLIST', () => {
+    for (const slug of CAPABILITY_TOOLS.embed) {
+      expect(QA_EMBED_ALLOWLIST as readonly string[]).toContain(slug);
+    }
+  });
+
+  it('retired embed slugs must NOT be in QA_EMBED_ALLOWLIST', () => {
+    const retired = ['voyage-ai', 'cohere-embed', 'jina-embeddings'];
+    for (const slug of retired) {
+      expect(QA_EMBED_ALLOWLIST as readonly string[]).not.toContain(slug);
+    }
+  });
+});
 ```
 
-For any hits in backend/API files (routes, lib, etc. — NOT frontend page/component files), replace `voyage-ai` with `voyage-embed`. Frontend occurrences are Codex's responsibility.
+**Steps:**
+1. Create the file above at `src/__tests__/router-registry-sync.test.ts`.
+2. Run `npx vitest run src/__tests__/router-registry-sync.test.ts` — must show 3/3 passing.
+3. Verify `CAPABILITY_TOOLS` is exported from `src/lib/router/index.ts` (it is, line 40).
+
+**Acceptance:**
+- `npx vitest run src/__tests__/router-registry-sync.test.ts` → 3 tests pass
+- If `voyage-ai` is ever re-added to `CAPABILITY_TOOLS.embed`, test 3 fails loudly
 
 ---
 
-## Files owned by CLAUDE CODE this cycle
+## Files Owned by CLAUDE CODE This Cycle
 
 | Action | File |
 |--------|------|
-| Modify | `prisma/schema.prisma` |
-| Create | `prisma/migrations/20260318_add_agent_registration_source/migration.sql` |
-| Modify | `src/app/api/v1/router/register/route.ts` |
-| Create | `src/app/api/v1/quickstart/issue/route.ts` |
-| Conditionally modify | Any `src/` backend file flagged by the `voyage-ai` grep (Task D) |
+| Create | `src/__tests__/router-registry-sync.test.ts` |
 
 **DO NOT touch** (Codex-owned):
 - `agentpick-router-qa.py`
 - `src/app/page.tsx`
-- `src/app/quickstart/page.tsx`
+- `src/app/connect/page.tsx`
+- `src/components/SiteHeader.tsx`
 - `src/components/HeroCodeBlock.tsx`
 - `src/components/PricingSection.tsx`
 - `src/components/PricingPageClient.tsx`
@@ -112,23 +88,31 @@ For any hits in backend/API files (routes, lib, etc. — NOT frontend page/compo
 - `src/components/StatsBar.tsx`
 - `src/app/globals.css`
 - `src/app/layout.tsx`
-- Any `*.css` or `*.module.css` file
+- `src/app/quickstart/page.tsx` (new file, Codex creates)
 
 ---
 
-## Acceptance criteria
+## Coverage: Must-Have #1 Step 3
 
-- [ ] `POST /api/v1/quickstart/issue` with `{ "email": "test@example.com" }` → 200, returns `{ apiKey, plan, monthlyLimit }`
-- [ ] `Agent.registrationSource` in DB equals `"quickstart"` for keys issued via the new endpoint
-- [ ] `POST /api/v1/router/register` with `{ "email": "...", "source": "quickstart_homepage" }` → `registrationSource = "quickstart_homepage"` in DB
-- [ ] `npx prisma migrate deploy` succeeds cleanly
-- [ ] `grep -rn "voyage-ai" src/ --include="*.ts"` → zero hits in backend files
+| NEXT_VERSION.md requirement | This task |
+|---|---|
+| "Add a CI assertion that pins `CAPABILITY_TOOLS.embed[0]` (router registry) against the QA allowlist so they can never drift again." | **Task A — fully covers this** |
+
+All other Must-Have #1, #2, #3 items are covered in TASK_CODEX.md.
 
 ---
 
-## Progress log
+## Acceptance Criteria
 
-After each task, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
+- [ ] `src/__tests__/router-registry-sync.test.ts` created
+- [ ] `npx vitest run src/__tests__/router-registry-sync.test.ts` → 3/3 pass
+- [ ] No other files modified
+
+---
+
+## Progress Log
+
+After completing Task A, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] <brief description>
+[<ISO timestamp>] [CLAUDE-CODE] [done] CI assertion test: CAPABILITY_TOOLS.embed ↔ QA allowlist sync (3/3 pass)
 ```
