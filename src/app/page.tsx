@@ -123,7 +123,7 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <SiteHeader />
 
       {/* ============ Hero ============ */}
@@ -153,12 +153,13 @@ export default async function HomePage() {
             </span>
           </div>
 
+          <div className="glass-card rounded-2xl p-8 mb-6">
           <h1
-            className="mb-5 font-extrabold leading-[1.05] tracking-tight text-text-primary"
-            style={{ fontSize: 'clamp(38px, 5vw, 56px)', maxWidth: 700 }}
+            className="mb-5 font-extrabold leading-[1.05] text-white"
+            style={{ fontSize: 'clamp(2.8rem, 5vw, 4.5rem)', fontWeight: 800, letterSpacing: '-0.03em', maxWidth: 700 }}
           >
             Your agent is picking tools blindly.{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-purple">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-orange-400">
               We fix that.
             </span>
           </h1>
@@ -176,12 +177,14 @@ export default async function HomePage() {
               Try the router
             </Link>
           </div>
+          </div>
 
           <p className="mb-8 text-[13px] text-text-tertiary">
             Free tier — 500 routed calls/month, no credit card.
           </p>
 
           {/* Data flywheel — explain why the number matters */}
+          <ScrollReveal>
           <div className="mb-6 rounded-xl border border-border bg-bg-card/50 px-5 py-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
@@ -205,6 +208,7 @@ export default async function HomePage() {
               Every developer who uses AgentPick adds real performance data to the network. The more calls we route, the smarter our AI picks the right tool for your query. This number grows with every new user.
             </p>
           </div>
+          </ScrollReveal>
 
           <HeroCodeBlock />
           <LiveRoutingExample />
