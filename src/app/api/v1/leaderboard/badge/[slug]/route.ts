@@ -29,14 +29,15 @@ async function getToolRankAndScore(slug: string): Promise<{ rank: number; score:
 
 function buildSvgBadge(rank: number, score: number): string {
   const scoreStr = score.toFixed(1);
+  const rightColor = rank <= 3 ? '#e05d17' : rank <= 10 ? '#4c9a2a' : '#777';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
   <linearGradient id="s" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
   <rect rx="3" width="130" height="20" fill="#555"/>
-  <rect rx="3" x="75" width="55" height="20" fill="#e05d17"/>
-  <rect x="75" width="4" height="20" fill="#e05d17"/>
+  <rect rx="3" x="75" width="55" height="20" fill="${rightColor}"/>
+  <rect x="75" width="4" height="20" fill="${rightColor}"/>
   <rect rx="3" width="130" height="20" fill="url(#s)"/>
   <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">
     <text x="38" y="15" fill="#010101" fill-opacity=".3">AgentPick</text>
@@ -57,16 +58,30 @@ export async function GET(
     const result = await getToolRankAndScore(slug);
 
     if (!result) {
-      return NextResponse.json(
-        { error: 'tool not found' },
-        {
-          status: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          },
-        }
-      );
+      const notRankedSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <rect rx="3" width="130" height="20" fill="#555"/>
+  <rect rx="3" x="75" width="55" height="20" fill="#777"/>
+  <rect x="75" width="4" height="20" fill="#777"/>
+  <rect rx="3" width="130" height="20" fill="url(#s)"/>
+  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">
+    <text x="38" y="15" fill="#010101" fill-opacity=".3">AgentPick</text>
+    <text x="38" y="14">AgentPick</text>
+    <text x="102" y="15" fill="#010101" fill-opacity=".3">not ranked</text>
+    <text x="102" y="14">not ranked</text>
+  </g>
+</svg>`;
+      return new NextResponse(notRankedSvg, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
     }
 
     const { rank, score } = result;
@@ -76,8 +91,8 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'public, max-age=300',
-        'ETag': `"${slug}-${score}"`,
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+        'ETag': `"${slug}-${rank}-${score}"`,
         'Access-Control-Allow-Origin': '*',
       },
     });

@@ -198,13 +198,35 @@ export async function GET(request: NextRequest) {
   const limitParam = parseInt(searchParams.get('limit') ?? '10', 10);
   const limit = isNaN(limitParam) ? 10 : limitParam;
 
+  const VALID_DOMAINS = new Set(['finance', 'devtools', 'news', 'general']);
+  const VALID_TASKS   = new Set(['research', 'realtime', 'simple']);
+
+  if (domain && !VALID_DOMAINS.has(domain)) {
+    return NextResponse.json(
+      { error: `invalid domain — must be one of: ${[...VALID_DOMAINS].join(', ')}` },
+      { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  }
+  if (task && !VALID_TASKS.has(task)) {
+    return NextResponse.json(
+      { error: `invalid task — must be one of: ${[...VALID_TASKS].join(', ')}` },
+      { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  }
+  if (!isNaN(limitParam) && (limitParam < 1 || limitParam > 50)) {
+    return NextResponse.json(
+      { error: 'limit must be 1–50' },
+      { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  }
+
   const cacheKey = getCacheKey(domain, task, limit);
   const now = Date.now();
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     return NextResponse.json(cached.data, {
       headers: {
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
         'Access-Control-Allow-Origin': '*',
         'X-Cache': 'HIT',
       },
@@ -217,7 +239,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
         'Access-Control-Allow-Origin': '*',
         'X-Cache': 'MISS',
       },
@@ -229,4 +251,16 @@ export async function GET(request: NextRequest) {
       { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
     );
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
 }
