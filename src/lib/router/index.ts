@@ -40,7 +40,7 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
   search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-api', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
-  embed: ['openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed'],
+  embed: ['openai-embed', 'cohere-embed', 'voyage-ai', 'jina-embed', 'edenai-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
   code: ['e2b'],
   communication: ['resend'],
@@ -72,7 +72,8 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'financial-modeling-prep': { quality: 3.8, cost: 0.001,   latency: 200,  stability: 0.96 },
   'openai-embed':           { quality: 4.5, cost: 0.0001,  latency: 150,  stability: 0.99 },
   'cohere-embed':           { quality: 4.0, cost: 0.0001,  latency: 120,  stability: 0.98 },
-  'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
+  'voyage-ai':              { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
+  'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 }, // alias — kept for backward-compat priority_tools
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
   'edenai-embed':           { quality: 3.5, cost: 0.0001,  latency: 300,  stability: 0.92 },
   e2b:                      { quality: 4.5, cost: 0.0001,  latency: 2000, stability: 0.93 },
@@ -119,6 +120,8 @@ interface RouteRequestOptions {
   excludedTools?: string[];
   latencyBudgetMs?: number | null;
   maxFallbacks?: number | null;
+  /** Tag written to TelemetryEvent.source — e.g. "openai-compat", "router", "mcp" */
+  source?: string;
 }
 
 /**
@@ -326,6 +329,7 @@ async function recordTrace(
   result: ToolCallResult,
   isFallback: boolean,
   fallbackFrom?: string,
+  source?: string,
 ): Promise<string> {
   // NOTE: withRetry here covers P1017/fetch-failed/socket-hang-up that occur after the
   // ~1.5s external tool API call invalidates the Neon HTTP connection. Without retry,
@@ -347,7 +351,7 @@ async function recordTrace(
       latencyMs: result.latencyMs,
       costUsd: result.costUsd,
       resultCount: result.resultCount,
-      source: 'router',
+      source: source ?? 'router',
       context: isFallback ? `fallback_from:${fallbackFrom}` : null,
     },
   }));
@@ -626,6 +630,7 @@ export async function routeRequest(
         traceId = await recordTrace(
           agentId, candidateSlug, capability, result,
           isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+          options.source,
         );
       } catch (traceErr) {
         console.error('[Router] recordTrace failed for success path (non-fatal):', candidateSlug, traceErr instanceof Error ? traceErr.message : traceErr);
@@ -665,6 +670,7 @@ export async function routeRequest(
       await recordTrace(
         agentId, candidateSlug, capability, result,
         isFallbackAttempt, isFallbackAttempt ? firstFailedTool : undefined,
+        options.source,
       );
     } catch (traceErr) {
       console.error('[Router] recordTrace failed for failed attempt (non-fatal):', candidateSlug, traceErr instanceof Error ? traceErr.message : traceErr);

@@ -81,7 +81,8 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   "openai-embeddings": "openai",
   "cohere-embed": "cohere",
   "cohere-embeddings": "cohere",
-  "voyage-embed": "voyage",
+  "voyage-ai": "voyage",
+  "voyage-embed": "voyage", // backward-compat alias
   "voyage-embeddings": "voyage",
   voyage: "voyage",
   "jina-embed": "jina",

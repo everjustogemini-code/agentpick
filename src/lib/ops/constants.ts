@@ -38,7 +38,7 @@ export const DOMAIN_DEFINITIONS: DomainDefinition[] = [
   { slug: "multilingual", code: "multi", label: "Multilingual", subdomains: ["local-search", "translation", "regional-news", "international"], suggestedTools: ["brave", "serper", "exa", "tavily"] },
   { slug: "finance_data", code: "findata", label: "Finance Data", subdomains: ["quotes", "historical", "earnings", "fundamentals"], suggestedTools: ["polygon", "alphavantage", "fmp"] },
   { slug: "crawling", code: "crawl", label: "Crawling", subdomains: ["static-html", "js-rendered", "paginated", "dynamic"], suggestedTools: ["apify", "scrapingbee", "browserbase", "firecrawl", "jina"] },
-  { slug: "embedding", code: "embed", label: "Embedding", subdomains: ["passage-embed", "query-embed", "retrieval", "similarity"], suggestedTools: ["openai-embed", "cohere-embed", "voyage-embed", "jina-embed"] },
+  { slug: "embedding", code: "embed", label: "Embedding", subdomains: ["passage-embed", "query-embed", "retrieval", "similarity"], suggestedTools: ["openai-embed", "cohere-embed", "voyage-ai", "jina-embed"] },
 ];
 
 export const MODEL_DEFINITIONS: ModelDefinition[] = [

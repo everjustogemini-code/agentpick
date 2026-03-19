@@ -216,7 +216,8 @@ const SLUG_TO_PROBE_SERVICE: Record<string, string> = {
   "bing-web-search": "bing",
   "openai-embed": "openai",
   "cohere-embed": "cohere",
-  "voyage-embed": "voyage",
+  "voyage-ai": "voyage",
+  "voyage-embed": "voyage", // backward-compat alias
   "jina-embed": "jina",
   "apify-scraper": "apify",
   "scrapingbee-api": "scrapingbee",

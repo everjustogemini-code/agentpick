@@ -1,5 +1,61 @@
 import { randomBytes } from 'crypto';
 
+// ---------------------------------------------------------------------------
+// OpenAI Responses API helpers (POST /v1/responses)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse an OpenAI Responses API body → AgentPick routing params.
+ * Handles both `input: string` and `input: [{role, content}]` forms.
+ * Capability is inferred from `tools[].type` or defaults to 'search'.
+ */
+export function parseResponsesRequest(body: {
+  model?: string;
+  input?: string | { role: string; content: string }[];
+  tools?: unknown[];
+}): { query: string; capability: string } {
+  const input = body.input;
+  const query = typeof input === 'string'
+    ? input
+    : Array.isArray(input)
+      ? input.map((m) => (typeof m === 'object' && m !== null && 'content' in m ? (m as { content: string }).content : '')).join(' ')
+      : '';
+
+  // Infer capability from tools[] or default to 'search'
+  const toolNames = (body.tools ?? []).map((t: unknown) => {
+    if (typeof t === 'object' && t !== null && 'type' in t) return (t as { type: string }).type;
+    return '';
+  });
+  const capability =
+    toolNames.some((n) => n.includes('embed')) ? 'embed' :
+    toolNames.some((n) => n.includes('crawl')) ? 'crawl' :
+    'search';
+
+  return { query, capability };
+}
+
+/**
+ * Wrap an AgentPick routing result in an OpenAI Responses API envelope.
+ */
+export function buildOpenAIResponse(
+  result: { tool_used?: string; results?: unknown[]; latency_ms?: number },
+  traceId: string,
+  model: string,
+) {
+  return {
+    id: `resp_${traceId}`,
+    object: 'response',
+    model,
+    output: [
+      {
+        type: 'text',
+        text: JSON.stringify(result.results ?? []),
+      },
+    ],
+    usage: { input_tokens: 0, output_tokens: 0 }, // placeholder
+  };
+}
+
 // Types
 export interface ParsedOpenAIRequest {
   query: string;       // extracted from messages[-1].content

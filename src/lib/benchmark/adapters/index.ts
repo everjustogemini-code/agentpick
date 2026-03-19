@@ -86,7 +86,8 @@ const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>)
   'openai-embeddings': callOpenAIEmbed,
   'cohere-embed': callCohereEmbed,
   'cohere-embeddings': callCohereEmbed,
-  'voyage-embed': callVoyageEmbed,
+  'voyage-ai': callVoyageEmbed,
+  'voyage-embed': callVoyageEmbed, // backward-compat alias
   'voyage-embeddings': callVoyageEmbed,
   voyage: callVoyageEmbed,
   'jina-embed': callJinaEmbed,
@@ -154,9 +155,10 @@ export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
   'openai-embeddings': 'openai-embed',
   'cohere-embed': 'cohere-embed',
   'cohere-embeddings': 'cohere-embed',
-  voyage: 'voyage-embed',
-  'voyage-embed': 'voyage-embed',
-  'voyage-embeddings': 'voyage-embed',
+  voyage: 'voyage-ai',
+  'voyage-ai': 'voyage-ai',
+  'voyage-embed': 'voyage-ai', // backward-compat alias
+  'voyage-embeddings': 'voyage-ai',
   'jina-embed': 'jina-embed',
   'jina-embeddings': 'jina-embed',
   'edenai-embed': 'edenai-embed',
@@ -190,7 +192,7 @@ export const BENCHMARKABLE_SLUGS = [
   // Finance
   'polygon-io', 'alpha-vantage', 'financial-modeling-prep',
   // Embedding
-  'openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed',
+  'openai-embed', 'cohere-embed', 'voyage-ai', 'jina-embed', 'edenai-embed',
   // Code Execution
   'e2b',
   // Communication
