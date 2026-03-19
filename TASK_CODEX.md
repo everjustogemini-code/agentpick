@@ -1,7 +1,7 @@
-# TASK_CODEX.md — Cycle 11 (Frontend / QA)
+# TASK_CODEX.md — Cycle 12 (Frontend / QA)
 
 **Agent:** Codex
-**Cycle:** 11
+**Cycle:** 12
 **Date:** 2026-03-18
 **QA baseline:** 62/63 — P1-2 slug fix below + embed chain fix (TASK_CLAUDE_CODE) together bring QA to 63/63
 **Do NOT touch:** Any file listed in TASK_CLAUDE_CODE.md
