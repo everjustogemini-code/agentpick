@@ -1,95 +1,143 @@
-# NEXT_VERSION.md — v-next (cycle 12)
+# NEXT_VERSION.md — Bugfix Cycle (post-cycle-12)
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
-**QA baseline:** QA_REPORT.md (2026-03-18, run 22:55 UTC post-cycle-11 deploy) — score **62/63** | P0: none | P1: **2 open**
-**Recently shipped (cycle 11):** "Remove dead embed providers from ALL locations" — fix is still incomplete; P1-1 confirmed open in post-deploy QA run (three cycles, still not resolved)
+**QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: 1 open | P1: 3 open
+**Scope:** Bug fixes ONLY. No new features, no UI changes, no refactors.
 
 ---
 
-## Must-Have #1 — Fix both P1 embed bugs (bugs before features — no exceptions)
+## P0-1: Embed endpoint returns no embedding vector
 
-### P1-1: Remove dead providers from the embed chain — THREE cycles of fixes have failed
+**QA issue:** P0-1
+**Symptom:** `POST /api/v1/route/embed` response `data` contains only `{dimensions, tokens, count}` — no `embedding`, `embeddings`, or `vector` key. Clients cannot use the endpoint for semantic search or RAG.
 
-**QA evidence (22:55 UTC, post cycle-11 deploy):** Every `POST /api/v1/route/embed` *still* returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. Cycle 9 promoted voyage-embed to primary; cycle 10 attempted to remove dead providers; cycle 11 explicitly targeted "ALL locations" — none resolved the chain. Three consecutive deploy-and-check cycles have not fixed this.
+**Root cause:**
+`src/lib/benchmark/adapters/voyage-embed.ts` line 43 builds the `response` object but silently drops the embedding arrays:
+```typescript
+// BUG — vectors extracted but never returned:
+response: { dimensions: embeddings[0]?.embedding?.length ?? 0, tokens, count: embeddings.length },
+```
+The local variable `embeddings` holds the full `data.data` array (each item has an `.embedding` float array), but only metadata fields are forwarded.
 
-**Root cause:** There are definitely multiple config locations holding the dead providers, and the previous fixes have only patched some of them. A grep across the entire codebase for `openai-embed` and `cohere-embed` strings is required before touching any file, to find every registration point. Fix all occurrences atomically in one commit.
+**Fix — `src/lib/benchmark/adapters/voyage-embed.ts` line 43:**
+Include the actual vectors in the returned `response` object:
+```typescript
+response: {
+  dimensions: embeddings[0]?.embedding?.length ?? 0,
+  tokens,
+  count: embeddings.length,
+  embeddings: embeddings.map((e: { embedding: number[] }) => e.embedding),
+},
+```
+No other files need to change for this fix — the router passes `response` through as `data` in the API response body unchanged.
 
-**Required fix:** Delete (or disable) `openai-embed` and `cohere-embed` from the embed tool chain config entirely. `voyage-embed` must be the sole entry — not just "primary." No BYOK keys are configured for the other two; they serve no purpose in the chain.
-
-**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length 1) on every normal call.
-
----
-
-### P1-2: Fix stale slug in QA validation list
-
-**QA evidence:** `agentpick-router-qa.py` line B.1 checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but the live slug is `"voyage-embed"` — causing a false-negative on every QA run.
-
-**Required fix:** Update line B.1 valid-list to `["cohere-embed", "voyage-embed", "jina-embeddings"]`.
-
-**Acceptance:** QA suite reports **63/63**. No references to the old `"voyage-ai"` slug remain in the QA script.
-
----
-
-## Must-Have #2 — Site-Wide Dark-Glass Design System
-
-**Type:** UI upgrade
-**Why now:** Core routing is stable. Homepage hero already has dark-glass tokens; every other page (benchmarks, rankings, agents, `/connect`, `/dashboard`) is visually inconsistent. Developer-tool buyers (Vercel, Linear, Resend tier) expect polish throughout.
-
-**Deliverables:**
-
-1. **Glass cards everywhere** — `backdrop-filter: blur(16px)` + `rgba(255,255,255,0.04)` background + 1px `rgba(255,255,255,0.12)` border on: benchmark domain tiles, rankings rows, agent directory cards, dashboard stat tiles, `/connect` strategy blocks. Reuse `--glass-bg` / `--glass-border` CSS tokens already defined on the homepage.
-
-2. **ScrollReveal on all pages** — The existing `.scroll-reveal → .visible` IntersectionObserver is homepage-only. Wire it to stat bars, feature cards, and "How it works" steps on `/connect`, `/benchmarks`, `/rankings`, and `/dashboard`. Stagger siblings 60 ms.
-
-3. **Count-up hero stats** — "X agents ranked" and "Y calls routed" animate 0 → final value on first viewport entry (one-shot per session via `sessionStorage`).
-
-4. **Micro-interactions** — Card hover: `translateY(-4px)` + elevated shadow. Primary CTA: CSS shimmer sweep (600 ms). All gated on `prefers-reduced-motion: no-preference`.
-
-5. **Monospace data** — Latency values, scores, and call counts use `font-variant-numeric: tabular-nums` + JetBrains Mono across all pages.
-
-**Acceptance:** Visually consistent dark-glass across all routes. No white flash on any page. Lighthouse Performance ≥ 90, LCP < 2.5 s, CLS < 0.1. QA stays 63/63.
+**Acceptance:** `POST /api/v1/route/embed` response `data` contains an `embeddings` key with an array of float arrays. `data.embeddings[0].length` equals `data.dimensions`.
 
 ---
 
-## Must-Have #3 — Live API Playground page (`/playground`)
+## P1-1: Two of three embed providers are down — dead providers still in chain
 
-**Type:** New feature (developer adoption)
-**Why:** Cycle 6 added the MCP tool, cycle 7 added SDK snippets, cycle 8 added OpenAI-compat. The missing piece: developers can't *try* the router without writing code or using curl. A browser-based playground eliminates the zero-to-first-call friction and is the fastest path to "aha moment."
+**QA issue:** P1-1
+**Symptom:** Every embed call returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. Both `openai-embed` and `cohere-embed` are unavailable — no API keys configured for them. Three previous fix cycles have not resolved this.
 
-**Spec:**
+**Root cause:** Multiple config locations still reference the dead providers. Previous fixes patched `CAPABILITY_TOOLS` in `src/lib/router/index.ts` (already `['voyage-embed']`) but left dead slugs in at least one other location that is injected at routing time.
 
-`GET /playground` — new page with:
-- **Query input** — text field + capability selector (search / embed / crawl) + strategy dropdown (balanced / best_performance / cheapest / most_stable).
-- **Run button** — fires `POST /api/v1/route/{capability}` using the visitor's own API key (entered in the page) or the public demo key. Shows a spinner during the call.
-- **Result pane** — renders `tool_used`, `latency_ms`, `cost_usd`, `fallback_used`, `ai_classification`, and the first 3 results (title + URL + snippet) in a formatted dark card. Includes a raw JSON toggle.
-- **Copy-as-curl** button — generates the equivalent `curl` command pre-filled with the query and key.
-- Auth: no new backend endpoints needed — uses existing `/api/v1/route/*` with Bearer auth. The demo key is hard-coded client-side (same as `/connect` page).
-- No account required to try the demo key (rate-limited to 10 calls/day, same as existing demo key logic).
+**Required exhaustive grep before any edits:**
+```bash
+grep -rn "openai-embed\|cohere-embed" src/ --include="*.ts" --include="*.tsx" --include="*.js"
+```
+Fix every occurrence in routing, fallback chains, tool lists, capability registries, health probes, and docs. Do not stop until the grep returns zero hits in routing/config paths.
 
-**Homepage + `/connect` hook:** Add "Try it live →" CTA linking to `/playground`.
+**Known files to check and fix:**
 
-**Acceptance:**
-- `/playground` loads at HTTP 200; demo key works without login; full routing result renders in < 2 s on a simple query.
-- Copy-as-curl produces a valid curl command.
-- QA 63/63 stays green.
+1. **`src/lib/router/index.ts` ~line 43** — verify `CAPABILITY_TOOLS.embed` is `['voyage-embed']` (no other slugs). Verify `TOOL_CHARACTERISTICS` has no `openai-embed` or `cohere-embed` entries.
+
+2. **`src/lib/ops/constants.ts` ~line 41** — `suggestedTools` for embed must contain only `["voyage-embed"]`. Remove `openai-embed` and `cohere-embed` if present.
+
+3. **`src/lib/ops/service-probes.ts` ~lines 217–220** — probe slug map must contain no `openai-embed`, `cohere-embed`, or `voyage-ai` entries. A probe for a dead provider influences circuit-breaker state and causes those tools to appear in the fallback chain.
+
+4. **`src/app/api/v1/router/skill.md/route.ts` ~line 55** — remove `openai-embed` and `cohere-embed` from the embed row in the capability table.
+
+5. **Any additional file flagged by the grep** — fix all occurrences.
+
+**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length exactly 1) on every normal call.
+
+---
+
+## P1-2: QA script B.1-embed check uses wrong slug `voyage-ai`
+
+**QA issue:** P1-2
+**Symptom:** QA test `B.1-embed` checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but the live tool slug is `voyage-embed` (not `voyage-ai`). This causes a false failure on every QA run, keeping the automated score below 51/51.
+
+**Root cause:** The valid-tool list in `agentpick-router-qa.py` was written when the adapter was registered under the old `voyage-ai` product slug. That slug was renamed to `voyage-embed` in a prior cycle; the QA script was not updated.
+
+**Fix — `agentpick-router-qa.py`:**
+Add or update the B.1 embed test class so the valid tool list uses `voyage-embed`:
+```python
+class TestEmbedRoute(unittest.TestCase):
+
+    def test_B1_embed_uses_known_slug(self):
+        """B.1 — /api/v1/route/embed must use a known embed slug."""
+        r = requests.post(
+            f"{BASE_URL}/api/v1/route/embed",
+            headers={"Authorization": f"Bearer {KEY_499}"},
+            json={"params": {"text": "machine learning fundamentals"}},
+            timeout=15,
+        )
+        self.assertEqual(r.status_code, 200)
+        tool = r.json().get("meta", {}).get("tool_used", "")
+        valid_embed_tools = ["voyage-embed", "jina-embed", "edenai-embed", "jina-embeddings"]
+        self.assertIn(tool, valid_embed_tools, f"Unexpected embed tool: {tool}")
+```
+No occurrence of `"voyage-ai"` should remain in the QA script after this fix.
+
+**Acceptance:** QA automated suite reports **51/51**. `grep "voyage-ai" agentpick-router-qa.py` returns zero hits.
+
+---
+
+## P1-3: AI classifier returns wrong type for embed queries
+
+**QA issue:** P1-3
+**Symptom:** Embedding `"machine learning fundamentals"` is classified as `type: "news"` with reasoning `"News query + → voyage-embed"`. The classifier has no awareness that the capability is `embed` — search-oriented classification rules fire instead.
+
+**Root cause:**
+`src/lib/router/ai-classify.ts` — `getClassification(query, capability)` is called for embed requests but the fast classifier (`fastClassify`) and the Haiku prompt (`CLASSIFY_SYSTEM`) contain no embed-specific rules. The query `"machine learning fundamentals"` matches `genericTopicSignal` (`\bml\b|\bmachine learning\b`) combined with other news heuristics, producing `type: "news"`.
+
+Note: the wrong classification does not affect tool selection today — `aiRoute()` lines 309–311 return `CAPABILITY_TOOLS['embed']` directly for non-search/non-finance capabilities, ignoring `context.type`. However, the classification appears in the API response `meta.ai_classification` field, misleading clients and violating the contract.
+
+**Fix — `src/lib/router/ai-classify.ts`:**
+
+Option A (minimal, correct): In `getClassification`, short-circuit when `capability !== 'search' && capability !== 'finance'`:
+```typescript
+export async function getClassification(query: string, capability: string): Promise<{ context: QueryContext; cached: boolean; classificationMs: number }> {
+  // Classification is only meaningful for search and finance routing.
+  // For other capabilities (embed, crawl, code, etc.) return a neutral default immediately.
+  if (capability !== 'search' && capability !== 'finance') {
+    return { context: { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' }, cached: false, classificationMs: 0 };
+  }
+  // ... existing logic unchanged ...
+}
+```
+
+Option B (if callers must always receive a result): Add embed-specific examples to `CLASSIFY_SYSTEM` and add an `embed` branch in `fastClassify` that returns `type: 'simple'` for any query when capability is embed. (Option A is preferred — simpler, no LLM call wasted.)
+
+**Acceptance:** `POST /api/v1/route/embed` with body `{"params":{"text":"machine learning fundamentals"}}` returns `meta.ai_classification.type` of `"simple"` (or no `ai_classification` key at all). It must NOT return `type: "news"`.
 
 ---
 
 ## Definition of Done
 
-- [ ] `POST /api/v1/route/embed` returns `fallback_used: false`, `tried_chain` length 1 on happy path
-- [ ] QA script line B.1 slug updated; suite reports **63/63**
-- [ ] Glass cards on benchmarks, rankings, agents, connect, dashboard
-- [ ] No white flash; all pages use `var(--bg-base)` body background
-- [ ] ScrollReveal active on all pages (not homepage-only); 60 ms stagger
-- [ ] Count-up stat animations on homepage hero (sessionStorage one-shot)
-- [ ] Card hover lift + CTA shimmer (respects `prefers-reduced-motion`)
-- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`; LCP < 2.5 s; CLS < 0.1
-- [ ] `/playground` loads 200; demo key returns results; copy-as-curl works
-- [ ] "Try it live →" CTA on homepage and `/connect`
+- [ ] **P0-1** — `data.embeddings` present and non-empty in embed API response; `data.embeddings[0].length === data.dimensions`
+- [ ] **P1-1** — `tried_chain` length is 1, `fallback_used: false` on every embed call; zero grep hits for `openai-embed`/`cohere-embed` in routing/config paths
+- [ ] **P1-2** — `agentpick-router-qa.py` B.1 uses `voyage-embed`; QA automated suite reports **51/51**; zero grep hits for `"voyage-ai"` in QA script
+- [ ] **P1-3** — `meta.ai_classification.type` is NOT `"news"` for plain embed queries; no Haiku call wasted on non-search capabilities
 
-## Out of Scope (This Cycle)
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked by Pclaw in `/workspace/agentpick-benchmark/`; needs `BENCHMARK_SECRET` env var coordination first
+## Out of Scope This Cycle
+
+- Dark-glass design system / UI polish
+- Live API Playground (`/playground`)
+- ScrollReveal, count-up animations, micro-interactions
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`)
 - New routing strategies or tool integrations
 - Stripe/billing changes
 - Team/org accounts

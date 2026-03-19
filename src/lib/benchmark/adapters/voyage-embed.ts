@@ -40,7 +40,12 @@ export async function callVoyageEmbed(query: string, config?: Record<string, unk
     statusCode: response.status,
     latencyMs,
     resultCount: embeddings.length,
-    response: { dimensions: embeddings[0]?.embedding?.length ?? 0, tokens, count: embeddings.length },
+    response: {
+      dimensions: embeddings[0]?.embedding?.length ?? 0,
+      tokens,
+      count: embeddings.length,
+      embeddings: embeddings.map((e: { embedding: number[] }) => e.embedding),
+    },
     costUsd: (tokens / 1000000) * 0.06, // ~$0.06 per 1M tokens for voyage-3
   };
 }

@@ -120,7 +120,7 @@ describe('playground route', () => {
           tokens: 128,
         },
         meta: {
-          tool_used: 'openai-embed',
+          tool_used: 'voyage-embed',
           latency_ms: 95,
           trace_id: 'trace_embed_1',
         },
@@ -139,7 +139,7 @@ describe('playground route', () => {
     const json = await response.json();
     expect(json).toMatchObject({
       capability: 'embed',
-      tool: 'openai-embed',
+      tool: 'voyage-embed',
       latencyMs: 95,
       traceId: 'trace_embed_1',
       totalResults: 1,
