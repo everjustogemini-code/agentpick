@@ -1,4 +1,4 @@
-# TASK_CODEX.md — cycle 14
+# TASK_CODEX.md — cycle 15
 
 **Agent:** Codex
 **Date:** 2026-03-18
@@ -8,13 +8,11 @@
 
 ---
 
-## Task 1 — Fix P1-1: Update QA allowlist to `voyage-embed` (Must-Have #1)
+## Task 1 — Fix P1-1: Add B.1 embed test with `voyage-embed` allowlist (Must-Have #1)
 
 **File:** `agentpick-router-qa.py`
 
-**Problem:** The file has no B.1 embed test at all. The QA suite has 4 tests (TestRateLimitPath × 2, TestUsageAliases × 1, TestBenchmarkPermalinks × 2) and scores 50/51. The missing B.1 test must be added with the correct allowlist.
-
-**Exact change:** Add a new test class before the `if __name__ == "__main__":` block (line 73):
+The file currently has no B.1 embed test. Add a new `TestEmbedRouter` class before the `if __name__ == "__main__":` block:
 
 ```python
 KEY_EMBED = os.environ.get('QA_TEST_KEY_EMBED', KEY_499)
@@ -40,39 +38,41 @@ class TestEmbedRouter(unittest.TestCase):
         )
 ```
 
+Also scan the entire file for any existing references to `voyage-ai`, `cohere-embed`, or `jina-embeddings` as expected embed slugs and remove/replace them.
+
 **Verification:**
 ```bash
 grep "voyage-ai" agentpick-router-qa.py   # must return zero hits
 ```
 
-**Acceptance:** `grep "voyage-ai" agentpick-router-qa.py` → zero hits. QA reports **51/51**.
+**Acceptance:** `grep "voyage-ai" agentpick-router-qa.py` → 0 results. QA reports **51/51**.
 
 ---
 
-## Task 2 — Glass Design System + Micro-animations (Must-Have #2)
+## Task 2 — Audit `/connect` page for `voyage-ai` copy (Must-Have #1 partial)
 
-### 2a — Glassmorphism on cards
+**File:** `src/app/connect/page.tsx`
 
-**Files:**
-- `src/app/page.tsx` — live-stats card (homepage)
-- `src/components/PricingSection.tsx` — pricing tier boxes on homepage
-- `src/components/PricingPageClient.tsx` — pricing tier boxes on `/pricing` page
+Search the file for any occurrence of the string `voyage-ai` used as a slug or display name in page copy, code examples, or tool tables. Replace each with `voyage-embed`.
 
-**Change:** Replace flat-border card containers with glassmorphism style:
-
-```css
-backdrop-filter: blur(12px);
-background: rgba(255, 255, 255, 0.04);
-border: 1px solid rgba(255, 255, 255, 0.08);
-border-radius: 12px;
+```bash
+grep -n "voyage-ai" src/app/connect/page.tsx
 ```
 
-Apply to: live-stats card container, each pricing tier box, feature comparison table rows.
+This is a copy-only change — no logic modifications.
 
-If using Tailwind, add a `glass-card` utility class in `src/app/globals.css` (or equivalent CSS file) and apply it via `className="glass-card"`:
+---
+
+## Task 3 — Glassmorphism Design System + Micro-animations (Must-Have #2)
+
+### 3a — Global glass-card utility
+
+**File:** `src/app/globals.css` (or the project's equivalent global CSS file)
+
+Append at the end:
 
 ```css
-/* src/app/globals.css — append to existing file */
+/* === Glassmorphism === */
 .glass-card {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -80,96 +80,31 @@ If using Tailwind, add a `glass-card` utility class in `src/app/globals.css` (or
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 }
-```
 
-### 2b — Hero section upgrade
+/* === Animated hero gradient mesh === */
+@keyframes hero-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33%       { transform: translate(20px, -15px) rotate(3deg); }
+  66%       { transform: translate(-15px, 10px) rotate(-2deg); }
+}
+.hero-gradient-mesh {
+  background: conic-gradient(from 180deg at 50% 50%, #00ff6620 0deg, #0a0a0a 120deg, #00ff6610 240deg, #0a0a0a 360deg);
+  animation: hero-drift 10s ease-in-out infinite;
+  will-change: transform;
+}
 
-**File:** `src/app/page.tsx`
+/* === Gradient underline === */
+.gradient-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: transparent;
+  background: linear-gradient(90deg, #00ff66, #00cc55);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
 
-1. **Animated radial gradient background** — replace any static hero background with a slow-drifting mesh:
-   ```css
-   /* Add to globals.css */
-   @keyframes hero-drift {
-     0%, 100% { transform: translate(0, 0) rotate(0deg); }
-     33%       { transform: translate(20px, -15px) rotate(3deg); }
-     66%       { transform: translate(-15px, 10px) rotate(-2deg); }
-   }
-   .hero-gradient-mesh {
-     background: conic-gradient(from 180deg at 50% 50%, #00ff6620 0deg, #0a0a0a 120deg, #00ff6610 240deg, #0a0a0a 360deg);
-     animation: hero-drift 10s ease-in-out infinite;
-     will-change: transform;
-   }
-   ```
-   Wrap the hero section background `<div>` with `className="hero-gradient-mesh"`.
-
-2. **Hero heading size** — find the `<h1>` in the hero section and set font size to **64px** at desktop, `line-height: 1.1`. In Tailwind: `text-[64px] leading-[1.1]`.
-
-3. **Gradient underline on "We fix that"** — wrap the differentiator phrase in a `<span>` with:
-   ```css
-   /* globals.css */
-   .gradient-underline {
-     text-decoration: underline;
-     text-decoration-thickness: 2px;
-     text-underline-offset: 4px;
-     text-decoration-color: transparent;
-     background: linear-gradient(90deg, #00ff66, #00cc55);
-     background-clip: text;
-     -webkit-background-clip: text;
-   }
-   ```
-
-4. **Terminal callout component** — upgrade the `pip install agentpick` code block to a terminal window:
-   **File:** `src/components/HeroCodeBlock.tsx`
-   - Add a draggable titlebar with three dot buttons (red/yellow/green, decorative only).
-   - Add a monospace prompt line.
-   - Add a blinking cursor CSS animation (`blink-cursor` keyframe in globals.css).
-   - Add a 2-step typewriter sequence using `setTimeout`:
-     - Step 1: display `$ pip install agentpick`
-     - Step 2 (after 1.8s): append `↵  Successfully installed agentpick-x.x.x`
-
-   ```css
-   /* globals.css */
-   @keyframes blink-cursor {
-     0%, 100% { opacity: 1; }
-     50%       { opacity: 0; }
-   }
-   .terminal-cursor {
-     display: inline-block;
-     width: 8px;
-     height: 1em;
-     background: #00ff66;
-     animation: blink-cursor 1s step-end infinite;
-     vertical-align: text-bottom;
-   }
-   ```
-
-### 2c — Micro-animations
-
-**File:** `src/components/StatsBar.tsx`
-
-Add `IntersectionObserver` count-up for the live-stat counters (agents count, calls today):
-- On scroll-enter: animate from 0 to the actual value over 1.2s.
-- Use only `transform`/`opacity` — no layout-triggering properties.
-- Example pattern (vanilla JS in a `useEffect`):
-  ```ts
-  useEffect(() => {
-    const el = ref.current;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        // count-up logic using requestAnimationFrame
-        observer.disconnect();
-      }
-    }, { threshold: 0.3 });
-    if (el) observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  ```
-
-**File:** `src/app/page.tsx` (CTA button — see Task 3 for which button)
-
-Replace the shimmer CTA button animation with a `box-shadow` glow pulse:
-```css
-/* globals.css */
+/* === Neon glow CTA === */
 @keyframes neon-glow {
   0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 102, 0.4); }
   50%       { box-shadow: 0 0 20px rgba(0, 255, 102, 0.8), 0 0 40px rgba(0, 255, 102, 0.3); }
@@ -177,60 +112,149 @@ Replace the shimmer CTA button animation with a `box-shadow` glow pulse:
 .cta-glow {
   animation: neon-glow 2s ease-in-out infinite;
 }
-```
 
-**View Transitions:** Add `View Transitions API` cross-fade (150ms) for in-page route changes. In `src/app/layout.tsx` (or the relevant layout file), inject:
-```ts
-// Wrap next/link navigations with startViewTransition if available
-```
-Add to globals.css:
-```css
+/* === Blinking terminal cursor === */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: #00ff66;
+  animation: blink-cursor 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* === Scroll reveal (JS sets initial state) === */
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+
+/* === View transitions === */
 ::view-transition-old(root) { animation: 150ms ease-out fade-out; }
-::view-transition-new(root) { animation: 150ms ease-in fade-in; }
+::view-transition-new(root) { animation: 150ms ease-in  fade-in; }
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
 ```
 
-**Constraint:** No third-party animation libraries. Vanilla CSS + minimal JS only. Lighthouse perf ≥ 90.
+### 3b — Apply glassmorphism to pricing cards
+
+**File:** `src/components/PricingSection.tsx`
+
+Find the outer `<div>` wrapper of each pricing tier card and add `className="glass-card"` (or merge into existing `className`). Do the same for any feature-comparison row containers.
+
+**File:** `src/components/PricingPageClient.tsx`
+
+Same change — apply `glass-card` to each pricing tier box on the `/pricing` page.
+
+**File:** `src/app/pricing/page.tsx`
+
+If the page has its own card wrappers, apply `glass-card` there too.
+
+### 3c — Sticky nav frosted glass
+
+**File:** `src/components/SiteHeader.tsx`
+
+Add scroll-listener (or CSS `sticky` + backdrop-filter) so the nav gains a frosted glass style after scrolling past 60px:
+
+- In Tailwind: add `backdrop-blur-md bg-[var(--bg-primary)]/80` classes on scroll trigger.
+- Or via CSS: when JS adds a `scrolled` class to the `<header>`, apply:
+  ```css
+  header.scrolled {
+    backdrop-filter: blur(12px);
+    background: rgba(10, 10, 10, 0.8);
+  }
+  ```
+
+### 3d — Hero section upgrades
+
+**File:** `src/app/page.tsx`
+
+1. Wrap the hero section's background `<div>` with `className="hero-gradient-mesh"` (uses the keyframe added in 3a).
+2. Find the hero `<h1>` and set `style={{ fontSize: "clamp(3rem, 6vw, 5rem)", lineHeight: 1.08, letterSpacing: "-0.03em" }}` (or equivalent Tailwind).
+3. Wrap the "We fix that." phrase in `<span className="gradient-underline">We fix that.</span>`.
+4. Find the shimmer CTA button and replace its animation class with `cta-glow`.
+
+### 3e — Terminal callout component
+
+**File:** `src/components/HeroCodeBlock.tsx`
+
+Upgrade the `pip install agentpick` block to a terminal window:
+- Add a decorative titlebar with three colored dot buttons (red `#ff5f57`, yellow `#febc2e`, green `#28c840`).
+- Add a monospace prompt line with a `.terminal-cursor` span.
+- Typewriter effect via `useEffect` + `setTimeout`:
+  - Step 1 (on mount): display `$ pip install agentpick` character by character (~50ms/char).
+  - Step 2 (after 1.8s): append a second line `Successfully installed agentpick-x.x.x`.
+- No third-party libraries.
+
+### 3f — Live-stat count-up animation
+
+**File:** `src/components/StatsBar.tsx`
+
+Wrap each stat counter with `IntersectionObserver` count-up:
+- On scroll-enter: animate from 0 to the actual value over 1.2s using `requestAnimationFrame`.
+- Disconnect observer after first trigger.
+- Use `opacity`/`transform` only — no layout-triggering properties.
+
+### 3g — IntersectionObserver fade-up for section entries
+
+**Files:** `src/app/page.tsx` (feature cards, pricing cards, API carousel sections)
+
+Add `reveal-hidden` class to each section container on mount. Use a single shared `IntersectionObserver` to swap `reveal-hidden` → `reveal-visible` (defined in globals.css in 3a) when each section enters the viewport.
+
+**Constraint:** Vanilla CSS + minimal JS only. No animation libraries. Lighthouse perf ≥ 90. CLS < 0.1.
 
 ---
 
-## Task 3 — New `/quickstart` page (Must-Have #3 frontend)
+## Task 4 — New `/quickstart` page (Must-Have #3 frontend)
 
 **File to create:** `src/app/quickstart/page.tsx`
 
-A single scrollable page. No page reloads between steps.
+A single scrollable page with 3 inline steps. No page reloads between steps.
 
 ### Step 1 — Get a key
 
-- Email `<input>` + "Generate free key" button.
-- On submit: `POST /api/v1/quickstart/issue` with `{ email }` (the new endpoint Claude Code creates).
-- Display the returned `apiKey` inline in a copy-to-clipboard code block (click copies to clipboard via `navigator.clipboard.writeText`).
-- State: `apiKey` stored in React state, passed to Step 2/3.
+```tsx
+// Email input + "Generate free key" button
+// On submit: POST /api/v1/quickstart/issue with { email }
+// Display returned apiKey in a copy-to-clipboard <code> block
+// navigator.clipboard.writeText(apiKey) on click
+```
+
+- Store `apiKey` in React state.
+- Read `?source=quickstart_homepage` from URL and pass as `source` param to the POST body.
 
 ### Step 2 — Pick a capability
 
 - Three large pill `<button>` elements: **Search** / **Crawl** / **Embed**.
-- Selecting one updates the curl snippet below (Step 3) in real time.
-- Default selected: Search.
-- State: `selectedCapability` in React state.
+- Selecting one updates the curl snippet in Step 3 in real time (React state, no reload).
+- Default: Search selected.
+- Store `selectedCapability` in React state.
 
-### Step 3 — Run it now
+### Step 3 — Run it in the browser
 
-- Pre-filled `<pre>` block showing a `curl` snippet with:
-  - The actual `apiKey` from Step 1 injected (masked as `YOUR_KEY` until key is issued).
-  - The selected capability endpoint (`/api/v1/route/search`, `/api/v1/route/crawl`, or `/api/v1/route/embed`).
-- "Run in browser" button — fires `fetch()` to the selected capability endpoint using the issued key; streams (or awaits) JSON response.
-- Response rendered in a live output panel with `<pre>` + syntax-highlighted JSON (use `JSON.stringify(data, null, 2)` — no third-party highlighter library).
-- On success: show a green `"✓ It works!"` banner with a link to full docs.
-- On error: show a red error message with the status code.
+- Pre-filled `<pre>` code block showing a `curl` snippet with:
+  - `YOUR_KEY` placeholder until key is issued; replaced with actual `apiKey` once available.
+  - Endpoint mapped from capability: Search → `/api/v1/route/search`, Crawl → `/api/v1/route/crawl`, Embed → `/api/v1/route/embed`.
+- "Run in browser" button — fires `fetch()` to the selected endpoint with the issued key.
+- JSON response rendered in a `<pre>` output panel using `JSON.stringify(data, null, 2)` (no third-party syntax highlighter).
+- On success (HTTP 200): green `"✓ It works!"` banner + link to `/connect`.
+- On error: red banner with the HTTP status code.
 
-### Homepage wiring
+### Homepage CTA wiring
 
 **File:** `src/app/page.tsx`
 
-- Find the secondary CTA button (currently "View Docs") and replace its label with **"Get API Key →"** and its `href` with `/quickstart`.
-- Add `source=quickstart_homepage` as a URL param if needed for funnel tracking (e.g., link to `/quickstart?source=quickstart_homepage` — the quickstart page can read this and pass it in the key-issue request).
+- Find the secondary CTA (currently "View Docs") and change its label to **"Get API Key →"**.
+- Change its `href` to `/quickstart?source=quickstart_homepage`.
 
 ---
 
@@ -239,26 +263,26 @@ A single scrollable page. No page reloads between steps.
 | Action | File |
 |--------|------|
 | Modify | `agentpick-router-qa.py` |
+| Modify | `src/app/connect/page.tsx` |
+| Modify | `src/app/globals.css` |
+| Modify | `src/components/SiteHeader.tsx` |
 | Modify | `src/app/page.tsx` |
 | Modify | `src/components/HeroCodeBlock.tsx` |
 | Modify | `src/components/PricingSection.tsx` |
 | Modify | `src/components/PricingPageClient.tsx` |
 | Modify | `src/app/pricing/page.tsx` |
 | Modify | `src/components/StatsBar.tsx` |
-| Modify | `src/app/globals.css` (or equivalent CSS file) |
 | Create | `src/app/quickstart/page.tsx` |
-| Conditionally modify | `src/app/layout.tsx` (View Transitions only) |
+| Conditionally modify | `src/app/layout.tsx` (View Transitions wiring only) |
 
 **DO NOT touch** (Claude Code-owned):
 - `src/app/api/v1/router/register/route.ts`
-- `src/app/api/v1/quickstart/issue/route.ts` (new file — Claude Code creates it)
+- `src/app/api/v1/quickstart/issue/route.ts`
 - `prisma/schema.prisma`
 - `prisma/migrations/**`
-- `src/lib/router/index.ts`
-- `src/lib/router/ai-classify.ts`
-- `src/lib/ops/constants.ts`
-- `src/lib/ops/service-probes.ts`
-- `src/lib/benchmark/adapters/voyage-embed.ts`
+- `src/lib/router/**`
+- `src/lib/benchmark/**`
+- `src/lib/ops/**`
 
 ---
 
@@ -266,23 +290,40 @@ A single scrollable page. No page reloads between steps.
 
 | NEXT_VERSION.md item | Assigned to |
 |---|---|
-| Must-Have #1 — QA allowlist updated to `voyage-embed`; 51/51; zero `voyage-ai` hits | **This file (Task 1)** |
-| Must-Have #2 — Glassmorphism on cards, hero upgrade, micro-animations | **This file (Task 2)** |
-| Must-Have #3 — `/quickstart` page UI (Step 1/2/3), homepage CTA change | **This file (Task 3)** |
-| Must-Have #3 — Registration endpoint stores `source`, new `/quickstart/issue` endpoint, DB schema | TASK_CLAUDE_CODE |
+| Must-Have #1 — QA B.1 embed test; `valid_embed_tools = ["voyage-embed"]`; 51/51 | **Task 1 (this file)** |
+| Must-Have #1 — `/connect` page copy: `voyage-ai` → `voyage-embed` | **Task 2 (this file)** |
+| Must-Have #1 — Backend `src/` files: `voyage-ai` → `voyage-embed` | TASK_CLAUDE_CODE Task D |
+| Must-Have #2 — Glassmorphism cards (pricing, stats, feature) | **Task 3b (this file)** |
+| Must-Have #2 — Sticky nav frosted glass | **Task 3c (this file)** |
+| Must-Have #2 — Hero animated gradient mesh | **Task 3d (this file)** |
+| Must-Have #2 — Hero heading size + gradient underline | **Task 3d (this file)** |
+| Must-Have #2 — Terminal callout with typewriter | **Task 3e (this file)** |
+| Must-Have #2 — Live-stat count-up micro-animation | **Task 3f (this file)** |
+| Must-Have #2 — Scroll fade-up reveal on section entries | **Task 3g (this file)** |
+| Must-Have #2 — Neon glow CTA pulse | **Task 3a + 3d (this file)** |
+| Must-Have #3 — `/quickstart` page (Step 1/2/3 UI) | **Task 4 (this file)** |
+| Must-Have #3 — Homepage secondary CTA → "Get API Key →" → `/quickstart` | **Task 4 (this file)** |
+| Must-Have #3 — Register endpoint stores `source` field | TASK_CLAUDE_CODE Task B |
+| Must-Have #3 — New `POST /api/v1/quickstart/issue` endpoint | TASK_CLAUDE_CODE Task C |
+| Must-Have #3 — DB schema: `Agent.registrationSource` | TASK_CLAUDE_CODE Task A |
 
-All 3 Must-Haves from NEXT_VERSION.md are covered. No item left behind.
+All 3 Must-Haves from NEXT_VERSION.md are fully covered. No item left behind.
 
 ---
 
 ## Acceptance criteria
 
-- [ ] `grep "voyage-ai" agentpick-router-qa.py` → zero hits; QA reports 51/51
-- [ ] PM screenshot review: glassmorphism visible on homepage stats, pricing tiers, feature rows
-- [ ] PM screenshot review: hero heading 64px, animated gradient mesh, terminal callout with typewriter
-- [ ] Lighthouse performance score ≥ 90; CLS < 0.1
-- [ ] `/quickstart` page: email input → key issued → capability selected → curl snippet updated → "Run in browser" fires real request → "It works!" banner appears
-- [ ] Homepage secondary CTA reads "Get API Key →" and links to `/quickstart`
+- [ ] `grep "voyage-ai" agentpick-router-qa.py` → zero hits; QA reports **51/51**
+- [ ] `grep -n "voyage-ai" src/app/connect/page.tsx` → zero hits
+- [ ] PM screenshot review: glassmorphism visible on homepage stats panel, pricing tier cards, feature rows
+- [ ] PM screenshot review: sticky nav shows frosted glass on scroll past 60px
+- [ ] Hero heading ≥ 3rem, animated gradient mesh drifting, "We fix that." has gradient underline
+- [ ] Terminal callout shows typewriter effect: `pip install agentpick` → success line
+- [ ] Live-stat counters count up on first scroll-enter
+- [ ] Section cards fade up on scroll-enter
+- [ ] Lighthouse performance ≥ 90; CLS < 0.1
+- [ ] `/quickstart` page: email → key issued in-page → capability pill selected → curl snippet updates → "Run" fires real request → "It works!" banner
+- [ ] Homepage secondary CTA reads **"Get API Key →"** and links to `/quickstart?source=quickstart_homepage`
 
 ---
 
