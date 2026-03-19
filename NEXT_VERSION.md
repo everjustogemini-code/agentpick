@@ -1,71 +1,69 @@
 # NEXT_VERSION.md — v-next
 **Date:** 2026-03-18
-**Prepared by:** AgentPick PM (reviewed & confirmed 2026-03-18)
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **60/60, zero P0/P1/P2 bugs**
-**Live site:** https://agentpick.dev (checked 2026-03-18 — dark neon design, animated hero metrics, 3-tier pricing, functional)
-**Rule:** Bugs first. No features while P1/P2 remain. **All clear — features unlocked.**
+**Prepared by:** AgentPick PM (Claude Code)
+**QA baseline:** QA_REPORT.md (2026-03-18) — score **58/58** | P0: none | P1: 1 | P2: 2
+**Live site:** https://agentpick.dev — dark neon, animated metrics, 3-tier pricing, functional
+**Rule:** Bugs first. No features while P1/P2 remain.
 
-> PM review notes: QA 60/60 confirmed clean. One P2 docs/routing gap remains (`/api/v1/account` 404). Live site UI functional but green-neon aesthetic is dated vs current SaaS bar (Vercel/Resend/Linear tier). CSS dark-glass tokens exist but inconsistently applied — no rewrite needed, just activation. Leaderboard API is the highest-leverage zero-auth adoption hook given the product's core value is benchmark data.
-
----
-
-## Must-Have Item 1 — Fix `/api/v1/account` (P2 — Developer Friction)
-
-**What:** `GET /api/v1/account` returns **404**. Account data lives at `GET /api/v1/router/usage` instead. Any developer following docs, LLM-generated snippets, or older blog posts referencing `/api/v1/account` hits a dead end with no helpful error.
-
-**Exact fix:**
-
-1. Add `GET /api/v1/account` as an alias route that returns the same response as `/api/v1/router/usage` plus a deprecation hint:
-   ```json
-   {
-     "plan": "pro",
-     "monthlyLimit": 10000,
-     "callsThisMonth": 42,
-     "strategy": "auto",
-     "_note": "Prefer /api/v1/router/usage — this alias will be removed in v2"
-   }
-   ```
-2. Include response header: `Deprecation: true`.
-3. Update the API reference table on `/connect` to document both paths, marking `/account` as a deprecated alias.
-
-**Acceptance:** `GET /api/v1/account` with a valid Bearer key → **200** with account fields (no 404). Deprecation header present.
+> **PM note:** One P1 (API field naming inconsistency) and two P2s (missing `/api/v1/account` alias, null `meta.ai_classification` for non-AUTO strategies) must ship before any new features. All three are low-effort fixes — no functional breakage, but they will bite external SDK consumers. After bugs: UI consistency pass (dark-glass tokens are defined but inconsistently applied), then one high-leverage adoption feature.
 
 ---
 
-## Must-Have Item 2 — Full Dark-Glass Design System Consistency Pass
+## Must-Have #1 — Fix All P1/P2 API Contract Bugs
 
-**What:** The CSS has two coexisting design systems: a light-mode default (`--bg-primary: #FAFAFA`, white cards) and a dark glass system (`--bg-base: #0a0a0f`, glass-card, hero-mesh, gradient-border-card). The dark tokens are defined and the live site partially uses them, but the body defaults to light mode and key sections are inconsistently styled — light cards on dark backgrounds, glass components scattered without system-level consistency.
+**Why it's first:** Developers building against our API will hit these before they hit any UI. Docs that lie and null fields that shouldn't be null erode trust faster than any design gap.
+
+### Fix A — P1: Align `apiKey` field name in registration response
+- `POST /api/v1/router/register` currently returns `{"apiKey": "..."}`.
+- Audit all internal tooling, SDK examples, and docs for any reference to `{"key": "..."}`. Standardize on `apiKey` everywhere.
+- If a breaking rename is needed, add a `key` alias field with a deprecation comment in the response JSON: `"key": "<same value>", "_note": "key is deprecated, use apiKey"`.
+
+### Fix B — P2: Add `/api/v1/account` alias endpoint
+- `GET /api/v1/account` currently 404s. Account data lives at `GET /api/v1/router/usage`.
+- Add a route alias so both paths return the same payload. Include response header `Deprecation: true` on `/api/v1/account`.
+- Update `/connect` API reference to document both paths with the canonical clearly marked.
+
+### Fix C — P2: Return structured `meta.ai_classification` for non-AUTO strategies
+- Currently `null` for `balanced`, `best_performance`, `cheapest` — only populated for `auto`.
+- Return a consistent object for all strategies: `{"mode": "balanced", "reason": "strategy_override", "query_type": null}`.
+- SDK consumers should never need to null-check a field that exists in every response envelope.
+
+**Acceptance:** `GET /api/v1/account` → 200. `meta.ai_classification` never null. `apiKey` consistent. All 51 automated QA checks remain green.
+
+---
+
+## Must-Have #2 — Dark-Glass Design System Consistency Pass
+
+**Why it's second:** The CSS already has the dark-glass token set (`--bg-base`, `glass-card`, `hero-mesh`, `gradient-border-card`) and ScrollReveal is wired — but the body still defaults to light mode and key sections use inconsistent styling. This is activation work, not a rewrite.
 
 **Exact changes:**
 
-1. **Dark by default.** In `globals.css`, change `body { background: var(--bg-primary) }` → `var(--bg-base)`. Remap `--bg-card` to `rgba(255,255,255,0.05)` and `--text-primary` to `#E2E8F0` to complete the dark theme.
+1. **Dark by default** — In `globals.css`, flip `body { background: var(--bg-primary) }` to `var(--bg-base)`. Remap `--bg-card` to `rgba(255,255,255,0.05)` and `--text-primary` to `#E2E8F0`. Eliminates the white flash on load.
 
-2. **Homepage hero (`src/app/page.tsx`).** Apply `hero-mesh` full-bleed (already defined in CSS, not yet applied to the hero wrapper). Wrap headline + CTA in a `glass-card` frosted panel. Upgrade headline to `font-size: clamp(2.8rem, 5vw, 4.5rem); font-weight: 800; letter-spacing: -0.03em` with `bg-gradient-to-r from-white to-orange-400 bg-clip-text text-transparent`.
+2. **Hero mesh + glass panel** — Apply the `hero-mesh` class (already defined, not yet applied) to the homepage hero wrapper. Wrap headline + CTA in a `glass-card` frosted container. Upgrade headline to `clamp(2.8rem, 5vw, 4.5rem)` weight-800 with white-to-orange gradient text.
 
-3. **Feature and pricing cards.** Apply `glass-card gradient-border-card` to all three feature-section cards and all pricing tier cards. Add `shadow-glow-orange` on hover for the primary CTA card, `shadow-glow-cyan` for the secondary.
+3. **Card consistency** — Apply `glass-card gradient-border-card` to all three feature cards and all three pricing tier cards. Add `shadow-glow-orange` on hover for the primary CTA card.
 
-4. **Scroll-reveal wiring.** The `.scroll-reveal` + `.visible` CSS and `ScrollReveal` component exist but are not applied to stat counters or feature sections on `/`. Wire `<ScrollReveal>` to: live-feed stats bar, feature cards, pricing section, and "How it works" steps.
+4. **ScrollReveal activation** — The `.scroll-reveal` + `.visible` CSS and `<ScrollReveal>` component are wired but not applied to the live-feed stats bar, feature cards, pricing section, or "How it works" steps. Wire them.
 
-5. **Typography.** Apply `font-jetbrains-mono` (`data-value` class) to all latency, score, and call-count displays site-wide — currently only on some pages.
+5. **Monospace data typography** — Apply `font-jetbrains-mono` (already loaded) to all latency, score, and call-count values site-wide. Currently only applied inconsistently.
 
-**Acceptance:** No white flash on load. Lighthouse LCP < 2.5s. Consistent dark glass appearance on `/`, `/connect`, and `/products/[slug]`. All 51 automated QA checks remain green.
+**Acceptance:** No white flash on load. Consistent dark-glass on `/`, `/connect`, and `/products/[slug]`. Lighthouse LCP < 2.5s, CLS < 0.1. All 51 QA checks green.
 
 ---
 
-## Must-Have Item 3 — Public Leaderboard API (Developer Adoption)
+## Must-Have #3 — Public Leaderboard API (Developer Adoption)
 
-**What:** AgentPick has deep benchmark data but zero programmatic read access without an account. Developers building routing logic, README badges, or Grafana dashboards must sign up just to ask "what's the best search tool right now?" A free, unauthenticated read endpoint removes that wall — it's the lowest-friction path to getting AgentPick into third-party tools.
-
-**Exact spec:**
+**Why it's third:** AgentPick's benchmark data is the core value prop, but it's locked behind registration. A zero-auth read endpoint lets developers embed rankings in README badges, Grafana dashboards, and routing logic — all before they even create an account. This is the lowest-friction path to distribution.
 
 **New route:** `GET /api/v1/leaderboard`
 ```
 Query params:
-  ?domain=finance|devtools|news|general|...   (optional)
-  ?task=research|realtime|simple              (optional)
-  ?limit=10                                   (default 10, max 50)
+  ?domain=finance|devtools|news|general   (optional)
+  ?task=research|realtime|simple          (optional)
+  ?limit=10                               (default 10, max 50)
 
-Response 200:
+Response 200 (no auth required):
 {
   "updated_at": "2026-03-18T00:00:00Z",
   "tools": [
@@ -77,45 +75,42 @@ Response 200:
       "latency_p50_ms": 898,
       "success_rate": 1.0,
       "best_for": ["research", "realtime"],
-      "domains": ["general", "news", "finance"]
+      "domains": ["general", "news"]
     }
   ]
 }
 ```
-- **No auth required.** Rate-limit: 60 req/min per IP.
-- **Cache TTL:** 5 minutes (reuse whatever the app already has for `/products/[slug]` data).
-- Data source: same benchmark scores already powering `/products/*` pages — no new computation.
+- No auth. Rate limit: 60 req/min per IP.
+- Cache TTL: 5 min. Data source: same benchmark scores already powering `/products/*` — no new computation.
 
 **Badge SVG route:** `GET /api/v1/leaderboard/badge/[slug]`
-- Returns a static SVG shield (Shields.io-compatible format) showing current rank and score.
-- Enables: `[![Ranked #1](https://agentpick.dev/api/v1/leaderboard/badge/tavily)](https://agentpick.dev/products/tavily)` in any GitHub README.
-- SVG cached 5 minutes, ETag for browser caching.
+- Returns Shields.io-compatible SVG: rank + score.
+- Enables GitHub README badge: `[![Ranked #1](https://agentpick.dev/api/v1/leaderboard/badge/tavily)](https://agentpick.dev/products/tavily)`
+- SVG cached 5 min with ETag.
 
-**`/connect` page addition:**
-- New "Leaderboard API" section with a `curl` one-liner and a live "Try it" button that hits the endpoint.
-- Copy-paste badge Markdown snippet for each top-ranked tool.
+**`/connect` page addition:** New "Leaderboard API" section with a `curl` one-liner, a live "Try it" button, and copy-paste badge Markdown for each top-ranked tool.
 
 **Acceptance:**
-- `curl https://agentpick.dev/api/v1/leaderboard` → 200 JSON, no API key required.
-- `curl https://agentpick.dev/api/v1/leaderboard/badge/tavily` → SVG image.
-- Badge renders correctly in a GitHub README (no CORS block).
+- `curl https://agentpick.dev/api/v1/leaderboard` → 200 JSON, no API key.
+- Badge SVG renders correctly in a GitHub README (CORS header: `Access-Control-Allow-Origin: *`).
 - All 51 automated QA checks remain green.
 
 ---
 
 ## Definition of Done
 
-- [ ] `GET /api/v1/account` → 200 + deprecation hint (no 404)
-- [ ] Body defaults to dark glass; no white flash on load; `hero-mesh` applied to homepage hero
-- [ ] `glass-card gradient-border-card` applied to all feature + pricing cards
-- [ ] `ScrollReveal` wired to stat bar, feature cards, pricing, and How-It-Works sections
-- [ ] `GET /api/v1/leaderboard` → 200 JSON, no auth required, rate-limited
+- [ ] `GET /api/v1/account` → 200 + `Deprecation: true` header (no 404)
+- [ ] `apiKey` field consistent across registration response and all docs
+- [ ] `meta.ai_classification` never null for any routing strategy
+- [ ] Body defaults to dark; no white flash; `hero-mesh` on homepage hero
+- [ ] `glass-card gradient-border-card` on all feature + pricing cards
+- [ ] `ScrollReveal` wired to stat bar, feature cards, pricing, How-It-Works
+- [ ] `GET /api/v1/leaderboard` → 200 JSON, unauthenticated, rate-limited
 - [ ] `GET /api/v1/leaderboard/badge/[slug]` → SVG, renders in GitHub README
-- [ ] `/connect` page shows Leaderboard API section with curl example
-- [ ] All 51 automated QA checks remain green post-deploy
+- [ ] `/connect` shows Leaderboard API section with curl + badge snippet
+- [ ] All 51 automated QA checks green post-deploy
 
-## Out of Scope (this cycle)
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked separately by Pclaw/OpenClaw; blocked on `BENCHMARK_SECRET` env config
+## Out of Scope (This Cycle)
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked in BENCHMARK_UPGRADE_SPEC.md, blocked on `BENCHMARK_SECRET` env config
 - New routing strategies or tool integrations
 - Stripe/billing changes
-- Admin panel changes
