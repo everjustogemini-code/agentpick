@@ -982,6 +982,47 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
         </div>
 
+        {/* Tavily Pricing Comparison */}
+        {slug === 'tavily' && (() => {
+          const TAVILY_PRICING = [
+            { tier: 'Free',       tavilyDirect: '$0',       viaAgentPick: '$0',       searches: '1,000' },
+            { tier: 'Researcher', tavilyDirect: '$35/mo',   viaAgentPick: '~$38/mo',  searches: '10,000' },
+            { tier: 'Business',   tavilyDirect: '$200/mo',  viaAgentPick: '~$212/mo', searches: '100,000' },
+          ];
+          return (
+            <section className="mb-8">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm">
+                <h2 className="mb-4 text-lg font-semibold text-white">Pricing Comparison</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/[0.08] text-left text-text-dim">
+                        <th className="pb-3 pr-4 font-medium">Tier</th>
+                        <th className="pb-3 pr-4 font-medium">Searches/mo</th>
+                        <th className="pb-3 pr-4 font-medium">Tavily Direct</th>
+                        <th className="pb-3 font-medium">Via AgentPick</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {TAVILY_PRICING.map((row) => (
+                        <tr key={row.tier} className="border-b border-white/[0.04] last:border-0">
+                          <td className="py-3 pr-4 font-medium text-white">{row.tier}</td>
+                          <td className="py-3 pr-4 text-text-dim">{row.searches}</td>
+                          <td className="py-3 pr-4 text-text-dim">{row.tavilyDirect}</td>
+                          <td className="py-3 text-text-dim">{row.viaAgentPick}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-4 text-xs text-text-dim">
+                  * AgentPick routing fee added on top. † Estimate; data as of 2026-03-19 — verify current pricing at tavily.com.
+                </p>
+              </div>
+            </section>
+          );
+        })()}
+
         {/* Tool Lifecycle */}
         <section className="mb-8">
           <ToolLifecycle activeContext="product" compact />
