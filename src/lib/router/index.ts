@@ -40,7 +40,7 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
   search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-api', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
-  embed: ['openai-embed', 'cohere-embed', 'voyage-ai', 'jina-embed', 'edenai-embed'],
+  embed: ['voyage-embed', 'jina-embed', 'edenai-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
   code: ['e2b'],
   communication: ['resend'],
@@ -72,8 +72,7 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'financial-modeling-prep': { quality: 3.8, cost: 0.001,   latency: 200,  stability: 0.96 },
   'openai-embed':           { quality: 4.5, cost: 0.0001,  latency: 150,  stability: 0.99 },
   'cohere-embed':           { quality: 4.0, cost: 0.0001,  latency: 120,  stability: 0.98 },
-  'voyage-ai':              { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
-  'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 }, // alias — kept for backward-compat priority_tools
+  'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
   'edenai-embed':           { quality: 3.5, cost: 0.0001,  latency: 300,  stability: 0.92 },
   e2b:                      { quality: 4.5, cost: 0.0001,  latency: 2000, stability: 0.93 },
