@@ -1,186 +1,169 @@
 # TASK_CLAUDE_CODE.md — v-next (2026-03-18)
+
 **Agent:** Claude Code
-**Source:** NEXT_VERSION.md — Must-Have #3 (Public Leaderboard API hardening)
-**QA baseline:** 57/57 — no bugs. This cycle is polish + developer adoption.
-
----
-
-## Scope Summary
-
-Claude Code owns all API/backend files for this cycle. The leaderboard routes were scaffolded in
-cycle 2 but have several gaps to close before the public announcement. Codex owns all
-frontend/CSS/animation work.
-
-**DO NOT TOUCH any of these files** (owned by Codex):
-- `src/app/globals.css`
-- `src/app/page.tsx`
-- `src/app/connect/page.tsx`
-- `src/components/**/*.tsx` (any component file)
-
----
-
-## Task 1 — `src/app/api/v1/leaderboard/route.ts`: harden for public launch
-
-Read the file first (it currently has ~233 lines). Make the following targeted changes.
-
-### 1a — Add OPTIONS preflight handler
-After the `GET` export, add:
-```ts
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
-}
-```
-
-### 1b — Add `stale-while-revalidate` to Cache-Control header
-Both the cache-HIT and cache-MISS response headers currently set:
-```
-'Cache-Control': 'public, max-age=300'
-```
-Change both to:
-```
-'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
-```
-There are two places: the HIT branch and the MISS branch.
-
-### 1c — Input validation returning 400
-After the `searchParams` parsing block (currently lines 195–199), add validation before the cache
-lookup:
-
-```ts
-const VALID_DOMAINS = new Set(['finance', 'devtools', 'news', 'general']);
-const VALID_TASKS   = new Set(['research', 'realtime', 'simple']);
-
-if (domain && !VALID_DOMAINS.has(domain)) {
-  return NextResponse.json(
-    { error: `invalid domain — must be one of: ${[...VALID_DOMAINS].join(', ')}` },
-    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
-  );
-}
-if (task && !VALID_TASKS.has(task)) {
-  return NextResponse.json(
-    { error: `invalid task — must be one of: ${[...VALID_TASKS].join(', ')}` },
-    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
-  );
-}
-if (!isNaN(limitParam) && (limitParam < 1 || limitParam > 50)) {
-  return NextResponse.json(
-    { error: 'limit must be 1–50' },
-    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
-  );
-}
-```
-
-Note: `limitParam` is already parsed from `searchParams` just before this block. The existing
-`Math.min(Math.max(...))` clamp inside `fetchLeaderboardData` can stay as a safety net, but the
-explicit 400 must fire first for out-of-range values.
-
----
-
-## Task 2 — `src/app/api/v1/leaderboard/badge/[slug]/route.ts`: fix 404 + rank coloring
-
-Read the file first (~95 lines).
-
-### 2a — Fix 404: return SVG not JSON
-The current 404 path returns `NextResponse.json(...)`. Replace it with an SVG "not ranked" badge:
-
-```ts
-if (!result) {
-  const notRankedSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="20">
-  <linearGradient id="s" x2="0" y2="100%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <rect rx="3" width="130" height="20" fill="#555"/>
-  <rect rx="3" x="75" width="55" height="20" fill="#777"/>
-  <rect x="75" width="4" height="20" fill="#777"/>
-  <rect rx="3" width="130" height="20" fill="url(#s)"/>
-  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-size="11">
-    <text x="38" y="15" fill="#010101" fill-opacity=".3">AgentPick</text>
-    <text x="38" y="14">AgentPick</text>
-    <text x="102" y="15" fill="#010101" fill-opacity=".3">not ranked</text>
-    <text x="102" y="14">not ranked</text>
-  </g>
-</svg>`;
-  return new NextResponse(notRankedSvg, {
-    status: 200,
-    headers: {
-      'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
-}
-```
-
-Returning 200 (not 404) ensures GitHub's image proxy renders the SVG rather than showing a broken
-image in READMEs.
-
-### 2b — Rank-based right-panel color in `buildSvgBadge`
-Replace the hardcoded `fill="#e05d17"` with a color chosen by rank:
-```ts
-function buildSvgBadge(rank: number, score: number): string {
-  const scoreStr = score.toFixed(1);
-  const rightColor = rank <= 3 ? '#e05d17' : rank <= 10 ? '#4c9a2a' : '#777';
-  // ... rest of template — replace both occurrences of `fill="#e05d17"` with `fill="${rightColor}"`
-```
-
-### 2c — Add `stale-while-revalidate` to the success response Cache-Control
-Change:
-```
-'Cache-Control': 'public, max-age=300'
-```
-to:
-```
-'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
-```
-
-### 2d — Add ETag with rank included
-Current ETag is `"${slug}-${score}"`. Update to include rank so GitHub's proxy re-fetches on rank
-change:
-```ts
-'ETag': `"${slug}-${rank}-${score}"`,
-```
+**Source:** NEXT_VERSION.md — Must-Have #1 (Bug A, Bug C) + Must-Have #3 backend (skillUrl)
+**QA baseline:** 50/51 — 2 open P1s + 1 live-site P1. Bugs ship first.
 
 ---
 
 ## Files to Create / Modify
 
-| Action | File                                                        | Reason                                              |
-|--------|-------------------------------------------------------------|-----------------------------------------------------|
-| MODIFY | `src/app/api/v1/leaderboard/route.ts`                      | OPTIONS preflight, stale-while-revalidate, 400 validation |
-| MODIFY | `src/app/api/v1/leaderboard/badge/[slug]/route.ts`         | SVG 404, rank color, stale-while-revalidate, ETag+rank |
+| File | Action | Notes |
+|------|--------|-------|
+| `next.config.ts` | **MODIFY** | Add 2 redirects: `/router` → `/connect` and `/api/v1/register` → `/api/v1/router/register` |
+| `src/app/api/v1/router/register/route.ts` | **MODIFY** | Accept optional `skillUrl` param, fetch remote skill.md, auto-register |
 
-Do NOT touch `src/middleware.ts` — the existing CORS handling there is sufficient and leaderboard
-routes already have `Access-Control-Allow-Origin: *` set explicitly in every response.
-
----
-
-## Acceptance Criteria
-
-- [ ] `OPTIONS /api/v1/leaderboard` → 204 with CORS headers
-- [ ] `GET /api/v1/leaderboard` response has `Cache-Control: public, max-age=300, stale-while-revalidate=60`
-- [ ] `GET /api/v1/leaderboard?limit=51` → 400 `{ "error": "limit must be 1–50" }`
-- [ ] `GET /api/v1/leaderboard?domain=invalid` → 400 with error message
-- [ ] `GET /api/v1/leaderboard?task=invalid` → 400 with error message
-- [ ] `GET /api/v1/leaderboard/badge/nonexistent-slug` → 200 `image/svg+xml` showing "not ranked"
-- [ ] `GET /api/v1/leaderboard/badge/tavily` (top-3 tool) → orange right panel `#e05d17`
-- [ ] `GET /api/v1/leaderboard/badge/[rank-4-10 tool]` → green right panel `#4c9a2a`
-- [ ] Badge ETag includes rank: `"slug-rank-score"`
-- [ ] All 57 QA checks remain green post-deploy
+> **DO NOT touch** any file in TASK_CODEX.md. Zero file overlap is required.
 
 ---
 
-## Progress Log
+## Bug A — `/router` page returns 404 (Live-site P1)
 
-After completing all tasks, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
+**File:** `next.config.ts`
+
+Every user who clicks "Router" in the top nav hits a 404. The fix is one entry in the
+existing `redirects()` array (currently lines 5–16 have 2 entries).
+
+Append to the array:
+```ts
+{
+  source: '/router',
+  destination: '/connect',
+  permanent: true,   // HTTP 308
+},
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] v-next: Leaderboard API hardening — OPTIONS preflight, 400 validation, SVG 404 badge, rank-color, stale-while-revalidate
+
+**Acceptance:** `curl -I https://agentpick.dev/router` → `308` (no `404`).
+
+---
+
+## Bug C — `POST /api/v1/register` returns 404 (QA P1)
+
+**File:** `next.config.ts` (same change, same array)
+
+The correct endpoint is `/api/v1/router/register`. Any SDK/docs reference to the shorter
+path silently 404s. Add a permanent redirect:
+
+```ts
+{
+  source: '/api/v1/register',
+  destination: '/api/v1/router/register',
+  permanent: true,   // HTTP 308
+},
 ```
+
+After both Bug A and Bug C, `next.config.ts` `redirects()` will contain **4 entries total**.
+
+**Acceptance:** `POST /api/v1/register` → `308` redirect to `/api/v1/router/register`, not `404`.
+
+---
+
+## Must-Have #3 — `POST /api/v1/router/register` accepts `skillUrl` (Backend)
+
+**File:** `src/app/api/v1/router/register/route.ts`
+
+The agent-native self-registration flow requires `POST /api/v1/router/register` to accept
+an optional `skillUrl` field. When provided, AgentPick fetches the remote `skill.md`,
+validates the schema, and stores the URL — no dashboard required.
+
+### 3a — Extend body type (line 23)
+
+Change:
+```ts
+let body: { email?: string; name?: string };
+```
+To:
+```ts
+let body: { email?: string; name?: string; skillUrl?: string };
+```
+
+### 3b — Add skillUrl URL validation (after name validation, ~line 39)
+
+```ts
+const skillUrl = body.skillUrl?.trim() ?? undefined;
+if (skillUrl) {
+  try { new URL(skillUrl); }
+  catch { return apiError('VALIDATION_ERROR', 'skillUrl must be a valid URL.', 400); }
+}
+```
+
+### 3c — Add fetchAndRegisterSkillMd helper (above the POST handler)
+
+```ts
+async function fetchAndRegisterSkillMd(
+  skillUrl: string,
+  agentId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(skillUrl, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { ok: false, error: `Remote skill.md returned ${res.status}` };
+    const text = await res.text();
+    // Minimal validation: must declare a name field (YAML frontmatter or JSON)
+    if (!text.includes('name:') && !text.includes('"name"')) {
+      return { ok: false, error: 'skill.md missing required "name" field.' };
+    }
+    // Persist skillUrl in agent description for future reference
+    await withRetry(() =>
+      db.agent.update({ where: { id: agentId }, data: { description: `skill.md: ${skillUrl}` } })
+    );
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+```
+
+### 3d — Call helper in all three response paths
+
+In each of the three `return Response.json(...)` blocks (existing account, agent-only
+account, new account), add before the return:
+
+```ts
+let skillReg: { ok: boolean; error?: string } | undefined;
+if (skillUrl) skillReg = await fetchAndRegisterSkillMd(skillUrl, /* agentId variable */);
+```
+
+Include in response body:
+```ts
+...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
+```
+
+**Rule:** A skill fetch failure MUST NOT block API key issuance. Always return the key.
+
+### 3e — Expected response shape (new account, with skillUrl)
+
+```json
+{
+  "apiKey": "ah_live_sk_...",
+  "plan": "FREE",
+  "monthlyLimit": 500,
+  "skillRegistration": { "ok": true }
+}
+```
+
+**Acceptance criteria:**
+- `POST /api/v1/router/register { email, skillUrl }` → 201 + `skillRegistration.ok = true`
+- `POST /api/v1/router/register { email, skillUrl: "not-a-url" }` → 400 VALIDATION_ERROR
+- Unreachable skillUrl → 201 (key issued) + `skillRegistration.ok = false`
+
+---
+
+## Verification Checklist
+
+- [ ] `next.config.ts` has exactly 4 redirects after this change
+- [ ] `GET /router` → 308 to `/connect`
+- [ ] `POST /api/v1/register` → 308 to `/api/v1/router/register`
+- [ ] `POST /api/v1/router/register { email, skillUrl }` → 201 + skillRegistration field
+- [ ] Invalid `skillUrl` format → 400 validation error
+- [ ] Unreachable `skillUrl` does not break registration (returns key + ok:false)
+- [ ] No file listed in TASK_CODEX.md was modified
+
+---
+
+## DO NOT TOUCH (owned by Codex)
+
+- `agentpick-router-qa.py`
+- `src/app/globals.css`
+- `src/components/ConnectTabs.tsx`
+- `src/app/connect/page.tsx`
+- Any page files under `src/app/benchmarks/`, `src/app/rankings/`, `src/app/agents/`, `src/app/dashboard/`
