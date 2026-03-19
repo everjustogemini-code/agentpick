@@ -1,79 +1,108 @@
 # NEXT_VERSION.md — v-next
 **Date:** 2026-03-18
-**Prepared by:** AgentPick PM (Claude Code)
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **51/52** | P0: none | P1: 1 open
-**Live site:** https://agentpick.dev — functional, /router nav fixed in cycle 4, glass CSS tokens partially applied
+**Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
+**QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: none | P1: 1 open (QA script typo only)
+**Live site:** https://agentpick.dev — functional, cycles 1–5 shipped, 308 redirect fixed, demo-key rate limiter active
 
 ---
 
-## Must-Have #1 — Fix Remaining P1: POST /api/v1/register Returns 404 Instead of 308
+## Must-Have #1 — Fix P1: QA Script `voyage-ai` → `voyage-embed` Assertion
 
-**Bug:** `POST /api/v1/register` returns `404 {"error":{"code":"NOT_FOUND",...}}` instead of a 308 redirect to `/api/v1/router/register`.
+**Type:** Bug fix (test correctness)
+**QA ref:** B.1-embed (the only remaining issue; score would be 51/51 after this)
 
-**Root cause:** Next.js `redirects` in `next.config.ts` applies only to GET requests during routing. A POST to a non-existent path hits the 404 JSON catch-all handler before redirect middleware fires. Cycle 4 attempted a `next.config.ts` redirect — it was silently ignored for POST.
+**What:** The QA script valid list for `POST /api/v1/route/embed` still contains `"voyage-ai"`, but the backend was renamed to `"voyage-embed"` in a prior cycle. The product works correctly (200 OK, dimensions: 1024, latency 96ms). Only the test assertion is wrong.
 
-**Fix:** Create a real route handler at `app/api/v1/register/route.ts` that returns `Response.redirect(new URL('/api/v1/router/register', req.url), 308)` for all HTTP methods. Remove the now-redundant dead entry from `next.config.ts`. Add a regression test that asserts `POST /api/v1/register` → 308 with correct `Location` header.
+**Exact change required** (locate the embed QA script):
+```python
+# Before
+valid = ["cohere-embed", "voyage-ai", "jina-embeddings"]
 
-**Acceptance:**
-- `curl -X POST https://agentpick.dev/api/v1/register` → HTTP 308, `Location: /api/v1/router/register`
-- QA script reports 52/52 (previously 51/52)
+# After
+valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]
+```
+
+**Acceptance:** Automated QA suite reports **51/51**. No backend changes needed.
 
 ---
 
 ## Must-Have #2 — Complete Dark-Glass Design System (Site-Wide Consistency)
 
-Cycle 2 introduced dark-glass CSS tokens and applied them to the homepage hero. Benchmarks, rankings, agents, connect, and dashboard still use a mixed aesthetic. Complete the rollout:
-
-1. **Dark by default** — `body` uses `var(--bg-base)` (#0a0a0f). No white flash on any page. `--bg-card` → `rgba(255,255,255,0.05)`, `--text-primary` → `#E2E8F0`.
-2. **Glass cards everywhere** — Apply `glass-card gradient-border-card` (existing tokens) to all feature cards, benchmark domain tiles, rankings rows, agent directory cards, and dashboard stat tiles.
-3. **Hero upgrade** — Homepage hero: `backdrop-filter: blur(16px)` frosted panel around headline+CTA. Headline `clamp(2.8rem, 5vw, 4.5rem)` weight-800 with white-to-indigo gradient clip. Primary CTA: gradient fill + glow box-shadow + `scale(1.03)` on hover.
-4. **ScrollReveal on all pages** — Wire `.scroll-reveal` → `.visible` transition to stat bars, feature cards, and "How it works" steps on every page (currently homepage-only from cycle 2).
-5. **Count-up stats** — Homepage agent count and calls-routed counters animate 0 → final value on `IntersectionObserver` entry, one-shot per session.
-6. **Micro-interactions** — Card hover lift (`translateY(-4px)` + box-shadow), CTA shimmer sweep on hover, strategy pill pulse. All gated on `prefers-reduced-motion: no-preference`.
-7. **Monospace data** — Latency values, scores, call counts use `font-variant-numeric: tabular-nums` + JetBrains Mono across `/`, `/connect`, `/products/[slug]`, `/dashboard`.
-
-**Acceptance:** Visually consistent dark-glass across all pages. Lighthouse Performance ≥ 90, LCP < 2.5s, CLS < 0.1. All 52 QA checks remain green.
-
----
-
-## Must-Have #3 — In-Page SDK Playground on /connect (Developer Adoption)
-
-An interactive, zero-account code playground embedded on `/connect` that lets a developer run a real search against the AgentPick router without leaving the page.
+**Type:** UI upgrade
+**Why now:** Cycles 1–2 introduced dark-glass CSS tokens and applied them to the homepage hero only. Benchmarks, rankings, agents, `/connect`, and `/dashboard` still show a mixed aesthetic. The live site design is functional but lacks the depth and polish expected by developer-tool buyers (Vercel, Linear, Resend standard).
 
 **Deliverables:**
 
-1. **Tabbed snippet UI** — Python / Node.js / cURL tabs. Server-side syntax highlighting (Shiki, zero runtime bundle cost). Defaults to cURL.
-2. **"Try it" run button** — Makes a real `POST /api/v1/router/search` using a shared public demo key (env: `DEMO_API_KEY`, rate-limited to 3 req/IP/hour via in-memory sliding window). No account required.
-3. **Live response panel** — Shows streamed JSON output: `tool_used`, `latency_ms`, `results[0..2]`. Characters revealed at 8ms/char for perceived streaming. Collapses back when a new run starts.
-4. **Copy-for-project button** — Replaces demo key with `YOUR_API_KEY` placeholder and copies to clipboard. Tracks copy events in analytics.
+1. **Glass cards everywhere** — Apply `backdrop-filter: blur(16px)` + `rgba(255,255,255,0.04)` background + 1px border at 12% white opacity to: benchmark domain tiles, rankings rows, agent directory cards, dashboard stat tiles, and `/connect` strategy blocks. Reuse existing `--glass-bg` / `--glass-border` tokens.
 
-**Why this wins:** Reduces time-to-first-result from "sign up → verify email → get key → read docs → write code" to under 60 seconds, no account required. This is the top drop-off point for developer adoption.
+2. **Hero depth upgrade** — Add a radial glow orb behind the homepage headline: `#2fe92b` at 8% opacity, 800px radius. Gradient text on the primary value-prop phrase (`#2fe92b → #00d4ff`). Hero `h1` → `clamp(2.8rem, 5vw, 4.5rem)`, `font-weight: 800`, `letter-spacing: -1.5px`.
+
+3. **ScrollReveal on all pages** — Wire the existing `.scroll-reveal → .visible` `IntersectionObserver` transition (currently homepage-only) to stat bars, feature cards, and "How it works" steps on `/connect`, `/benchmarks`, `/rankings`, and `/dashboard`. Stagger siblings at 60ms.
+
+4. **Count-up stats** — Homepage "agent count" and "calls routed" figures animate from 0 → final value on first viewport entry (one-shot per session, `sessionStorage` flag).
+
+5. **Micro-interactions** — Card hover: `translateY(-4px)` + elevated box-shadow. Primary CTA: shimmer sweep on hover (CSS `@keyframes`, 600ms). Strategy pills: subtle pulse. All gated on `prefers-reduced-motion: no-preference`.
+
+6. **Monospace data** — Latency values, scores, and call counts use `font-variant-numeric: tabular-nums` + JetBrains Mono across all pages.
+
+**Acceptance:** Visually consistent dark-glass on all pages. No white flash on any route. Lighthouse Performance ≥ 90, LCP < 2.5s, CLS < 0.1. QA 51/51 stays green.
+
+---
+
+## Must-Have #3 — MCP Server Endpoint (Developer Adoption)
+
+**Type:** New feature
+**Why:** MCP (Model Context Protocol) is the dominant zero-code integration standard for Claude, Cursor, Windsurf, and Zed users. A single config line lets any agent developer plug AgentPick into their stack without installing an SDK or writing routing logic. This directly targets the core ICP (agent builders) and creates a sticky, low-churn integration path that the `/connect` page SDK playground alone cannot cover.
+
+**Spec:**
+
+- **Endpoint:** `GET /mcp` — returns a valid MCP 1.0 server manifest (JSON). No auth required to fetch the manifest.
+- **Tool exposed:** `agentpick_search`
+  - Input: `{ query: string, strategy?: "balanced"|"best_performance"|"cheapest", domain?: string, type?: string }`
+  - Action: calls `POST /api/v1/route/search` internally using the caller's `Authorization: Bearer` key
+  - Output: structured results (`tool_used`, `latency_ms`, `results[]`, `ai_classification`)
+- **Auth:** Standard `Authorization: Bearer ah_live_sk_...` passthrough — no new auth surface, reuses existing API key system
+- **Rate limits:** Enforces the caller's plan limits (FREE = 500/month) identically to direct API calls
+- **Usage tracking:** MCP-sourced calls appear in `/usage` and dashboard with `source: "mcp"` tag
+
+**`/connect` page addition** — new "MCP" tab in the integration section:
+```json
+{
+  "mcpServers": {
+    "agentpick": {
+      "url": "https://agentpick.dev/mcp",
+      "headers": { "Authorization": "Bearer YOUR_API_KEY" }
+    }
+  }
+}
+```
 
 **Acceptance:**
-- `/connect` page has tabbed playground with Python/Node/cURL snippets.
-- "Try it" button fires real search, response panel shows within 2s.
-- Copy button replaces demo key and triggers `navigator.clipboard.writeText`.
-- Demo key rate-limited; >3 req/IP/hour returns `429` with `Retry-After`.
-- All 52 QA checks green post-deploy.
+- `GET /mcp` returns manifest that validates against MCP 1.0 schema
+- `agentpick_search` is callable from Claude Desktop with a valid API key
+- Resulting call appears in `/usage` dashboard
+- MCP config block added to `/connect` page docs
+- QA 51/51 stays green
 
 ---
 
 ## Definition of Done
 
-- [ ] `POST /api/v1/register` → 308 redirect (not 404)
-- [ ] QA passes 52/52
-- [ ] Dark-glass tokens applied to benchmarks, rankings, agents, connect, dashboard
+- [ ] QA script updated: `voyage-ai` → `voyage-embed`; suite reports **51/51**
+- [ ] Glass cards applied to benchmarks, rankings, agents, connect, dashboard
 - [ ] No white flash; all pages use `var(--bg-base)` body background
 - [ ] ScrollReveal active on all pages (not homepage-only)
-- [ ] Count-up stat animations on homepage
-- [ ] Glass cards + hover lift on all card components site-wide
-- [ ] CTA shimmer + strategy pulse micro-interactions, off under `prefers-reduced-motion`
-- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`
-- [ ] `/connect` playground: tabbed snippets + run button + response panel + copy button
-- [ ] Demo key rate-limited to 3 req/IP/hour; `429` on overflow
+- [ ] Count-up stat animations on homepage hero
+- [ ] Card hover lift + CTA shimmer + strategy pulse micro-interactions (respects `prefers-reduced-motion`)
+- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`; LCP < 2.5s; CLS < 0.1
+- [ ] `GET /mcp` returns valid MCP 1.0 manifest
+- [ ] `agentpick_search` callable from Claude Desktop
+- [ ] MCP calls tracked in `/usage` with `source: "mcp"`
+- [ ] MCP config block added to `/connect` page
 
 ## Out of Scope (This Cycle)
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — blocked on `BENCHMARK_SECRET` env config
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked by Pclaw in `/workspace/agentpick-benchmark/`
 - New routing strategies or tool integrations
 - Stripe/billing changes
 - Team/org accounts
+- OpenAI-compatible `/v1/tools` shim (evaluate after MCP adoption data)

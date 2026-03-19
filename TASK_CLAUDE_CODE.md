@@ -1,8 +1,8 @@
-# TASK_CLAUDE_CODE.md — Cycle 5 (Backend / API)
+# TASK_CLAUDE_CODE.md — Cycle 6 (Backend / API)
 
 **Agent:** Claude Code
 **Source:** NEXT_VERSION.md (2026-03-18)
-**QA baseline:** 51/52 — 1 open P1
+**QA baseline:** 50/51 — 1 open P1 (QA script typo, assigned to Codex)
 **Do NOT touch any file listed in TASK_CODEX.md**
 
 ---
@@ -11,149 +11,242 @@
 
 | Action | File |
 |--------|------|
-| CREATE | `src/app/api/v1/register/route.ts` |
-| MODIFY | `next.config.ts` |
-| CREATE | `src/lib/rate-limit.ts` |
-| MODIFY | `src/app/api/v1/playground/run/route.ts` |
+| MODIFY | `src/app/mcp/route.ts` |
+| MODIFY | `src/lib/router/handler.ts` |
+| MODIFY | `src/lib/router/sdk.ts` |
+| MODIFY (if needed) | `prisma/schema.prisma` + new migration |
 
 ---
 
-## Task 1 — Fix P1: POST /api/v1/register → 308 (Must-Have #1)
+## Task 1 — Add `agentpick_search` to MCP Server + `source: "mcp"` Tracking (Must-Have #3, backend)
 
-**Root cause:** `next.config.ts` `redirects()` only intercepts GET during Next.js routing.
-A POST to a non-existent path hits the 404 JSON catch-all before the redirect fires.
-The cycle-4 `next.config.ts` entry is silently ignored for POST.
+### Context
+`GET /mcp` already returns a valid MCP 1.0 JSON-RPC manifest with 8 tools
+(`src/app/mcp/route.ts`). The spec requires a 9th tool — `agentpick_search` — that
+internally calls `POST /api/v1/route/search` with the caller's `Authorization` header
+passed through. MCP-sourced calls must be stored with `source: "mcp"` so they appear
+tagged in `/usage` and the dashboard.
 
-### 1a — Create real route handler
+---
 
-**File to CREATE:** `src/app/api/v1/register/route.ts`
+### 1a — Add `agentpick_search` tool definition to `SERVER_INFO`
+
+**File:** `src/app/mcp/route.ts`
+
+In `SERVER_INFO.tools` (currently ends at line ~192), append one new tool object
+**before** the closing `]`:
 
 ```ts
-import { NextRequest } from 'next/server'
+{
+  name: 'agentpick_search',
+  description:
+    'Route a search query to the best AI search tool for your use case, selected by AgentPick rankings. Requires Authorization: Bearer ah_live_sk_... header.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'The search query to route',
+      },
+      strategy: {
+        type: 'string',
+        enum: ['balanced', 'best_performance', 'cheapest'],
+        default: 'balanced',
+        description: 'Routing strategy',
+      },
+      domain: {
+        type: 'string',
+        description: 'Optional domain hint (e.g. "finance", "legal", "ecommerce")',
+      },
+      type: {
+        type: 'string',
+        description: 'Optional result type filter',
+      },
+    },
+    required: ['query'],
+  },
+},
+```
 
-function redirect308(req: NextRequest) {
-  return Response.redirect(new URL('/api/v1/router/register', req.url), 308)
+---
+
+### 1b — Implement `agentpickSearch` handler
+
+**File:** `src/app/mcp/route.ts`
+
+Add the following async function after `arenaCompare` (~line 460):
+
+```ts
+async function agentpickSearch(
+  args: { query: string; strategy?: string; domain?: string; type?: string },
+  authHeader: string | null,
+) {
+  if (!authHeader || !authHeader.startsWith('Bearer ah_')) {
+    return { error: 'Authorization: Bearer ah_live_sk_... header required for agentpick_search.' };
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+  let httpRes: Response;
+  try {
+    httpRes = await fetch(`${appUrl}/api/v1/route/search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+        'x-mcp-source': 'true',
+      },
+      body: JSON.stringify({
+        params: {
+          query: args.query,
+          ...(args.strategy ? { strategy: args.strategy } : {}),
+        },
+        ...(args.domain ? { domain: args.domain } : {}),
+        ...(args.type   ? { type: args.type }     : {}),
+      }),
+    });
+  } catch (err) {
+    return { error: `Internal fetch failed: ${String(err)}` };
+  }
+
+  const body = await httpRes.json();
+  if (!httpRes.ok) {
+    return { error: body?.error ?? `Search failed (HTTP ${httpRes.status})`, status: httpRes.status };
+  }
+  return body;
 }
-
-export const GET    = redirect308
-export const POST   = redirect308
-export const PUT    = redirect308
-export const PATCH  = redirect308
-export const DELETE = redirect308
 ```
 
-This file must not import anything beyond `next/server`.
+---
 
-### 1b — Remove dead redirect from next.config.ts
+### 1c — Update `handleMCPRequest` to accept and forward the auth header
 
-**File to MODIFY:** `next.config.ts`
+**File:** `src/app/mcp/route.ts`
 
-Remove the following object from the `redirects()` array (it is now redundant and misleading):
+1. Change the function signature at line ~669 from:
+   ```ts
+   async function handleMCPRequest(req: MCPRequest) {
+   ```
+   to:
+   ```ts
+   async function handleMCPRequest(req: MCPRequest, authHeader: string | null) {
+   ```
+
+2. Inside the `tools/call` switch (after the `arena_compare` case, ~line 701), add:
+   ```ts
+   case 'agentpick_search':
+     result = await agentpickSearch(
+       args as Parameters<typeof agentpickSearch>[0],
+       authHeader,
+     );
+     break;
+   ```
+
+3. In the `POST` handler (~line 747), update the call site to pass the header:
+   ```ts
+   // Before:
+   const response = await handleMCPRequest(body);
+   // After:
+   const response = await handleMCPRequest(body, request.headers.get('authorization'));
+   ```
+
+---
+
+### 1d — Read `x-mcp-source` header in the route handler and pass `source` downstream
+
+**File:** `src/lib/router/handler.ts`
+
+In `handleRouteRequest` (starts at ~line 67), after headers are read but before calling
+`recordRouterCall`, add:
 
 ```ts
-// REMOVE THIS ENTRY:
-{ source: '/api/v1/register', destination: '/api/v1/router/register', permanent: true }
+const isMcpSource = request.headers.get('x-mcp-source') === 'true';
 ```
 
-Keep all other existing redirect entries untouched (`/router → /connect`, `/api/v1/account/usage`, `/api/v1/developer/usage`).
+Then pass `isMcpSource` to `recordRouterCall`. Find both call sites (~lines 312, 374) and
+add `isMcpSource` as the final argument. The function signature change is in step 1e.
 
-### Acceptance
+---
+
+### 1e — Accept `source` in `recordRouterCall` and write it to the DB
+
+**File:** `src/lib/router/sdk.ts`
+
+1. Add an optional `isMcpSource = false` parameter at the end of `recordRouterCall`
+   signature (line ~302):
+   ```ts
+   export async function recordRouterCall(
+     developerId: string,
+     capability: string,
+     query: string,
+     request: RouterRequest,
+     response: InternalRouterResponse,
+     strategyUsed: RouterStrategyValue,
+     byokUsed: boolean,
+     fallbackChain: string[],
+     isOverageCall = false,
+     isMcpSource = false,       // ← add this
+   ) {
+   ```
+
+2. In `fullData` (~line 323), add:
+   ```ts
+   source: isMcpSource ? 'mcp' : 'router',
+   ```
+
+---
+
+### 1f — Ensure `RouterCall` schema has a `source` field
+
+**File:** `prisma/schema.prisma`
+
+Check the `RouterCall` model. If `source` is not present, add:
+```prisma
+source   String  @default("router")
+```
+
+Then run:
 ```bash
-curl -i -X POST https://agentpick.dev/api/v1/register
-# Expected: HTTP 308   Location: /api/v1/router/register
+npx prisma migrate dev --name add-router-call-source
+npx prisma generate
 ```
-QA score rises from 51/52 → 52/52.
+
+If the field already exists, skip the migration.
 
 ---
-
-## Task 2 — Demo-Key Rate Limiter (Must-Have #3, backend half)
-
-The `/connect` page playground UI (built by Codex) calls `POST /api/v1/playground/run`
-with `process.env.DEMO_API_KEY`. That route must enforce **3 req / IP / hour** via an
-in-memory sliding-window counter and return `429` with `Retry-After` on overflow.
-
-### 2a — Create rate-limit helper
-
-**File to CREATE:** `src/lib/rate-limit.ts`
-
-```ts
-// In-memory sliding-window rate limiter (resets on server restart — acceptable for demo keys)
-const store = new Map<string, number[]>()
-
-export function checkRateLimit(
-  ip: string,
-  limit: number,
-  windowMs: number,
-): { allowed: boolean; retryAfterSecs: number } {
-  const now = Date.now()
-  const cutoff = now - windowMs
-  const hits = (store.get(ip) ?? []).filter(t => t > cutoff)
-  if (hits.length >= limit) {
-    const retryAfterSecs = Math.ceil((hits[0] + windowMs - now) / 1000)
-    return { allowed: false, retryAfterSecs }
-  }
-  hits.push(now)
-  store.set(ip, hits)
-  return { allowed: true, retryAfterSecs: 0 }
-}
-```
-
-### 2b — Apply rate limit in playground route
-
-**File to MODIFY:** `src/app/api/v1/playground/run/route.ts`
-
-Add the following block near the top of the `POST` handler, **after** parsing the request
-body but **before** any key lookup or tool dispatch:
-
-```ts
-import { checkRateLimit } from '@/lib/rate-limit'
-
-// Inside POST handler, after body parse:
-const isDemoKey = (body.apiKey ?? '') === (process.env.DEMO_API_KEY ?? '__unset__')
-if (isDemoKey) {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? '127.0.0.1'
-  const { allowed, retryAfterSecs } = checkRateLimit(ip, 3, 3_600_000)
-  if (!allowed) {
-    return Response.json(
-      { error: { code: 'RATE_LIMITED', message: 'Demo key: max 3 requests per hour per IP.' } },
-      { status: 429, headers: { 'Retry-After': String(retryAfterSecs) } },
-    )
-  }
-}
-```
-
-**Rules:**
-- Only demo-key requests are rate-limited; real user API keys are unaffected.
-- A missing or empty `DEMO_API_KEY` env var must not crash the handler (`'__unset__'` sentinel).
 
 ### Acceptance
-- First 3 `POST /api/v1/playground/run` calls with demo key from same IP → success
-- 4th call within the same hour → `HTTP 429`, `Retry-After` header present
-- Calls with a real user API key → unaffected, no rate-limit applied
+
+- `GET /mcp` JSON includes `agentpick_search` in the `tools` array
+- `POST /mcp` `tools/call` with `{ name: "agentpick_search", arguments: { query: "…" } }` and
+  valid `Authorization: Bearer ah_live_sk_...` header returns `{ tool_used, latency_ms, results[] }`
+- RouterCall row from an MCP call has `source = "mcp"`; direct API call has `source = "router"` (no regression)
+- QA 51/51 stays green (the P1 voyage-embed fix is in Codex's task)
 
 ---
 
-## Verification Checklist
+## Verification Checklist (Claude Code)
 
-- [ ] `src/app/api/v1/register/route.ts` created, exports handlers for all 5 HTTP methods
-- [ ] `next.config.ts` no longer contains the `/api/v1/register → /api/v1/router/register` redirect
-- [ ] `curl -X POST /api/v1/register` → 308 with correct `Location` header
-- [ ] `src/lib/rate-limit.ts` created with sliding-window logic
-- [ ] `src/app/api/v1/playground/run/route.ts` imports `checkRateLimit` and guards demo-key calls
-- [ ] 4th demo-key request within an hour → 429 + `Retry-After`
-- [ ] Real API key calls are not rate-limited
+- [ ] `agentpick_search` tool definition appended to `SERVER_INFO.tools` in `src/app/mcp/route.ts`
+- [ ] `agentpickSearch()` handler implemented with auth guard and `x-mcp-source` passthrough
+- [ ] `handleMCPRequest` accepts `authHeader` and passes it to `agentpickSearch`
+- [ ] `POST /mcp` call site passes `request.headers.get('authorization')`
+- [ ] `handleRouteRequest` reads `x-mcp-source` header and passes `isMcpSource` to `recordRouterCall`
+- [ ] `recordRouterCall` writes `source: isMcpSource ? 'mcp' : 'router'` to DB
+- [ ] Schema migration created if `RouterCall.source` did not exist
 - [ ] Zero overlap with files in TASK_CODEX.md
 
 ---
 
 ## DO NOT TOUCH (owned by Codex)
 
+- `agentpick-router-qa.py`
 - `src/app/globals.css`
 - `src/app/page.tsx`
 - `src/app/connect/page.tsx`
 - `src/app/benchmarks/page.tsx`
 - `src/app/rankings/page.tsx`
 - `src/app/agents/page.tsx`
+- `src/app/dashboard/page.tsx`
 - `src/components/dashboard/RouterAnalyticsDashboard.tsx`
 - `src/components/dashboard/UsagePanel.tsx`

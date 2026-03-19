@@ -300,6 +300,7 @@ export async function recordRouterCall(
   byokUsed: boolean,
   fallbackChain: string[],
   isOverageCall = false,
+  isMcpSource = false,
 ) {
   const meta = response.meta as InternalRouterResponse['meta'] & {
     cost_usd?: number;
@@ -341,6 +342,7 @@ export async function recordRouterCall(
     byokUsed,
     traceId: meta.trace_id,
     totalMs: meta.total_ms != null ? Math.round(meta.total_ms) : undefined,
+    source: isMcpSource ? 'mcp' : 'router',
   };
 
   let call: { id: string; traceId: string | null };

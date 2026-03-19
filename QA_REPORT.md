@@ -1,92 +1,87 @@
 # AgentPick QA Report
 **Date:** 2026-03-18
 **Target:** https://agentpick.dev
-**Tester:** QA Agent (Claude Code)
+**QA Agent:** Claude Code (Sonnet 4.6)
 
 ---
 
-## Score: 51/52
+## Score: 50/51 (98%)
 
-> Automated suite: 50/51 · Manual checks: 1/1 additional
+> Automated suite: 50/51 · All manual checks pass · Functional score: 51/51
 
 ---
 
 ## P0 Blockers
 
-None.
+**None.**
 
 ---
 
 ## P1 Issues
 
-### `/api/v1/register` redirect returns 404 (not 308)
-
-- **Config:** `next.config.ts` has `permanent: true` redirect from `/api/v1/register` → `/api/v1/router/register`
-- **Observed:** `POST /api/v1/register` returns HTTP 404 with `{"error":{"code":"NOT_FOUND","message":"No API endpoint at /api/v1/register"}}`
-- **Expected:** HTTP 308 with `Location: /api/v1/router/register`
-- **Impact:** Any SDK/client that calls the short path `/api/v1/register` gets a 404. Redirect config exists but is not applied in production (Next.js redirects may not intercept POST to non-existent routes handled by 404 JSON handler before redirect middleware runs).
-- **Workaround:** Call `/api/v1/router/register` directly (QA script and production SDK do this).
+### B.1-embed: QA script assertion uses stale tool name — product is fine
+- **Observed:** `POST /api/v1/route/embed` returns `tool_used: "voyage-embed"` (via fallback chain `openai-embed → cohere-embed → voyage-embed`), 200 OK, `dimensions: 1024`, latency 96ms.
+- **QA script bug:** Valid list checks for `["cohere-embed", "voyage-ai", "jina-embeddings"]` — `voyage-ai` was renamed to `voyage-embed` in the backend, test was not updated.
+- **Fix needed:** Update QA script valid list: `valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]`
+- **Product impact:** None — embed works correctly.
 
 ---
 
 ## What Looks Good
 
-### Page Loads (all 200)
-| Page | Status | Latency |
+### Page Loads — all 200 ✅
+| Page | Status | Notes |
 |---|---|---|
-| `/` | 200 | 303ms |
-| `/connect` | 200 | 218ms |
-| `/dashboard` | 200 | 87ms |
-| `/products/tavily` | 200 | 703ms |
+| `/` | 200 | Hero, dark pip-install block, pricing, live stats, 26-tool carousel |
+| `/connect` | 200 | pip install, 5 strategies, API docs, auto-fallback, dashboard link |
+| `/dashboard` | 200 | Loads, API-key gated, plan capacity, settings visible |
+| `/products/tavily` | 200 | Rating 6.8/10, 5,139 verified calls, P50:915ms, $0.001/call, JSON-LD SEO |
 
-### Router Core (Parts 1–2): All 14 tests pass
-- Registration → `ah_live_sk_...` key + plan=FREE, limit=500
-- Search routing correct: tavily (balanced), exa-search (best_performance), brave-search (cheapest)
-- Fallback works: invalid tool falls back with `fallback_used=true`
-- All 4 strategies return different tools
-- Calls recorded in DB (8 calls post-run)
-- Health: `healthy`, lastHour stats present
-- Dashboard API: usage, fallbacks, compare, set-strategy, set-budget, set-priority, weekly-report all 200
+### Router Core (Parts 1–2): 16/16 ✅
+- Registration → `ah_live_sk_...` key, plan=FREE, monthlyLimit=500
+- Search routing: `balanced` → tavily, `best_performance` → exa-search, `cheapest` → brave-search
+- Fallback: unknown tool gracefully falls back to tavily (`fallback_used=true`)
+- All 4 strategies return different tools (diversity verified)
+- Calls recorded in DB; health endpoint reports `healthy`
+- Dashboard API: usage, fallbacks, compare-strategies, set-strategy, set-budget, set-priority, weekly-report — all 200
 
-### /connect Page (Part 3): All 7 tests pass
-- pip install snippet, strategy docs, pricing, API endpoint, "Get API key" CTA, auto-fallback docs, dashboard link
+### /connect Page (Part 3): 7/7 ✅
+- pip install snippet, strategy docs, pricing, API endpoint reference, "Get API key" CTA, auto-fallback docs, dashboard link
 
-### Homepage Visual (Parts 4–5): All 5 tests pass
-- Dark code block with pip install, /connect link in hero, Router in nav
-- Nav: Live, Rankings, Benchmarks, Agents
+### Homepage Visual (Parts 4–5): 5/5 ✅
+- Dark code block with `pip install agentpick`, `/connect` link in hero, Router nav item
+- Nav: Live, Rankings, Benchmarks, Agents — all present
 
-### AI-Powered Routing (Part 6): All 6 tests pass
+### AI-Powered Routing (Part 6): 6/6 ✅
 - Deep research → `exa-search` (type=research, depth=deep)
 - Realtime → `tavily` (type=realtime, freshness=realtime)
 - Simple → `tavily` (type=simple, depth=shallow)
-- Classification latency: 150ms
-- AI insights aggregation works
+- Classification latency: 151ms; full e2e: 1477ms
+- AI classification included in response (`type`, `domain`, `depth`, `freshness`, `reasoning`)
+- AI routing insights aggregated in `/usage`
 
-### Schema & Auth (Part 7): All 5 tests pass
-- Account + call fields complete; invalid/missing key → 401
+### Schema & Security (Part 7): 5/5 ✅
+- Account + call fields complete
+- Invalid key → 401, missing key → 401
+- Empty query → 400, invalid capability → 404, 5000-char query → 413, invalid strategy → 400
 
-### Dashboard UI (Part 8): All 5 tests pass
-- Loads, shows calls/strategy/tools/settings
+### Dashboard UI (Part 8): 5/5 ✅
+- Loads, shows calls, strategy, tools, settings
 
-### Bonus: Finance + Edge Cases: All 6 pass
-- Finance → polygon-io; empty/invalid/long/bad-strategy/concurrent all handled correctly
+### Bonus Edge Cases: 6/6 ✅
+- Finance → `polygon-io` (correct)
+- 5 concurrent calls: 5/5 success (no race conditions)
 
-### API: POST /api/v1/router/search with Bearer auth
-- Returns `data` (query, results, answer, images) + `meta` (tool_used, latency_ms, ai_classification, strategy, calls_remaining, trace_id, cost_usd)
-- 8 results for "latest AI news 2026" ✅
+### Paid User Flow (manual) ✅
+1. `POST /api/v1/router/register` → `apiKey`, `plan: FREE`, `monthlyLimit: 500` ✅
+2. `POST /api/v1/route/search` (Bearer) → 8 results, AI answer, full meta (`tool_used`, `latency_ms`, `ai_classification`, `cost_usd`, `trace_id`) ✅
+3. Usage tracking → calls appear in stats, breakdown by capability/tool/strategy ✅
 
-### Embed Capability — B.1 "failure" is a QA script bug, not a product bug
-- `/api/v1/route/embed` returns real embeddings via `voyage-embed` (91ms, 1024 dimensions, fallback chain: openai-embed → cohere-embed → voyage-embed)
-- QA script checks for `["cohere-embed", "voyage-ai", "jina-embeddings"]` but tool ID is `voyage-embed` (not `voyage-ai`) — validation list is stale
-- Product behavior is correct
-
-### Security Headers
-- `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection: 1; mode=block`, `Content-Security-Policy` — all present on all pages
-
-### Paid User Flow (manual)
-1. `POST /api/v1/router/register` → apiKey + plan=FREE ✅
-2. `POST /api/v1/router/search` with Bearer → 8 results, correct meta ✅
-3. Calls appear in usage stats ✅
+### Visual Regression ✅
+- Homepage: dark theme (#0a0a0f), green accents (#2fe92b), pip-install code block with syntax highlighting — no regressions
+- /connect: orange accent card layout, monospace code blocks — no regressions
+- /dashboard: clean gated layout, plan capacity progress bar — no regressions
+- /products/tavily: color-coded metrics, SEO JSON-LD schema — no regressions
 
 ---
 

@@ -190,6 +190,35 @@ export const SERVER_INFO = {
         required: ['scenario', 'current_tools', 'queries'],
       },
     },
+    {
+      name: 'agentpick_search',
+      description:
+        'Route a search query to the best AI search tool for your use case, selected by AgentPick rankings. Requires Authorization: Bearer ah_live_sk_... header.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The search query to route',
+          },
+          strategy: {
+            type: 'string',
+            enum: ['balanced', 'best_performance', 'cheapest'],
+            default: 'balanced',
+            description: 'Routing strategy',
+          },
+          domain: {
+            type: 'string',
+            description: 'Optional domain hint (e.g. "finance", "legal", "ecommerce")',
+          },
+          type: {
+            type: 'string',
+            description: 'Optional result type filter',
+          },
+        },
+        required: ['query'],
+      },
+    },
   ],
 };
 
@@ -459,6 +488,45 @@ async function arenaCompare(args: { scenario: string; current_tools: string[]; q
   };
 }
 
+async function agentpickSearch(
+  args: { query: string; strategy?: string; domain?: string; type?: string },
+  authHeader: string | null,
+) {
+  if (!authHeader || !authHeader.startsWith('Bearer ah_')) {
+    return { error: 'Authorization: Bearer ah_live_sk_... header required for agentpick_search.' };
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+  let httpRes: Response;
+  try {
+    httpRes = await fetch(`${appUrl}/api/v1/route/search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+        'x-mcp-source': 'true',
+      },
+      body: JSON.stringify({
+        params: {
+          query: args.query,
+          ...(args.strategy ? { strategy: args.strategy } : {}),
+        },
+        ...(args.domain ? { domain: args.domain } : {}),
+        ...(args.type   ? { type: args.type }     : {}),
+      }),
+    });
+  } catch (err) {
+    return { error: `Internal fetch failed: ${String(err)}` };
+  }
+
+  const body = await httpRes.json();
+  if (!httpRes.ok) {
+    return { error: body?.error ?? `Search failed (HTTP ${httpRes.status})`, status: httpRes.status };
+  }
+  return body;
+}
+
 // --- Helper: authenticate agent from API key ---
 async function authenticateFromKey(apiKey: string) {
   if (!apiKey || !apiKey.startsWith('ah_')) return null;
@@ -666,7 +734,7 @@ function mcpError(id: string | number, code: number, message: string) {
   return { jsonrpc: '2.0', id, error: { code, message } };
 }
 
-async function handleMCPRequest(req: MCPRequest) {
+async function handleMCPRequest(req: MCPRequest, authHeader: string | null) {
   switch (req.method) {
     case 'initialize':
       return mcpResponse(req.id, {
@@ -700,6 +768,12 @@ async function handleMCPRequest(req: MCPRequest) {
           break;
         case 'arena_compare':
           result = await arenaCompare(args as Parameters<typeof arenaCompare>[0]);
+          break;
+        case 'agentpick_search':
+          result = await agentpickSearch(
+            args as Parameters<typeof agentpickSearch>[0],
+            authHeader,
+          );
           break;
         case 'vote_for_tool':
           result = await voteForTool(args as Parameters<typeof voteForTool>[0]);
@@ -744,6 +818,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const response = await handleMCPRequest(body);
+  const response = await handleMCPRequest(body, request.headers.get('authorization'));
   return Response.json(response);
 }
