@@ -1,134 +1,129 @@
-# TASK_CLAUDE_CODE.md — Cycle 12 (Backend / API)
+# TASK_CLAUDE_CODE.md — cycle 13 (post-cycle-12)
 
 **Agent:** Claude Code (Sonnet 4.6)
-**Cycle:** 12
 **Date:** 2026-03-18
-**QA baseline:** 62/63 — P1-1 embed chain fix below brings `fallback_used` to false
-**Do NOT touch:** Any file listed in TASK_CODEX.md
+**QA baseline:** 50/51 — P0: 1 open | P1: 3 open (P1-2 assigned to Codex)
+**Scope:** Bug fixes ONLY — no new features, no UI changes, no refactors
+**Do NOT touch:** `agentpick-router-qa.py` (owned by Codex)
 
 ---
 
-## Must-Have #1 — Fix P1-1: Remove dead providers from embed chain (FOURTH attempt — exhaustive grep required)
+## P0-1 — Embed endpoint drops vector data
 
-**Bug:** `POST /api/v1/route/embed` STILL returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true` in post-cycle-11 QA (22:55 UTC). Cycle 9 promoted voyage-embed to primary; cycle 10 attempted to remove dead providers; cycle 11 explicitly targeted "ALL locations." THREE CYCLES HAVE FAILED.
+**File:** `src/lib/benchmark/adapters/voyage-embed.ts`
+**Line:** ~43
 
-**Root cause (per NEXT_VERSION.md):** Multiple config locations hold the dead providers; previous fixes only patched some of them. A grep across the ENTIRE codebase is mandatory before touching any file — fix ALL occurrences atomically in one commit.
+**Current (buggy):**
+```typescript
+response: { dimensions: embeddings[0]?.embedding?.length ?? 0, tokens, count: embeddings.length },
+```
+
+**Fix:**
+```typescript
+response: {
+  dimensions: embeddings[0]?.embedding?.length ?? 0,
+  tokens,
+  count: embeddings.length,
+  embeddings: embeddings.map((e: { embedding: number[] }) => e.embedding),
+},
+```
+
+No other files need to change. The router passes `response` through as `data` unchanged.
+
+**Acceptance:** `POST /api/v1/route/embed` response `data` contains an `embeddings` key with an array of float arrays; `data.embeddings[0].length === data.dimensions`.
+
+---
+
+## P1-1 — Remove dead embed providers from ALL routing/config paths
+
+**Priority:** P1 — four cycles of partial fixes; this time grep everything first.
+
+### Step 0: Mandatory exhaustive grep BEFORE ANY EDITS
+
+```bash
+grep -rn "openai-embed\|cohere-embed" src/ --include="*.ts" --include="*.tsx" --include="*.js"
+```
+
+Fix EVERY occurrence in routing, fallback chains, tool lists, capability registries, health probes, and docs. Do not commit until the grep returns zero hits in `src/`.
+
+### Files to fix (known locations):
+
+**1. `src/lib/router/index.ts` (~line 43)**
+- `CAPABILITY_TOOLS.embed` must be `['voyage-embed']` — no other slugs.
+- `TOOL_CHARACTERISTICS` must have no `openai-embed` or `cohere-embed` entries.
+- Check for any secondary fallback array or inline tool-list that bypasses `CAPABILITY_TOOLS`.
+
+**2. `src/lib/ops/constants.ts` (~line 41)**
+- `suggestedTools` for embed must contain only `["voyage-embed"]`.
+- Remove `"openai-embed"` and `"cohere-embed"` if present.
+
+**3. `src/lib/ops/service-probes.ts` (~lines 217–220)**
+- Probe slug map must contain no `openai-embed`, `cohere-embed`, or `voyage-ai` entries.
+- Dead-provider probes corrupt circuit-breaker state and inject dead slugs into the fallback chain.
+
+**4. `src/app/api/v1/router/skill.md/route.ts` (~line 55)**
+- Remove `openai-embed` and `cohere-embed` from the embed row in the capability table.
+
+**5. Any additional file flagged by the Step 0 grep — fix ALL occurrences.**
+
+### Verification
+```bash
+# Must return zero hits:
+grep -rn "openai-embed\|cohere-embed" src/ --include="*.ts" --include="*.tsx" --include="*.js"
+```
 
 **Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain: ["voyage-embed"]` (length exactly 1) on every normal call.
 
 ---
 
-### Step 0: Mandatory exhaustive grep BEFORE ANY EDITS
+## P1-3 — AI classifier fires on non-search/non-finance capabilities (wastes Haiku call, wrong type)
 
-This is NOT optional. Previous cycles skipped this and failed. Run ALL of the following and record every file+line:
+**File:** `src/lib/router/ai-classify.ts`
+**Function:** `getClassification(query: string, capability: string)`
 
-```bash
-grep -rn "openai-embed" . --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.yaml" --include="*.toml"
-grep -rn "cohere-embed"  . --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.yaml" --include="*.toml"
-grep -rn "voyage-ai"     . --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.yaml" --include="*.toml"
-```
-
-Fix EVERY occurrence that participates in routing, fallback chains, tool lists, capability registries, health probes, or SDK documentation. Do not stop at the files listed below — if the grep reveals additional locations, fix those too. Do not commit until ALL three grep patterns return zero hits in routing/config paths.
-
----
-
-### File 1: `src/lib/router/index.ts`
-
-**Previous cycles fixed `CAPABILITY_TOOLS.embed` and `TOOL_CHARACTERISTICS` here.** Verify:
-
-- `CAPABILITY_TOOLS.embed` (around line 43) must be `['voyage-embed']` — remove jina-embed and edenai-embed too if voyage-embed is the sole intended provider per NEXT_VERSION.md acceptance criteria.
-- `TOOL_CHARACTERISTICS` must have NO entries for `openai-embed` or `cohere-embed` (lines ~73–74).
-- Check for any **secondary fallback list** — a separate constant or inline array that lists embed providers outside of `CAPABILITY_TOOLS`. Remove dead slugs from it.
-- Check for any runtime logic that dynamically builds a tool chain from provider keys or environment variables — if `openai-embed` or `cohere-embed` keys are absent but the code still enqueues them, add an explicit exclusion.
-
----
-
-### File 2: `src/lib/ops/constants.ts`
-
-**Cycle 10 targeted `suggestedTools` at line 41.** Verify the fix landed:
-
+**Fix — add early-return guard at top of `getClassification`, before any `fastClassify` or LLM call:**
 ```typescript
-// Must NOT contain openai-embed, cohere-embed, or voyage-ai:
-suggestedTools: ["voyage-embed", "jina-embed", "edenai-embed"]
+export async function getClassification(
+  query: string,
+  capability: string
+): Promise<{ context: QueryContext; cached: boolean; classificationMs: number }> {
+  // Classification is only meaningful for search and finance routing.
+  // For other capabilities (embed, crawl, code, etc.) return a neutral default immediately.
+  if (capability !== 'search' && capability !== 'finance') {
+    return {
+      context: { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' },
+      cached: false,
+      classificationMs: 0,
+    };
+  }
+  // ... existing logic unchanged below this point ...
 ```
 
-If it still contains dead slugs, fix it now. Also search the entire file for any other array or constant listing embed providers.
+No other files need to change.
+
+**Acceptance:** `POST /api/v1/route/embed` with body `{"params":{"text":"machine learning fundamentals"}}` returns `meta.ai_classification.type` of `"simple"` (NOT `"news"`). No Haiku LLM call is made for embed requests.
 
 ---
 
-### File 3: `src/lib/ops/service-probes.ts`
+## Files owned by CLAUDE_CODE
 
-**Cycle 10 targeted probe slug map at lines 217–220.** Verify the fix landed — the map must contain only:
+| File | Bug |
+|------|-----|
+| `src/lib/benchmark/adapters/voyage-embed.ts` | P0-1 |
+| `src/lib/router/index.ts` | P1-1 |
+| `src/lib/ops/constants.ts` | P1-1 |
+| `src/lib/ops/service-probes.ts` | P1-1 |
+| `src/app/api/v1/router/skill.md/route.ts` | P1-1 |
+| `src/lib/router/ai-classify.ts` | P1-3 |
+| *(any additional file from grep)* | P1-1 |
 
-```typescript
-"voyage-embed": "voyage",
-"jina-embed": "jina",
-"edenai-embed": "edenai",
-```
-
-No `openai-embed`, `cohere-embed`, or `voyage-ai` entries. A probe for a dead provider can trigger health-check failures that influence circuit-breaker state and cause fallback ordering to inject dead tools.
-
----
-
-### File 4: `src/lib/router/handler.ts`
-
-Search for `openai-embed`, `cohere-embed`, `voyage-ai`, `suggestedTools`, and any array that constructs a tool list or fallback chain for the embed capability. Remove dead slugs. The `CAPABILITY_TOOLS[capability]` guard in `index.ts` is authoritative — nothing here should bypass it by injecting extra slugs.
+**DO NOT touch:** `agentpick-router-qa.py` — owned by Codex.
 
 ---
 
-### File 5: `src/app/api/v1/router/skill.md/route.ts`
+## Progress log
 
-Update the embed row in the capability table (line ~55):
-
+After each fix, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-| embed | `/router/embed` | voyage-embed, jina-embed, edenai-embed |
+[<ISO timestamp>] [CLAUDE-CODE] [done] <brief description>
 ```
-
-(Remove openai-embed, cohere-embed, voyage-ai from the documented list.)
-
----
-
-### Any additional files found by Step 0 grep
-
-Fix every remaining occurrence. Common locations to check if grep flags them:
-- `src/lib/router/sdk.ts`
-- `src/lib/router/sdk-handler.ts`
-- Any `*config*`, `*defaults*`, or `*registry*` files under `src/lib/`
-
----
-
-## Verification
-
-After all changes:
-```bash
-# Zero results = success:
-grep -rn "openai-embed\|cohere-embed" src/lib/router/ src/lib/ops/ --include="*.ts"
-
-# Live check (requires running server):
-curl -s -X POST http://localhost:3000/api/v1/route/embed \
-  -H "Authorization: Bearer $TEST_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"params":{"text":"test embedding"}}' \
-  | jq '{tried_chain:.meta.tried_chain, fallback_used:.meta.fallback_used}'
-# Expected: { "tried_chain": ["voyage-embed"], "fallback_used": false }
-```
-
----
-
-## Progress Log
-
-After completing the fix, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
-```
-[<ISO timestamp>] [CLAUDE-CODE] [done] P1-1: removed openai-embed + cohere-embed from ALL embed chain locations; voyage-embed is sole provider
-```
-
----
-
-## Out of Scope for This Agent
-
-- `agentpick-router-qa.py` — assigned to Codex (P1-2 slug fix)
-- All frontend page files under `src/app/` (pages) and `src/components/`
-- `src/app/globals.css`
-- Dark-glass UI, ScrollReveal, count-up animations
-- Playground page (`src/app/playground/page.tsx`, `src/components/PlaygroundShell.tsx`)
-- Benchmark runner endpoint (`POST /api/v1/benchmark/run`) — explicitly out of scope this cycle (NEXT_VERSION.md § Out of Scope)

@@ -1,112 +1,95 @@
 # AgentPick QA Report
-**Date:** 2026-03-18 (run: 22:55 UTC)
+**Date:** 2026-03-18
 **Target:** https://agentpick.dev
-**QA Agent:** Claude Code (Sonnet 4.6)
+**Tester:** QA Agent (Claude Code)
 
 ---
 
-## Score: 62/63
-
-> Automated suite: 50/51 · All page load checks pass · Manual paid-user flow: 3/3 · API Bearer auth: 5/5
->
-> Single failure is a stale slug in the QA script (B.1-embed): actual tool ID is `voyage-embed` but script's valid list contains `voyage-ai`. The embed route itself works correctly.
+## Score: 50/51 (automated) — manual findings below
 
 ---
 
 ## P0 Blockers
 
-**None.**
+### P0-1: Embed endpoint returns no embedding vector
+- **Endpoint:** `POST /api/v1/route/embed`
+- **Issue:** Response `data` contains only `{dimensions, tokens, count}` — the actual embedding vector is absent. Clients cannot use this for semantic search or downstream ML tasks.
+- **Evidence:**
+  ```json
+  { "data": { "dimensions": 1024, "tokens": 1, "count": 1 } }
+  ```
+  No `embedding`, `embeddings`, or `vector` key present.
+- **Impact:** The entire embed capability is non-functional for real use cases.
 
 ---
 
 ## P1 Issues
 
-### P1-1: Embed always falls to 3rd provider (`voyage-embed`)
-- **Observed:** `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `tool_used: "voyage-embed"` and `fallback_used: true` on every call.
-- **Root cause:** openai-embed and cohere-embed are failing silently, forcing every embed request to exhaust two fallbacks before succeeding on voyage-embed.
-- **Fix needed:** Configure BYOK keys for openai-embed / cohere-embed, or promote voyage-embed to primary position in the embed tool chain.
-- **Product impact:** Embed works (HTTP 200, real vectors returned), but latency overhead from two failed attempts; reliability risk if voyage-embed goes down.
+### P1-1: Two of three embed providers are down (forced double-fallback)
+- **Issue:** Every embed call falls through `openai-embed → cohere-embed → voyage-embed` (3rd fallback). Both `openai-embed` and `cohere-embed` are unavailable.
+- **Evidence from meta:**
+  ```json
+  "tried_chain": ["openai-embed", "cohere-embed", "voyage-embed"],
+  "fallback_used": true,
+  "fallback_from": "openai-embed"
+  ```
+- **Impact:** Higher latency on every embed call. If `voyage-embed` also goes down, the embed capability is fully offline.
 
-### P1-2: QA script embed valid-list has stale tool slug
-- **Observed:** `agentpick-router-qa.py` line B.1 expects `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but actual slug is `"voyage-embed"` — causing a false-negative failure.
-- **Fix needed:** Update QA script B.1 valid list to include `"voyage-embed"`.
+### P1-2: QA script valid-tool list has wrong tool name for voyage
+- **Issue:** QA test `B.1-embed` checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but the actual tool name is `voyage-embed` (not `voyage-ai`). Causes a false failure in the test suite.
+- **Fix:** Update QA script valid list to include `"voyage-embed"`.
+
+### P1-3: AI classifier returns wrong type for embed queries
+- **Issue:** Embedding `"machine learning fundamentals"` returns AI classification `type: "news"` with reasoning `"News query + → voyage-embed"`. Classifier context is wrong for embed capability.
+- **Impact:** Routing logic may make incorrect decisions if AI classification influences embed tool selection.
 
 ---
 
 ## What Looks Good
 
-### Page Loads — all 200 ✅
-| Page | Status | Notes |
-|---|---|---|
-| `/` | 200 | Hero, dark pip-install block, Router nav item, tool carousel, all nav items present |
-| `/connect` | 200 | pip install, strategies, API endpoint docs, auto-fallback section, dashboard link, pricing tiers |
-| `/dashboard` | 200 | Plan capacity, strategy selector, budget controls, API key management |
-| `/products/tavily` | 200 | Agent score, verified call count, P50 latency, cost/call, benchmark breakdown |
+### Automated Suite: 50/51 (98%)
+All major router functionality passes:
+- ✅ **Registration** — `POST /api/v1/router/register` returns API key + plan correctly
+- ✅ **Search routing** — Correct tool selection (tavily, exa-search, brave-search) by strategy
+- ✅ **Crawl routing** — Routes to jina-ai correctly
+- ✅ **Adapter data** — Real results returned with answer, sources, relevance scores
+- ✅ **Fallback system** — Falls back gracefully when unknown tool requested
+- ✅ **Strategy differentiation** — `best_performance → exa-search`, `cheapest → brave-search`, `balanced → tavily`
+- ✅ **Call recording** — Usage tracking works; calls appear in history
+- ✅ **Health endpoint** — Reports healthy with success rate and latency metrics
+- ✅ **Developer Dashboard API** — Usage, fallbacks, compare, set-strategy, set-budget, set-priority, weekly-report all return HTTP 200
+- ✅ **AI-powered routing** — Deep research → exa-search, realtime → tavily, simple → tavily; classification latency 151ms
+- ✅ **Auth enforcement** — Invalid key and missing key both return HTTP 401
+- ✅ **Edge cases** — Empty query → 400, invalid capability → 404, 5000-char query → 413, invalid strategy → 400, 5 concurrent calls → all 200
+- ✅ **Finance capability** — Routes to polygon-io correctly
 
-### Router Core (Parts 1–2): 16/16 ✅
-- Registration → `ah_live_sk_...` key, plan=FREE, monthlyLimit=500
-- Search routing: `balanced` → tavily, `best_performance` → exa-search, `cheapest` → brave-search, `most_stable` → distinct tool
-- Crawl routing: jina-ai (no Phidata — correct)
-- Fallback: unknown tool `nonexistent-tool-xxx` gracefully falls back to tavily (`fallback_used=true`, `fallback_from` set)
-- All 4 strategies return ≥2 unique tools (diversity verified)
-- 8 calls recorded in DB after test run; health endpoint reports `status: healthy`
-- Dashboard API: usage, fallbacks, compare-strategies, set-strategy, set-budget, set-priority, weekly-report — all 200
-
-### /connect Page (Part 3): 7/7 ✅
-- pip install snippet, strategy docs, 3-tier pricing (Free/Pro/Growth), API endpoint `/api/v1/route/search`, "Get API key" CTA, auto-fallback documentation, `/dashboard` link
-
-### Homepage Visual (Parts 4–5): 5/5 ✅
-- Dark terminal code block with `pip install agentpick` present
-- `/connect` link in hero
-- "Router" nav item linking to `/connect`
-- All expected nav items present: Live, Rankings, Benchmarks, Agents (+ Playground, Router, Dashboard)
-
-### AI-Powered Routing (Part 6): 6/6 ✅
-- Deep research query → `exa-search` (`type=research`, `depth=deep`) ✅
-- Realtime query ("AAPL stock price right now") → `tavily` (`type=realtime`, `freshness=realtime`) ✅
-- Simple query ("what is Python") → `tavily` (`type=simple`, `depth=shallow`) ✅
-- Classification latency: **151ms** (under 200ms target) ✅
-- Full `ai_classification` object returned in `meta` (type, domain, depth, freshness, reasoning) ✅
-- AI routing summary aggregated in `/usage` (`total_ai_routed_calls`, `by_type` breakdown) ✅
-
-### Schema & Security (Part 7): 5/5 ✅
-- All account fields present: `plan`, `monthlyLimit`, `callsThisMonth`, `strategy`
-- All RouterCall fields present: `capability`, `toolUsed`, `strategy`, `success`, `traceId`, `latencyMs`, `costUsd`
-- Invalid API key → 401 ✅
-- Missing API key → 401 ✅
-
-### Dashboard UI (Part 8): 5/5 ✅
-- Page loads (HTTP 200), shows call usage, strategy controls, tool references, budget/settings
-
-### Bonus / Edge Cases: 6/7
-- Finance route → `polygon-io` ✅
-- Embed route → routes correctly but QA slug mismatch (P1-2 above) ❌
-- Empty query → 400 ✅
-- Invalid capability → 404 ✅
-- 5000-char query → 413 ✅
-- Invalid strategy → 400 ✅
-- 5 concurrent calls → 5/5 succeeded (no race conditions) ✅
-
-### Paid User Flow (manual): ✅
-1. `POST /api/v1/router/register` → `apiKey`, `plan: FREE`, `monthlyLimit: 500` ✅
-2. `POST /api/v1/router/search` with Bearer auth → 9 results via tavily (real content, URLs), full `meta` (tool_used, latency_ms, ai_classification, cost_usd, trace_id, calls_remaining) ✅
-3. Usage tracking → `callsThisMonth` increments correctly; `calls_remaining` decrements as expected ✅
-
-### API Bearer Auth: 5/5 ✅
-| Test | Result |
+### Page Load Tests (all pass)
+| Page | Status |
 |------|--------|
-| Valid Bearer key → 200 with results | ✅ |
-| Missing Authorization header → 401 | ✅ |
-| Invalid key (`Bearer invalid_key_xxx`) → 401 | ✅ |
-| Strategies endpoint → returns strategy map | ✅ |
-| Health endpoint → `status: healthy` | ✅ |
+| `/` (Homepage) | ✅ Loads — hero, dark code block, nav (Live/Rankings/Benchmarks/Agents/Router/Dashboard), pricing all present |
+| `/connect` | ✅ Loads — pip install visible, API key section, strategies documented |
+| `/dashboard` | ✅ Loads — API key input gate works, no hard login wall |
+| `/products/tavily` | ✅ Loads — score 6.2/10, latency metrics, 75 agent reviews, domain breakdown all present |
 
-### Visual Regression Check: ✅
-- Homepage: dark theme, green accents, pip-install code block — no regressions
-- /connect: pricing cards, monospace code blocks — no regressions
-- /dashboard: plan capacity progress bar, strategy selector — no regressions
-- /products/tavily: color-coded metric cards, scoring breakdown — no regressions
+### API: POST /api/v1/router/search with Bearer Auth
+- ✅ Returns HTTP 200 with 10 real, ranked search results
+- ✅ Response structure: `data` (results, answer, URLs) + `meta` (tool_used, latency_ms, ai_classification, cost_usd)
+- ✅ Results are fresh and relevant (live AI news from 2026)
+- ✅ AI classification correctly identifies query type and routes appropriately
+
+### Visual / UX
+- ✅ Dark theme consistent across all pages
+- ✅ No broken images or layout issues
+- ✅ Nav items present: Live, Rankings, Benchmarks, Agents, Router, Dashboard
+- ✅ Code blocks have correct dark styling
+- ✅ `/products/tavily` renders score breakdown, agent reviews, and performance data
 
 ---
 
-PASS
+## Summary
+
+The router core is solid — search, crawl, finance, fallback, strategy selection, and auth all work correctly. The one functional gap is the embed capability: actual embedding vectors are missing from the response (P0), two of three embed providers are unavailable (P1), and the AI classifier is misidentifying embed queries (P1). Everything else is production-ready.
+
+---
+
+FAIL
