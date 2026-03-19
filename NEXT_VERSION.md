@@ -1,98 +1,97 @@
-# NEXT_VERSION.md — v-next (cycle 8)
+# NEXT_VERSION.md — v-next (cycle 9)
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: none | P1: 1 open
-**Recently shipped (cycle 7):** hero depth upgrade, SDK snippets endpoint (`GET /api/v1/sdk/snippets`)
+**QA baseline:** QA_REPORT.md (2026-03-18, run 22:10 UTC) — score **62/63** | P0: none | P1: **2 open**
+**Recently shipped (cycle 8):** voyage-ai slug fix (partial), `POST /v1/responses` OpenAI-compat endpoint
 
 ---
 
-## Must-Have #1 — Fix P1: Align `voyage-embed` Tool Slug Everywhere
+## Must-Have #1 — Fix both P1 embed bugs (bugs before features — no exceptions)
 
-**Type:** Bug fix
-**QA ref:** B.1-embed — the only failing check; closes the gap to 51/51
+### P1-1: Promote `voyage-embed` to primary in the embed tool chain
 
-**What:** `POST /api/v1/route/embed` returns `tool_used: "voyage-embed"`. Canonical references in docs, the `/connect` code snippets, and the QA validator all still say `"voyage-ai"`. Any agent code pattern-matching on `"voyage-ai"` silently misfires.
+**QA evidence:** Every `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `fallback_used: true`. The chain exhausts two failing providers on every call.
 
-**Exact changes required — pick one canonical slug and apply everywhere:**
+**Root cause:** `openai-embed` and `cohere-embed` lack valid BYOK keys (or their adapters are broken), so they fail silently and the router falls through to voyage-embed every time.
 
-Option A — make backend match docs (recommended): update the embed adapter to emit `"voyage-ai"` instead of `"voyage-embed"`. No frontend changes.
+**Required fix — choose one:**
+- **Option A (preferred):** Reorder the embed chain config so `voyage-embed` is at index 0. Remove or demote the broken providers until keys are configured.
+- **Option B:** Configure working `OPENAI_API_KEY` / `COHERE_API_KEY` env vars so the first provider in the chain actually succeeds.
 
-Option B — make docs match backend: update `/connect` copy, dashboard tool labels, `GET /api/v1/sdk/snippets` examples, and the QA validator's `valid` list from `"voyage-ai"` → `"voyage-embed"`.
+**Acceptance:** `POST /api/v1/route/embed` returns `fallback_used: false` and `tried_chain` length of 1 on normal calls.
 
-Whichever is chosen, add a regression assertion:
-```
-POST /api/v1/route/embed  →  tool_used === "voyage-ai"  (or "voyage-embed", whichever is canonical)
-```
+---
 
-**Acceptance:** QA suite reports **51/51**. Zero references to the old slug remain.
+### P1-2: Fix stale slug in QA validation list
+
+**QA evidence:** `agentpick-router-qa.py` line B.1 checks `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but the live slug is `"voyage-embed"` — causing a false-negative on every QA run.
+
+**Required fix:** Update line B.1 valid-list to `["cohere-embed", "voyage-embed", "jina-embeddings"]`.
+
+**Acceptance:** QA suite reports **63/63**. No references to the old `"voyage-ai"` slug remain in the QA script.
 
 ---
 
 ## Must-Have #2 — Site-Wide Dark-Glass Design System
 
 **Type:** UI upgrade
-**Why now:** Core routing is 98% stable. Homepage hero already has dark-glass tokens; every other page (benchmarks, rankings, agents, `/connect`, `/dashboard`) is visually inconsistent. Developer-tool buyers (Vercel, Linear, Resend tier) expect polish throughout.
+**Why now:** Core routing is stable. Homepage hero already has dark-glass tokens; every other page (benchmarks, rankings, agents, `/connect`, `/dashboard`) is visually inconsistent. Developer-tool buyers (Vercel, Linear, Resend tier) expect polish throughout.
 
 **Deliverables:**
 
-1. **Glass cards everywhere** — `backdrop-filter: blur(16px)` + `rgba(255,255,255,0.04)` background + 1px `rgba(255,255,255,0.12)` border on: benchmark domain tiles, rankings rows, agent directory cards, dashboard stat tiles, `/connect` strategy blocks. Reuse `--glass-bg` / `--glass-border` CSS tokens already defined.
+1. **Glass cards everywhere** — `backdrop-filter: blur(16px)` + `rgba(255,255,255,0.04)` background + 1px `rgba(255,255,255,0.12)` border on: benchmark domain tiles, rankings rows, agent directory cards, dashboard stat tiles, `/connect` strategy blocks. Reuse `--glass-bg` / `--glass-border` CSS tokens already defined on the homepage.
 
-2. **ScrollReveal on all pages** — The existing `.scroll-reveal → .visible` IntersectionObserver is homepage-only. Wire it to stat bars, feature cards, and "How it works" steps on `/connect`, `/benchmarks`, `/rankings`, and `/dashboard`. Stagger siblings 60ms.
+2. **ScrollReveal on all pages** — The existing `.scroll-reveal → .visible` IntersectionObserver is homepage-only. Wire it to stat bars, feature cards, and "How it works" steps on `/connect`, `/benchmarks`, `/rankings`, and `/dashboard`. Stagger siblings 60 ms.
 
-3. **Count-up hero stats** — "X agents ranked" and "Y calls routed" on the homepage animate 0 → final value on first viewport entry (one-shot per session via `sessionStorage`).
+3. **Count-up hero stats** — "X agents ranked" and "Y calls routed" animate 0 → final value on first viewport entry (one-shot per session via `sessionStorage`).
 
-4. **Micro-interactions** — Card hover: `translateY(-4px)` + elevated shadow. Primary CTA: CSS shimmer sweep (600ms). All gated on `prefers-reduced-motion: no-preference`.
+4. **Micro-interactions** — Card hover: `translateY(-4px)` + elevated shadow. Primary CTA: CSS shimmer sweep (600 ms). All gated on `prefers-reduced-motion: no-preference`.
 
 5. **Monospace data** — Latency values, scores, and call counts use `font-variant-numeric: tabular-nums` + JetBrains Mono across all pages.
 
-**Acceptance:** Visually consistent dark-glass across all routes. No white flash on any page. Lighthouse Performance ≥ 90, LCP < 2.5s, CLS < 0.1. QA 51/51 stays green.
+**Acceptance:** Visually consistent dark-glass across all routes. No white flash on any page. Lighthouse Performance ≥ 90, LCP < 2.5 s, CLS < 0.1. QA stays 63/63.
 
 ---
 
-## Must-Have #3 — OpenAI-Compatible Proxy Endpoint
+## Must-Have #3 — Live API Playground page (`/playground`)
 
 **Type:** New feature (developer adoption)
-**Why:** The MCP tool (cycle 6) and SDK snippets (cycle 7) cover existing AgentPick users. The next growth lever is zero-migration adoption: developers already using an OpenAI-compatible search or responses API can drop AgentPick in with a single `base_url` change — no SDK migration, no new auth pattern.
+**Why:** Cycle 6 added the MCP tool, cycle 7 added SDK snippets, cycle 8 added OpenAI-compat. The missing piece: developers can't *try* the router without writing code or using curl. A browser-based playground eliminates the zero-to-first-call friction and is the fastest path to "aha moment."
 
 **Spec:**
 
-**New endpoint: `POST /v1/responses`** (mirrors OpenAI Responses API shape)
-- Input: standard OpenAI `{ model, input, tools[] }` payload; AgentPick classifies intent and routes to the optimal search/embed/crawl tool automatically.
-- Output: OpenAI-compatible response envelope wrapping AgentPick routing result. Include response headers:
-  - `x-agentpick-tool-used`
-  - `x-agentpick-latency-ms`
-  - `x-agentpick-trace-id`
-- Auth: existing `Bearer ah_live_sk_...` key — no new credentials.
-- Rate limits: same plan limits as `/api/v1/route/*`.
-- Usage: calls appear in `/dashboard` and `/api/v1/router/usage` with `source: "openai-compat"`.
+`GET /playground` — new page with:
+- **Query input** — text field + capability selector (search / embed / crawl) + strategy dropdown (balanced / best_performance / cheapest / most_stable).
+- **Run button** — fires `POST /api/v1/route/{capability}` using the visitor's own API key (entered in the page) or the public demo key. Shows a spinner during the call.
+- **Result pane** — renders `tool_used`, `latency_ms`, `cost_usd`, `fallback_used`, `ai_classification`, and the first 3 results (title + URL + snippet) in a formatted dark card. Includes a raw JSON toggle.
+- **Copy-as-curl** button — generates the equivalent `curl` command pre-filled with the query and key.
+- Auth: no new backend endpoints needed — uses existing `/api/v1/route/*` with Bearer auth. The demo key is hard-coded client-side (same as `/connect` page).
+- No account required to try the demo key (rate-limited to 10 calls/day, same as existing demo key logic).
 
-**Documentation on `/connect`:**
-- Add a "Migration" section with a before/after snippet showing one-line change from OpenAI → AgentPick.
-- Add "OpenAI-compatible" to the homepage feature list.
+**Homepage + `/connect` hook:** Add "Try it live →" CTA linking to `/playground`.
 
 **Acceptance:**
-- `POST /v1/responses` with a valid Bearer key returns a valid OpenAI-format response routed through AgentPick.
-- Usage appears in `/dashboard` tagged as `openai-compat`.
-- Migration snippet live on `/connect`.
-- QA 51/51 stays green.
+- `/playground` loads at HTTP 200; demo key works without login; full routing result renders in < 2 s on a simple query.
+- Copy-as-curl produces a valid curl command.
+- QA 63/63 stays green.
 
 ---
 
 ## Definition of Done
 
-- [ ] `voyage-embed` / `voyage-ai` slug consistent in adapter, docs, QA, and SDK snippets; suite reports **51/51**
+- [ ] `POST /api/v1/route/embed` returns `fallback_used: false`, `tried_chain` length 1 on happy path
+- [ ] QA script line B.1 slug updated; suite reports **63/63**
 - [ ] Glass cards on benchmarks, rankings, agents, connect, dashboard
 - [ ] No white flash; all pages use `var(--bg-base)` body background
-- [ ] ScrollReveal active on all pages (not homepage-only); 60ms stagger
+- [ ] ScrollReveal active on all pages (not homepage-only); 60 ms stagger
 - [ ] Count-up stat animations on homepage hero (sessionStorage one-shot)
 - [ ] Card hover lift + CTA shimmer (respects `prefers-reduced-motion`)
-- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`; LCP < 2.5s; CLS < 0.1
-- [ ] `POST /v1/responses` returns OpenAI-format response with correct routing headers
-- [ ] Usage appears in dashboard with `source: "openai-compat"`
-- [ ] Migration snippet live on `/connect`
+- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`; LCP < 2.5 s; CLS < 0.1
+- [ ] `/playground` loads 200; demo key returns results; copy-as-curl works
+- [ ] "Try it live →" CTA on homepage and `/connect`
 
 ## Out of Scope (This Cycle)
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked by Pclaw in `/workspace/agentpick-benchmark/`
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked by Pclaw in `/workspace/agentpick-benchmark/`; needs `BENCHMARK_SECRET` env var coordination first
 - New routing strategies or tool integrations
 - Stripe/billing changes
 - Team/org accounts

@@ -1,13 +1,13 @@
 # AgentPick QA Report
-**Date:** 2026-03-18 (run: 21:53 UTC)
+**Date:** 2026-03-18 (run: 22:10 UTC)
 **Target:** https://agentpick.dev
 **QA Agent:** Claude Code (Sonnet 4.6)
 
 ---
 
-## Score: 50/51 (98%)
+## Score: 62/63
 
-> Automated suite: 50/51 · All page load checks pass · All manual flow checks pass
+> Automated suite: 50/51 · All page load checks pass · All manual flow checks pass · API Bearer auth: 5/5 · Paid user flow: 3/3
 
 ---
 
@@ -19,11 +19,15 @@
 
 ## P1 Issues
 
-### B.1-embed: Tool ID mismatch (`voyage-embed` vs `voyage-ai`)
-- **Observed:** `POST /api/v1/route/embed` returns `tool_used: "voyage-embed"`, HTTP 200, data returned correctly.
-- **Root cause:** QA validator expects `"voyage-ai"` but the backend emits `"voyage-embed"`. The embed capability works — this is a slug naming inconsistency between the router's tool registry and the QA expected list.
-- **Fix needed:** Align the tool identifier — update the adapter to emit `"voyage-ai"` or update all canonical references (docs, QA, dashboard) to `"voyage-embed"`.
-- **Product impact:** Minimal — embed routing and results are correct. Any client code that pattern-matches on `"voyage-ai"` will silently miss.
+### P1-1: Embed always falls to 3rd provider (`voyage-embed`)
+- **Observed:** `POST /api/v1/route/embed` returns `tried_chain: ["openai-embed", "cohere-embed", "voyage-embed"]` with `tool_used: "voyage-embed"` and `fallback_used: true` on every call.
+- **Root cause:** openai-embed and cohere-embed are failing silently, forcing every embed request to exhaust two fallbacks before succeeding on voyage-embed.
+- **Fix needed:** Configure BYOK keys for openai-embed / cohere-embed, or promote voyage-embed to primary position in the embed tool chain.
+- **Product impact:** Embed works, but latency overhead from two failed attempts; all embed calls are effectively in a degraded state. No user-visible error, but reliability risk if voyage-embed goes down.
+
+### P1-2: QA script embed valid-list has stale tool slug
+- **Observed:** `agentpick-router-qa.py` line B.1 expects `tool in ["cohere-embed", "voyage-ai", "jina-embeddings"]` but actual slug is `"voyage-embed"` — causing a false negative failure in the QA report.
+- **Fix needed:** Update QA script line B.1 valid list to include `"voyage-embed"`.
 
 ---
 
@@ -83,8 +87,17 @@
 
 ### Paid User Flow (manual): ✅
 1. `POST /api/v1/router/register` → `apiKey`, `plan: FREE`, `monthlyLimit: 500` ✅
-2. `POST /api/v1/route/search` with Bearer auth → results returned, full `meta` (tool_used, latency_ms, ai_classification, cost_usd, trace_id) ✅
-3. Usage tracking → calls visible in `/api/v1/router/usage`, breakdown by capability/tool/strategy ✅
+2. `POST /api/v1/route/search` with Bearer auth → 10 rich results via exa-search (real content, scores, URLs), full `meta` (tool_used, latency_ms, ai_classification, cost_usd, trace_id) ✅
+3. Usage tracking → `callsThisMonth` increments correctly; `/api/v1/router/usage` returns plan/daily_limit/daily_used/strategy ✅
+
+### API Bearer Auth: 5/5 ✅
+| Test | Result |
+|------|--------|
+| Valid Bearer key → 200 with results | ✅ |
+| Missing Authorization header → 401 | ✅ |
+| Invalid key (`ah_fake_key_xyz`) → 401 | ✅ |
+| Strategies endpoint → returns strategy map | ✅ |
+| Health endpoint → `status: healthy` | ✅ |
 
 ### Visual Regression Check: ✅
 - Homepage: dark theme, green accents, pip-install code block — no regressions

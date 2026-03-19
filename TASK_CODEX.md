@@ -1,50 +1,59 @@
-# TASK_CODEX.md — Cycle 8 (Frontend / UI + QA fix)
+# TASK_CODEX.md — Cycle 9 (Frontend / QA fix)
+
 **Agent:** Codex
-**Source:** NEXT_VERSION.md (2026-03-18, cycle 8)
-**QA baseline:** 50/51 — P1 fix here (Task 1) brings it to 51/51
-**Scope:** Must-Have #1 QA fix + Must-Have #2 full dark-glass design system + Must-Have #3 frontend docs
-**Must NOT touch:** `src/lib/`, `src/app/api/`, `src/app/v1/`, `src/lib/benchmark/adapters/`
+**Source:** NEXT_VERSION.md (2026-03-18, cycle 9)
+**QA baseline:** 62/63 — P1-2 fix here brings QA to 63/63
+**Scope:** P1-2 QA slug fix + Must-Have #2 dark-glass design system + Must-Have #3 Playground page + CTAs
+**Must NOT touch:** `src/lib/`, `src/app/api/`, `src/lib/benchmark/adapters/index.ts`, `src/lib/router/index.ts`
 
 ---
 
-## Task 1 — Fix P1 QA Validator: Update `voyage-embed` → `voyage-ai` Valid Slug
+## Task 1 — P1-2: Fix stale slug in QA validation list
 
 **File:** `agentpick-router-qa.py`
 
-The backend (Claude Code Task 1) is updating the embed adapter to emit `"voyage-ai"`. The QA validator's valid list must match the new canonical slug.
-
-Find the `TestEmbedRoute` class (or `test_embed_route_valid_tool` method) in the file. Locate the `valid` list:
+Add a new test class `TestEmbedRoute` after the existing `TestUsageAliases` class (around line 53) that validates the embed endpoint returns the canonical `voyage-embed` slug:
 
 ```python
-# before (cycle 7)
-valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]
+class TestEmbedRoute(unittest.TestCase):
 
-# after (cycle 8)
-valid = ["cohere-embed", "voyage-ai", "jina-embeddings"]
+    def test_embed_tool_used_slug(self):
+        """B.1 — embed route must return a tool_used from the valid slug list."""
+        r = requests.post(
+            f"{BASE_URL}/api/v1/route/embed",
+            headers={"Authorization": f"Bearer {KEY_499}"},
+            json={"params": {"query": "test embedding"}},
+            timeout=15,
+        )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        tool = body.get("tool_used", "")
+        valid = ["cohere-embed", "voyage-embed", "jina-embeddings"]  # B.1 — canonical slugs
+        self.assertIn(tool, valid, f"Unexpected tool_used slug: {tool!r}")
 ```
 
-Change `"voyage-embed"` → `"voyage-ai"` in the valid list. No other changes to this file.
+Key: the valid list uses `"voyage-embed"` (not the old `"voyage-ai"` slug from cycle 8).
 
-**Acceptance:** `python agentpick-router-qa.py` reports **51/51** once Claude Code's backend fix is deployed.
+**Acceptance:** `python agentpick-router-qa.py` reports **63/63**. No reference to `"voyage-ai"` remains in the QA script.
 
 ---
 
-## Task 2 — Dark-Glass Design System: CSS Tokens & Global Styles
+## Task 2 — Dark-Glass CSS Tokens & Global Styles
 
 **File:** `src/app/globals.css`
 
-### 2a — Ensure/add CSS custom properties in `:root { }`
+### 2a — Add/ensure CSS custom properties in `:root { }`
 
-Add these if not already present (do not duplicate existing definitions):
+Add these tokens if not already present (do not duplicate):
 ```css
 --glass-bg: rgba(255, 255, 255, 0.04);
 --glass-border: rgba(255, 255, 255, 0.12);
 --glass-blur: 16px;
 ```
 
-### 2b — Update `.glass-card` to full spec
+### 2b — Update `.glass-card` to full dark-glass spec
 
-Find the existing `.glass-card` block and update it to:
+Find the existing `.glass-card` block (around line 519) and update to:
 ```css
 .glass-card {
   -webkit-backdrop-filter: blur(var(--glass-blur, 16px));
@@ -54,22 +63,22 @@ Find the existing `.glass-card` block and update it to:
 }
 ```
 
-### 2c — Add `.data-mono` class for monospace numeric data
+### 2c — Add `.data-mono` class for numeric data
 
 Append after `.glass-card`:
 ```css
-/* Monospace numeric data (latency, scores, call counts) */
+/* Monospace numeric data: latency, scores, call counts */
 .data-mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 ```
 
-### 2d — Add micro-interaction classes (gated on prefers-reduced-motion)
+### 2d — Add micro-interaction classes (motion-safe)
 
-Append near end of file (before any existing `@media (prefers-reduced-motion)` blocks, or merge into one):
+Append near end of file:
 ```css
-/* === Micro-interactions (prefers-reduced-motion safe) === */
+/* === Micro-interactions — respects prefers-reduced-motion === */
 @media (prefers-reduced-motion: no-preference) {
   .card-hover-lift {
     transition: transform 200ms ease, box-shadow 200ms ease;
@@ -100,17 +109,17 @@ Append near end of file (before any existing `@media (prefers-reduced-motion)` b
 
 ### 2e — Ensure `body` uses `var(--bg-base)` (prevent white flash)
 
-Find the `body { }` rule. Confirm it includes `background: var(--bg-base);`. Add it if missing.
+Find the `body { }` rule and confirm `background: var(--bg-base);` is present. Add it if missing.
 
 ---
 
-## Task 3 — Homepage: Count-Up Hero Stats + "OpenAI-compatible" Feature
+## Task 3 — Homepage: Count-Up Hero Stats + "Try it live →" CTA
 
 **File:** `src/app/page.tsx`
 
 ### 3a — Count-up hero stats (sessionStorage one-shot)
 
-Find the "X agents ranked" and "Y calls routed" stat figures in the hero section. If they already use `AnimatedCounter` or `OnceAnimatedCounter` from cycle 7, verify the sessionStorage one-shot guard is in place (look for `sessionStorage.getItem('ap_stats_animated')`). If not, apply the `OnceAnimatedCounter` pattern (component is at `src/components/OnceAnimatedCounter.tsx` — created in cycle 7; import and use it):
+Find the "X agents ranked" and "Y calls routed" stat figures in the hero section. Apply `OnceAnimatedCounter` with a `sessionStorage` one-shot guard (check if `sessionStorage.getItem('ap_stats_animated')` exists; if the component handles this internally, just import and use it):
 
 ```tsx
 import OnceAnimatedCounter from '@/components/OnceAnimatedCounter';
@@ -119,142 +128,144 @@ import OnceAnimatedCounter from '@/components/OnceAnimatedCounter';
 <OnceAnimatedCounter value={callsRouted} suffix="+" />
 ```
 
-### 3b — Add "OpenAI-compatible" to homepage feature list
+If `OnceAnimatedCounter` does not exist, inline the logic: on first viewport entry (IntersectionObserver), animate 0 → final value over 1.2 s, then set `sessionStorage.setItem('ap_stats_animated', '1')` and skip on subsequent page visits.
 
-Find the homepage feature/capability list (likely a grid of feature cards or bullet points). Add a new entry:
+### 3b — Add "Try it live →" CTA linking to `/playground`
+
+Find the main hero CTA button(s). Add a secondary CTA after the primary button:
 
 ```tsx
-{
-  icon: '🔗',   // or whichever icon pattern the page uses
-  title: 'OpenAI-compatible',
-  description: 'Drop-in replacement — change only base_url, keep your existing OpenAI client.',
-}
+<a
+  href="/playground"
+  className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-5 py-2.5 text-sm text-white/80 transition hover:border-white/40 hover:text-white"
+>
+  Try it live →
+</a>
 ```
 
-Match the exact JSX pattern used by the existing feature items (icon, title, description props or inline structure). Apply `glass-card card-hover-lift` to the new card container if other cards use it.
+Match the surrounding button styling conventions on the page (Tailwind or CSS class pattern). Apply `btn-shimmer` if the primary CTA uses it.
 
 ---
 
-## Task 4 — Glass Cards + ScrollReveal: Benchmarks Page
-
-**File:** `src/app/benchmarks/page.tsx`
-
-1. Import `ScrollReveal` at top: `import ScrollReveal from '@/components/ScrollReveal';`
-2. Find benchmark domain tile elements. Add `glass-card card-hover-lift` to each tile's `className`.
-3. Add `scroll-reveal` class + `style={{ transitionDelay: \`${index * 60}ms\` }}` to each tile (or wrap sibling groups in `<ScrollReveal staggerMs={60}>` if the component supports it).
-4. Find latency/score numeric values inside tiles → add `className="data-mono"` to their `<span>` or `<td>`.
-
----
-
-## Task 5 — Glass Cards + ScrollReveal: Rankings Page
-
-**File:** `src/app/rankings/page.tsx`
-
-1. Import `ScrollReveal` at top.
-2. Find ranking row elements. Add `glass-card card-hover-lift` to each row container's `className`.
-3. Add scroll-reveal stagger (60ms) to rows.
-4. Add `data-mono` to score/latency numeric cells.
-
----
-
-## Task 6 — Glass Cards + ScrollReveal: Agents Directory
-
-**File:** `src/app/agents/page.tsx`
-
-1. Import `ScrollReveal` at top.
-2. Find agent directory card elements. Add `glass-card card-hover-lift` to each card container's `className`.
-3. Add `scroll-reveal` + `transitionDelay: \`${index * 60}ms\`` to each card.
-
----
-
-## Task 7 — Glass Cards + ScrollReveal: Dashboard
-
-**File:** `src/app/dashboard/page.tsx`
-
-1. Import `ScrollReveal` at top.
-2. Find stat tiles (call count, cost, usage, etc.). Add `glass-card` to each tile `className`.
-3. Add `data-mono` class to all numeric stat values (call counts, costs, latencies).
-4. Wrap stat tile groups in ScrollReveal with 60ms stagger.
-
----
-
-## Task 8 — Glass Cards + ScrollReveal + Migration Snippet: `/connect` Page
+## Task 4 — `/connect` Page: Glass Cards + ScrollReveal + "Try it live →" CTA
 
 **File:** `src/app/connect/page.tsx`
 
-### 8a — Apply glass cards to major sections
+### 4a — Apply glass-card class to strategy/section blocks
 
-Find the strategy blocks, "Quick Start", "Two Ways to Start", and pricing sections. Replace inline Tailwind glass patterns (`border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm`) with the CSS class tokens:
+Find major section containers with inline Tailwind glass patterns like `border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm`. Replace with CSS class tokens:
 
 ```tsx
-// before (example)
+// before
 <div className="mb-8 rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 backdrop-blur-sm">
 // after
 <div className="mb-8 rounded-xl glass-card card-hover-lift p-6">
 ```
 
-Apply to all major section blocks on this page.
+Apply to all strategy blocks, "Quick Start" block, and "Two Ways to Start" block.
 
-### 8b — Wire ScrollReveal
+### 4b — Wire ScrollReveal with stagger
 
-Import `ScrollReveal` at top. Wrap each major `<div className="mb-8 ...">` section with `<div className="scroll-reveal">` and add `style={{ transitionDelay: \`${sectionIndex * 60}ms\` }}`.
+Import `ScrollReveal` at top. Wrap each major section `<div>` with `scroll-reveal` class and `style={{ transitionDelay: `${sectionIndex * 60}ms` }}`.
 
-### 8c — Add "Migration" section (Must-Have #3 docs)
+### 4c — Add "Try it live →" CTA
 
-**This is the only frontend change for Must-Have #3.** Add a new section to the page (below the "Quick Start" block or at the end of the main content), showing the OpenAI → AgentPick one-line migration:
+Find the primary CTA or hero area on the page. Add a secondary link button to `/playground`:
 
 ```tsx
-{/* Migration section */}
-<div className="mb-8 rounded-xl glass-card p-6 scroll-reveal">
-  <h2 className="text-lg font-bold mb-3 text-white">Already using OpenAI? One change.</h2>
-  <p className="text-white/60 mb-4 text-sm">
-    AgentPick is OpenAI Responses API compatible. Change only <code>base_url</code> — keep your existing client, auth, and code.
-  </p>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <div className="text-[10px] uppercase tracking-widest text-red-400/70 mb-2">Before</div>
-      <pre className="rounded-lg bg-black/40 p-3 text-[12px] text-red-300 overflow-x-auto font-mono">{`from openai import OpenAI
-
-client = OpenAI(api_key="sk-...")
-response = client.responses.create(
-    model="gpt-4o",
-    input="search for X",
-)`}</pre>
-    </div>
-    <div>
-      <div className="text-[10px] uppercase tracking-widest text-green-400/70 mb-2">After (AgentPick)</div>
-      <pre className="rounded-lg bg-black/40 p-3 text-[12px] text-green-300 overflow-x-auto font-mono">{`from openai import OpenAI
-
-client = OpenAI(
-    api_key="ah_live_sk_...",
-    base_url="https://agentpick.dev",  # ← only change
-)
-response = client.responses.create(
-    model="auto",
-    input="search for X",
-)`}</pre>
-    </div>
-  </div>
-</div>
+<a href="/playground" className="text-sm text-white/70 underline-offset-2 hover:text-white hover:underline">
+  Try it live →
+</a>
 ```
 
 ---
 
-## Task 9 — Extend ScrollReveal to All Pages
+## Task 5 — Benchmarks Page: Glass Cards + ScrollReveal + Data Mono
+
+**File:** `src/app/benchmarks/page.tsx`
+
+1. Add `glass-card card-hover-lift` classes to each benchmark domain tile element's `className`.
+2. Add `scroll-reveal` class + `style={{ transitionDelay: \`${index * 60}ms\` }}` to each tile (siblings stagger 60 ms).
+3. Find latency/score numeric values inside tiles → add `className="data-mono"` to their `<span>` or `<td>`.
+
+---
+
+## Task 6 — Rankings Page: Glass Cards + ScrollReveal + Data Mono
+
+**File:** `src/app/rankings/page.tsx`
+
+1. Add `glass-card card-hover-lift` classes to each ranking row container's `className`.
+2. Add `scroll-reveal` + 60 ms stagger to rows.
+3. Add `data-mono` to score/latency numeric cells.
+
+---
+
+## Task 7 — Agents Directory: Glass Cards + ScrollReveal
+
+**File:** `src/app/agents/page.tsx`
+
+1. Add `glass-card card-hover-lift` classes to each agent directory card container's `className`.
+2. Add `scroll-reveal` + `style={{ transitionDelay: \`${index * 60}ms\` }}` to each card.
+
+---
+
+## Task 8 — Dashboard: Glass Cards + Data Mono + ScrollReveal
+
+**File:** `src/app/dashboard/page.tsx`
+
+1. Add `glass-card` class to each stat tile's `className`.
+2. Add `data-mono` class to all numeric stat values (call counts, costs, latencies).
+3. Wrap stat tile group(s) in `scroll-reveal` with 60 ms stagger.
+
+---
+
+## Task 9 — Playground Page: Make `/playground` Functional per Spec
+
+**Files:** `src/app/playground/page.tsx`, `src/components/PlaygroundClient.tsx`, `src/components/PlaygroundRequestBuilder.tsx`, `src/components/PlaygroundResponsePanel.tsx`
+
+The playground page and components already exist. Wire them up to match the spec:
+
+### 9a — `src/app/playground/page.tsx`
+
+Ensure the page:
+- Returns HTTP 200 at `/playground` (no auth redirect for the demo key).
+- Renders `<PlaygroundClient />` (or `<PlaygroundShell />`) as the main interactive component.
+- Uses dark-glass styles: `glass-card` on the main container, `--bg-base` body background (inherits from globals.css).
+
+### 9b — `src/components/PlaygroundClient.tsx` (or `PlaygroundShell.tsx` — whichever is the root interactive component)
+
+Ensure the component has:
+1. **Query input** — text field for the query.
+2. **Capability selector** — dropdown/tabs: `search` / `embed` / `crawl`.
+3. **Strategy dropdown** — `balanced` / `best_performance` / `cheapest` / `most_stable`.
+4. **API key input** — text field; pre-filled with the hardcoded demo key (same key used on `/connect`). Label: "API Key (demo key pre-filled)".
+5. **Run button** — fires `POST /api/v1/route/{capability}` with `Authorization: Bearer {apiKey}` header. Shows a spinner during the request.
+6. **Result pane** (`PlaygroundResponsePanel`) — after a successful call, render:
+   - `tool_used`, `latency_ms`, `cost_usd`, `fallback_used`, `ai_classification`
+   - First 3 results (title + URL + snippet) in a `glass-card`
+   - **Raw JSON toggle** — `<details><summary>Raw JSON</summary><pre>{JSON.stringify(result, null, 2)}</pre></details>`
+7. **Copy-as-curl button** — generates and copies the equivalent `curl` command:
+   ```
+   curl -X POST https://agentpick.dev/api/v1/route/{capability} \
+     -H "Authorization: Bearer {apiKey}" \
+     -H "Content-Type: application/json" \
+     -d '{"params":{"query":"{query}"}}'
+   ```
+   Use `navigator.clipboard.writeText(curlCommand)`. Show "Copied!" feedback for 2 s.
+
+### 9c — Styling
+
+Apply `glass-card` to the main panel container, result pane, and code blocks. Use `data-mono` for latency/cost values. Apply `card-hover-lift` to the Run button container.
+
+---
+
+## Task 10 — ScrollReveal: Ensure Global Activation + Stagger Prop
 
 **File:** `src/components/ScrollReveal.tsx`
 
-The component currently activates only on the homepage (or has a guard that prevents it from running elsewhere). Remove any homepage-specific guard. The `IntersectionObserver` logic should work on any page that renders elements with `className="scroll-reveal"`. If the component accepts a `staggerMs` prop, ensure it applies `transitionDelay` to each child based on its index × `staggerMs`. Example:
-
-```tsx
-// If not already present, add stagger support:
-interface ScrollRevealProps {
-  children: React.ReactNode;
-  staggerMs?: number;  // default 60
-}
-```
-
-Do NOT change the observer threshold or animation keyframes — only remove the page-scope guard and add stagger prop if missing.
+1. Remove any guard that restricts the IntersectionObserver to homepage-only (look for `pathname === '/'` or similar checks).
+2. Ensure the component supports a `staggerMs` prop (default `60`) that applies `transitionDelay: index * staggerMs + 'ms'` to each child element.
+3. Do NOT change the observer threshold or animation keyframes.
 
 ---
 
@@ -262,35 +273,41 @@ Do NOT change the observer threshold or animation keyframes — only remove the 
 
 | Action | File | Task |
 |--------|------|------|
-| MODIFY | `agentpick-router-qa.py` | 1 — `"voyage-embed"` → `"voyage-ai"` in valid list |
-| MODIFY | `src/app/globals.css` | 2 — glass tokens, `.glass-card`, `.data-mono`, micro-interactions |
-| MODIFY | `src/app/page.tsx` | 3 — count-up sessionStorage guard + "OpenAI-compatible" feature |
-| MODIFY | `src/app/benchmarks/page.tsx` | 4 — glass cards + ScrollReveal + data-mono |
-| MODIFY | `src/app/rankings/page.tsx` | 5 — glass cards + ScrollReveal + data-mono |
-| MODIFY | `src/app/agents/page.tsx` | 6 — glass cards + ScrollReveal |
-| MODIFY | `src/app/dashboard/page.tsx` | 7 — glass cards + data-mono + ScrollReveal |
-| MODIFY | `src/app/connect/page.tsx` | 8 — glass cards + ScrollReveal + Migration snippet |
-| MODIFY | `src/components/ScrollReveal.tsx` | 9 — remove homepage guard, add stagger prop |
+| MODIFY | `agentpick-router-qa.py` | 1 — add `TestEmbedRoute` with `voyage-embed` valid slug |
+| MODIFY | `src/app/globals.css` | 2 — `--glass-bg/border/blur` tokens, `.glass-card`, `.data-mono`, micro-interactions |
+| MODIFY | `src/app/page.tsx` | 3 — count-up sessionStorage guard + "Try it live →" CTA |
+| MODIFY | `src/app/connect/page.tsx` | 4 — glass cards + ScrollReveal + "Try it live →" CTA |
+| MODIFY | `src/app/benchmarks/page.tsx` | 5 — glass cards + ScrollReveal + data-mono |
+| MODIFY | `src/app/rankings/page.tsx` | 6 — glass cards + ScrollReveal + data-mono |
+| MODIFY | `src/app/agents/page.tsx` | 7 — glass cards + ScrollReveal |
+| MODIFY | `src/app/dashboard/page.tsx` | 8 — glass cards + data-mono + ScrollReveal |
+| MODIFY | `src/app/playground/page.tsx` | 9a — ensure HTTP 200, dark-glass wrapper |
+| MODIFY | `src/components/PlaygroundClient.tsx` or `PlaygroundShell.tsx` | 9b — wire query/capability/strategy/key/run/result/curl UI |
+| MODIFY | `src/components/PlaygroundRequestBuilder.tsx` | 9b — capability selector, strategy dropdown, key input |
+| MODIFY | `src/components/PlaygroundResponsePanel.tsx` | 9b — result pane, raw JSON toggle, copy-as-curl |
+| MODIFY | `src/components/ScrollReveal.tsx` | 10 — remove homepage-only guard, add staggerMs prop |
 
-**Do NOT touch:** `src/lib/`, `src/app/api/`, `src/app/v1/`, `src/lib/benchmark/adapters/`, `src/components/ConnectTabs.tsx` (no change needed this cycle)
+**Do NOT touch:** `src/lib/`, `src/app/api/`, `src/lib/benchmark/adapters/`, `src/lib/router/index.ts`
 
 ---
 
 ## Verification Checklist (Codex)
 
-- [ ] `agentpick-router-qa.py` valid list contains `"voyage-ai"` (not `"voyage-embed"`)
-- [ ] `globals.css` `.glass-card` uses `blur(16px)`, `rgba(255,255,255,0.04)` bg, 1px border at `rgba(255,255,255,0.12)`
-- [ ] `globals.css` has `--glass-bg`, `--glass-border` CSS vars in `:root`
-- [ ] `globals.css` has `.data-mono` with `font-variant-numeric: tabular-nums` + JetBrains Mono
-- [ ] `globals.css` has `.card-hover-lift` (translateY(-4px)) inside `@media (prefers-reduced-motion: no-preference)`
-- [ ] `globals.css` has `.btn-shimmer` shimmer sweep, 600ms
-- [ ] `body` rule uses `var(--bg-base)` — no white flash on any route
-- [ ] `page.tsx`: hero stat counters use sessionStorage one-shot guard
-- [ ] `page.tsx`: homepage feature list includes "OpenAI-compatible" entry with glass card
-- [ ] `benchmarks/page.tsx`: domain tiles have `glass-card card-hover-lift`; latency/score values have `data-mono`; scroll-reveal stagger applied
-- [ ] `rankings/page.tsx`: ranking rows have `glass-card card-hover-lift`; score cells have `data-mono`
-- [ ] `agents/page.tsx`: agent cards have `glass-card card-hover-lift`; scroll-reveal stagger applied
-- [ ] `dashboard/page.tsx`: stat tiles have `glass-card`; all stat numbers have `data-mono`; scroll-reveal applied
-- [ ] `connect/page.tsx`: strategy/section blocks use `glass-card`; ScrollReveal wired; Migration section present with before/after code snippets
-- [ ] `ScrollReveal.tsx`: activates on all pages (no homepage-only guard); supports `staggerMs` prop
-- [ ] QA 51/51 after Claude Code backend fix deploys
+- [ ] `agentpick-router-qa.py` has `TestEmbedRoute.test_embed_tool_used_slug`; valid list is `["cohere-embed", "voyage-embed", "jina-embeddings"]`; no `"voyage-ai"` string in the file
+- [ ] `globals.css` `:root` has `--glass-bg`, `--glass-border`, `--glass-blur`
+- [ ] `globals.css` `.glass-card` uses `blur(16px)`, `rgba(255,255,255,0.04)` bg, 1px border `rgba(255,255,255,0.12)`
+- [ ] `globals.css` `.data-mono` has `font-variant-numeric: tabular-nums` + JetBrains Mono
+- [ ] `globals.css` `.card-hover-lift` has `translateY(-4px)` inside `@media (prefers-reduced-motion: no-preference)`
+- [ ] `globals.css` `.btn-shimmer` shimmer sweep 600 ms
+- [ ] `body` rule uses `var(--bg-base)` — no white flash
+- [ ] `page.tsx` hero stats use sessionStorage one-shot guard
+- [ ] `page.tsx` + `connect/page.tsx` both have "Try it live →" CTA linking to `/playground`
+- [ ] `benchmarks/page.tsx` tiles: `glass-card card-hover-lift` + `data-mono` on latency/score + `scroll-reveal` 60 ms stagger
+- [ ] `rankings/page.tsx` rows: `glass-card card-hover-lift` + `data-mono` on score cells + scroll-reveal
+- [ ] `agents/page.tsx` cards: `glass-card card-hover-lift` + scroll-reveal 60 ms stagger
+- [ ] `dashboard/page.tsx` stat tiles: `glass-card` + `data-mono` on all numbers + scroll-reveal
+- [ ] `/playground` loads HTTP 200; demo key pre-filled; capability/strategy selectors present
+- [ ] Playground Run button fires `POST /api/v1/route/{capability}`; result pane shows `tool_used`, `latency_ms`, first 3 results
+- [ ] Raw JSON toggle works; copy-as-curl produces valid curl command
+- [ ] `ScrollReveal.tsx` activates on all pages (no homepage-only guard); `staggerMs` prop supported
+- [ ] QA 63/63 after Claude Code P1-1 backend fix also deploys
