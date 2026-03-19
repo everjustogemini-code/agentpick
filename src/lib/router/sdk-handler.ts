@@ -360,6 +360,10 @@ export async function handleSdkRouteRequest(request: NextRequest, capability: st
         plan: account.plan,
         calls_remaining: callsRemaining,
         message: crmMessage,
+        // P1 envelope fix: camelCase aliases for SDK consumers
+        tool: response.meta.tool_used,
+        latencyMs: response.meta.latency_ms,
+        resultCount: response.meta.result_count ?? 0,
       },
     };
 

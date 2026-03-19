@@ -1,11 +1,13 @@
 import { NextRequest } from 'next/server';
-import { hashApiKey } from '@/lib/auth';
+import { hashApiKey, authenticateAgent } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/prisma';
 import { checkInMemoryRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
-const PLAYGROUND_AGENT_TOKEN = 'ah_internal_playground_demo';
+// PLAYGROUND_ANONYMOUS_KEY: internal service key used for anonymous playground requests.
+// Set this env var to an ah_* API key registered in the DB with sufficient quota.
+const PLAYGROUND_AGENT_TOKEN = process.env.PLAYGROUND_ANONYMOUS_KEY ?? 'ah_internal_playground_demo';
 
 // In-memory rate limit fallback (used when DB table is unavailable)
 const memRateStore = new Map<string, { count: number; resetAt: number }>();
@@ -39,82 +41,107 @@ async function getPlaygroundAgent() {
 }
 
 export async function POST(request: NextRequest) {
-  const demoKey = process.env.PLAYGROUND_DEMO_KEY ?? PLAYGROUND_AGENT_TOKEN;
-
-  let body: { endpoint?: string; query?: string; strategy?: string; apiKey?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: 'Invalid JSON body.' }, { status: 400 });
-  }
-
-  const { endpoint = 'search', query, strategy = 'auto', apiKey } = body;
-
-  const isDemoKey = (body.apiKey ?? '') === (process.env.DEMO_API_KEY ?? '__unset__')
-  if (isDemoKey) {
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? '127.0.0.1'
-    const { allowed, retryAfterSecs } = checkInMemoryRateLimit(ip, 3, 3_600_000)
-    if (!allowed) {
-      return Response.json(
-        { error: { code: 'RATE_LIMITED', message: 'Demo key: max 3 requests per hour per IP.' } },
-        { status: 429, headers: { 'Retry-After': String(retryAfterSecs) } },
-      )
+  // 1. Check if Authorization header contains a valid API key
+  let isAuthenticated = false;
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const rawKey = authHeader.slice(7).trim();
+    if (rawKey && rawKey !== (process.env.PLAYGROUND_ANONYMOUS_KEY ?? '')) {
+      try {
+        const agent = await authenticateAgent(request);
+        if (agent) isAuthenticated = true;
+      } catch {
+        // invalid key — treat as anonymous
+      }
     }
   }
 
-  if (!query || typeof query !== 'string' || !query.trim()) {
-    return Response.json({ error: 'query is required.' }, { status: 400 });
+  // 2. Parse body + ?q= URL param for shareable links
+  const body = await request.json().catch(() => ({})) as { endpoint?: string; query?: string; strategy?: string; apiKey?: string };
+  const urlQ = new URL(request.url).searchParams.get('q');
+  const query = body.query ?? urlQ ?? '';
+
+  if (!query.trim()) {
+    return Response.json({ error: 'query is required' }, { status: 400 });
   }
+
+  const { endpoint = 'search', strategy = 'auto', apiKey } = body;
 
   const validEndpoints = ['search', 'crawl', 'embed', 'finance'];
   if (!validEndpoints.includes(endpoint)) {
     return Response.json({ error: `endpoint must be one of: ${validEndpoints.join(', ')}` }, { status: 400 });
   }
 
-  // Determine if using demo key path
-  const isDemo = !apiKey || apiKey === demoKey;
+  // 3. Rate limiting
+  // If authenticated via Authorization header: bypass IP rate limit entirely
+  // If not authenticated (anonymous): enforce 10/day/IP via PlaygroundAnonymousUsage
+  // Legacy: body.apiKey path kept for backwards compat
+  const demoKey = process.env.PLAYGROUND_DEMO_KEY ?? PLAYGROUND_AGENT_TOKEN;
+  const isLegacyDemo = !isAuthenticated && (!apiKey || apiKey === demoKey);
 
-  if (isDemo) {
-    // Rate limit by IP — try DB-backed rate limit, fall back to in-memory
+  if (!isAuthenticated) {
+    // Check legacy demo key rate limit (3/hour)
+    const isDemoKey = (body.apiKey ?? '') === (process.env.DEMO_API_KEY ?? '__unset__');
+    if (isDemoKey) {
+      const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? '127.0.0.1';
+      const { allowed, retryAfterSecs } = checkInMemoryRateLimit(ip, 3, 3_600_000);
+      if (!allowed) {
+        return Response.json(
+          { error: { code: 'RATE_LIMITED', message: 'Demo key: max 3 requests per hour per IP.' } },
+          { status: 429, headers: { 'Retry-After': String(retryAfterSecs) } },
+        );
+      }
+    }
+
+    // Anonymous IP rate limit: 10/day via PlaygroundAnonymousUsage
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
       request.headers.get('x-real-ip') ??
-      '127.0.0.1';
+      '0.0.0.0';
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
 
     let limitExceeded = false;
     try {
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
       const db = prisma as any;
-      const record = await db.playgroundRateLimit.upsert({
-        where: { ip_date: { ip, date: today } },
-        create: { ip, date: today, count: 1 },
+      const record = await db.playgroundAnonymousUsage.upsert({
+        where: { ip_date: { ip, date } },
+        create: { ip, date, count: 1 },
         update: { count: { increment: 1 } },
         select: { count: true },
       });
-      limitExceeded = record.count > 10;
+      if (record.count > 10) {
+        limitExceeded = true;
+      }
     } catch {
-      // DB rate limiting unavailable — fall back to in-memory (per process, per day)
+      // DB unavailable — fall back to in-memory rate limiting
       limitExceeded = !checkMemRateLimit(ip);
     }
 
     if (limitExceeded) {
+      const today = new Date().toISOString().slice(0, 10);
+      const nextDay = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
       return Response.json(
-        { error: 'Demo limit reached', cta: 'Sign up free to continue' },
+        { error: 'Daily limit reached', limit: 10, resetAt: `${nextDay}T00:00:00Z` },
         { status: 429 },
       );
     }
   }
 
-  // Ensure playground agent exists in DB when using demo token
-  if (isDemo) {
+  // Ensure playground agent exists in DB for anonymous requests
+  if (!isAuthenticated) {
     await getPlaygroundAgent();
   }
 
   // Build the authorization header
-  const authKey = isDemo ? demoKey : apiKey!;
+  // Authenticated: use the caller's own key; anonymous: use internal playground key
+  let authKey: string;
+  if (isAuthenticated && authHeader?.startsWith('Bearer ')) {
+    authKey = authHeader.slice(7).trim();
+  } else if (!isLegacyDemo && apiKey) {
+    authKey = apiKey;
+  } else {
+    authKey = demoKey;
+  }
 
   // Derive base URL from request
   const reqUrl = new URL(request.url);
@@ -145,6 +172,7 @@ export async function POST(request: NextRequest) {
 
     const data = await upstream.json();
     // Normalize: expose meta fields at top level so the UI can read tool_used and latency_ms directly
+    // Also forward the camelCase meta envelope (tool, latencyMs, resultCount, strategy)
     const normalized = {
       ...data,
       tool_used: data.meta?.tool_used ?? data.tool_used ?? null,

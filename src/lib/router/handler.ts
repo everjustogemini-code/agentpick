@@ -345,7 +345,20 @@ export async function handleRouteRequest(request: NextRequest, capability: strin
       Object.assign(responseHeaders, extraHeaders);
     }
 
-    return new Response(JSON.stringify(response), {
+    // P1 envelope fix: add camelCase meta aliases so SDK consumers can access
+    // response.meta.tool, .latencyMs, .resultCount, .strategy without snake_case drilling.
+    const metaStrategy = body.strategy ?? (preAccount?.strategy ? (preAccount.strategy as string).toLowerCase() : 'balanced');
+    const envelopedResponse = {
+      ...response,
+      meta: {
+        ...response.meta,
+        tool: response.meta.tool_used,
+        latencyMs: response.meta.latency_ms,
+        resultCount: response.meta.result_count ?? 0,
+        strategy: metaStrategy,
+      },
+    };
+    return new Response(JSON.stringify(envelopedResponse), {
       status: 200,
       headers: responseHeaders,
     });
