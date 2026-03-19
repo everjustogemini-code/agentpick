@@ -3,17 +3,17 @@
 **Date:** 2026-03-19
 **QA baseline:** 50/51 — P1 open (embed B.1 failing)
 **Target:** 51/51
-**Scope:** Must-Have #1 frontend audit + Must-Have #2 UI upgrade + Must-Have #3 frontend (/connect section + nav callout)
+**Scope:** Must-Have #1 frontend audit + Must-Have #2 full UI upgrade + Must-Have #3 frontend (/connect section + nav callout)
 **Do NOT touch:** Any file listed in TASK_CLAUDE_CODE.md
 
 ---
 
-## Context: What Is Confirmed Done (do NOT redo)
+## Context: Already Done (do NOT redo)
 
-- `src/app/globals.css` — glassmorphism CSS classes exist (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `reveal-visible`, `terminal-cursor`, `gradient-underline`) ✓
+- `src/app/globals.css` — CSS classes exist: `glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `reveal-visible`, `terminal-cursor`, `gradient-underline` ✓
 - `src/app/page.tsx` line 172: `glass-card` applied to one section ✓
 - `src/components/SiteHeader.tsx` — has `backdropFilter: blur(12px)` on scroll ✓
-- `agentpick-router-qa.py` B.1 fix + new `TestOpenAICompat` test → **TASK_CLAUDE_CODE** (do not touch)
+- `agentpick-router-qa.py` QA fixes → **TASK_CLAUDE_CODE** (do not touch)
 - `src/app/api/v1/chat/completions/route.ts` → **TASK_CLAUDE_CODE** (do not touch)
 
 ---
@@ -109,7 +109,7 @@ useEffect(() => {
 
 Upgrade the existing `pip install agentpick` block to a minimal terminal window:
 
-1. **Titlebar row** with three colored dot buttons (no functionality, purely decorative):
+1. **Titlebar row** with three colored dot buttons (decorative only):
    - Red `#ff5f57`, yellow `#febc2e`, green `#28c840` — each `12×12px` circle via `borderRadius: '50%'`.
 
 2. **Monospace prompt line:** `$ pip install agentpick` followed by `<span className="terminal-cursor" />` (blinking green cursor from globals.css).
@@ -133,7 +133,7 @@ Wrap each stat counter with an `IntersectionObserver` count-up:
 
 ## Task 3 — OpenAI-Compatible Drop-In: Frontend Section + Nav Callout (Must-Have #3)
 
-The backend endpoint `POST /v1/chat/completions` is being built by **TASK_CLAUDE_CODE**. Your job is the frontend surface only.
+The backend endpoint `POST /v1/chat/completions` is handled by **TASK_CLAUDE_CODE**. Your job is the frontend surface only.
 
 ### 3a. Add "Drop-in for OpenAI SDK" section to /connect page
 
@@ -174,7 +174,7 @@ Under the existing developer docs nav item (or in the dropdown/menu where docs a
 | Verify/modify | `src/components/ConnectTabs.tsx` |
 | Modify | `src/components/PricingSection.tsx` |
 | Modify | `src/components/PricingPageClient.tsx` |
-| Modify (if needed) | `src/app/pricing/page.tsx` |
+| Modify if needed | `src/app/pricing/page.tsx` |
 | Modify | `src/app/page.tsx` |
 | Modify | `src/components/HeroCodeBlock.tsx` |
 | Modify | `src/components/StatsBar.tsx` |
@@ -187,7 +187,7 @@ Under the existing developer docs nav item (or in the dropdown/menu where docs a
 - `src/__tests__/router-registry-sync.test.ts`
 - `src/app/api/v1/chat/completions/route.ts`
 - `src/app/globals.css` (complete, do not modify)
-- `src/app/api/**` (all other API routes)
+- `src/app/api/**` (all API routes)
 - `prisma/schema.prisma`
 - `src/lib/router/**`
 
@@ -207,7 +207,7 @@ Under the existing developer docs nav item (or in the dropdown/menu where docs a
 | Must-Have #2 — Hero heading size + line-height + letter-spacing | **Task 2b (this file)** |
 | Must-Have #2 — Gradient underline on key value phrase | **Task 2b (this file)** |
 | Must-Have #2 — CTA glow pulse | **Task 2b (this file)** |
-| Must-Have #2 — Sticky nav frosted glass on scroll | already done in SiteHeader ✓ |
+| Must-Have #2 — Sticky nav frosted glass on scroll | Already done in SiteHeader ✓ |
 | Must-Have #2 — Terminal callout typewriter effect | **Task 2d (this file)** |
 | Must-Have #2 — Live-stat count-up on scroll-enter | **Task 2e (this file)** |
 | Must-Have #2 — IntersectionObserver fade-up section reveals | **Task 2c (this file)** |
