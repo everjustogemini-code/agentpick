@@ -1,72 +1,106 @@
-# TASK_CLAUDE_CODE.md — cycle 16
+# TASK_CLAUDE_CODE.md — cycle 17
 
 **Agent:** Claude Code (Sonnet 4.6)
 **Date:** 2026-03-19
-**QA baseline:** 50/51 — P1-1 open
-**Scope:** Backend — CI assertion test pinning `CAPABILITY_TOOLS.embed` against QA allowlist
+**QA baseline:** 53/54 — P1-1 open (embed B.1 test failing)
+**Target:** 54/54
+**Scope:** QA script embed fix + backend `source` param for quickstart funnel tracking
 **Do NOT touch:** Any file listed in TASK_CODEX.md
 
 ---
 
-## Context: What Was Already Done in Cycle 15
+## Context: What Is Confirmed Done (do NOT redo)
 
-The following tasks from cycle 15 are **confirmed complete** — do not redo them:
-- `POST /api/v1/quickstart/issue/route.ts` — exists ✓
+- `src/__tests__/router-registry-sync.test.ts` — **exists and passes** (created cycle 16) ✓
+- `src/app/api/v1/quickstart/issue/route.ts` — endpoint exists, tags `registrationSource: 'quickstart'` ✓
 - `prisma/schema.prisma` `Agent.registrationSource` field — exists ✓
-- `POST /api/v1/router/register/route.ts` `source` param handling — exists ✓
-- `src/app/globals.css` glassmorphism CSS classes (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `terminal-cursor`) — exists ✓
+- `src/app/globals.css` glassmorphism CSS classes (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `terminal-cursor`, `reveal-visible`) — exists ✓
+- `src/app/page.tsx` line 172: `glass-card` applied to one section ✓
+- `src/components/SiteHeader.tsx`: has `backdropFilter: blur(12px)` on scroll ✓
 
 ---
 
-## Task A — CI Assertion: Pin `CAPABILITY_TOOLS.embed` Against QA Allowlist (Must-Have #1, step 3)
+## Task 1 — Fix P1-1: Add B.1 Embed Test to QA Script (Must-Have #1)
 
-**Status:** Not done. `src/__tests__/router-registry-sync.test.ts` does not exist.
+**File:** `agentpick-router-qa.py`
 
-**File to CREATE:** `src/__tests__/router-registry-sync.test.ts`
+**Status:** `TestEmbedRouter` class does not exist in the file. The QA automated suite is at 50/51 because this test is missing. Adding it will bring the automated suite to 51/51 and the overall score to 54/54.
 
-**Why:** `CAPABILITY_TOOLS.embed[0]` in `src/lib/router/index.ts` (line 43: `embed: ['voyage-embed']`) and the QA script's embed allowlist must never drift again. This test makes drift a CI failure.
+Insert the following **before** the `if __name__ == "__main__":` block at the end of the file (currently line 73):
 
-**Implementation:**
+```python
+KEY_EMBED = os.environ.get('QA_TEST_KEY_EMBED', KEY_499)
 
-```typescript
-import { describe, it, expect } from 'vitest';
-import { CAPABILITY_TOOLS } from '@/lib/router/index';
+class TestEmbedRouter(unittest.TestCase):
 
-/**
- * Single source of truth for the embed tool allowlist.
- * Must match agentpick-router-qa.py TestEmbedRouter.valid_embed_tools.
- * When adding a new embed adapter, update BOTH this constant AND the QA script.
- */
-export const QA_EMBED_ALLOWLIST = ['voyage-embed'] as const;
-
-describe('router-registry ↔ QA allowlist sync', () => {
-  it('CAPABILITY_TOOLS.embed[0] must be voyage-embed', () => {
-    expect(CAPABILITY_TOOLS.embed[0]).toBe('voyage-embed');
-  });
-
-  it('every embed tool slug in registry must appear in QA_EMBED_ALLOWLIST', () => {
-    for (const slug of CAPABILITY_TOOLS.embed) {
-      expect(QA_EMBED_ALLOWLIST as readonly string[]).toContain(slug);
-    }
-  });
-
-  it('retired embed slugs must NOT be in QA_EMBED_ALLOWLIST', () => {
-    const retired = ['voyage-ai', 'cohere-embed', 'jina-embeddings'];
-    for (const slug of retired) {
-      expect(QA_EMBED_ALLOWLIST as readonly string[]).not.toContain(slug);
-    }
-  });
-});
+    def test_b1_embed_tool_used(self):
+        """B.1 — embed route must return meta.tool_used = voyage-embed.
+        Allowlist is pinned in src/__tests__/router-registry-sync.test.ts (QA_EMBED_ALLOWLIST).
+        """
+        r = requests.post(
+            f"{BASE_URL}/api/v1/route/embed",
+            headers={"Authorization": f"Bearer {KEY_EMBED}"},
+            json={"params": {"query": "semantic similarity for developer tools"}},
+            timeout=15,
+        )
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        valid_embed_tools = ["voyage-embed"]  # must match QA_EMBED_ALLOWLIST in router-registry-sync.test.ts
+        tool_used = body.get("meta", {}).get("tool_used", "")
+        self.assertIn(
+            tool_used,
+            valid_embed_tools,
+            f"Expected tool_used in {valid_embed_tools}, got: {tool_used!r}",
+        )
 ```
 
-**Steps:**
-1. Create the file above at `src/__tests__/router-registry-sync.test.ts`.
-2. Run `npx vitest run src/__tests__/router-registry-sync.test.ts` — must show 3/3 passing.
-3. Verify `CAPABILITY_TOOLS` is exported from `src/lib/router/index.ts` (it is, line 40).
+**Also verify:** Scan the entire file for existing references to `voyage-ai`, `cohere-embed`, or `jina-embeddings` as embed slugs — currently zero hits, but confirm with:
+
+```bash
+grep "voyage-ai" agentpick-router-qa.py   # must return 0 hits
+```
+
+**Acceptance:** `grep "voyage-ai" agentpick-router-qa.py` → 0 hits. QA automated suite reports **51/51** (overall **54/54**).
+
+---
+
+## Task 2 — Backend: Support `source=quickstart_homepage` in Key Issuance (Must-Have #3)
+
+**File:** `src/app/api/v1/quickstart/issue/route.ts`
+
+**Why:** The `/quickstart` page (created by Codex) reads `?source` from URL search params and POSTs it to this endpoint. The homepage CTA uses `?source=quickstart_homepage`. The backend currently hard-codes `registrationSource: 'quickstart'` — keys from the homepage funnel are indistinguishable.
+
+**Changes — 3 edits in the same file:**
+
+1. **Line 23** — extend the body type to accept an optional `source` field:
+   ```typescript
+   // Before:
+   let body: { email?: string };
+   // After:
+   let body: { email?: string; source?: string };
+   ```
+
+2. **After line 34** (`const email = ...`), add source resolution:
+   ```typescript
+   const VALID_SOURCES = ['quickstart', 'quickstart_homepage'] as const;
+   const registrationSource: string =
+     body.source && (VALID_SOURCES as readonly string[]).includes(body.source)
+       ? body.source
+       : 'quickstart';
+   ```
+
+3. **Lines 49, 64, 94** — replace all three hardcoded `registrationSource: 'quickstart'` string literals with the variable:
+   ```typescript
+   // Before (3 occurrences):
+   data: { apiKeyHash, registrationSource: 'quickstart' },
+   // After (all 3):
+   data: { apiKeyHash, registrationSource },
+   ```
 
 **Acceptance:**
-- `npx vitest run src/__tests__/router-registry-sync.test.ts` → 3 tests pass
-- If `voyage-ai` is ever re-added to `CAPABILITY_TOOLS.embed`, test 3 fails loudly
+- `POST /api/v1/quickstart/issue` with `{ email, source: "quickstart_homepage" }` → DB stores `registrationSource = "quickstart_homepage"`
+- `POST /api/v1/quickstart/issue` with no `source` field → DB stores `registrationSource = "quickstart"` (unchanged default)
+- Unknown/arbitrary `source` values fall back to `"quickstart"` (not stored verbatim)
 
 ---
 
@@ -74,13 +108,12 @@ describe('router-registry ↔ QA allowlist sync', () => {
 
 | Action | File |
 |--------|------|
-| Create | `src/__tests__/router-registry-sync.test.ts` |
+| Modify | `agentpick-router-qa.py` |
+| Modify | `src/app/api/v1/quickstart/issue/route.ts` |
 
 **DO NOT touch** (Codex-owned):
-- `agentpick-router-qa.py`
 - `src/app/page.tsx`
 - `src/app/connect/page.tsx`
-- `src/components/SiteHeader.tsx`
 - `src/components/HeroCodeBlock.tsx`
 - `src/components/PricingSection.tsx`
 - `src/components/PricingPageClient.tsx`
@@ -89,30 +122,35 @@ describe('router-registry ↔ QA allowlist sync', () => {
 - `src/app/globals.css`
 - `src/app/layout.tsx`
 - `src/app/quickstart/page.tsx` (new file, Codex creates)
+- `src/__tests__/router-registry-sync.test.ts` (already complete, do not modify)
 
 ---
 
-## Coverage: Must-Have #1 Step 3
+## Coverage: Must-Have Items
 
-| NEXT_VERSION.md requirement | This task |
+| NEXT_VERSION.md requirement | Covered by |
 |---|---|
-| "Add a CI assertion that pins `CAPABILITY_TOOLS.embed[0]` (router registry) against the QA allowlist so they can never drift again." | **Task A — fully covers this** |
-
-All other Must-Have #1, #2, #3 items are covered in TASK_CODEX.md.
+| Must-Have #1 — QA B.1 embed test; `valid_embed_tools = ["voyage-embed"]`; 54/54 | **Task 1** |
+| Must-Have #1 — CI assertion `CAPABILITY_TOOLS.embed[0]` pinned to QA allowlist | Done in cycle 16 ✓ |
+| Must-Have #3 — Keys tagged `source=quickstart_homepage` from homepage funnel | **Task 2** |
+| All other Must-Have #1, #2, #3 items | TASK_CODEX.md |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `src/__tests__/router-registry-sync.test.ts` created
-- [ ] `npx vitest run src/__tests__/router-registry-sync.test.ts` → 3/3 pass
+- [ ] `TestEmbedRouter` class present in `agentpick-router-qa.py`
+- [ ] `grep "voyage-ai" agentpick-router-qa.py` → 0 hits
+- [ ] `src/app/api/v1/quickstart/issue/route.ts` body type includes `source?: string`
+- [ ] `VALID_SOURCES` allowlist guards against arbitrary string injection
+- [ ] All 3 `registrationSource: 'quickstart'` literals replaced with the variable
 - [ ] No other files modified
 
 ---
 
 ## Progress Log
 
-After completing Task A, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
+After each task, append to `/Users/pwclaw/.openclaw/workspace/agentpick-progress.md`:
 ```
-[<ISO timestamp>] [CLAUDE-CODE] [done] CI assertion test: CAPABILITY_TOOLS.embed ↔ QA allowlist sync (3/3 pass)
+[<ISO timestamp>] [CLAUDE-CODE] [done] <brief description>
 ```

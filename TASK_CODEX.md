@@ -1,69 +1,26 @@
-# TASK_CODEX.md — cycle 16
+# TASK_CODEX.md — cycle 17
 
 **Agent:** Codex
 **Date:** 2026-03-19
-**QA baseline:** 50/51 — fixes below bring score to 51/51
-**Scope:** Must-Have #1 QA fix + Must-Have #2 UI upgrade (remaining) + Must-Have #3 frontend
+**QA baseline:** 53/54 — P1-1 open (embed B.1 test failing)
+**Target:** 54/54
+**Scope:** Must-Have #2 UI upgrade (remaining) + Must-Have #3 frontend (quickstart page + homepage CTA) + Must-Have #1 connect page audit
 **Do NOT touch:** Any file listed in TASK_CLAUDE_CODE.md
 
 ---
 
-## Context: What Was Already Done in Cycle 15
+## Context: What Is Confirmed Done (do NOT redo)
 
-The following are **confirmed complete** — do not redo:
 - `src/app/globals.css`: glassmorphism CSS classes already added (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `terminal-cursor`, `reveal-visible`) ✓
 - `src/app/page.tsx` line 172: `glass-card` applied to one section ✓
 - `src/components/SiteHeader.tsx`: has `backdropFilter: blur(12px)` on the header ✓
 - `POST /api/v1/quickstart/issue` backend endpoint exists ✓
+- `src/__tests__/router-registry-sync.test.ts` CI assertion — exists and passes ✓
+- `agentpick-router-qa.py` embed B.1 fix → **assigned to TASK_CLAUDE_CODE this cycle** (do not touch)
 
 ---
 
-## Task 1 — Fix P1-1: Add B.1 Embed Test to QA Script (Must-Have #1)
-
-**File:** `agentpick-router-qa.py`
-
-**Status:** `TestEmbedRouter` class does not exist in the file. QA suite is at 50/51 because this test is missing.
-
-Insert the following class **before** the `if __name__ == "__main__":` block at the end of the file (currently line 73):
-
-```python
-KEY_EMBED = os.environ.get('QA_TEST_KEY_EMBED', KEY_499)
-
-class TestEmbedRouter(unittest.TestCase):
-
-    def test_b1_embed_tool_used(self):
-        """B.1 — embed route must return meta.tool_used = voyage-embed.
-        Allowlist is pinned in src/__tests__/router-registry-sync.ts (QA_EMBED_ALLOWLIST).
-        """
-        r = requests.post(
-            f"{BASE_URL}/api/v1/route/embed",
-            headers={"Authorization": f"Bearer {KEY_EMBED}"},
-            json={"params": {"query": "semantic similarity for developer tools"}},
-            timeout=15,
-        )
-        self.assertEqual(r.status_code, 200)
-        body = r.json()
-        valid_embed_tools = ["voyage-embed"]  # must match QA_EMBED_ALLOWLIST in router-registry-sync.ts
-        tool_used = body.get("meta", {}).get("tool_used", "")
-        self.assertIn(
-            tool_used,
-            valid_embed_tools,
-            f"Expected tool_used in {valid_embed_tools}, got: {tool_used!r}",
-        )
-```
-
-Also scan the entire file for any existing references to `voyage-ai`, `cohere-embed`, or `jina-embeddings` as embed slugs and remove/replace them (currently zero hits, but verify).
-
-**Verification:**
-```bash
-grep "voyage-ai" agentpick-router-qa.py   # must return zero hits
-```
-
-**Acceptance:** QA reports **51/51**. `grep "voyage-ai" agentpick-router-qa.py` → 0 results.
-
----
-
-## Task 2 — Audit `/connect` Page for `voyage-ai` Copy (Must-Have #1)
+## Task 1 — Audit `/connect` Page for `voyage-ai` Copy (Must-Have #1)
 
 **File:** `src/app/connect/page.tsx`
 
@@ -79,11 +36,11 @@ Currently zero hits — verify and confirm. If any hits appear, replace them.
 
 ---
 
-## Task 3 — Complete Glassmorphism + Micro-Animations (Must-Have #2, remaining work)
+## Task 2 — Complete Glassmorphism + Micro-Animations (Must-Have #2, remaining work)
 
-CSS classes (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `reveal-visible`, `terminal-cursor`) already exist in `src/app/globals.css`. Apply them where they are still missing.
+CSS classes (`glass-card`, `hero-gradient-mesh`, `neon-glow`, `reveal-hidden`, `reveal-visible`, `terminal-cursor`) already exist in `src/app/globals.css`. Do NOT modify `globals.css`. Apply the classes where they are still missing.
 
-### 3a — Pricing card glassmorphism
+### 2a — Pricing card glassmorphism
 
 **File:** `src/components/PricingSection.tsx`
 
@@ -97,7 +54,7 @@ Apply `glass-card` to each pricing tier box on the `/pricing` page.
 
 If this page renders its own card wrappers, apply `glass-card` there too.
 
-### 3b — Hero section: gradient mesh + heading style + gradient underline + cta-glow
+### 2b — Hero section: gradient mesh + heading style + gradient underline + cta-glow
 
 **File:** `src/app/page.tsx`
 
@@ -105,26 +62,26 @@ The `glass-card` is already applied at line 172. The following are still missing
 
 1. **Hero background mesh**: Find the outermost hero section wrapper `<div>` and add `hero-gradient-mesh` to its `className` (or wrap the background element with it). The class animates via the `@keyframes hero-drift` already in globals.css.
 
-2. **Hero `<h1>` size**: Find the hero heading and add inline style or Tailwind: `fontSize: 'clamp(3rem, 6vw, 5rem)'`, `lineHeight: 1.08`, `letterSpacing: '-0.03em'`.
+2. **Hero `<h1>` size**: Find the hero heading and add inline style: `style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', lineHeight: 1.08, letterSpacing: '-0.03em' }}`.
 
 3. **Gradient underline on "We fix that."**: The heading already renders "We fix that." — wrap it in `<span className="gradient-underline">We fix that.</span>` (class already in globals.css).
 
 4. **CTA glow pulse**: Find the `btn-shimmer` primary CTA button in the hero and add `cta-glow` to its `className` alongside the existing classes.
 
-### 3c — Section scroll reveal (IntersectionObserver)
+### 2c — Section scroll reveal (IntersectionObserver)
 
 **File:** `src/app/page.tsx`
 
 Add a single `IntersectionObserver` (in a `useEffect`) that:
-- On mount: adds `reveal-hidden` class to each section entry container (feature cards, pricing cards, API carousel section).
+- On mount: queries section entry containers (feature cards, pricing cards, API carousel) and adds `reveal-hidden` to each.
 - On each element entering the viewport: swaps `reveal-hidden` → `reveal-visible`.
 - Disconnects the observer for each element after it reveals (one-shot).
 
-The CSS transition is already defined in globals.css (`reveal-visible { transition: opacity 400ms ease-out, transform 400ms ease-out }`).
+The CSS transition is already in globals.css (`reveal-visible { transition: opacity 400ms ease-out, transform 400ms ease-out }`).
 
 **Constraint:** No animation libraries. Vanilla JS only. Lighthouse perf ≥ 90. CLS < 0.1.
 
-### 3d — Terminal callout upgrade
+### 2d — Terminal callout upgrade
 
 **File:** `src/components/HeroCodeBlock.tsx`
 
@@ -138,7 +95,7 @@ Upgrade the existing `pip install agentpick` block to a minimal terminal window:
    - Step 2 (1.8s after step 1 completes): append a second line `Successfully installed agentpick-x.x.x` with the cursor moving to end.
 4. No third-party libraries.
 
-### 3e — Live-stat count-up animation
+### 2e — Live-stat count-up animation
 
 **File:** `src/components/StatsBar.tsx`
 
@@ -149,19 +106,19 @@ Wrap each stat counter with an `IntersectionObserver` count-up effect:
 
 ---
 
-## Task 4 — New `/quickstart` Page + Homepage CTA (Must-Have #3 frontend)
+## Task 3 — New `/quickstart` Page + Homepage CTA (Must-Have #3 frontend)
 
-### 4a — Create `/quickstart` page
+### 3a — Create `/quickstart` page
 
 **File to CREATE:** `src/app/quickstart/page.tsx`
 
-A single page with 3 inline steps. No page reloads between steps. The backend endpoint `POST /api/v1/quickstart/issue` already exists.
+A single `'use client'` page with 3 inline steps. No page reloads between steps. The backend endpoint `POST /api/v1/quickstart/issue` already exists and accepts `{ email, source }`.
 
 **Step 1 — Get a key:**
 ```tsx
 // Email <input> + "Generate free key" <button>
 // On submit: POST /api/v1/quickstart/issue with { email, source }
-//   - Read ?source from URL searchParams (default: "quickstart")
+//   - Read ?source from useSearchParams() (default: "quickstart")
 // Display returned apiKey in a <code> block with a copy-to-clipboard button
 //   (navigator.clipboard.writeText(apiKey))
 // Store apiKey in React state
@@ -169,27 +126,27 @@ A single page with 3 inline steps. No page reloads between steps. The backend en
 
 **Step 2 — Pick a capability:**
 - Three large pill `<button>` elements: **Search** / **Crawl** / **Embed**.
-- Clicking one updates `selectedCapability` in React state. Default: Search.
+- Clicking one updates `selectedCapability` in React state. Default: `"search"`.
 - Updates the curl snippet in Step 3 in real time (no reload).
 
 **Step 3 — Run it in the browser:**
 - `<pre>` code block showing a curl snippet:
   - Shows `YOUR_KEY` placeholder until key is issued; replaced with actual `apiKey` once available.
-  - Endpoint mapped from capability: Search → `/api/v1/route/search`, Crawl → `/api/v1/route/crawl`, Embed → `/api/v1/route/embed`.
+  - Endpoint mapped from capability: `search` → `/api/v1/route/search`, `crawl` → `/api/v1/route/crawl`, `embed` → `/api/v1/route/embed`.
 - **"Run in browser"** button: fires `fetch()` to the selected endpoint with the issued key.
 - JSON response rendered in a `<pre>` output panel using `JSON.stringify(data, null, 2)` (no third-party syntax highlighter).
 - On HTTP 200: green `"✓ It works!"` banner + `<Link href="/connect">View full docs →</Link>`.
 - On error: red banner with the HTTP status + error message.
 
-### 4b — Homepage CTA wiring
+### 3b — Homepage CTA wiring
 
 **File:** `src/app/page.tsx`
 
-1. Find the secondary CTA button/link in the hero section (currently "Try the router" → `href="/connect"` at approximately line 195).
+1. Find the secondary CTA button/link in the hero section (currently labeled "Try the router" or "View Docs" pointing to `/connect`).
 2. Change its label to **"Get started free →"**.
 3. Change its `href` to `/quickstart?source=quickstart_homepage`.
 
-The `source=quickstart_homepage` value will be read by the `/quickstart` page and passed to `POST /api/v1/quickstart/issue`, tagging these keys for funnel tracking (backend already supports this).
+The `/quickstart` page reads `?source` from search params and passes it to `POST /api/v1/quickstart/issue`. The backend (TASK_CLAUDE_CODE Task 2) already supports `source=quickstart_homepage` as a valid value.
 
 ---
 
@@ -197,7 +154,6 @@ The `source=quickstart_homepage` value will be read by the `/quickstart` page an
 
 | Action | File |
 |--------|------|
-| Modify | `agentpick-router-qa.py` |
 | Verify/modify | `src/app/connect/page.tsx` |
 | Modify | `src/components/PricingSection.tsx` |
 | Modify | `src/components/PricingPageClient.tsx` |
@@ -207,15 +163,14 @@ The `source=quickstart_homepage` value will be read by the `/quickstart` page an
 | Modify | `src/components/StatsBar.tsx` |
 | Create | `src/app/quickstart/page.tsx` |
 
-**DO NOT touch** (Claude Code-owned):
-- `src/__tests__/router-registry-sync.test.ts` (Claude Code creates)
-- `src/app/api/**` (all API routes)
+**DO NOT touch** (Claude Code-owned this cycle):
+- `agentpick-router-qa.py` ← Claude Code Task 1 this cycle
+- `src/app/api/v1/quickstart/issue/route.ts` ← Claude Code Task 2 this cycle
+- `src/__tests__/router-registry-sync.test.ts` (complete, do not modify)
+- `src/app/globals.css` (complete, do not modify)
+- `src/app/api/**` (all other API routes)
 - `prisma/schema.prisma`
-- `prisma/migrations/**`
 - `src/lib/router/**`
-- `src/lib/benchmark/**`
-- `src/lib/ops/**`
-- `src/app/globals.css` (already complete, do not modify)
 
 ---
 
@@ -223,21 +178,22 @@ The `source=quickstart_homepage` value will be read by the `/quickstart` page an
 
 | NEXT_VERSION.md item | Assigned to |
 |---|---|
-| Must-Have #1 — QA B.1 embed test; `valid_embed_tools = ["voyage-embed"]`; 51/51 | **Task 1 (this file)** |
-| Must-Have #1 — `/connect` page copy: audit `voyage-ai` references | **Task 2 (this file)** |
-| Must-Have #1 — CI assertion: `CAPABILITY_TOOLS.embed[0]` pinned to QA allowlist | TASK_CLAUDE_CODE Task A |
-| Must-Have #2 — Glassmorphism pricing cards + feature cards | **Task 3a (this file)** |
-| Must-Have #2 — Hero animated gradient mesh | **Task 3b (this file)** |
-| Must-Have #2 — Hero heading size + line-height + `letter-spacing` | **Task 3b (this file)** |
-| Must-Have #2 — Gradient underline on "We fix that." | **Task 3b (this file)** |
-| Must-Have #2 — Neon glow CTA pulse (replace shimmer) | **Task 3b (this file)** |
+| Must-Have #1 — QA B.1 embed test; `valid_embed_tools = ["voyage-embed"]`; 54/54 | TASK_CLAUDE_CODE Task 1 |
+| Must-Have #1 — `/connect` page copy: audit `voyage-ai` references | **Task 1 (this file)** |
+| Must-Have #1 — CI assertion: `CAPABILITY_TOOLS.embed[0]` pinned to QA allowlist | Done in cycle 16 ✓ |
+| Must-Have #2 — Glassmorphism pricing cards + feature cards | **Task 2a (this file)** |
+| Must-Have #2 — Hero animated gradient mesh | **Task 2b (this file)** |
+| Must-Have #2 — Hero heading size + line-height + `letter-spacing` | **Task 2b (this file)** |
+| Must-Have #2 — Gradient underline on "We fix that." | **Task 2b (this file)** |
+| Must-Have #2 — Neon glow CTA pulse (replace shimmer) | **Task 2b (this file)** |
 | Must-Have #2 — Sticky nav frosted glass on scroll | already done in SiteHeader ✓ |
-| Must-Have #2 — Terminal callout typewriter effect | **Task 3d (this file)** |
-| Must-Have #2 — Live-stat count-up on scroll-enter | **Task 3e (this file)** |
-| Must-Have #2 — IntersectionObserver fade-up section reveals | **Task 3c (this file)** |
-| Must-Have #3 — `/quickstart` page (Step 1 key issue, Step 2 capability pill, Step 3 run) | **Task 4a (this file)** |
-| Must-Have #3 — Homepage secondary CTA → "Get started free →" → `/quickstart` | **Task 4b (this file)** |
+| Must-Have #2 — Terminal callout typewriter effect | **Task 2d (this file)** |
+| Must-Have #2 — Live-stat count-up on scroll-enter | **Task 2e (this file)** |
+| Must-Have #2 — IntersectionObserver fade-up section reveals | **Task 2c (this file)** |
+| Must-Have #3 — `/quickstart` page (Step 1 key issue, Step 2 capability pill, Step 3 run) | **Task 3a (this file)** |
+| Must-Have #3 — Homepage secondary CTA → "Get started free →" → `/quickstart` | **Task 3b (this file)** |
 | Must-Have #3 — Keys tagged `source=quickstart` in DB | backend already implemented ✓ |
+| Must-Have #3 — Keys tagged `source=quickstart_homepage` for homepage funnel | TASK_CLAUDE_CODE Task 2 |
 | Must-Have #3 — `POST /api/v1/quickstart/issue` endpoint | backend already implemented ✓ |
 
 All 3 Must-Haves from NEXT_VERSION.md are fully covered. No item left behind.
@@ -246,7 +202,6 @@ All 3 Must-Haves from NEXT_VERSION.md are fully covered. No item left behind.
 
 ## Acceptance Criteria
 
-- [ ] `grep "voyage-ai" agentpick-router-qa.py` → zero hits; QA reports **51/51**
 - [ ] `grep -n "voyage-ai" src/app/connect/page.tsx` → zero hits
 - [ ] PM screenshot review: `glass-card` visible on pricing tier cards
 - [ ] Hero heading uses `clamp(3rem, 6vw, 5rem)`, gradient mesh animating, "We fix that." has gradient underline

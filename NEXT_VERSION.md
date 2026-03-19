@@ -1,8 +1,8 @@
 # NEXT_VERSION.md
-**Date:** 2026-03-18 (refreshed)
+**Date:** 2026-03-19 (refreshed)
 **PM:** AgentPick PM (Claude Code)
-**QA baseline:** QA_REPORT.md (2026-03-18T23:53Z) — score **50/51** | P0: none | P1: 1 open
-**Previous cycle:** 15 (latest deployed)
+**QA baseline:** QA_REPORT.md (2026-03-19T00:07Z) — score **53/54** | P0: none | P1: 1 open
+**Previous cycle:** 16 (latest deployed)
 
 ---
 
@@ -24,7 +24,7 @@
 3. Add a CI assertion that pins `CAPABILITY_TOOLS.embed[0]` (router registry) against the QA allowlist so they can never drift again.
 4. Audit `/connect` page copy — if it references `voyage-ai` as an embed slug, update to `voyage-embed`.
 
-**Acceptance:** Automated QA suite reports **51/51**. `grep "voyage-ai" agentpick-router-qa.py` → zero hits.
+**Acceptance:** Automated QA suite reports **54/54**. `grep "voyage-ai" agentpick-router-qa.py` → zero hits.
 
 ---
 

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     return apiError('RATE_LIMITED', 'Too many registration attempts.', 429, { retry_after: retryAfter });
   }
 
-  let body: { email?: string };
+  let body: { email?: string; source?: string };
   try {
     body = await request.json();
   } catch {
@@ -34,6 +34,12 @@ export async function POST(request: NextRequest) {
   const email = body.email.trim().toLowerCase();
   const name = email.split('@')[0].trim();
 
+  const VALID_SOURCES = ['quickstart', 'quickstart_homepage'] as const;
+  const registrationSource: string =
+    body.source && (VALID_SOURCES as readonly string[]).includes(body.source)
+      ? body.source
+      : 'quickstart';
+
   try {
     const existingAgent: any = await withRetry(() => db.agent.findFirst({
       where: { ownerEmail: email },
@@ -46,7 +52,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash, registrationSource: 'quickstart' },
+        data: { apiKeyHash, registrationSource },
       }));
 
       const plan = existingAgent.developerAccount.plan;
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
 
       await withRetry(() => db.agent.update({
         where: { id: existingAgent.id },
-        data: { apiKeyHash, registrationSource: 'quickstart' },
+        data: { apiKeyHash, registrationSource },
       }));
 
       await withRetry(() => db.developerAccount.create({
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
         name: `${name}-router`,
         ownerEmail: email,
         description: `Router SDK developer: ${name}`,
-        registrationSource: 'quickstart',
+        registrationSource,
       },
     }));
 
