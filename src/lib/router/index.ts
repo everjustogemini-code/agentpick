@@ -70,8 +70,6 @@ export const TOOL_CHARACTERISTICS: Record<string, { quality: number; cost: numbe
   'polygon-io':             { quality: 4.5, cost: 0.001,   latency: 100,  stability: 0.99 },
   'alpha-vantage':          { quality: 3.5, cost: 0.0,     latency: 300,  stability: 0.95 },
   'financial-modeling-prep': { quality: 3.8, cost: 0.001,   latency: 200,  stability: 0.96 },
-  'openai-embed':           { quality: 4.5, cost: 0.0001,  latency: 150,  stability: 0.99 },
-  'cohere-embed':           { quality: 4.0, cost: 0.0001,  latency: 120,  stability: 0.98 },
   'voyage-embed':           { quality: 4.2, cost: 0.0001,  latency: 130,  stability: 0.97 },
   'jina-embed':             { quality: 3.8, cost: 0.00005, latency: 100,  stability: 0.96 },
   'edenai-embed':           { quality: 3.5, cost: 0.0001,  latency: 300,  stability: 0.92 },
