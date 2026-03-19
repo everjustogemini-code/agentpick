@@ -188,6 +188,16 @@ export function fastClassify(query: string): QueryContext | null {
  * Cached for 2 minutes. Fails safe with default context.
  */
 export async function getClassification(query: string, capability: string): Promise<{ context: QueryContext; cached: boolean; classificationMs: number }> {
+  // Classification is only meaningful for search and finance routing.
+  // For other capabilities (embed, crawl, code, etc.) return a neutral default immediately.
+  if (capability !== 'search' && capability !== 'finance') {
+    return {
+      context: { type: 'simple', domain: 'general', depth: 'shallow', freshness: 'any' },
+      cached: false,
+      classificationMs: 0,
+    };
+  }
+
   const key = `${capability}:${query.trim().toLowerCase().replace(/\s+/g, ' ')}`;
   const cached = classificationCache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {

@@ -19,8 +19,6 @@ import { callPolygon } from './polygon';
 import { callAlphaVantage } from './alphavantage';
 import { callFMP } from './fmp';
 // Embedding adapters
-import { callOpenAIEmbed } from './openai-embed';
-import { callCohereEmbed } from './cohere-embed';
 import { callVoyageEmbed } from './voyage-embed';
 import { callJinaEmbed } from './jina-embed';
 // Code execution adapters
@@ -82,10 +80,6 @@ const ADAPTERS: Record<string, (query: string, config?: Record<string, unknown>)
   'financial-modeling-prep': callFMP,
 
   // === Embedding ===
-  'openai-embed': callOpenAIEmbed,
-  'openai-embeddings': callOpenAIEmbed,
-  'cohere-embed': callCohereEmbed,
-  'cohere-embeddings': callCohereEmbed,
   'voyage-embed': callVoyageEmbed,
   'voyage-embeddings': callVoyageEmbed,
   voyage: callVoyageEmbed,
@@ -150,10 +144,6 @@ export const ALIAS_TO_PRODUCT_SLUG: Record<string, string> = {
   fmp: 'financial-modeling-prep',
   'financial-modeling-prep': 'financial-modeling-prep',
   // === Embedding ===
-  'openai-embed': 'openai-embed',
-  'openai-embeddings': 'openai-embed',
-  'cohere-embed': 'cohere-embed',
-  'cohere-embeddings': 'cohere-embed',
   voyage: 'voyage-embed',
   'voyage-ai': 'voyage-embed',
   'voyage-embed': 'voyage-embed',
