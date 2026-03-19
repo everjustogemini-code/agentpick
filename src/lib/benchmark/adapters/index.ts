@@ -191,7 +191,7 @@ export const BENCHMARKABLE_SLUGS = [
   // Finance
   'polygon-io', 'alpha-vantage', 'financial-modeling-prep',
   // Embedding
-  'openai-embed', 'cohere-embed', 'voyage-embed', 'jina-embed', 'edenai-embed',
+  'voyage-embed', 'jina-embed', 'edenai-embed',
   // Code Execution
   'e2b',
   // Communication

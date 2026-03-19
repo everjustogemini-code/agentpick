@@ -77,12 +77,7 @@ const SLUG_TO_VAULT_SERVICE: Record<string, string> = {
   fmp: "fmp",
   "financial-modeling-prep": "fmp",
   // Embedding
-  "openai-embed": "openai",
-  "openai-embeddings": "openai",
-  "cohere-embed": "cohere",
-  "cohere-embeddings": "cohere",
-  "voyage-ai": "voyage",
-  "voyage-embed": "voyage", // backward-compat alias
+  "voyage-embed": "voyage",
   "voyage-embeddings": "voyage",
   voyage: "voyage",
   "jina-embed": "jina",
