@@ -455,6 +455,13 @@ export async function routeRequest(
     aiClassificationResult = classification.context;
     classificationMs = classification.classificationMs;
     aiRankedTools = aiRoute(classification.context, capability);
+    // Enforce capability constraint: AI ranking must never produce tools outside
+    // the allowed set for the requested capability.
+    if (aiRankedTools) {
+      const allowed = new Set(CAPABILITY_TOOLS[capability] ?? []);
+      aiRankedTools = aiRankedTools.filter((t) => allowed.has(t));
+      if (aiRankedTools.length === 0) aiRankedTools = undefined;
+    }
   } else if (strategy === 'best_performance') {
     // Run only the fast (regex) classifier — zero added latency, no Haiku call.
     // For deep-research queries (e.g. "state of LLMs 2025 comprehensive analysis"),
@@ -466,6 +473,11 @@ export async function routeRequest(
       aiClassificationResult = fastResult;
       classificationMs = 0;
       aiRankedTools = aiRoute(fastResult, capability);
+      if (aiRankedTools) {
+        const allowed = new Set(CAPABILITY_TOOLS[capability] ?? []);
+        aiRankedTools = aiRankedTools.filter((t) => allowed.has(t));
+        if (aiRankedTools.length === 0) aiRankedTools = undefined;
+      }
     }
   }
 
