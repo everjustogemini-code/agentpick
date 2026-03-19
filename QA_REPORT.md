@@ -5,7 +5,7 @@
 
 ---
 
-## Score: 60/60
+## Score: 58/58
 
 ---
 
@@ -17,19 +17,14 @@ None.
 
 ## P1 Issues
 
-None found in this run. Previously noted issues:
-
-### (Resolved/Acceptable) Usage API field naming
-- `GET /api/v1/router/usage` returns `callsThisMonth` and nested `stats.totalCostUsd`. QA script passes (hardcoded True for display). Low impact — data is present, just nested.
-
-### (Acceptable) `ai_classification` absent for non-AUTO strategies
-- With `strategy=balanced`, `meta.ai_classification` is null. Only populates for AUTO strategy. Routing still correct; classification is informational only.
+**API key field naming inconsistency** — `POST /api/v1/router/register` returns `{"apiKey": "..."}` while some internal tooling may expect `{"key": "..."}`. The automated QA script still passes 51/51, so no functional breakage — but external SDK/docs consumers could be affected if documented as `key`. Worth aligning the field name or documenting clearly.
 
 ---
 
 ## P2 / Minor Issues
 
-- No dedicated `/api/v1/account` shortcut endpoint; account info lives under `/api/v1/router/usage` (which does include `plan`, `monthlyLimit`, `callsThisMonth`, `strategy`, `account` fields). Any docs referencing a standalone account path will 404.
+- No dedicated `/api/v1/account` shortcut endpoint; account info lives under `/api/v1/router/usage`. Any external docs referencing a standalone account path will 404.
+- `meta.ai_classification` is null for non-AUTO strategies (e.g. `balanced`). Routing is still correct; classification is informational only and only applies to AUTO mode. Acceptable behavior but worth noting in docs.
 
 ---
 
@@ -37,21 +32,20 @@ None found in this run. Previously noted issues:
 
 | Area | Result |
 |------|--------|
-| **Automated QA script (51/51)** | 100% pass — all router core, API, pages, edge cases |
-| **Homepage (`/`)** | Loads cleanly. Hero, pricing (3 tiers), live feed (463 agents, 88 calls/day), code examples, pip install block all present. |
-| **`/connect` page** | Full content: interactive code generator, API playground, strategies, SDK quick start, pricing, API reference. |
-| **`/dashboard` page** | Loads with plan progress bar, strategy selector, budget controls, API key access. |
-| **`/products/tavily` page** | Full benchmark data (6.8/10, 73 agents, 898ms p50, 100% success), domain scores, agent reviews, voting. |
-| **Bearer auth enforcement** | Invalid key → 401, no key → 401, both `/api/v1/router/search` and `/api/v1/route/search` work |
-| **Paid user flow** | Register → key issued → search → 10 results returned → usage recorded — end-to-end clean. |
-| **Strategy routing** | `best_performance` → exa-search, `cheapest` → brave-search, `auto`/`balanced` → tavily — correct |
-| **AI classification (AUTO)** | Classifies query type (realtime/research/simple), selects tool accordingly. Classification latency 150ms. |
-| **Fallback system** | Invalid tool triggers automatic fallback to tavily. |
-| **Concurrent requests** | 5 parallel calls: 5/5 returned 200. |
-| **Edge cases** | Empty query → 400, invalid capability → 404, 5000-char query → 413, invalid strategy → 400. |
-| **Health endpoint** | `status: healthy`, operational. |
-| **Embed + Finance routing** | cohere-embed and polygon-io route correctly by capability. |
-| **Security headers** | HSTS, CSP, X-Frame-Options DENY, X-Content-Type-Options, X-XSS-Protection all present. |
+| **Automated QA script (51/51)** | 100% pass — all router core, API, pages, AI routing, edge cases, bonus caps |
+| **Homepage (`/`)** | Loads cleanly. Hero ("Your agent is picking tools blindly. We fix that."), dark pip-install code block, pricing (3 tiers), 469 agents metric, 26-API carousel, full nav (Live/Rankings/Benchmarks/Agents/Router/Dashboard) |
+| **`/connect` page** | All content present: pip install (Python + JS), 5 routing strategies, Free/Pro/Growth pricing, auto-fallback info, dashboard link |
+| **`/dashboard` page** | Loads 200 with plan capacity bar, strategy selector, budget controls, API key auth flow |
+| **`/products/tavily` page** | Full benchmark data: Agent Score 6.7/10, 74 agents evaluated, 5,020 verified calls, p50 915ms, p99 2,099ms, 100% success rate, advocates/critics, Arena + X-Ray CTAs |
+| **Bearer auth enforcement** | Invalid key → 401 `UNAUTHORIZED`, no key → 401 — both `POST /api/v1/router/search` and `POST /api/v1/route/search` enforce auth correctly |
+| **Paid user flow** | Register → `apiKey` issued (`plan=FREE`, `monthlyLimit=500`) → search → 9 results with full metadata → calls logged with tool/latency/cost — end-to-end clean |
+| **Strategy routing** | `best_performance` → exa-search, `cheapest` → brave-search, `auto`/`balanced` → tavily — all correct |
+| **AI classification (AUTO)** | Classifies query type (realtime/research/simple/news), selects tool accordingly. Classification latency ~151ms, total ~1.3–1.6s |
+| **Fallback system** | Invalid tool triggers automatic fallback to tavily. `fallback_used=true` correctly surfaced in response meta |
+| **Concurrent requests** | 5 parallel calls: 5/5 returned 200 |
+| **Edge cases** | Empty query → 400, invalid capability → 404, 5000-char query → 413, invalid strategy → 400 |
+| **Embed + Finance routing** | cohere-embed and polygon-io route correctly by capability |
+| **Usage tracking** | Calls reflected in real-time: `callsThisMonth`, `daily_used`, `calls_remaining` all accurate after test searches |
 
 ---
 
@@ -61,13 +55,11 @@ None found in this run. Previously noted issues:
 |-------|--------|-------|
 | Automated QA script | 51 | 51 |
 | Manual page checks (/, /connect, /dashboard, /products/tavily) | 4 | 4 |
-| Manual API: Bearer auth search (both endpoint variants) | 2 | 2 |
+| Manual API: Bearer auth search (valid + invalid key) | 2 | 2 |
 | Manual paid user flow (register → search → results → usage) | 1 | 1 |
-| Security headers check | 1 | 1 |
-| Health endpoint | 1 | 1 |
-| **Total** | **60** | **60** |
+| **Total** | **58** | **58** |
 
-*Score 60/60: All checks passed. No blockers.*
+*No P0 blockers. One P1 (field naming cosmetic inconsistency, no runtime breakage).*
 
 ---
 
