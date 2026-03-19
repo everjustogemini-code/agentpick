@@ -2,10 +2,11 @@
 **Date:** 2026-03-18
 **Target:** https://agentpick.dev
 **Tester:** AgentPick QA Agent (Claude Code)
+**Run time:** 2026-03-18T23:39Z (fresh run)
 
 ---
 
-## Score: 50/51
+## Score: 50/51 (98%)
 
 ---
 

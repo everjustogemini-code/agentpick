@@ -1,95 +1,87 @@
 # NEXT_VERSION.md
-**Generated:** 2026-03-18
-**Prepared by:** AgentPick PM (Claude Code, Sonnet 4.6)
+**Date:** 2026-03-18
+**PM:** AgentPick PM (Claude Code)
 **QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: none | P1: 1 open
-**Previous cycle:** 13 (embed vector data, dead provider purge, AI classify guard)
+**Previous cycle:** 14 (embed vector data, dead provider purge, AI classify guard)
 
 ---
 
-## Must-Have #1 — Fix P1-1: Update QA allowlist to `voyage-embed`
+## Must-Have #1 — Fix P1-1: Reconcile `voyage-embed` canonical tool ID
 
-**Status:** 1 test failing (QA suite 50/51)
+**Status:** 1 test failing (QA suite 50/51). Must reach 51/51 before any feature ships.
 
-**What happened:** Cycle 12 promoted `voyage-embed` as the sole embed provider and retired `voyage-ai`. The production router correctly returns `meta.tool_used = "voyage-embed"`. The QA script's B.1 embed test was never updated — it still expects one of `["cohere-embed", "voyage-ai", "jina-embeddings"]`. This is a test-maintenance bug, not a production regression, but it keeps the score at 50/51 and masks any future real regressions.
+**What happened:** Cycle 12 promoted `voyage-embed` as the sole embed provider and retired `voyage-ai`. The production router correctly returns `meta.tool_used = "voyage-embed"`. The QA script's embed test was never updated — it still expects one of `["cohere-embed", "voyage-ai", "jina-embeddings"]`. This is a test-maintenance bug, not a production regression, but it masks future real regressions.
 
 **Fix:**
-- In `agentpick-router-qa.py`, locate the B.1 embed test assertion and replace the valid-tool list:
-  ```python
-  # Before:
-  valid_embed_tools = ["cohere-embed", "voyage-ai", "jina-embeddings"]
-  # After:
-  valid_embed_tools = ["voyage-embed"]
-  ```
-- Run `grep -n "voyage-ai" agentpick-router-qa.py` — must return zero hits after the fix.
-- If any docs or `/connect` page copy still reference `voyage-ai` as an embed tool slug, update those too.
+1. In `agentpick-router-qa.py`, find the B.1 embed assertion and update the valid-tool list:
+   ```python
+   # Before:
+   valid_embed_tools = ["cohere-embed", "voyage-ai", "jina-embeddings"]
+   # After:
+   valid_embed_tools = ["voyage-embed"]
+   ```
+2. Run `grep -n "voyage-ai" agentpick-router-qa.py` — must return zero hits after fix.
+3. Add a CI assertion that pins `CAPABILITY_TOOLS.embed[0]` (router registry) against the QA allowlist so they can never drift again.
+4. Audit `/connect` page copy — if it references `voyage-ai` as an embed slug, update to `voyage-embed`.
 
 **Acceptance:** Automated QA suite reports **51/51**. `grep "voyage-ai" agentpick-router-qa.py` → zero hits.
 
 ---
 
-## Must-Have #2 — Major UI Upgrade: Glass Design System + Micro-animations
+## Must-Have #2 — Major UI Upgrade: Glassmorphism + Scroll Micro-Animations
 
-**Goal:** Elevate the existing dark/neon-green aesthetic to a premium product feel that increases homepage → signup conversion for developers.
+**Goal:** Elevate the existing dark/neon-green aesthetic from functional to premium. Current flat cards and static sections are below the visual bar set by competitors (Exa, Tavily, Firecrawl). This is the primary conversion bottleneck for developers landing from search/social.
 
-**Specifics:**
-
-**Glassmorphism layer (cards & panels)**
-- Replace flat-border cards on the homepage stats panel, pricing tiers, and benchmark cards with:
+**Glassmorphism cards**
+- Replace flat-border cards on pricing tiers, feature cards ("What It Does"), and live-stats panel with:
   `backdrop-filter: blur(12px); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);`
-- Apply to: live-stats card, pricing tier boxes, feature comparison table rows.
+- Sticky nav: add `backdrop-blur-md bg-bg-primary/80` on scroll past 60px so it reads as frosted glass.
 
-**Hero section upgrade**
-- Replace static hero background with a slow-drifting radial gradient mesh (`conic-gradient` + keyframe translate, 10s loop, `will-change: transform`).
-- Upgrade the `pip install agentpick` callout to a minimal terminal window component: a draggable titlebar, three dot buttons, monospace prompt line, and a blinking cursor with a 2-step typewriter sequence (`$ pip install agentpick` → `Successfully installed agentpick`).
-- Increase hero heading to **64px** at desktop, tighten `line-height` to `1.1`, add a 2px gradient underline on the differentiator phrase ("We fix that").
+**Hero section**
+- Replace static background with a slow-drifting animated mesh gradient (conic-gradient + `@keyframes` translate, 10s loop, `will-change: transform`, no JS).
+- Upgrade the `pip install agentpick` block to a minimal terminal window: titlebar with three dot buttons, monospace prompt line, blinking cursor, 2-step typewriter effect (`$ pip install agentpick` → `Successfully installed agentpick`).
+- Hero heading: increase to `clamp(3rem, 6vw, 5rem)`, tighten `line-height: 1.08`, `letter-spacing: -0.03em`. Add a gradient underline on "We fix that."
 
-**Micro-animations**
-- Animate live-stat counters (agents count, calls today) on scroll-enter using `IntersectionObserver` + a 1.2s count-up. Keep it GPU-bound — only `transform`/`opacity`.
-- Replace the shimmer CTA button with a `box-shadow` glow pulse keyframe (neon-green, 2s ease-in-out infinite) — same color, less paint cost.
-- Add `View Transitions API` cross-fade (150ms) for in-page route changes.
+**Micro-animations (CSS/JS — no third-party libs)**
+- `IntersectionObserver`-based fade-up reveal (opacity 0→1, translateY 20px→0, 400ms ease-out) on all section entries: feature cards, pricing cards, API carousel.
+- Live-stat counters (agents count, calls today) animate with a 1.2s count-up on first scroll-enter.
+- Replace shimmer CTA with a neon-green `box-shadow` glow pulse keyframe (2s ease-in-out infinite).
 
-**Constraint:** Lighthouse performance score must remain ≥ 90. No third-party animation libraries — vanilla CSS + minimal JS only.
+**Constraint:** No animation libraries. Vanilla CSS + minimal JS only. Lighthouse perf ≥ 90. CLS < 0.1.
 
-**Acceptance:** PM screenshot review passes. Lighthouse perf ≥ 90. No layout shift (CLS < 0.1).
+**Acceptance:** PM screenshot review passes on mobile (375px) and desktop (1440px). Lighthouse perf ≥ 90. CLS < 0.1. All 4 page load tests in QA still pass.
 
 ---
 
 ## Must-Have #3 — New Feature: Zero-Friction `/quickstart` Page
 
-**Goal:** Collapse the time-to-first-API-call from ~5 minutes (navigate → register → email confirm → copy key → read docs → write curl) to **under 60 seconds**. This is the highest-leverage lever for developer adoption.
+**Goal:** Collapse time-to-first-real-API-response from ~5 minutes (register → email confirm → copy key → read docs → write curl) to **under 60 seconds**. This is the highest-leverage lever for developer adoption.
 
-**What to build (`/quickstart` — new route):**
+**Three inline steps — no page reloads:**
 
-A single scrollable page with three inline steps — no page reloads, no email confirmation for trial keys:
-
-**Step 1 — Get a key**
+**Step 1 — Get a key instantly**
 - Email input + "Generate free key" button.
-- On submit: call existing registration endpoint, display the issued key inline in a copy-to-clipboard code block.
-- Trial keys: no email confirmation required. Mark with `source=quickstart` in the DB.
+- On submit: call existing `POST /api/v1/auth/register`, display issued API key inline in a copy-to-clipboard code block. No email confirmation required for trial keys. Mark keys with `source=quickstart` in DB.
 
 **Step 2 — Pick a capability**
-- Three large pill buttons: **Search** / **Crawl** / **Embed** — selecting one updates the code snippet below in real time.
+- Three large pill buttons: **Search** / **Crawl** / **Embed** — selecting one updates the curl snippet below in real time (JS, no reload).
 
-**Step 3 — Run it now**
-- Pre-filled `curl` snippet with the actual issued key and selected capability injected.
-- "Run in browser" button fires the request client-side (fetch), streams the JSON response into a live output panel with syntax highlighting.
-- If the request succeeds, a green "It works!" banner appears with a link to full docs.
+**Step 3 — Run it in the browser**
+- Pre-filled `curl` snippet with the issued key and selected capability injected.
+- "Run" button fires `fetch()` client-side, streams JSON response into a live output panel with syntax highlighting.
+- On success: green "It works! 🎉" banner + link to full `/connect` docs.
 
 **Homepage wiring**
-- Replace the secondary "View Docs" CTA button with **"Get API Key →"** linking to `/quickstart`.
-- Add a `source=quickstart_homepage` tag on keys issued via this path for funnel tracking.
+- Replace secondary "View Docs" CTA with **"Get started free →"** linking to `/quickstart`.
+- Tag keys issued via this flow as `source=quickstart_homepage` for funnel tracking.
 
-**Metric hook**
-- Log `source` on all keys issued from `/quickstart` so the PM can measure quickstart → active-user conversion from day one.
-
-**Acceptance:** A developer can land on `/quickstart`, get a working API key, and see a real JSON response in the browser — in under 60 seconds, with no email confirmation step. New keys created via this flow are identifiable in the DB by `source=quickstart`.
+**Acceptance:** A developer can land on `/quickstart`, receive a working API key, and see a real JSON routing response in the browser — in under 60 seconds, no email confirmation. All keys from this flow are identifiable in the DB by `source=quickstart`.
 
 ---
 
 ## Out of Scope This Cycle
-
 - Stripe / billing changes
+- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked separately with Pclaw, blocked on BENCHMARK_SECRET env config
+- npm/pip SDK packaging
 - Team / org accounts
-- Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — tracked separately with Pclaw
 - New routing strategies or tool integrations
-- MCP server packaging
