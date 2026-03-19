@@ -40,7 +40,7 @@ const CAPABILITY_TO_CATEGORY: Record<string, string> = {
 export const CAPABILITY_TOOLS: Record<string, string[]> = {
   search: ['exa-search', 'tavily', 'serpapi', 'brave-search', 'serper', 'perplexity-api', 'you-search', 'jina-ai', 'bing-web-search'],
   crawl: ['firecrawl', 'jina-ai', 'apify', 'scrapingbee', 'browserbase'],
-  embed: ['voyage-embed', 'jina-embed', 'edenai-embed'],
+  embed: ['voyage-embed'],
   finance: ['polygon-io', 'alpha-vantage', 'financial-modeling-prep'],
   code: ['e2b'],
   communication: ['resend'],
