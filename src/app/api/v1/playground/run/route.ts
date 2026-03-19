@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { hashApiKey } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/prisma';
+import { checkInMemoryRateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -48,6 +49,19 @@ export async function POST(request: NextRequest) {
   }
 
   const { endpoint = 'search', query, strategy = 'auto', apiKey } = body;
+
+  const isDemoKey = (body.apiKey ?? '') === (process.env.DEMO_API_KEY ?? '__unset__')
+  if (isDemoKey) {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? '127.0.0.1'
+    const { allowed, retryAfterSecs } = checkInMemoryRateLimit(ip, 3, 3_600_000)
+    if (!allowed) {
+      return Response.json(
+        { error: { code: 'RATE_LIMITED', message: 'Demo key: max 3 requests per hour per IP.' } },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSecs) } },
+      )
+    }
+  }
 
   if (!query || typeof query !== 'string' || !query.trim()) {
     return Response.json({ error: 'query is required.' }, { status: 400 });
