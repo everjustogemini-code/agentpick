@@ -7,6 +7,28 @@ import { apiError } from '@/types';
 
 const db = prisma as any;
 
+async function fetchAndRegisterSkillMd(
+  skillUrl: string,
+  agentId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(skillUrl, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { ok: false, error: `Remote skill.md returned ${res.status}` };
+    const text = await res.text();
+    // Minimal validation: must declare a name field (YAML frontmatter or JSON)
+    if (!text.includes('name:') && !text.includes('"name"')) {
+      return { ok: false, error: 'skill.md missing required "name" field.' };
+    }
+    // Persist skillUrl in agent description for future reference
+    await withRetry(() =>
+      db.agent.update({ where: { id: agentId }, data: { description: `skill.md: ${skillUrl}` } })
+    );
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
 /**
  * PUBLIC endpoint — no auth required.
  * Creates an Agent + DeveloperAccount and returns the API key.
@@ -20,7 +42,7 @@ export async function POST(request: NextRequest) {
     return apiError('RATE_LIMITED', 'Too many registration attempts.', 429, { retry_after: retryAfter });
   }
 
-  let body: { email?: string; name?: string };
+  let body: { email?: string; name?: string; skillUrl?: string };
   try {
     body = await request.json();
   } catch {
@@ -36,6 +58,12 @@ export async function POST(request: NextRequest) {
 
   if (name.length < 1 || name.length > 100) {
     return apiError('VALIDATION_ERROR', 'name must be 1-100 characters.', 400);
+  }
+
+  const skillUrl = body.skillUrl?.trim() ?? undefined;
+  if (skillUrl) {
+    try { new URL(skillUrl); }
+    catch { return apiError('VALIDATION_ERROR', 'skillUrl must be a valid URL.', 400); }
   }
 
   try {
@@ -62,6 +90,9 @@ export async function POST(request: NextRequest) {
       // Use isRouterPlanCode to avoid null ?? fallback coercing ENTERPRISE's null limit to 500
       const monthlyLimit = isRouterPlanCode(plan) ? ROUTER_PLAN_MONTHLY_LIMITS[plan] : ROUTER_PLAN_MONTHLY_LIMITS.FREE;
 
+      let skillReg: { ok: boolean; error?: string } | undefined;
+      if (skillUrl) skillReg = await fetchAndRegisterSkillMd(skillUrl, existingAgent.id);
+
       return Response.json({
         apiKey,
         key: apiKey,
@@ -69,6 +100,7 @@ export async function POST(request: NextRequest) {
         plan,
         monthlyLimit,
         message: 'Existing account found. New API key issued.',
+        ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
       }, { status: 200 });
     }
 
@@ -93,12 +125,16 @@ export async function POST(request: NextRequest) {
         },
       }));
 
+      let skillReg: { ok: boolean; error?: string } | undefined;
+      if (skillUrl) skillReg = await fetchAndRegisterSkillMd(skillUrl, existingAgent.id);
+
       return Response.json({
         apiKey,
         key: apiKey,
         _note: 'key is deprecated, use apiKey',
         plan: 'FREE',
         monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
+        ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
       }, { status: 201 });
     }
 
@@ -126,12 +162,16 @@ export async function POST(request: NextRequest) {
       },
     }));
 
+    let skillReg: { ok: boolean; error?: string } | undefined;
+    if (skillUrl) skillReg = await fetchAndRegisterSkillMd(skillUrl, agent.id);
+
     return Response.json({
       apiKey,
       key: apiKey,
       _note: 'key is deprecated, use apiKey',
       plan: 'FREE',
       monthlyLimit: ROUTER_PLAN_MONTHLY_LIMITS.FREE,
+      ...(skillReg !== undefined ? { skillRegistration: skillReg } : {}),
     }, { status: 201 });
   } catch (err) {
     console.error('Router register error:', err);

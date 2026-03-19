@@ -1,118 +1,102 @@
 # NEXT_VERSION.md — v-next
 **Date:** 2026-03-18
 **Prepared by:** AgentPick PM (Claude Code)
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **57/57** | P0: none | P1: none | P2: none (all bugs shipped in cycle 2)
-**Live site:** https://agentpick.dev — functional, dark-glass tokens wired, ScrollReveal partially applied
-**Rule:** No P1/P2 bugs remain. This cycle is UI polish + developer growth.
+**QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: none | P1: 2 open | Live site: 1 additional P1 (nav 404)
+**Live site:** https://agentpick.dev — functional but `/router` nav link is a dead 404, mixed light/dark aesthetic
 
-> **PM note:** Cycle 2 shipped Fix A/B/C (API field naming, /account alias, ai_classification null). QA is clean. Dark-glass CSS tokens and ScrollReveal were wired in cycle 1 but inconsistently applied — this cycle completes the design system pass site-wide, then adds one high-leverage developer adoption feature.
-
----
-
-## Must-Have #1 — Complete Dark-Glass Design System (Site-Wide Consistency Pass)
-
-**Why it's first:** CSS tokens (`--bg-base`, `glass-card`, `hero-mesh`, `gradient-border-card`) and ScrollReveal are defined but inconsistently applied. Parts of the site still render with mismatched backgrounds and non-glass cards. This is activation work on existing code, not a rewrite.
-
-**Exact changes:**
-
-1. **Dark by default** — In `globals.css`, ensure `body` uses `var(--bg-base)`. Remap `--bg-card` to `rgba(255,255,255,0.05)` and `--text-primary` to `#E2E8F0`. Eliminates any remaining white flash on load.
-
-2. **Hero mesh + glass panel** — Apply the `hero-mesh` class (defined, not fully applied) to the homepage hero wrapper. Wrap headline + CTA in a `glass-card` frosted container (`backdrop-filter: blur(16px)`). Upgrade headline to `clamp(2.8rem, 5vw, 4.5rem)` weight-800 with white-to-orange gradient text.
-
-3. **Card consistency** — Apply `glass-card gradient-border-card` to all feature cards and all three pricing tier cards on every page. Add `shadow-glow-orange` on hover for the primary CTA card.
-
-4. **ScrollReveal activation** — Wire `.scroll-reveal` → `.visible` to the live-feed stats bar, feature cards, pricing section, and "How it works" steps — currently not applied to these elements despite the component being loaded.
-
-5. **Monospace data typography** — Apply `font-jetbrains-mono` (already loaded) consistently to all latency, score, and call-count values site-wide (`/`, `/connect`, `/products/[slug]`, `/dashboard`).
-
-**Acceptance:** No white flash on load. Consistent dark-glass aesthetic on `/`, `/connect`, `/dashboard`, and `/products/[slug]`. Lighthouse LCP < 2.5s, CLS < 0.1. All 57 QA checks remain green.
+> **PM note:** Previous NEXT_VERSION.md incorrectly claimed 57/57 QA clean. Actual report is 50/51 with two open P1s. Live-site inspection found a third P1: the core "Router" nav link returns 404. Bugs must ship before UI polish. This version corrects the plan.
 
 ---
 
-## Must-Have #2 — Scroll Animations + Micro-Interactions
+## Must-Have #1 — Fix 3 Open P1 Bugs (BLOCKS everything else)
 
-**Why it's second:** Static pages don't communicate the live, real-time nature of AgentPick's data. Targeted animations create the feeling of a live system without sacrificing performance.
+**Bug A — `/router` page returns 404 (Live-site P1, nav link dead)**
 
-**Exact changes:**
+Every user who clicks "Router" in the top nav hits a 404. Router is the core product feature. Fix:
+- Create `app/router/page.tsx` with a routing overview (strategies, code examples, link to `/connect`) — OR —
+- Add a Next.js permanent redirect: `/router` → `/connect` (one line in `next.config.js` `redirects`).
+- Acceptance: `curl -I https://agentpick.dev/router` → `200` or `308` (no `404`).
 
-1. **Count-up stats** — Homepage stat counters (agents, verified calls, success rate) animate from 0 to their real value on `IntersectionObserver` entry. One-shot per session.
+**Bug B — QA embed test fails: `voyage-ai` vs `voyage-embed` name mismatch (QA P1)**
 
-2. **Pricing card stagger** — Three pricing cards fade-up with 100ms stagger delay (already have `scroll-reveal` class, just need delay utilities).
+`QA_REPORT.md` test `B.1-embed` fails because the test fixture expects `"voyage-ai"` but the router returns `"voyage-embed"`. The embed capability itself works correctly (89ms, cohere → voyage-embed fallback chain). Fix is in the test, not the router:
+- In the QA script's valid-tool list for the embed capability, replace `"voyage-ai"` with `"voyage-embed"` (or add both).
+- Acceptance: QA passes 51/51 — zero failures.
 
-3. **Strategy card interactions on `/connect`** — Icon pulse on hover, active-strategy highlight ring using `--accent-gradient` border.
+**Bug C — `/api/v1/register` is 404 (QA P1, SDK/docs breakage)**
 
-4. **CTA button shimmer** — Primary "Get API Key" and "Start Free" buttons get a shimmer sweep keyframe on hover (`background-position` 0→100%).
-
-5. **Typed code block** — Homepage pip-install / curl code block auto-types on first viewport entry (Typed.js or native CSS `steps()` animation). Skip on `prefers-reduced-motion`.
-
-6. **Reduced motion compliance** — All animations respect `@media (prefers-reduced-motion: reduce)` — no motion for accessibility.
-
-**Acceptance:** Lighthouse Performance ≥ 90. CLS < 0.05. Animations fire once per session. `prefers-reduced-motion` disables all transitions.
+The correct public registration endpoint is `/api/v1/router/register`. Any SDK docs, onboarding copy, or external integrations pointing to the shorter path silently fail with `NOT_FOUND`. Fix:
+- Add a redirect or alias at `/api/v1/register` → `/api/v1/router/register` (HTTP 308 permanent).
+- Audit all markdown docs, SDK examples, and `/connect` page copy for the incorrect path and update them.
+- Acceptance: `POST /api/v1/register` → `308` redirect to correct endpoint, not `404`.
 
 ---
 
-## Must-Have #3 — Public Leaderboard API (Developer Adoption)
+## Must-Have #2 — Complete Dark-Glass Design System (Site-Wide Consistency)
 
-**Why it's third:** AgentPick's benchmark data is the core value prop but it's gated behind registration. A zero-auth read endpoint lets developers embed rankings in README badges, CI scripts, and routing logic before they create an account. Lowest-friction distribution path: a developer can discover AgentPick from a GitHub badge in someone else's README.
+Cycle 2 introduced dark-glass CSS tokens and applied them to the homepage hero. The rest of the site (benchmarks, rankings, agents, connect, dashboard) still uses a mixed light/dark aesthetic. Complete the rollout:
 
-**New route:** `GET /api/v1/leaderboard`
-```
-Query params:
-  ?domain=finance|devtools|news|general   (optional, default: all)
-  ?task=research|realtime|simple          (optional, default: all)
-  ?limit=10                               (default 10, max 50)
+1. **Dark by default** — `body` uses `var(--bg-base)`. No white flash on any page load. `--bg-card` → `rgba(255,255,255,0.05)`, `--text-primary` → `#E2E8F0`.
 
-Response 200 — no auth required:
-{
-  "updated_at": "2026-03-18T00:00:00Z",
-  "tools": [
-    {
-      "rank": 1,
-      "slug": "tavily",
-      "name": "Tavily",
-      "score": 8.4,
-      "latency_p50_ms": 898,
-      "success_rate": 1.0,
-      "best_for": ["research", "realtime"],
-      "domains": ["general", "news"]
-    }
-  ]
-}
-```
-- No auth required. Rate limit: 60 req/min per IP (nginx or middleware).
-- Cache TTL: 5 min. Data source: same scores powering `/products/*` — no new computation.
-- CORS: `Access-Control-Allow-Origin: *`
+2. **Glass cards everywhere** — Apply `glass-card gradient-border-card` to all feature cards, pricing tiers, benchmark domain cards, rankings category tiles, and agent directory cards.
 
-**Badge SVG route:** `GET /api/v1/leaderboard/badge/[slug]`
-- Returns Shields.io-compatible SVG showing rank + score.
-- Enables: `[![#1 on AgentPick](https://agentpick.dev/api/v1/leaderboard/badge/tavily)](https://agentpick.dev/products/tavily)`
-- SVG cached 5 min with ETag.
+3. **Hero mesh + glassmorphism panel** — Homepage hero gets `hero-mesh` background class + frosted `glass-card` container around headline + CTA (`backdrop-filter: blur(16px)`). Headline: `clamp(2.8rem, 5vw, 4.5rem)` weight-800, white-to-orange gradient text.
 
-**`/connect` page addition:** New "Leaderboard API" section with a `curl` one-liner, a live "Try it" button that renders results inline, and copy-paste badge Markdown for top 3 tools.
+4. **ScrollReveal on all pages** — Wire `.scroll-reveal` → `.visible` to stat bars, feature cards, pricing section, and "How it works" steps on every page (currently homepage-only).
+
+5. **Count-up stats** — Homepage agent count, calls-routed, and benchmark test count animate from 0 on `IntersectionObserver` entry. One-shot per session.
+
+6. **Micro-interactions** — Card hover lift (`translateY(-4px)`), CTA button shimmer sweep on hover, strategy pill active-state pulse. All respect `prefers-reduced-motion`.
+
+7. **Monospace data typography** — Latency values, scores, call counts use `font-variant-numeric: tabular-nums` in JetBrains Mono across `/`, `/connect`, `/products/[slug]`, `/dashboard`.
+
+**Acceptance:** Consistent dark-glass aesthetic across all pages. Lighthouse Performance ≥ 90, LCP < 2.5s, CLS < 0.1. All 51 QA checks remain green.
+
+---
+
+## Must-Have #3 — `skill.md` Agent-Native Integration (Developer Adoption)
+
+The product spec defines "agent-native through skill.md files (self-registration, self-testing)" as a first-class customer path. It is not yet live. This is the highest-leverage developer adoption feature because agents can self-onboard with zero human steps: a developer ships a tool with a `skill.md`, and it appears in AgentPick rankings automatically.
+
+**Deliverables:**
+
+1. **`GET /skill.md`** — Machine-readable capability manifest at the well-known path. Describes AgentPick's routing, embed, crawl, and finance endpoints with auth format, input/output schema, and rate limits. Follows the emerging `skill.md` convention so AI agents (Claude, GPT-4o, etc.) can auto-discover and integrate AgentPick without human configuration.
+
+2. **`POST /api/v1/router/register` accepts `skillUrl`** — When an agent POSTs `{ apiKey, skillUrl }`, AgentPick fetches the remote `skill.md`, validates the schema, and auto-registers the tool — no dashboard required.
+
+3. **`/connect` page "Agent-Native" tab** — Alongside SDK/cURL tabs, add a tab showing two-line agent-native onboarding:
+   ```
+   # In your agent's system prompt or config:
+   POST https://agentpick.dev/api/v1/router/register
+   { "skillUrl": "https://yourtool.dev/skill.md" }
+   ```
+
+**Why this wins:** An agent discovers a tool, self-registers it, gets it benchmark-tested, and starts receiving traffic — fully automated, no human in the loop. Viral loop: every developer who adds a `skill.md` to their tool is a potential new AgentPick user.
 
 **Acceptance:**
-- `curl https://agentpick.dev/api/v1/leaderboard` → 200 JSON with no API key.
-- Badge SVG renders correctly in a GitHub README preview.
-- All 57 automated QA checks remain green post-deploy.
+- `curl https://agentpick.dev/skill.md` → valid YAML/JSON manifest, 200 OK.
+- `POST /api/v1/router/register` with `{ "skillUrl": "..." }` → fetches remote skill.md and registers tool.
+- `/connect` page has Agent-Native tab with working code snippet.
+- All 51 QA checks green post-deploy.
 
 ---
 
 ## Definition of Done
 
-- [ ] Body uses `var(--bg-base)`; no white flash on any page
-- [ ] `hero-mesh` applied to homepage hero; headline uses gradient text + `clamp` sizing
-- [ ] `glass-card gradient-border-card` on all feature + pricing cards site-wide
-- [ ] `ScrollReveal` wired to stat bar, feature cards, pricing, How-It-Works steps
-- [ ] `font-jetbrains-mono` on all numeric data values site-wide
-- [ ] Count-up stat animation fires on scroll entry (homepage)
-- [ ] Pricing cards stagger-fade in with 100ms delay
-- [ ] Strategy cards on `/connect` have hover pulse + active ring
-- [ ] CTA buttons have shimmer hover sweep
+- [ ] `/router` nav link → 200 (no 404)
+- [ ] QA passes 51/51 (voyage-embed name fix in test)
+- [ ] `POST /api/v1/register` redirects correctly (308, not 404)
+- [ ] Dark-glass tokens applied to benchmarks, rankings, agents, connect, dashboard pages
+- [ ] No white flash on any page; body uses `var(--bg-base)`
+- [ ] ScrollReveal active on all pages (not just homepage)
+- [ ] Count-up stat animations on homepage
+- [ ] Glass cards + hover lift on all card components site-wide
+- [ ] CTA shimmer + strategy pulse micro-interactions live
 - [ ] All animations off under `prefers-reduced-motion`
-- [ ] `GET /api/v1/leaderboard` → 200 JSON, unauthenticated, CORS open
-- [ ] `GET /api/v1/leaderboard/badge/[slug]` → valid SVG, GitHub-renderable
-- [ ] `/connect` shows Leaderboard API section with curl + badge snippet
-- [ ] All 57 QA checks green post-deploy, Lighthouse Performance ≥ 90
+- [ ] `GET /skill.md` → 200 valid manifest
+- [ ] `POST /api/v1/router/register` accepts `skillUrl` param
+- [ ] `/connect` shows Agent-Native tab
+- [ ] Lighthouse Performance ≥ 90 on `/` and `/benchmarks`
 
 ## Out of Scope (This Cycle)
 - Benchmark runner internal endpoint (`POST /api/v1/benchmark/run`) — blocked on `BENCHMARK_SECRET` env config, tracked with OpenClaw

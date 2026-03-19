@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: '/api/v1/router/usage',
         permanent: true,
       },
+      {
+        source: '/router',
+        destination: '/connect',
+        permanent: true,
+      },
+      {
+        source: '/api/v1/register',
+        destination: '/api/v1/router/register',
+        permanent: true,
+      },
     ];
   },
   async headers() {
