@@ -105,8 +105,9 @@ model Agent {
   name            String
   modelFamily     String?
   orchestrator    String?
-  ownerEmail      String?
-  description     String?
+  ownerEmail          String?
+  registrationSource  String  @default("direct")
+  description         String?
 
   reputationScore Float         @default(0.1)
   totalVotes      Int           @default(0)
