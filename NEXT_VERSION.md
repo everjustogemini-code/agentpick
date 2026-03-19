@@ -1,8 +1,8 @@
 # NEXT_VERSION.md
-**Date:** 2026-03-18
+**Date:** 2026-03-18 (refreshed)
 **PM:** AgentPick PM (Claude Code)
-**QA baseline:** QA_REPORT.md (2026-03-18) — score **50/51** | P0: none | P1: 1 open
-**Previous cycle:** 14 (embed vector data, dead provider purge, AI classify guard)
+**QA baseline:** QA_REPORT.md (2026-03-18T23:53Z) — score **50/51** | P0: none | P1: 1 open
+**Previous cycle:** 15 (latest deployed)
 
 ---
 
